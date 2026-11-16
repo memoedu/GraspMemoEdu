@@ -41,13 +41,16 @@ def validate_format(value, bank):
     originals = {q['id']: q for g in bank['groups'] for q in g.get('questions', [])}
     for ident, variant in value['questions'].items():
         if (ident not in originals or not isinstance(variant, dict)
-                or set(variant) - {'source_sha256', 'question', 'html', 'interaction', 'multi_step'}
+                or set(variant) - {'source_sha256', 'question', 'html', 'interaction', 'multi_step', 'answer_note_html'}
                 or not {'source_sha256', 'question', 'html', 'interaction'} <= set(variant)
                 or variant['source_sha256'] != digest(originals[ident])
                 or not isinstance(variant['question'], str) or not 0 < len(variant['question'].strip()) <= 100000
                 or not isinstance(variant['html'], str) or not 0 < len(variant['html'].strip()) <= 1000000
                 or not isinstance(variant['interaction'], dict)):
             raise ValueError('Training format must bind to an unchanged source question')
+        if 'answer_note_html' in variant and (not isinstance(variant['answer_note_html'], str)
+                or not 0 < len(variant['answer_note_html'].strip()) <= 100000):
+            raise ValueError('Invalid source answer note')
         validate_interaction(variant['interaction'], variant['question'])
         from .multi_step import validate as validate_multi_step
         validate_multi_step(variant)
@@ -74,6 +77,9 @@ def present(bank, value):
                                      if k != 'source_sha256'}} for q in group.get('questions', [])]
     for group in groups:
         group['questions'] = [present_book_question(q, value.get('media')) for q in group['questions']]
+        for question in group['questions']:
+            if note := question.pop('answer_note_html', None):
+                question['explanation_html'] = note + question['explanation_html']
     return {**bank, 'groups': groups}
 
 

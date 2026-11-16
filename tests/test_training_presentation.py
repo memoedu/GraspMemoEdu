@@ -17,9 +17,26 @@ class TrainingPresentationTests(unittest.TestCase):
         svg = '<svg><defs><path id="a" d="(1)"></path></defs><text>(2)</text></svg>'
         html = '<div><p>题目(1)计算' + svg + '；(2)证明。</p><p>(3)比较。</p></div>'
         result = html_layout(html)
-        self.assertIn(svg, result); self.assertEqual(result.count('bookSubnumberBreak'), 4)
-        self.assertIn('<p>(3)', result); self.assertEqual(html_layout(result), result)
+        self.assertIn(svg, result); self.assertEqual(result.count('class="bookSubquestion"'), 3)
+        self.assertIn('(3)', result); self.assertEqual(html_layout(result), result)
         self.assertEqual(re.sub(r'\s', '', re.sub(r'<[^>]*>', '', result)), re.sub(r'\s', '', re.sub(r'<[^>]*>', '', html)))
+
+    def test_letter_roman_and_section_parts_keep_math_and_inline_markup(self):
+        html = '<p>条件。(a)求值 <span class="mathInline"><svg><text>(b)</text></svg></span>；(b)证明。</p><p>A.1 求值。A.2 比较。</p><pre>(i)代码</pre>'
+        result = html_layout(html)
+        self.assertEqual(result.count('bookSubquestionNested'), 2)
+        self.assertEqual(result.count('class="bookSubquestion"'), 2)
+        self.assertIn('<svg><text>(b)</text></svg>', result)
+        self.assertIn('<pre>(i)代码</pre>', result)
+        self.assertEqual(html_layout(result), result)
+        self.assertIn('由(a)式', prose_layout('由(a)式得到结果'))
+
+    def test_inline_options_keep_roman_references_together(self):
+        html = '<p>(i)自由落体；(ii)简谐振动。A. (i)和(ii)；B. (i)和(iii)；C. (ii)和(iv)。</p>'
+        result = html_layout(html)
+        self.assertEqual(result.count('bookSubquestion'), 7)  # two nested, three options
+        self.assertIn('A. (i)和(ii)；', result)
+        self.assertEqual(html_layout(result), result)
 
     def test_single_source_heading_list_loses_indent_but_keeps_its_number(self):
         result = html_layout('<ol start="4"><li>解析(1)求值。</li></ol><p>(2)证明。</p>')
