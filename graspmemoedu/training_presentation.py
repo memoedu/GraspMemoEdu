@@ -3,7 +3,10 @@ from html.parser import HTMLParser
 import re
 
 TYPE_LABEL = re.compile(r'[（(【]?\s*(?:多项选择题|单项选择题|多选题|单选题)\s*[）)】]?')
-SUBNUMBER = re.compile(r'[（(]\s*\d{1,2}\s*[）)](?!\s*(?:式|得|可知|和|、|，|。|的))|[①-⑳]')
+SUBNUMBER = re.compile(r'[（(]\s*(?:\d{1,2}|[a-h]|[ivxIVX]{1,4})\s*[）)]'
+                       r'(?!\s*(?:式|问|得|可知|和|及|或|、|，|。|；|;|,|\.|的))|[①-⑳]'
+                       r'|(?<![\w.])[A-Z]\.\d{1,2}(?=\s|[：:])'
+                       r'|(?<!\w)[A-L][.．、](?=\s*[（(])')
 PROTECTED = re.compile(r'\$\$[\s\S]*?\$\$|\$[^$\n]+\$|\\\([\s\S]*?\\\)|\\\[[\s\S]*?\\\]|!\[[^\]]*\]\([^\n)]+\)')
 
 
@@ -34,9 +37,14 @@ def html_layout(html, *, choice=False):
         def __init__(self):
             super().__init__(convert_charrefs=False)
             self.parts, self.protected, self.block_start = [], 0, True
+            self.stack, self.paragraph = [], None
 
         def handle_starttag(self, tag, attrs):
+            if tag == 'p' and not self.protected:
+                self.paragraph = len(self.parts)
             self.parts.append(self.get_starttag_text())
+            if tag not in ('br', 'img', 'hr', 'input', 'meta', 'link', 'wbr'):
+                self.stack.append(tag)
             if tag in ('svg', 'math', 'pre', 'code', 'figcaption'):
                 self.protected += 1
             if not self.protected and tag in ('p', 'div', 'li', 'br'):
@@ -47,6 +55,8 @@ def html_layout(html, *, choice=False):
 
         def handle_endtag(self, tag):
             self.parts.append('</' + tag + '>')
+            if self.stack and self.stack[-1] == tag:
+                self.stack.pop()
             if tag in ('svg', 'math', 'pre', 'code', 'figcaption'):
                 self.protected -= 1
                 self.block_start = False
@@ -65,7 +75,20 @@ def html_layout(html, *, choice=False):
                 if prefix.strip():
                     self.block_start = False
                 self.parts.append(prefix)
-                if not self.block_start:
+                if self.stack and self.stack[-1] == 'p':
+                    nested = bool(re.match(r'[（(]\s*[a-hivxIVX]', match[0]))
+                    classes = 'bookSubquestion' + (' bookSubquestionNested' if nested else '')
+                    if not self.block_start:
+                        self.parts.append('</p><p class="' + classes + '">')
+                        self.paragraph = len(self.parts) - 1
+                    elif self.paragraph is not None and 'bookSubquestion' not in self.parts[self.paragraph]:
+                        opening = self.parts[self.paragraph]
+                        if re.search(r'\bclass=["\']', opening):
+                            opening = re.sub(r'(\bclass=["\'])', r'\1' + classes + ' ', opening, count=1)
+                        else:
+                            opening = opening.replace('<p', '<p class="' + classes + '"', 1)
+                        self.parts[self.paragraph] = opening
+                elif not self.block_start:
                     self.parts.append('<br class="bookSubnumberBreak"><br class="bookSubnumberBreak">')
                 self.parts.append(match[0] + ('' if text[match.end():match.end() + 1].isspace() else ' '))
                 self.block_start, cursor = False, match.end()

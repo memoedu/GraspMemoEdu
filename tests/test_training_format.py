@@ -112,6 +112,33 @@ class TrainingFormatTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_archive({k: v for k, v in blobs.items() if k.startswith('training-formats/')})
 
+    def test_source_answer_note_is_answer_only_and_preserves_original(self):
+        from graspmemoedu.training_format import present
+        original = deepcopy(self.bank)
+        note = '<aside class="sourceAnswerNote"><p>原卷配套答案：B。现有解析认为条件不足。</p></aside>'
+        self.value['questions']['essay']['answer_note_html'] = note
+        validate_format(self.value, self.bank)
+        bank = present(self.bank, self.value)
+        question = bank['groups'][1]['questions'][0]
+        self.assertTrue(question['explanation_html'].startswith(note))
+        self.assertNotIn('原卷配套答案', question['html'])
+        self.assertNotIn('answer_note_html', question)
+        self.assertEqual(question['reference_answer'], original['groups'][1]['questions'][0]['reference_answer'])
+        self.assertEqual(self.bank, original)
+        self.save()
+        self.assertEqual(validate_archive(TrainingCatalog(self.root).archive_blobs()), set(TrainingCatalog(self.root).archive_blobs()))
+        service = TrainingService(TrainingCatalog(self.root), self.root, 'note-fixture')
+        attempt = service.open(self.bank['id'], 'group-a', 'essay', str(uuid.uuid4()))
+        state = service.state(attempt)
+        self.assertIsNone(state['explanation_html'])
+        self.assertNotIn('原卷配套答案', json.dumps(state, ensure_ascii=False))
+        submission = service.submit({'request_id': str(uuid.uuid4()), 'attempt_id': attempt,
+                                     'answer': '{"selected":["a","c"]}', 'elapsed_ms': 100})
+        service.process_submission(submission)
+        state = service.state(attempt)
+        self.assertTrue(state['result']['correct'])
+        self.assertTrue(state['explanation_html'].startswith(note))
+
     def test_media_repair_cleans_old_display_without_rewriting_attempt_snapshot(self):
         q = self.bank['groups'][1]['questions'][0]
         q['html'] += '<img src="data:image/png;base64,YWJj"><p>题目续文。</p>'
