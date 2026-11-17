@@ -4,13 +4,15 @@ from pathlib import Path
 import sqlite3
 import tempfile
 import unittest
+from unittest.mock import patch
+import yaml
 
 from training_fixtures import training_bank
 from graspmemoedu.training_content import TrainingCatalog,fingerprint
 from graspmemoedu.training import TrainingService
 from graspmemoedu.oj_progress import location
 from graspmemoedu.hydro_sync import extend,migrate_version
-from scripts.sync_hydro import templates
+from scripts.sync_hydro import templates,prepare
 from graspmemoedu.review_cards import point_id
 
 class HydroSyncTests(unittest.TestCase):
@@ -60,6 +62,80 @@ class HydroSyncTests(unittest.TestCase):
         row=con.execute('SELECT * FROM training_memory').fetchone()
         self.assertEqual((row['card_json'],row['due_at']),('{"stability": 45}','2026-11-01'))
         self.assertEqual(con.execute('SELECT body FROM unrelated').fetchone()[0],'untouched')
+
+    def test_numeric_source_number_is_append_only_and_path_safe(self):
+        bank=training_bank();bank['groups'].insert(0,{'id':'oj','title':'OJ','questions':[]})
+        bank['version']=fingerprint(bank)
+        q=deepcopy(next(q for g in bank['groups'] for q in g.get('questions',[])));q['id']='numeric-q'
+        entry={'pid':'42','question':q,'topic':{'math_css':''}}
+        result,added=extend(bank,[entry])
+        self.assertEqual(result['groups'][-1]['id'],'oj-42')
+        self.assertEqual(len(added),1)
+        self.assertEqual(extend(result,[entry])[1],[])
+        for pid in ['../42','42/1','-42','42;exit','',42]:
+            with self.subTest(pid=pid),self.assertRaises(ValueError):
+                extend(bank,[{**entry,'pid':pid}])
+
+    def test_packaged_multitype_submission_keeps_contract_without_fake_main(self):
+        body='### 枚举 `Heading`\n```java\nEAST, NORTH\n```\n### 类 `Agent`\n```java\nprivate final int id;\npublic Agent(Heading heading);\npublic Heading getHeading();\n```\n只提交 Main.java，不要编写 `main` 方法。\n```java\npackage demo.model;\n```'
+        files,source=templates(body)
+        self.assertEqual(source,'src/Main.java')
+        self.assertTrue(files[source].startswith('package demo.model;\n'))
+        self.assertIn('// public Agent(Heading heading);',files[source])
+        self.assertIn('// private final int id;',files[source])
+        self.assertNotIn('static void main',files[source])
+        self.assertIn('//Todo',files[source])
+
+    def test_no_main_canary_accepts_english_and_other_chinese_wording(self):
+        for requirement in ['不编写 `main()`。','Do not write a `main` method.','不需要编写 main 方法。']:
+            body='### 类 `Catalog`\n```java\npublic Catalog();\npublic void add(Item item);\n```\n'+requirement
+            with self.subTest(requirement=requirement):
+                files,source=templates(body)
+                self.assertIn('// public void add(Item item);',files[source])
+                self.assertNotIn('Scanner',files[source])
+        with self.assertRaisesRegex(ValueError,'No Java source contract'):
+            templates('不要编写 main 方法。')
+        with self.assertRaisesRegex(ValueError,'Conflicting submission package'):
+            templates('不编写 main。\n```java\npackage a;\npackage b;\n```')
+
+    def test_interrupted_prepare_reuses_multifile_author_binding_and_preserves_answer(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root=Path(temporary)
+            for name in ['student','author']:
+                course=root/name;(course/'OJ/Practice').mkdir(parents=True)
+                (course/'course-info.yaml').write_text('title: Recovery fixture\ncontent: [OJ]\n')
+                (course/'settings.gradle').write_text('')
+                (course/'OJ/Practice/lesson-info.yaml').write_text('content: []\n')
+            config={'student':str(root/'student'),'author':str(root/'author'),
+                    'hydro_config':str(root/'hydro.json'),'manifest':str(root/'manifest.json'),
+                    'data_dir':str(root/'data'),'bank_id':'isolated-bank'}
+            (root/'hydro.json').write_text(json.dumps({'bindings':[]}))
+            (root/'manifest.json').write_text(json.dumps({'tasks':{}}))
+            body='只提交 class `Widget`，不要编写 main 方法。请根据题目要求实现全部方法，保留已有程序。\n```java\nString getName();\n```\n```java\npublic class Demo { public static void main(String[] args) {} }\n```'
+            snapshot={'origin':'https://example.invalid','domain':'fixture','user_id':1,
+                      'fetched_at':'2026-01-01T00:00:00Z','complete':True,
+                      'problems':[{'pid':'R123','title':'Fixture','config':{'langs':['java']},'content':json.dumps({'zh':body})}],
+                      'statuses':{'R123':{'submitted':False,'accepted':False}}}
+            work=root/'first';work.mkdir()
+            task=prepare(config,work,snapshot,{'published_pids':[]})[0]
+            rel=task['task_path'];entry=task['source']
+            student=root/'student'/rel/entry;student.write_text('// learner owns this answer\n')
+            author=root/'author'/rel
+            original=(author/entry).read_bytes()
+            metadata=yaml.safe_load((author/'task-info.yaml').read_text())
+            metadata['files'].append({'name':'oj-status.md','visible':True})
+            (author/'task-info.yaml').write_text(yaml.safe_dump(metadata))
+            (author/'oj-status.md').write_text('runtime status')
+            # Retry must reuse initialized author files without invoking a new template rule.
+            retry=root/'retry';retry.mkdir()
+            with patch('scripts.sync_hydro.templates',side_effect=AssertionError('must reuse the original template')):
+                self.assertEqual(prepare(config,retry,snapshot,{'published_pids':[]})[0]['source'],entry)
+            self.assertEqual(student.read_text(),'// learner owns this answer\n')
+            stage=retry/'staging'/rel
+            self.assertEqual((stage/entry).read_bytes(),original)
+            self.assertTrue((stage/'src/Demo.java').is_file())
+            self.assertFalse((stage/'src/Main.java').exists())
+            self.assertNotIn('oj-status.md',[f['name'] for f in yaml.safe_load((stage/'task-info.yaml').read_text())['files']])
 
     def test_non_main_class_uses_source_method_contract(self):
         for name in ['User','Wallet']:

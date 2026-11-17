@@ -33,6 +33,21 @@ def digest(value):return hashlib.sha256(value.encode()).hexdigest()
 
 def templates(body):
     blocks=re.findall(r'```java[^\n]*\n(.*?)```',body,re.S)
+    no_main=re.search(r'(?:不要|不需要|不)\s*(?:编写|write)?\s*`?main\b|do\s+not\s+write\s+(?:a\s+)?`?main\b',body,re.I)
+    if no_main:
+        # A submission may contain several top-level types, an enum, or a package.
+        # Keep source contracts as comments instead of inventing implementations or
+        # treating example calls as a runnable Main. The full requirements stay in task.md.
+        packages=set(re.findall(r'^\s*package\s+([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*;', '\n'.join(blocks), re.M))
+        if len(packages)>1:raise ValueError('Conflicting submission package declarations')
+        header=('package '+next(iter(packages))+';\n\n') if packages else ''
+        contracts='\n\n'.join('\n'.join('// '+line for line in block.rstrip().splitlines()) for block in blocks)
+        # Retain the older single-class scaffold when its explicit contract is understood.
+        special=re.search(r'(?:只提交\s*class|submit\s+(?:only\s+)?(?:the\s+)?class)\s*`?(\w+)`?',body,re.I)
+        if not special:
+            if not blocks:raise ValueError('No Java source contract for a no-main submission')
+            source=header+'//Todo: 按 task.md 的提交要求定义类型、字段、构造方法和方法；不要添加 main。\n\n// 题面 Java 声明及示例（供实现时参考）：\n'+contracts+'\n'
+            return {'src/Main.java':source},'src/Main.java'
     special=re.search(r'(?:只提交\s*class|submit\s+(?:only\s+)?(?:the\s+)?class)\s*`?(\w+)`?',body,re.I)
     if special:
         name=special[1]
@@ -50,7 +65,6 @@ def templates(body):
         return files,f'src/{name}.java'
     for block in blocks:
         if 'public class Main' in block:return {'src/Main.java':block.strip()+'\n'},'src/Main.java'
-    if re.search(r'(?:不要|不需要|do not)\s*(?:编写|write)?\s*`?main',body,re.I):raise ValueError('Unrecognized no-main problem; source preserved for template repair')
     return {'src/Main.java':'import java.util.Scanner;\n\npublic class Main {\n    public static void main(String[] args) {\n        Scanner in = new Scanner(System.in);\n        // TODO: 按题面读取输入、完成计算并输出结果。\n        in.close();\n    }\n}\n'},'src/Main.java'
 
 def chinese(problem,folder,config):
@@ -85,7 +99,21 @@ def prepare(config,folder,snapshot,state):
         body=chinese(p,Path(config['data_dir']),config)
         slug=re.sub('[^A-Za-z0-9]+','_',p['title'].split('/')[0]).strip('_')[:65]
         rel=bindings.get(pid,{}).get('task_path','OJ/Practice/'+pid+'_'+slug)
-        code,source=templates(body)
+        # An interrupted run may already have initialized a task and its binding.
+        # Reuse that author's declared files, including multi-file submissions,
+        # instead of adding a second template or changing the learner's entry point.
+        meta_path=author/rel/'task-info.yaml'
+        source=bindings.get(pid,{}).get('source')
+        if meta_path.exists() and source:
+            meta=yaml.safe_load(meta_path.read_text(encoding='utf-8'))
+            # Synchronization status is runtime output, never an author template.
+            meta['files']=[f for f in meta['files'] if f['name']!='oj-status.md']
+            code={f['name']:(author/rel/f['name']).read_text(encoding='utf-8')
+                  for f in meta['files'] if f.get('visible',True) and not f.get('is_binary')}
+            if source not in code:raise ValueError('Existing OJ entry point is missing: '+pid)
+        else:
+            code,source=templates(body)
+            meta={'type':'edu','files':[{'name':f,'visible':True,'placeholders':[]} for f in code],'status':'Unchecked','record':-1}
         md='# '+pid+' '+p['title'].strip()+'\n\n'+body+'\n\n[原题]('+snapshot['origin']+'/d/'+snapshot['domain']+'/p/'+pid+')\n'
         images={}
         for name in set(re.findall(r'file://([^\s)]+)',md)):
@@ -94,7 +122,6 @@ def prepare(config,folder,snapshot,state):
             newname=Path(name).stem+'.png';images[newname]=original
             md=md.replace('file://'+name,'assets/'+newname)
         md=re.sub(r'(!\[[^\]]*\]\([^ )]+)\s+=\d+x\)',r'\1)',md)
-        meta={'type':'edu','files':[{'name':f,'visible':True,'placeholders':[]} for f in code],'status':'Unchecked','record':-1}
         for root in [author,student,stage]:
             target=root/rel;target.mkdir(parents=True,exist_ok=True)
             for name,content in {**code,'task.md':md,'task-info.yaml':yaml.safe_dump(meta,sort_keys=False,allow_unicode=True)}.items():
