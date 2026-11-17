@@ -1,6 +1,5 @@
 """Guarded, reversible release step inside the existing server maintenance wrapper."""
 import hashlib
-import grp
 import json
 import os
 from pathlib import Path
@@ -13,7 +12,31 @@ import time
 import urllib.request
 
 
+def wait_for_health(timeout=600):
+    """Wait for a cold catalog load without treating an active start as failure."""
+    deadline = time.monotonic() + timeout
+    notice = 0
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen('http://127.0.0.1:18768/api/health', timeout=3) as response:
+                if response.status == 200:
+                    return
+        except (OSError, TimeoutError):
+            pass
+        state = subprocess.run(['systemctl', 'show', 'graspmemoedu',
+                                '--property=ActiveState', '--value'],
+                               text=True, capture_output=True, check=True).stdout.strip()
+        if state not in ('active', 'activating', 'reloading'):
+            raise RuntimeError('Production service stopped before readiness: ' + state)
+        if time.monotonic() >= notice:
+            print('Waiting for production health; service=' + state, flush=True)
+            notice = time.monotonic() + 15
+        time.sleep(1)
+    raise RuntimeError('Production health check failed within readiness deadline')
+
+
 def main():
+    import grp  # Production-only POSIX ownership; readiness tests also run on Windows.
     stage = Path(sys.argv[1]).resolve()
     if os.geteuid() != 0 or stage.parent != Path('/tmp') or not stage.name.startswith('graspmemoedu-academy-') or stage.is_symlink():
         raise ValueError('Use the configured maintenance stage')
@@ -80,14 +103,6 @@ def main():
             return {name: hashlib.sha256(repr(con.execute('SELECT * FROM "' + name.replace('"', '""') + '" ORDER BY rowid').fetchall()).encode()).hexdigest() for name in names}
     changed = []
     database_backup = stage / 'before-migration.sqlite3'
-    def healthy():
-        for _ in range(60):
-            try:
-                with urllib.request.urlopen('http://127.0.0.1:18768/api/health', timeout=3) as response:
-                    if response.status == 200: return
-            except (OSError, TimeoutError): pass
-            time.sleep(1)
-        raise RuntimeError('Production health check failed')
     try:
         before_state = snapshot()
         if database_transition:
@@ -148,7 +163,7 @@ def main():
             transition = verify_transition(database_backup, data / 'learning.sqlite3', ids)
         elif snapshot() != before_state:
             raise RuntimeError('Content installation unexpectedly changed existing database rows')
-        subprocess.run(['systemctl', 'start', 'graspmemoedu'], check=True); healthy()
+        subprocess.run(['systemctl', 'start', 'graspmemoedu'], check=True); wait_for_health()
         receipt = {'target': 'production', 'health': 'passed', 'source_commit': release['commit'],
                    'existing_database_rows_unchanged_at_install': not database_transition, **transition, **installed}
         (data / 'content-activation-history' / (installed.get('generation', 'academy') + '.production.json')).write_text(json.dumps(receipt, indent=2))
@@ -170,7 +185,7 @@ def main():
         if database_transition and database_backup.exists():
             with sqlite3.connect(database_backup) as source, sqlite3.connect(data / 'learning.sqlite3') as destination:
                 source.backup(destination)
-        subprocess.run(['systemctl', 'start', 'graspmemoedu'], check=True); healthy()
+        subprocess.run(['systemctl', 'start', 'graspmemoedu'], check=True); wait_for_health()
         raise
     finally:
         if variant_worker: subprocess.run(['systemctl', 'start', 'graspmemoedu-variants.service'], check=True)
