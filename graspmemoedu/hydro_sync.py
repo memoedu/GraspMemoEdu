@@ -22,7 +22,7 @@ def extend(bank, entries):
     added=[]
     for entry in entries:
         q=entry['question'];pid=entry['pid']
-        if not re.fullmatch('[A-Za-z][0-9]+',pid):raise ValueError('Invalid source problem number')
+        if not isinstance(pid,str) or not re.fullmatch(r'(?:[A-Za-z][0-9]+|[1-9][0-9]*)',pid):raise ValueError('Invalid source problem number')
         if q['id'] in known:
             if known[q['id']]!=q:raise ValueError('An existing question cannot be overwritten by synchronization')
             continue
