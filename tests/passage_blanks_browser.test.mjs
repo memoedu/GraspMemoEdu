@@ -137,18 +137,56 @@ test('matching passage gaps are static, exclude ranges and keep the existing pai
 test('explicit grammar blanks keep opaque IDs, shared values and read-only history', async () => {
   const spec = {version: 1, type: 'fill_blank', blanks: [{id: 'opaque9999', label: '61'}]};
   await mount(spec, '<p>First: {{blank:opaque9999}}. Again: {{blank:opaque9999}}.</p><pre>{{blank:opaque9999}}</pre>');
-  assert.equal(await page.locator('#stem textarea').count(), 2);
-  assert.deepEqual(await page.locator('.passageBlankNumber').allTextContents(), ['61', '61']);
+  assert.equal(await page.locator('#stem textarea').count(), 3);
+  assert.deepEqual(await page.locator('.passageBlankNumber').allTextContents(), ['61', '61', '61']);
   await page.locator('#stem textarea').first().fill('saved wording');
   assert.deepEqual(await draft(), {opaque9999: 'saved wording'});
   assert.equal(await page.locator('#stem textarea').last().inputValue(), 'saved wording');
-  assert.equal(await page.locator('pre').textContent(), '{{blank:opaque9999}}');
+  assert.equal(await page.locator('pre textarea').inputValue(), 'saved wording');
   await page.evaluate(() => widget.input.questionControl.setDisabled(true));
   await page.evaluate(() => { const field = document.querySelector('#stem textarea'); field.value = 'changed'; field.dispatchEvent(new Event('input', {bubbles: true})); });
   assert.deepEqual(await draft(), {opaque9999: 'saved wording'});
   await page.evaluate(() => widget.input.value = JSON.stringify({opaque9999: 'restored'}));
   await page.evaluate(() => widget.input.dispatchEvent(new Event('input', {bubbles: true})));
-  assert.deepEqual(await page.locator('#stem textarea').evaluateAll(fields => fields.map(field => [field.value, field.disabled])), [['restored', true], ['restored', true]]);
+  assert.deepEqual(await page.locator('#stem textarea').evaluateAll(fields => fields.map(field => [field.value, field.disabled])), [['restored', true], ['restored', true], ['restored', true]]);
+});
+
+test('declared code blanks mount in place and keep drafts, completion, submission and feedback', async () => {
+  const spec = {version: 1, type: 'fill_blank', blanks: [{id: 'method'}]};
+  await mount(spec, '<p>Complete the operation.</p><pre><code>value = table.{{blank:method}}(key);</code></pre>');
+  const field = page.locator('pre code textarea[data-blank-id="method"]');
+  assert.equal(await field.count(), 1);
+  assert.equal(await page.evaluate(() => widget.input.questionControl.complete()), false);
+  await field.fill('lookup');
+  assert.deepEqual(await draft(), {method: 'lookup'});
+  assert.equal(await page.evaluate(() => widget.input.questionControl.complete()), true);
+  await field.press('Control+Enter');
+  assert.equal(await page.evaluate(() => submissions), 1);
+  await page.evaluate(() => widget.input.value = JSON.stringify({method: 'restored'}));
+  await page.evaluate(() => widget.input.dispatchEvent(new Event('input', {bubbles: true})));
+  assert.equal(await field.inputValue(), 'restored');
+  await page.evaluate(() => widget.input.questionControl.setDisabled(true));
+  assert(await field.isDisabled());
+  await page.reload();
+  await mount(spec, '<pre><code>value = table.{{blank:method}}(key);</code></pre>', {
+    disabled: true, value: JSON.stringify({method: 'lookup'}), assessment: {items: [{id: 'method', correct: true}]},
+  });
+  assert.equal(await page.locator('code textarea').inputValue(), 'lookup');
+  assert.equal(await page.locator('code .passageBlank').getAttribute('data-answer-truth'), 'true');
+});
+
+test('explicit inline code blanks work while code numbers, unknown markers and unsafe text stay literal', async () => {
+  const spec = {version: 1, type: 'fill_blank', blanks: [{id: 'operator'}, {id: 'token'}]};
+  await mount(spec, '<p><code>left {{blank:operator}} right</code></p><pre><code><span data-control="token"></span> [1] ___ {{blank:unknown}}</code></pre><script type="text/plain">{{blank:operator}}</script><style>/* {{blank:token}} */</style>');
+  assert.equal(await page.locator('#stem textarea').count(), 2);
+  assert.equal(await page.locator('p code textarea').count(), 1);
+  assert.equal(await page.locator('pre code textarea').count(), 1);
+  assert((await page.locator('pre code').textContent()).includes('[1] ___ {{blank:unknown}}'));
+  assert.equal(await page.locator('script textarea,style textarea').count(), 0);
+  await page.reload();
+  await mount(composite([control('number', '[1]')]), '<pre><code>entry[1] = ___;</code></pre>');
+  assert.equal(await page.locator('pre select,pre input,pre textarea').count(), 0);
+  assert.equal(await page.locator('fieldset[data-control-id="number"]').count(), 1);
 });
 
 test('single-choice unique underlines synchronize both ways, including an instruction and prose in one paragraph', async () => {

@@ -19,6 +19,36 @@ from graspmemoedu.structured_atomic import FORMAT, fingerprint, validate_project
 from graspmemoedu.site_backup import _validate_review
 from graspmemoedu.topic_install import encoded
 from graspmemoedu.training_audio import audio_bytes
+from graspmemoedu.catalog import Catalog
+
+
+def course_units(args, topic_ids):
+    """Carry explicit source ancestry through the existing package builder."""
+    unit = {'id': args.unit_id, 'title': args.unit_title, 'topic_ids': topic_ids}
+    if args.unit_parent: unit['parent_id'] = args.unit_parent
+    source = getattr(args, 'unit_ancestors', None)
+    if source is None: return [unit]
+    ancestors = json.loads(Path(source).read_bytes())
+    if not isinstance(ancestors, list): raise ValueError('Unit ancestors must be a list')
+    rows = []
+    for row in ancestors:
+        if (not isinstance(row, dict) or set(row) - {'id', 'title', 'parent_id'}
+                or not isinstance(row.get('title'), str) or not row['title'].strip()):
+            raise ValueError('Unit ancestors require only identity, title and optional parent')
+        Catalog._identifier(row.get('id'))
+        if row.get('parent_id') is not None: Catalog._identifier(row['parent_id'])
+        rows.append({**row, 'topic_ids': []})
+    rows.append(unit)
+    indexed = {row['id']: row for row in rows}
+    if len(indexed) != len(rows): raise ValueError('Duplicate unit ancestry')
+    for row in rows:
+        seen = set(); current = row
+        while current.get('parent_id') is not None:
+            parent = current['parent_id']
+            if parent in seen: raise ValueError('Cyclic unit ancestry')
+            if parent not in indexed: raise ValueError('Incomplete unit ancestry')
+            seen.add(parent); current = indexed[parent]
+    return rows
 
 
 class Images(HTMLParser):
@@ -132,10 +162,8 @@ def prepare(args):
         report.append({'id': ident, 'chunks': len(topic['memory_chunks']), 'points': sum(len(c['points']) for c in topic['memory_chunks']),
                        'cards': len(topic['flashcards']), 'review_only': sum(c.get('learning_phases') == ['review'] for c in topic['flashcards'])})
         print(json.dumps(report[-1]), flush=True)
-    unit = {'id': args.unit_id, 'title': args.unit_title, 'topic_ids': [row['id'] for row in declarations]}
-    if args.unit_parent: unit['parent_id'] = args.unit_parent
     (args.output / 'catalog.json').write_bytes(encoded({'courses': [{'id': args.course_id, 'title': args.course_title,
-        'description': '', 'topics': declarations, 'units': [unit]}]}))
+        'description': '', 'topics': declarations, 'units': course_units(args, [row['id'] for row in declarations])}]}))
     (args.output / 'report.json').write_bytes(encoded({'topics': report, 'structured_source_sha256': hashlib.sha256(raw).hexdigest()}))
     files = {p.relative_to(args.output).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
              for p in sorted(args.output.rglob('*')) if p.is_file()}
@@ -144,6 +172,8 @@ def prepare(args):
         'replace_atomic_and_reset_progress': getattr(args, 'replace_atomic_and_reset_progress', False), 'files': files}
     if getattr(args, 'test_material', False):
         manifest['test_materials'] = {'courses': [args.course_id]}
+    elif getattr(args, 'test_topics', False):
+        manifest['test_materials'] = {'topics': [row['id'] for row in declarations]}
     if pins is not None:
         manifest.update(preserve_atomic_progress=True, atomic_previous_versions=pins)
     (args.output / 'manifest.json').write_bytes(encoded(manifest))
@@ -155,6 +185,7 @@ def main():
     p.add_argument('--input', type=Path, required=True); p.add_argument('--output', type=Path, required=True)
     p.add_argument('--subject', required=True); p.add_argument('--course-id', required=True); p.add_argument('--course-title', required=True)
     p.add_argument('--unit-id', required=True); p.add_argument('--unit-title', required=True); p.add_argument('--unit-parent')
+    p.add_argument('--unit-ancestors', type=Path, help='Explicit ordered ancestor units; retain the complete source hierarchy')
     p.add_argument('--topic-prefix', default='atomic-topic-'); p.add_argument('--title-suffix', default='')
     p.add_argument('--node', default='node')
     p.add_argument('--reset-reading-progress', action='store_true', help='Explicitly allow same-ID reading-only upgrades')
@@ -162,6 +193,7 @@ def main():
     p.add_argument('--preserve-atomic-progress', type=Path, metavar='PREVIOUS_VERSIONS_JSON',
                    help='Revise same-identity atomic content with pinned old versions, preserving learning records')
     p.add_argument('--test-material', action='store_true', help='Mark this course as test material before content activation')
+    p.add_argument('--test-topics', action='store_true', help='Mark only the new Topics as test material, preserving existing course visibility')
     prepare(p.parse_args())
 
 

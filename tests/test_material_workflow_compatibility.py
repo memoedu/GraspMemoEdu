@@ -76,7 +76,8 @@ class MaterialCompatibilityTests(unittest.TestCase):
             source.write_text(json.dumps(document),encoding='utf-8')
             with patch('httpx.Client',side_effect=AssertionError('A frozen image must not be downloaded again')):
                 prepare(Namespace(input=source,output=root/'bundle',subject='english',topic_prefix='',title_suffix='',
-                    course_id='fixture',course_title='Fixture',unit_id='unit',unit_title='Fixture',unit_parent=None,node='node'))
+                    course_id='fixture',course_title='Fixture',unit_id='unit',unit_title='Fixture',unit_parent=None,node='node',test_topics=True))
+            self.assertEqual(cp.read(root/'bundle/manifest.json')['test_materials'], {'topics': ['new']})
             compiled=cp.read(root/'bundle/topics/new.json')
             self.assertIn(section['embedded_images']['https://example.org/original.png']['data_url'],
                           compiled['introductions'][0]['html'])

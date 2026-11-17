@@ -25,7 +25,9 @@ from graspmemoedu.topic_install import encoded
 
 
 def verify(package, output):
-    replacement = json.loads((package / 'manifest.json').read_bytes()).get('replace_atomic_and_reset_progress') is True
+    manifest = json.loads((package / 'manifest.json').read_bytes())
+    replacement = manifest.get('replace_atomic_and_reset_progress') is True
+    additive = not replacement and not manifest.get('reset_reading_progress') and not manifest.get('preserve_atomic_progress')
     if replacement:
         from graspmemoedu.atomic_topic_replacement import verify_transition
     else:
@@ -47,16 +49,32 @@ def verify(package, output):
     for parent in parents:
         if not any(u['id'] == parent for u in course['units']):
             course['units'].append({'id':parent,'title':'Isolated parent','topic_ids':[]})
+    if additive:
+        # A normal new-content package must not be tested as a reading reset.
+        # Keep a real unrelated learning record in the isolated baseline.
+        from tests.atomic_fixtures import atomic_topic
+        existing = atomic_topic('cs', 'protected-existing-topic')
+        (data/'protected.json').write_bytes(encoded(existing))
+        course = {'id':'protected-existing-course','title':'Protected existing course',
+                  'topics':[{'id':existing['id'],'path':'protected.json','prerequisites':[]}],
+                  'units':[{'id':'protected-unit','title':'Protected','topic_ids':[existing['id']]}]}
     (data / 'catalog.json').write_bytes(encoded({'courses':[course]}))
     subject = next(iter(topics.values()))['subject_id']
     (data / 'subjects.json').write_bytes(encoded({'subjects':[{'id':subject,'course_ids':[course['id']]}]}))
     before = Catalog.load(Settings.load(data))
-    for tid in list(topics)[:3]: create_learning_service(before.topic(tid), data, learner_id='isolated-reading').state()
+    for tid in ([existing['id']] if additive else list(topics)[:3]):
+        create_learning_service(before.topic(tid), data, learner_id='isolated-reading').state()
     snapshot = output / 'before.sqlite3'
     with closing(sqlite3.connect(data / 'learning.sqlite3')) as source, closing(sqlite3.connect(snapshot)) as target:
         source.backup(target)
     installed = install(package, data, extend_course=True)
-    transition = verify_transition(snapshot, data / 'learning.sqlite3', set(topics))
+    if additive:
+        def dump(path):
+            with closing(sqlite3.connect(path)) as con: return list(con.iterdump())
+        assert dump(snapshot) == dump(data/'learning.sqlite3'), 'New installation changed existing learning rows'
+        transition = {'existing_database_rows_unchanged':True, 'new_topics_only':True}
+    else:
+        transition = verify_transition(snapshot, data / 'learning.sqlite3', set(topics))
     current = Catalog.load(Settings.load(data))
     assert all(current.topic(tid) == topic for tid, topic in topics.items())
     assert install(package, data, extend_course=True)['status'] == 'unchanged'
@@ -123,7 +141,7 @@ def verify(package, output):
                 body.append('</details>')
             body.append('</details>')
         body.append('</details>')
-    html = '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>Data types and variables：原子设问</title><style>body{max-width:1000px;margin:40px auto;padding:0 20px;font:17px/1.65 system-ui}summary{cursor:pointer;padding:9px 0}details{margin:10px 0 10px 18px}pre{white-space:pre-wrap;background:#f4f3ef;padding:12px}img{max-width:100%}</style><h1>Data types and variables：原子设问</h1>' + ''.join(body) + '</html>'
+    html = '<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>原子设问</title><style>body{max-width:1000px;margin:40px auto;padding:0 20px;font:17px/1.65 system-ui}summary{cursor:pointer;padding:9px 0}details{margin:10px 0 10px 18px}pre{white-space:pre-wrap;background:#f4f3ef;padding:12px}img{max-width:100%}</style><h1>原子设问</h1>' + ''.join(body) + '</html>'
     (output / '阅读稿.html').write_text(html, encoding='utf-8')
     print(json.dumps(report), flush=True)
 

@@ -29,6 +29,18 @@ def candidate(count):
 
 
 class AtomicQuestionProductionTests(unittest.TestCase):
+    def test_replacing_seed_is_explicit_to_both_roles_without_changing_source_document(self):
+        original = document(); before = deepcopy(original)
+        append_task = source_tasks(original, 'english', 2)[0]
+        replacement = source_tasks(original, 'english', 2, replace_representatives=True)[0]
+        self.assertNotIn('replaces_seed_card', append_task)
+        self.assertIs(replacement['replaces_seed_card'], True)
+        self.assertEqual(replacement['seed_card'], append_task['seed_card'])
+        self.assertNotEqual(trial.digest(append_task), trial.digest(replacement))
+        examples = {'english': [{'source': {'point': {'id': 'other'}, 'seed_card': {'question': 'Another seed'}}}]}
+        self.assertIs(trial.generation_payload(replacement, examples)['task']['replaces_seed_card'], True)
+        self.assertEqual(original, before)
+
     def test_final_verifier_checks_raw_calls_and_unchanged_upstream(self):
         original=document(); tasks=source_tasks(original,'english',2); task=tasks[0]
         value=candidate(2)
