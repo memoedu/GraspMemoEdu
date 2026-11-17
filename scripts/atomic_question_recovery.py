@@ -77,7 +77,9 @@ def worker_capacity(requested, available=None):
 def dispatch(items, worker, workers):
     remaining = iter(items)
     active = set()
-    exhausted = False
+    sentinel = object()
+    next_item = next(remaining, sentinel)
+    exhausted = next_item is sentinel
     blocked_since = None
     # Fix a safe startup ceiling before processes have allocated their memory.
     ceiling = worker_capacity(workers, available_memory_mb())
@@ -89,12 +91,9 @@ def dispatch(items, worker, workers):
                 ceiling = worker_capacity(workers, free)
             capacity = min(ceiling, len(active) + worker_capacity(workers, free))
             while not exhausted and len(active) < capacity:
-                try:
-                    item = next(remaining)
-                except StopIteration:
-                    exhausted = True
-                    break
-                active.add(pool.submit(worker, item))
+                active.add(pool.submit(worker, next_item))
+                next_item = next(remaining, sentinel)
+                exhausted = next_item is sentinel
             if active:
                 blocked_since = None
                 done, active = wait(active, timeout=5, return_when=FIRST_COMPLETED)

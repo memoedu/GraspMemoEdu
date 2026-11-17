@@ -8,6 +8,7 @@ from unittest.mock import patch
 from scripts import atomic_question_trial as trial
 from scripts.produce_atomic_questions import assemble, refill_required, run_point, source_tasks, render_reading, review_candidate
 from scripts.atomic_question_recovery import checkpoint, recover_response, worker_capacity
+from scripts.atomic_question_recovery import dispatch as recovery_dispatch
 from types import SimpleNamespace
 import hashlib
 from scripts.verify_atomic_question_production import verify
@@ -29,6 +30,25 @@ def candidate(count):
 
 
 class AtomicQuestionProductionTests(unittest.TestCase):
+    def test_last_finished_task_does_not_wait_for_memory_to_detect_exhaustion(self):
+        seen=[]
+        with patch('scripts.atomic_question_recovery.available_memory_mb',side_effect=[64000,64000,0]), \
+                patch('scripts.atomic_question_recovery.time.sleep',side_effect=AssertionError('No task remains')):
+            recovery_dispatch(['only-task'],seen.append,1)
+        self.assertEqual(seen,['only-task'])
+
+    def test_replacing_seed_is_explicit_to_both_roles_without_changing_source_document(self):
+        original = document(); before = deepcopy(original)
+        append_task = source_tasks(original, 'english', 2)[0]
+        replacement = source_tasks(original, 'english', 2, replace_representatives=True)[0]
+        self.assertNotIn('replaces_seed_card', append_task)
+        self.assertIs(replacement['replaces_seed_card'], True)
+        self.assertEqual(replacement['seed_card'], append_task['seed_card'])
+        self.assertNotEqual(trial.digest(append_task), trial.digest(replacement))
+        examples = {'english': [{'source': {'point': {'id': 'other'}, 'seed_card': {'question': 'Another seed'}}}]}
+        self.assertIs(trial.generation_payload(replacement, examples)['task']['replaces_seed_card'], True)
+        self.assertEqual(original, before)
+
     def test_final_verifier_checks_raw_calls_and_unchanged_upstream(self):
         original=document(); tasks=source_tasks(original,'english',2); task=tasks[0]
         value=candidate(2)

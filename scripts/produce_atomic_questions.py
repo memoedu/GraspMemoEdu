@@ -18,7 +18,7 @@ from scripts.atomic_question_trial import CompatibleClient
 from scripts.atomic_question_recovery import checkpoint, dispatch, recover_response, run_lock
 
 
-def source_tasks(document, subject, count):
+def source_tasks(document, subject, count, *, replace_representatives=False):
     if document.get('schema') != 2 or subject not in trial.SUBJECTS or not 1 <= count <= 10:
         raise ValueError('Expected structured Topic schema 2, registered subject and count 1..10')
     tasks, identities = [], set()
@@ -50,6 +50,8 @@ def source_tasks(document, subject, count):
                                   'interaction': seed.get('interaction', {'version': 1, 'type': 'text', 'grading': 'semantic'})},
                     'existing_variants': [{**card, 'reference_answer': card.get('reference_answer', card.get('answer'))}
                                           for card in cards if card['id'] != seed['id']]}
+                if replace_representatives:
+                    source['replaces_seed_card'] = True
                 tasks.append(source)
     if not tasks:
         raise ValueError('No memory points')
@@ -243,13 +245,14 @@ def render_reading(document, root):
 
 def run(args):
     document = trial.read(args.input)
-    tasks = source_tasks(document, args.subject, args.count)
+    replace_representatives = getattr(args,'replace_representatives',False)
+    tasks = source_tasks(document, args.subject, args.count,
+                         replace_representatives=replace_representatives)
     examples = trial.load_few_shots(args.few_shots)
     for task in tasks:
         trial.generation_payload(task, examples)
     generation, review = trial.GEN.read_text(encoding='utf-8'), trial.REVIEW.read_text(encoding='utf-8')
     config = trial.configuration()
-    replace_representatives = getattr(args,'replace_representatives',False)
     metadata = {'input_sha256': hashlib.sha256(args.input.read_bytes()).hexdigest(), 'subject': args.subject,
                 'count': args.count, 'generation_sha256': trial.digest(generation), 'review_sha256': trial.digest(review),
                 'few_shots_sha256': hashlib.sha256(args.few_shots.read_bytes()).hexdigest(), 'points': len(tasks),
@@ -270,7 +273,16 @@ def run(args):
     selected = set(args.only or [task['point']['id'] for task in tasks])
     if selected - {task['point']['id'] for task in tasks}:
         raise ValueError('Unknown selected point')
-    dispatch([task for task in tasks if task['point']['id'] in selected],
+    pending = []
+    for task in tasks:
+        if task['point']['id'] not in selected: continue
+        prior_path = args.run_root / task['point']['id'] / 'result.json'
+        if prior_path.exists():
+            prior = trial.read(prior_path)
+            if prior['source_sha256'] != trial.digest(task): raise ValueError('Saved point input changed')
+            if prior['status'] == 'accepted': continue
+        pending.append(task)
+    dispatch(pending,
              lambda task: run_point(task, args.run_root, config, generation, review, examples,
                                     args.attempts, getattr(args, 'retry_incomplete', False)), args.workers)
     results = [trial.read(path) for task in tasks

@@ -25,8 +25,12 @@ def verify(root):
     root = Path(root).resolve()
     manifest = trial.read(root/'run.json')
     original = trial.read(root/'source-snapshot.json')
-    tasks = source_tasks(original, manifest['subject'], manifest['count'])
-    if tasks != trial.read(root/'tasks.json'):
+    frozen_tasks = trial.read(root/'tasks.json')
+    marked = any(t.get('replaces_seed_card') is True for t in frozen_tasks)
+    if marked and not manifest.get('replace_representatives'):
+        raise ValueError('Seed replacement is not authorized by the frozen manifest')
+    tasks = source_tasks(original, manifest['subject'], manifest['count'], replace_representatives=marked)
+    if tasks != frozen_tasks:
         raise ValueError('Frozen tasks differ from frozen upstream')
     for filename, key in [('generation-prompt.md','generation_sha256'), ('review-prompt.md','review_sha256')]:
         if trial.digest((root/filename).read_text(encoding='utf-8')) != manifest[key]:
