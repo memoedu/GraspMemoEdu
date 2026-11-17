@@ -20,6 +20,8 @@ Local source, data, cache and artifact roots use `GraspMemoEdu`; the Python pack
 
 The frontend upgrades previous browser-storage keys on the same origin, preserving identities, language and drafts, with newer values taking precedence. Browser storage cannot cross the changed Pages domain: invitation-code users can sign in again to reach their existing server-side progress. Historical backup files remain original evidence and use the same restore format.
 
+Guarded academy releases allow up to 600 seconds for a cold backend to return HTTP 200 while systemd reports an active or activating service; a stopped or failed service still fails immediately. A large catalog can outlast the former 60-second window. Backup creation and restore verification may also exceed ten minutes: retain release output on the server, and inspect the existing stage marker, active catalog and production receipt before retrying after an SSH timeout. Do not skip backup or health verification.
+
 SSH uses the existing `ubuntu` account and its existing key. Do not copy credentials into documentation or Git.
 
 ```sh
