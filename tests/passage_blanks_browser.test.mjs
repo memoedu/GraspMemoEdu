@@ -189,6 +189,16 @@ test('explicit inline code blanks work while code numbers, unknown markers and u
   assert.equal(await page.locator('fieldset[data-control-id="number"]').count(), 1);
 });
 
+test('code blanks use the native input in CS as well as the English textarea', async () => {
+  await page.evaluate(() => document.body.dataset.subject = 'cs');
+  await mount({version:1,type:'fill_blank',blanks:[{id:'operator'}]}, '<pre><code>left {{blank:operator}} right</code></pre>');
+  const field=page.locator('code input[data-blank-id="operator"]');
+  assert.equal(await field.count(),1);
+  await field.fill('+');
+  assert.deepEqual(await draft(),{operator:'+'});
+  assert.equal(await page.evaluate(() => widget.input.questionControl.complete()),true);
+});
+
 test('single-choice unique underlines synchronize both ways, including an instruction and prose in one paragraph', async () => {
   await mount({version: 1, type: 'choice', multiple: false, options}, '<p>阅读语境，选择一项补全空白：The visitor asked us ___ the window.</p>');
   assert.equal(await inline('selected').count(), 1);
