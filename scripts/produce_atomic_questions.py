@@ -273,7 +273,16 @@ def run(args):
     selected = set(args.only or [task['point']['id'] for task in tasks])
     if selected - {task['point']['id'] for task in tasks}:
         raise ValueError('Unknown selected point')
-    dispatch([task for task in tasks if task['point']['id'] in selected],
+    pending = []
+    for task in tasks:
+        if task['point']['id'] not in selected: continue
+        prior_path = args.run_root / task['point']['id'] / 'result.json'
+        if prior_path.exists():
+            prior = trial.read(prior_path)
+            if prior['source_sha256'] != trial.digest(task): raise ValueError('Saved point input changed')
+            if prior['status'] == 'accepted': continue
+        pending.append(task)
+    dispatch(pending,
              lambda task: run_point(task, args.run_root, config, generation, review, examples,
                                     args.attempts, getattr(args, 'retry_incomplete', False)), args.workers)
     results = [trial.read(path) for task in tasks

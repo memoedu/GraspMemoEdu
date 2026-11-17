@@ -8,6 +8,7 @@ from unittest.mock import patch
 from scripts import atomic_question_trial as trial
 from scripts.produce_atomic_questions import assemble, refill_required, run_point, source_tasks, render_reading, review_candidate
 from scripts.atomic_question_recovery import checkpoint, recover_response, worker_capacity
+from scripts.atomic_question_recovery import dispatch as recovery_dispatch
 from types import SimpleNamespace
 import hashlib
 from scripts.verify_atomic_question_production import verify
@@ -29,6 +30,13 @@ def candidate(count):
 
 
 class AtomicQuestionProductionTests(unittest.TestCase):
+    def test_last_finished_task_does_not_wait_for_memory_to_detect_exhaustion(self):
+        seen=[]
+        with patch('scripts.atomic_question_recovery.available_memory_mb',side_effect=[64000,64000,0]), \
+                patch('scripts.atomic_question_recovery.time.sleep',side_effect=AssertionError('No task remains')):
+            recovery_dispatch(['only-task'],seen.append,1)
+        self.assertEqual(seen,['only-task'])
+
     def test_replacing_seed_is_explicit_to_both_roles_without_changing_source_document(self):
         original = document(); before = deepcopy(original)
         append_task = source_tasks(original, 'english', 2)[0]
