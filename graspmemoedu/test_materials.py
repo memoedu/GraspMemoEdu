@@ -36,7 +36,7 @@ def validate(raw):
 
 
 class TestMaterials:
-    def __init__(self, data_dir, catalog=None):
+    def __init__(self, data_dir, catalog=None, *, account_courses=(), account_banks=(), account_guides=()):
         from .content_bundle import content_root
         path = getattr(catalog, 'content_dir', None) or content_root(data_dir)
         path = path / FILENAME
@@ -55,6 +55,14 @@ class TestMaterials:
                 if course['id'] in self.courses:
                     self.topics.update(t['id'] for t in course['topics'])
         self.permission_ids = self.topics | {'training.' + bank for bank in self.banks}
+        self.account_subject_courses = frozenset(account_courses)
+        self.account_subject_guides = frozenset(account_guides)
+        bank_permissions = {'training.' + bank for bank in account_banks}
+        members = getattr(catalog, 'topic_courses', {})
+        self.account_subject_permissions = bank_permissions | {
+            tid for tid, courses in members.items() if courses & self.account_subject_courses}
+        self.account_only_permissions = bank_permissions | {
+            tid for tid, courses in members.items() if courses and courses <= self.account_subject_courses}
         self.account_courses = {}
         self.account_permissions = {}
         for learner_id, grant in raw.get('account_grants', {}).items():
@@ -77,21 +85,36 @@ class TestMaterials:
                     (access.get('is_admin') or (access.get('is_advanced_learner') and access.get('is_student'))))
 
     def topic_visible(self, topic_id, access):
+        if access and access.get('role') == 'account' and topic_id in self.account_subject_permissions:
+            return True
+        if topic_id in self.account_only_permissions:
+            return False
         return self.allowed(access) or topic_id not in self.permission_ids or self._granted(topic_id, access)
 
     def snapshot_visible(self, topic_id, access):
+        if topic_id in self.account_subject_permissions:
+            return self.topic_visible(topic_id, access) and bool(access and (
+                access.get('is_admin') or topic_id in {t['id'] for t in access.get('topics', [])}))
         return topic_id not in self.permission_ids or ((self.allowed(access) or self._granted(topic_id, access)) and
             (access.get('is_admin') or topic_id in {t['id'] for t in access.get('topics', [])}))
 
     def course_visible(self, course, access):
+        if course['id'] in self.account_subject_courses:
+            return bool(access and access.get('role') == 'account')
         granted_course = bool(access and access.get('role') == 'account' and
             course['id'] in self.account_courses.get(access.get('learner_id'), ()))
         return self.allowed(access) or granted_course or any(self._granted(t['id'], access) for t in course['topics']) or (
             course['id'] not in self.courses and (not course['topics'] or any(t['id'] not in self.topics for t in course['topics'])))
 
     def graph_topic_visible(self, course_id, topic_id, access):
+        if course_id in self.account_subject_courses:
+            return bool(access and access.get('role') == 'account') and self.topic_visible(topic_id, access)
+        if topic_id in self.account_only_permissions:
+            return bool(access and access.get('role') == 'account')
         return self.allowed(access) or self._granted(topic_id, access) or (course_id not in self.courses and topic_id not in self.topics)
 
     def require_guide(self, subject_id, access):
+        if subject_id in self.account_subject_guides and access and access.get('role') == 'account':
+            return
         if subject_id in self.guides and not self.allowed(access):
             raise DomainError('guide_unavailable', '该学科指南暂未开放。', 404)

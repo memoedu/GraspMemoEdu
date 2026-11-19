@@ -134,8 +134,8 @@ class ServiceCache(dict):
 def create_app(settings: Settings | None = None, service: LearningService | None = None, *, atomic_clock=None):
     settings = settings or Settings.load()
     catalog = Catalog.load(settings, service.course if service else None)
-    subjects = Subjects(settings, catalog)
     training = TrainingCatalog(settings.data_dir)
+    subjects = Subjects(settings, catalog, training=training)
     training.validate_ownership(catalog, subjects)
     if service is None:
         course = catalog.topic(catalog.default_topic_id)

@@ -102,8 +102,9 @@ class AcademyImportTests(unittest.TestCase):
             candidate['topics'].append({'id': 'added', 'path': 'added.json', 'prerequisites': []})
             candidate['units'][0]['topic_ids'] = ['added', original['id']]
             (package / 'catalog.json').write_bytes(encoded({'courses': [candidate]}))
-            def manifest():
+            def manifest(**options):
                 (package / 'manifest.json').write_bytes(encoded({'schema': 1, 'adapter': 'hyperskill',
+                    **options,
                     'files': {n: hashlib.sha256((package / n).read_bytes()).hexdigest()
                               for n in ('catalog.json', 'original.json', 'added.json')}}))
             manifest()
@@ -116,6 +117,13 @@ class AcademyImportTests(unittest.TestCase):
             self.assertEqual(catalog.courses['existing']['units'][0]['topic_ids'], ['added', original['id']])
             self.assertEqual(marker.read_bytes(), b'unchanged learning records')
             self.assertEqual(install(package, data, extend_course=True)['status'], 'unchanged')
+            manifest(subject_requires_account=True)
+            self.assertEqual(install(package, data, extend_course=True)['status'], 'installed')
+            settings = Settings.load(data)
+            from graspmemoedu.subjects import Subjects
+            self.assertEqual(Subjects(settings, Catalog.load(settings)).account_subjects, {'cs'})
+            self.assertEqual(install(package, data, extend_course=True)['status'], 'unchanged')
+            self.assertEqual(marker.read_bytes(), b'unchanged learning records')
             changed = deepcopy(original); changed['title'] = 'Overwritten'
             (package / 'original.json').write_bytes(encoded(changed)); manifest()
             pointer = (data / 'active-content.json').read_bytes()
