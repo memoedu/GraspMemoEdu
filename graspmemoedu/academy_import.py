@@ -42,6 +42,11 @@ def _install(package, data_dir, *, extend_course=False, migration=None):
     manifest = json.loads((package / 'manifest.json').read_bytes())
     if manifest.get('adapter') not in ('jetbrains-academy', 'hyperskill', 'structured-atomic', 'reading-book') or manifest.get('schema') != 1:
         raise ValueError('Invalid Academy package')
+    subject_id = manifest.get('subject_id', 'cs')
+    requires_account = manifest.get('subject_requires_account')
+    from .subject_registry import SUBJECT_IDS
+    if subject_id not in SUBJECT_IDS or ('subject_requires_account' in manifest and requires_account is not True):
+        raise ValueError('Invalid package subject or account-only setting')
     for name, expected in manifest['files'].items():
         path = package / name
         if (path.is_symlink() or not path.resolve().is_relative_to(package)
@@ -56,13 +61,16 @@ def _install(package, data_dir, *, extend_course=False, migration=None):
         old_root = settings.content_dir
         pointer = (data_dir / POINTER).read_bytes() if (data_dir / POINTER).exists() else None
         baseline = {p: p.read_bytes() for p in [settings.catalog_path, old_root / 'subjects.json']}
+        subjects = json.loads(baseline[old_root / 'subjects.json'])
+        subject = next((item for item in subjects['subjects'] if item['id'] == subject_id), None)
+        audience_changed = requires_account is True and (subject is None or subject.get('requires_account') is not True)
         extra_config = {p: p.read_bytes() for p in [old_root / 'test-materials.json', *sorted((old_root / 'graphs').glob('*.json'))] if p.exists()}
         existing = {c['id'] for c in candidate['courses']} & old.courses.keys()
-        if extend_course and all(contains_extension(old, c, package) for c in candidate['courses']) and (
+        if extend_course and not audience_changed and all(contains_extension(old, c, package) for c in candidate['courses']) and (
                 migration is None or migration.unchanged()):
             return {'status': 'unchanged', 'learning_records_changed': False}
         if existing:
-            if all(c['id'] in existing and old.courses[c['id']] == {**c, 'description': c.get('description', ''),
+            if not audience_changed and all(c['id'] in existing and old.courses[c['id']] == {**c, 'description': c.get('description', ''),
                     'topics': [{k: v for k, v in t.items() if k != 'path'} for t in c['topics']]}
                    and all(old.topics[t['id']] == json.loads((package / t['path']).read_bytes()) for t in c['topics'])
                    for c in candidate['courses']) and (migration is None or migration.unchanged()):
@@ -122,14 +130,13 @@ def _install(package, data_dir, *, extend_course=False, migration=None):
                                else unit.get('topic_ids', []) + previous.get('topic_ids', []))
                     previous['topic_ids'] = list(dict.fromkeys(ordered))
         (batch / 'catalog.json').write_bytes(encoded({'courses': courses}))
-        subjects = json.loads(baseline[old_root / 'subjects.json'])
-        subject_id = manifest.get('subject_id', 'cs')
-        from .subject_registry import SUBJECT_IDS
-        if subject_id not in SUBJECT_IDS:
-            raise ValueError('Unknown package subject')
-        cs = next((s for s in subjects['subjects'] if s['id'] == subject_id), None)
-        if cs is None: cs = {'id': subject_id, 'course_ids': []}; subjects['subjects'].append(cs)
-        cs.setdefault('course_ids', []).extend(c['id'] for c in candidate['courses'] if c['id'] not in cs['course_ids'])
+        if subject is None:
+            subject = {'id': subject_id, 'course_ids': []}
+            subjects['subjects'].append(subject)
+        course_ids = subject.setdefault('course_ids', [])
+        course_ids.extend(c['id'] for c in candidate['courses'] if c['id'] not in course_ids)
+        if requires_account:
+            subject['requires_account'] = True
         (batch / 'subjects.json').write_bytes(encoded(subjects))
         policy_path = old_root / 'test-materials.json'
         policy = json.loads(policy_path.read_bytes()) if policy_path.exists() else {'schema': 1}

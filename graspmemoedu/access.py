@@ -156,6 +156,9 @@ class AccessStore:
         features = list(GUEST_FEATURES) if guest else (list(FEATURES) if admin or row['features_default'] else json.loads(row['features']))
         topic_ids = ([topic for topic in self.topics if topic in self.guest_topic_ids] if guest else
                      (list(self.topics) if admin or row['topics_default'] else json.loads(row['topic_ids'])))
+        if not guest and not (admin or row['topics_default']):
+            topic_ids = list(dict.fromkeys([*topic_ids, *(topic for topic in self.topics
+                            if topic in self.test_materials.account_subject_permissions)]))
         result = {
             'role': row['role'], 'learner_id': row['learner_id'],
             'display_name': row['display_name'],

@@ -124,6 +124,44 @@ class SubjectAcceptanceTests(unittest.TestCase):
         self.call('POST', '/api/catalog/select?subject_id=physics', {'course_id': 'course-b'}, status=403)
         self.call('GET', '/api/state?topic_id=topic-b&subject_id=physics', status=403)
 
+    def test_account_subject_opens_course_topic_and_bank_to_any_account(self):
+        from tests.training_fixtures import training_bank
+
+        self.config['subjects'][0]['requires_account'] = True
+        self.write_config()
+        (self.data / 'test-materials.json').write_text(json.dumps({
+            'schema': 1, 'courses': ['course-b', 'course-c'], 'banks': ['bank-b'], 'guides': ['physics'],
+        }), encoding='utf-8')
+        from graspmemoedu.training_content import fingerprint
+        bank = training_bank(subject='physics')
+        bank['id'] = 'bank-b'
+        bank['version'] = fingerprint(bank)
+        banks = self.data / 'training-banks'
+        banks.mkdir()
+        (banks / 'bank-b.json').write_text(json.dumps(bank), encoding='utf-8')
+        app = create_app(self.settings, LearningService(self.topics['topic-a'], self.data, DeterministicJudge()))
+        with TestClient(app, base_url=self.origin) as client:
+            self.client = client
+            subjects = {row['id']: row for row in self.call('GET', '/api/subjects')['subjects']}
+            self.assertTrue(subjects['physics']['requires_account'])
+            self.assertEqual(subjects['physics']['course_count'], 0)
+            for path in ('/api/catalog?subject_id=physics', '/api/guide?subject_id=physics',
+                         '/api/state?topic_id=topic-b', '/api/training/bank?bank_id=bank-b',
+                         '/api/dashboard?course_id=course-b'):
+                self.call('GET', path, status=403)
+            self.assertEqual(self.client.get('/subject-guide-assets/physics/plot.png', headers=self.headers).status_code, 403)
+            self.call('GET', '/api/state?topic_id=topic-a')
+            account = app.state.access_store.create_account('Ordinary account', topic_ids=[], purpose='learner')
+            login = self.call('POST', '/api/access/login', {'invitation_code': account['invitation_code']})
+            self.headers['X-Learning-Identity'] = login['identity_token']
+            self.assertEqual({t['id'] for t in login['access']['topics']}, {'topic-b', 'training.bank-b'})
+            self.assertTrue(self.call('GET', '/api/catalog?subject_id=physics')['courses'][0]['available'])
+            self.call('GET', '/api/state?topic_id=topic-b&subject_id=physics')
+            self.call('GET', '/api/training/bank?bank_id=bank-b')
+            self.assertEqual(self.call('GET', '/api/guide?subject_id=physics')['status'], 'ready')
+            self.assertEqual(self.client.get('/subject-guide-assets/physics/plot.png', headers=self.headers).status_code, 200)
+            self.call('GET', '/api/state?topic_id=topic-c', status=403)
+
     def test_subject_guide_assets_are_distinct_and_scoped(self):
         self.login_account()
         math = self.call('GET', '/api/guide?subject_id=math')

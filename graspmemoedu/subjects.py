@@ -9,14 +9,14 @@ PUBLIC_FIELDS = ('id', 'title', 'title_en', 'description', 'description_en', 'ac
 
 
 class Subjects:
-    def __init__(self, settings, catalog, raw=None):
+    def __init__(self, settings, catalog, raw=None, *, training=None):
         self.settings, self.catalog = settings, catalog
         from .test_materials import TestMaterials
-        self.test_materials = TestMaterials(settings.data_dir, catalog)
         self.subjects = {row[0]: dict(zip(PUBLIC_FIELDS, row)) for row in DEFAULTS}
         self.guide_paths = {'math': settings.guide_path}
         self.course_subjects = {}
         self.explicit_guides = set()
+        self.account_subjects = set()
         if raw is None:
             source = settings.content_dir / 'subjects.json'
             try:
@@ -33,12 +33,17 @@ class Subjects:
                 raise ValueError('Invalid subject configuration')
             seen = set()
             for item in raw['subjects']:
-                if not isinstance(item, dict) or set(item) - {*PUBLIC_FIELDS, 'course_ids', 'guide_path'}:
+                if not isinstance(item, dict) or set(item) - {*PUBLIC_FIELDS, 'course_ids', 'guide_path', 'requires_account'}:
                     raise ValueError('Unknown subject field')
                 subject_id = item.get('id')
                 if subject_id not in self.subjects or subject_id in seen:
                     raise ValueError('Unknown or duplicate subject')
                 seen.add(subject_id)
+                requires_account = item.get('requires_account', False)
+                if type(requires_account) is not bool:
+                    raise ValueError('Subject requires_account must be a boolean')
+                if requires_account:
+                    self.account_subjects.add(subject_id)
                 for key in PUBLIC_FIELDS[1:]:
                     if key in item:
                         value = item[key]
@@ -68,6 +73,11 @@ class Subjects:
                         raise ValueError('Atomic topic does not match its permitted subject')
         except (ValueError, TypeError) as exc:
             raise DomainError('invalid_subjects', '学科配置中的课程、字段或指南路径不正确。', 422) from exc
+        self.test_materials = TestMaterials(settings.data_dir, catalog,
+            account_courses={cid for cid, subject in self.course_subjects.items() if subject in self.account_subjects},
+            account_banks={bank['id'] for bank in training.banks.values()
+                           if bank['subject_id'] in self.account_subjects} if training else (),
+            account_guides=self.account_subjects)
 
     @staticmethod
     def guide_location(root, relative):
@@ -112,12 +122,17 @@ class Subjects:
         if subject_id is None:
             return
         self.require(subject_id)
+        if not self.subject_visible(subject_id, access):
+            raise DomainError('subject_account_required', '请登录账号后访问此学科。', 403)
+
+    def subject_visible(self, subject_id, access):
+        return subject_id not in self.account_subjects or bool(access and access.get('role') == 'account')
 
     def public(self, access=None):
         return {'subjects': [{**subject, 'course_count': sum(self.test_materials.course_visible(self.catalog.courses[cid], access)
                                                             for cid in self.course_ids(subject_id)
                                                             if self.catalog.courses[cid].get('placement') != 'question_bank'),
                              'available': True,
-                             'requires_account': False}
+                             'requires_account': subject_id in self.account_subjects}
                              for subject_id, subject in self.subjects.items()],
                 'default_subject_id': 'math', 'brand': 'GraspMemoEdu'}

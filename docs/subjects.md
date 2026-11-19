@@ -63,7 +63,9 @@ CS 分区使用固定标识 `cs`，显示为「计算机科学 / Computer Scienc
 
 同一账号在全部学科通用，课程权限仍由 Topic 与功能决定。默认权限账号继承新增 Topic，明确列表权限保持原授权；单独调整学科归属不会修改账号权限。游客可进入全部六科，访问已发布的课程、Topic、指南和资源；既有游客身份自动获得这些访问权限，无需重新注册或迁移记录。游客不能主动暂停 Topic，体验浏览偏好保持原行为。开放学科不恢复已下线的测试内容。
 
-`GET /api/subjects` 返回展示字段、课程数、`available` 与 `requires_account`，不包含本地文件路径；注册学科均 available=true、requires_account=false。课程目录、选课、Dashboard、作答记录以及 Lesson/Review 请求接受可选 `subject_id`；显式学科与课程不匹配时拒绝请求。旧客户端不传学科时保留兼容行为，身份和权限校验依然生效。所有学科指南的图片和附件经有效游客或账号身份认证后转为临时 Blob URL，离开页面或退出登录后撤销；不会向外部链接传递身份凭据。
+学科可在 `subjects.json` 设置 `"requires_account": true`。该学科的课程、Topic、题库和指南面向所有已登录账号，包括普通账号和明确配置过 Topic 白名单的账号。该学科内的测试标记保留为配置记录，由登录策略决定内容可见性。账号的功能权限仍单独校验。游客可看到学科入口和登录提示，学科页面与直接内容请求均验证身份。
+
+`GET /api/subjects` 返回展示字段、课程数、`available` 与 `requires_account`，不包含本地文件路径。注册学科默认 `available=true`、`requires_account=false`。课程目录、选课、Dashboard、作答记录以及 Lesson/Review 请求接受可选 `subject_id`；显式学科与课程不匹配时拒绝请求。旧客户端不传学科时保留兼容行为，身份和权限校验依然生效。所有学科指南的图片和附件经有效游客或账号身份认证后转为临时 Blob URL，离开页面或退出登录后撤销；不会向外部链接传递身份凭据。
 
 ## 共用实现与后续范围
 
