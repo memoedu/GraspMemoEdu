@@ -194,6 +194,8 @@ class SubjectAcceptanceTests(unittest.TestCase):
         self.login_account()
         self.call('POST', '/api/catalog/select', {'course_id': 'course-a'})
         self.call('POST', '/api/catalog/select?subject_id=physics', {'course_id': 'course-b'})
+        self.config['subjects'][0]['requires_account'] = True
+        self.write_config()
         backup = self.root / 'subjects.zip'
         backup_site(self.settings, backup)
         with zipfile.ZipFile(backup) as archive:
@@ -208,6 +210,7 @@ class SubjectAcceptanceTests(unittest.TestCase):
         settings = Settings.load(restored)
         subjects = Subjects(settings, Catalog.load(settings))
         self.assertEqual(subjects.course_ids('physics'), {'course-b'})
+        self.assertEqual(subjects.account_subjects, {'physics'})
         self.assertEqual(subjects.guide_paths['physics'].read_text(), (self.data / 'physics/guide.md').read_text())
         with closing(sqlite3.connect(restored / 'learning.sqlite3')) as con:
             self.assertEqual(con.execute('SELECT subject_id,selected_course_id FROM learner_subject_preferences').fetchall(), [('physics', 'course-b')])
