@@ -428,6 +428,8 @@ def backup_site(settings, destination=None):
         declarations = []
         for subject_id, subject in subjects.subjects.items():
             declaration = {**subject, 'course_ids': sorted(subjects.course_ids(subject_id))}
+            if subject_id in subjects.account_subjects:
+                declaration['requires_account'] = True
             if subject_id in subjects.guide_paths:
                 source = subjects.guide_paths[subject_id]
                 if subject_id == 'math' and subject_id not in subjects.explicit_guides:
