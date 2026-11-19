@@ -1,7 +1,12 @@
 /** Prepared public problem data; never contains an answer key or a session. */
-import {presentation,answer,hash} from './hyperskill_protocol.mjs';
+import {presentation,answer,hash,supportedTypes} from './hyperskill_protocol.mjs';
 import {embedSourceImages} from './hyperskill_media.mjs';
 import {renderSourceHtml} from './render_mathacademy.mjs';
+
+export function upstreamOnly(problem) {
+  if (!supportedTypes.includes(problem.type)) return true;
+  return problem.type === 'code' && !Object.keys(problem.block.options?.code_templates || {}).some(key => /^java\d*$/.test(key));
+}
 
 export function publicDataset(type,data={}) {
   if(type==='choice')return {options:data.options,is_multiple_choice:!!data.is_multiple_choice};

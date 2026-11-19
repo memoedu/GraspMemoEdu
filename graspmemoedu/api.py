@@ -140,6 +140,7 @@ def create_app(settings: Settings | None = None, service: LearningService | None
     if service is None:
         course = catalog.topic(catalog.default_topic_id)
         service = create_learning_service(course, settings.data_dir, ExistingJudge(settings.judge_project),
+                                          **({'training_catalog': training} if course.get('practice_group') else {}),
                                           **({'clock': atomic_clock} if has_atomic(course) and atomic_clock else {}))
     if has_atomic(service.course) and atomic_clock:
         service.clock = atomic_clock
@@ -201,6 +202,7 @@ def create_app(settings: Settings | None = None, service: LearningService | None
                 learning_services[key] = create_learning_service(
                     catalog.topic(topic_id), settings.data_dir, service.judge, learner_id=learner_id,
                     **({'runtime': runtime} if runtime else {}),
+                    **({'training_catalog': training} if catalog.topic(topic_id).get('practice_group') else {}),
                     **({'clock': atomic_clock} if has_atomic(catalog.topic(topic_id)) and atomic_clock else {}))
                 if trainable(learning_services[key].course) and not is_atomic(learning_services[key].course) and not is_introduction(learning_services[key].course):
                     ReviewBackend(learning_services[key])
@@ -237,6 +239,8 @@ def create_app(settings: Settings | None = None, service: LearningService | None
         from .topic_composition import question_references
         for item in question_references(catalog.topic(topic_id)):
             access_store.authorize(access, 'training.' + item['reference']['bank_id'], feature)
+        if practice := catalog.topic(topic_id).get('practice_group'):
+            access_store.authorize(access, 'training.' + practice['bank_id'], feature)
         if topic_id in training.topic_redirects and request.method != 'GET':
             raise DomainError('topic_moved_to_bank', '本题已移入题库，请从题库继续训练。', 409)
         if not trainable(catalog.topic(topic_id)) and request.url.path != '/api/state':

@@ -182,6 +182,9 @@ class DashboardStore:
             bank_done = completion(con, learner_id, topic)
             if bank_done:
                 done = done and all(bank_done.values())
+            practice = bool(topic.get('practice_group'))
+            if practice:
+                done = done and bool(state.get('practice_completed'))
             status = 'completed' if done else ('paused' if state and state.get('pause') else
                      'in_progress' if state and state.get('started_at') else 'not_started')
             current = bool(state and state.get('content_version') == topic['content_version'])
@@ -193,7 +196,8 @@ class DashboardStore:
                     'completed_at': (state or {}).get('completed_at'), 'mastery': None,
                     'completed_modules': int(done), 'module_count': 1, 'progress': 100 if done else 0,
                     'reread_pending': reread_pending(topic, state),
-                    'reading_progress': round(100 * (read + sum(bank_done.values())) / (len(topic['introductions']) + len(bank_done)), 2)}
+                    'reading_progress': round(100 * (read + sum(bank_done.values()) + int(practice and done))
+                                              / (len(topic['introductions']) + len(bank_done) + int(practice)), 2)}
         if has_atomic(topic) and not sectioned_training(topic):
             from .atomic_content import memory_points
             count = len(memory_points(topic))
@@ -252,6 +256,8 @@ class DashboardStore:
                     locked=bool(state.get('pause')))
         if is_introduction(self.catalog.topic(topic_id)):
             task.update(topic_kind='introduction', reread_pending=snapshot.get('reread_pending', False))
+            if self.catalog.topic(topic_id).get('practice_group'):
+                task['has_practice'] = True
         return task
 
     def _dependencies(self, course_id):

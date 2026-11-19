@@ -2,7 +2,7 @@
 
 每篇 theory 对应一个统一架构的 Topic v2。译文按最外层正文标题拆成有序的多个 Introduction；首个标题前非空内容命名为“引言”，没有内容则不创建空引言。低一级标题留在所在节内。Topic 的 `modules`、`memory_chunks`、`memory_points`、`flashcards` 都为空，当前为纯引论；以后可按统一 Topic 规则在对应 Introduction 下增加范式训练或原子练习，空结构不产生 FSRS 卡。
 
-Practice 独立进入原生 `TrainingCatalog` 题库。课程 ID 保持 `hyperskill`，题库 ID 为 `hyperskill-practice`，显示名称均为 Hyperskill。题库沿原来源路径建立父子题组，再以源 Topic 建立叶题组，一道 problem 对应一道题及一张独立 FSRS 卡。Topic 原链接仍打开正文，不重定向到题库；题目仅保存 `hyperskill` 来源绑定，不把答案伪装成普通本地参考答案。
+Practice 保存在原生 `TrainingCatalog` 的 `hyperskill-practice` 题库。新导入的 Topic 在读完引论后进入对应的题组，原题、作答和复习排程沿用题库记录。题组用稳定 ID 关联，增量导入导致题库版本变更时仍指向同一题组。已有验证答案的可站内判分题计入完成。缺少已验证答案和需要去 Hyperskill 作答的题可以选做。已读引论和已完成的题随现有记录继承。
 
 `prepare_hyperskill.mjs` 从本地译文和已认证读取的 practice 生成确定性来源包，`prepare_hyperskill_branch.mjs` 按源目录合并完整分支。HTML 使用安全渲染器的 HTML 入口，避免 Markdown 解析改变代码里的星号和下划线。图片复用 Hyperskill→RemNote 的下载、哈希与 SVG 转 PNG 路径，优先复用本地已校验图片；原附件和来源 JSON 随包保存，网页内嵌图片。`academy_import --extend-course` 对新格式调用 `hyperskill_import`：追加新 Topic 和题组，已有问题及父子关系不能被覆盖，重复安装幂等。题库追加内容时仅迁移版本绑定，已存在的卡片、日期、作答快照和评分保持原值。
 
@@ -24,7 +24,7 @@ Practice 独立进入原生 `TrainingCatalog` 题库。课程 ID 保持 `hypersk
 
 提交前持久化请求；POST 返回不确定时只查询原提交，不自动再发 POST。查询以本人和题目限定，再按 attempt、答案和时间关联；Hyperskill 当前忽略列表中的 attempt 查询参数，不能依赖它过滤。匹配不唯一时保留待确认状态。判题完成后，原始提交 ID、attempt ID、答案、判定、时间及反馈保留在 `training_external_rounds` 回执；云端确认前保留本机待传记录。同一学员的上游提交不能被重用于另一轮评分。
 
-非代码题经 Hyperskill 判定正确后，原始回执的答案及 dataset 写入共享 `hyperskill_answers`。题目内容签名包含 step、题面和公开 dataset，忽略纯排列变化；代码题、错误回执、无 dataset 的旧回执不自动进入缓存。本机服务可用的用户继续上游判题；无本机服务且已有共享参考的用户使用服务器判题，闭合题型按内容身份比较，文字、数值、填空的其他表达复用原有语义判题器。此路径保存独立 local 事件，不冒充上游提交，也不将本地判定升级为共享正确答案。学习记录、首次免复习及 FSRS 仍按学员独立。
+非代码题经 Hyperskill 判定正确后，原始回执的答案及 dataset 写入共享 `hyperskill_answers`。题目内容签名包含 step、题面和公开 dataset，忽略纯排列变化；代码题、错误回执、无 dataset 的旧回执不自动进入缓存。已有共享参考的新作答直接使用服务器判题，即使本机桥接在线。闭合题型按内容身份比较，文字、数值、填空的其他表达复用原有语义判题器。已开始的官方轮次保留原判题路径，避免遗失待确认的提交。站内判分不产生新的官方正确回执，学习记录和 FSRS 仍按学员独立。
 
 复习准入使用全学科共用题库规则：首次直接通过且未主动加入错题本，记 5、保留作答记录，不创建 FSRS Card，也不进入后续复习。主动加入错题本或已有排程的题目，直接通过 Good；少量有效错误后通过 Hard；三次不同有效错误后通过或主动结束失败轮次 Again。对相同答案的重复失败不重复增加错误负担；没有终态判定不评分。需要复习的每个 problem 使用独立 FSRS Card，完成一道题不会把整个 Topic 标记完成。
 

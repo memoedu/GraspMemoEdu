@@ -255,7 +255,21 @@ def run(args):
     output.mkdir(parents=True, exist_ok=True)
     if args.command == 'run':
         save(output / 'receipt.json', {'status': 'running'})
-    before = remote('inventory')
+    scope = None
+    if args.question_ids:
+        ids = json.loads(args.question_ids.read_text(encoding='utf-8-sig'))
+        if not isinstance(ids, list) or not ids or any(not isinstance(value, str) or not re.fullmatch(r'hyperskill-step-[0-9]+', value) for value in ids):
+            raise ValueError('Expected a nonempty list of native Hyperskill question IDs')
+        scope = frozenset(ids)
+
+    def inventory():
+        result = remote('inventory')
+        if scope is not None:
+            result['pending'] = [job for job in result['pending'] if job['question']['id'] in scope]
+            result['blocked'] = [item for item in result['blocked'] if item['question_id'] in scope]
+        return result
+
+    before = inventory()
     save(output / 'inventory-before.json', before)
     jobs = before['pending']
     if args.canary:
@@ -263,7 +277,8 @@ def run(args):
         for job in jobs:
             selected.setdefault(job['question']['hyperskill']['type'], job)
         jobs = list(selected.values())
-    emit(scope='all_installed_uncached_noncode', pending=len(before['pending']), selected=len(jobs), blocked=len(before['blocked']))
+    emit(scope='selected_question_ids' if scope is not None else 'all_installed_uncached_noncode',
+         pending=len(before['pending']), selected=len(jobs), blocked=len(before['blocked']))
     if args.command == 'plan':
         return 0
     if not jobs:
@@ -302,7 +317,7 @@ def run(args):
                 unresolved = {k: v for k, v in results.items() if v['status'] != 'correct'}
                 save(batch / 'unresolved.json', unresolved)
                 emit(remaining=len(remaining), completed=len(jobs)-len(remaining))
-    after = remote('inventory')
+    after = inventory()
     save(output / 'inventory-after.json', after)
     report = {'status': 'complete' if not after['pending'] and not after['blocked'] else
               'canary_complete' if args.canary and not remaining else 'incomplete',
@@ -319,6 +334,7 @@ def main():
     parser.add_argument('--config', type=Path, default=Path('D:/AppData/GraspMemoEduHyperskillBridge/config.json'))
     parser.add_argument('--state', type=Path, default=STATE)
     parser.add_argument('--output', type=Path)
+    parser.add_argument('--question-ids', type=Path, help='Process only the native Hyperskill question IDs listed in this JSON file')
     parser.add_argument('--model', help='Caller-selected Codex Exec model; otherwise preserve the existing transport default')
     parser.add_argument('--canary', action='store_true', help='Explicit one-per-type acceptance run; normal runs have no limit')
     args = parser.parse_args()

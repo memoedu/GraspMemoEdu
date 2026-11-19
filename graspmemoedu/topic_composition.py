@@ -49,6 +49,19 @@ def question_references(topic):
     return topic.get('bank_questions', [])
 
 
+def practice_progress(con, learner_id, bank, group, answer_keys, *, finished=False):
+    reference = {'bank_id': bank['id'], 'group_id': group['id'], 'version': bank['version']}
+    required = [q['id'] for q in group['questions'] if answer_keys.get(q['id'])]
+    completed = set()
+    if required and con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='training_attempts'").fetchone():
+        completed = {row[0] for row in con.execute('''SELECT DISTINCT question FROM training_attempts
+            WHERE learner=? AND bank=? AND group_id=? AND version=? AND phase='done' ''',
+            (learner_id, bank['id'], group['id'], bank['version']))}
+    return {**reference, 'required_ids': required,
+            'completed_ids': [ident for ident in required if ident in completed],
+            'ready': finished or set(required) <= completed}
+
+
 def completed_reference(con, learner_id, reference):
     """Use precisely the bank's existing completion criterion and version."""
     if not con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='training_attempts'").fetchone():

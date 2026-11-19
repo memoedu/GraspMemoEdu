@@ -3,14 +3,27 @@ import json
 from contextlib import closing
 import hashlib
 import re
+import sqlite3
 
 from .academy_training import AcademyTraining
 from .hyperskill import validate_receipt
 from .service import DomainError
-from .hyperskill_answers import AnswerStore, enrich, parse_local, packed, display_local
+from .hyperskill_answers import AnswerStore, enrich, key, parse_local, packed, display_local
 from decimal import InvalidOperation
 from .fsrs_engine import utc_time
 from . import code_judges
+
+
+def available_keys(path, keys):
+    keys = list(dict.fromkeys(key for key in keys if key is not None))
+    if not keys or not path.is_file():
+        return set()
+    with closing(sqlite3.connect(path.resolve().as_uri() + '?mode=ro', uri=True, timeout=15)) as con:
+        if not con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='hyperskill_answers'").fetchone():
+            return set()
+        placeholders = ','.join('?' for _ in keys)
+        return {row[0] for row in con.execute(
+            f'SELECT DISTINCT problem_key FROM hyperskill_answers WHERE problem_key IN ({placeholders})', keys)}
 
 
 class HyperskillTraining(AcademyTraining):
@@ -21,11 +34,18 @@ class HyperskillTraining(AcademyTraining):
         super().__init__(training, attempt_id)
         self.question = enrich(training, self.bank_id, self.question)
 
+    def round_metadata(self):
+        if available_keys(self.training.db_path, [key(self.question)]):
+            raise DomainError('hyperskill_local_only', '本题由网站判题，请直接提交答案。', 409)
+        return {'grading_route': 'hyperskill'}
+
     def claim(self, round_id):
         with self.training.transaction() as con:
             attempt, run = self._read(con, round_id)
             if attempt['phase'] != 'answer':
                 raise DomainError('academy_round_closed', '本次作答已经完成。', 409)
+            if run.get('grading_route') == 'local':
+                raise DomainError('hyperskill_local_only', '本题由网站判题，请直接提交答案。', 409)
         return {**self.question['hyperskill'], 'provider': 'hyperskill', 'kind': 'automated',
                 **({'presentation': self.question['hyperskill_presentation']} if self.question.get('hyperskill_presentation') else {}),
                 'task_key': self.question['id'], 'version': self.version, 'round_id': round_id,
@@ -49,6 +69,8 @@ class HyperskillTraining(AcademyTraining):
         return result
 
     def validate_check(self, con, run, event):
+        if run.get('grading_route') == 'local':
+            raise DomainError('hyperskill_local_only', '本轮使用网站判题。', 409)
         receipt = event['receipt']
         if receipt['step_id'] != self.question['hyperskill']['step_id']:
             raise DomainError('wrong_hyperskill_problem', '判题结果不属于当前题目。', 409)
@@ -69,9 +91,14 @@ def public_binding(question, run, training=None, bank_id=None):
     code = [e['local_code'] for e in events if 'local_code' in e]
     definition = code_judges.selected(training, bank_id, question, run) if training and bank_id else None
     prepared = question.get('hyperskill_presentation')
+    local_ready = bool(training and available_keys(training.db_path, [key(question)]))
+    # Already-open upstream rounds may have an unconfirmed submission. Keep
+    # their provider until they finish, even if an answer is cached meanwhile.
+    local_only = local_ready and (run is None or run.get('grading_route') == 'local'
+                                 or bool(events) and not receipts and bool(local))
     return {**question['hyperskill'], 'round_id': run['id'] if run else None,
             'prepared': bool(prepared), 'interaction': prepared['interaction'] if prepared else None,
-            'local_ready': bool(training and AnswerStore(training).references(question)),
+            'local_ready': local_ready, 'local_only': local_only,
             'opened': bool(run and run.get('opened_at')), 'checks': len(receipts),
             'submissions': [{k: r[k] for k in ('submission_id', 'attempt_id', 'status', 'time', 'feedback')}
                             for r in receipts],
@@ -122,6 +149,9 @@ class HyperskillCodeTraining(HyperskillTraining):
 class HyperskillLocalTraining(HyperskillTraining):
     """Server-only path. Local verdicts never impersonate an upstream receipt."""
     event_fields = AcademyTraining.event_fields | {'local'}
+
+    def round_metadata(self):
+        return {'grading_route': 'local'}
 
     def validate_check(self, con, run, event):
         pass

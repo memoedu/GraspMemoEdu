@@ -46,10 +46,12 @@ def main():
     atomic_reading = release.get('atomic_reading_upgrade', False)
     atomic_replacement = release.get('atomic_topic_replacement', False)
     atomic_revision = release.get('atomic_content_revision', False)
+    practice_revision = False
     atomic_reading = atomic_reading or atomic_replacement
     database_transition = migration or atomic_reading or atomic_revision
     if not release.get('question_bank_id'):
         package_manifest = json.loads((stage / 'package' / 'manifest.json').read_bytes())
+        practice_revision = package_manifest.get('hyperskill_practice_revision') is True
         if (package_manifest.get('replace_atomic_and_reset_progress') is True) != atomic_replacement:
             raise ValueError('Atomic replacement requires matching package and guarded release flags')
         if (package_manifest.get('preserve_atomic_progress') is True) != atomic_revision:
@@ -99,8 +101,16 @@ def main():
     subprocess.run(['systemctl', 'stop', 'graspmemoedu'], check=True)
     def snapshot():
         with sqlite3.connect(f'file:{data / "learning.sqlite3"}?mode=ro', uri=True) as con:
+            con.execute('BEGIN')
             names = [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")]
-            return {name: hashlib.sha256(repr(con.execute('SELECT * FROM "' + name.replace('"', '""') + '" ORDER BY rowid').fetchall()).encode()).hexdigest() for name in names}
+            answers = None
+            if practice_revision and 'hyperskill_answers' in names:
+                # The approved answer cache job may append verified answers
+                # while this content-only installation is running.
+                names.remove('hyperskill_answers')
+                answers = set(con.execute('SELECT * FROM hyperskill_answers'))
+            hashes = {name: hashlib.sha256(repr(con.execute('SELECT * FROM "' + name.replace('"', '""') + '" ORDER BY rowid').fetchall()).encode()).hexdigest() for name in names}
+            return hashes, answers
     changed = []
     database_backup = stage / 'before-migration.sqlite3'
     try:
@@ -161,8 +171,12 @@ def main():
                 from graspmemoedu.atomic_reading_upgrade import verify_transition
             ids = {t['id'] for c in package_catalog['courses'] for t in c['topics']}
             transition = verify_transition(database_backup, data / 'learning.sqlite3', ids)
-        elif snapshot() != before_state:
-            raise RuntimeError('Content installation unexpectedly changed existing database rows')
+        else:
+            after_hashes, after_answers = snapshot()
+            before_hashes, before_answers = before_state
+            if (before_hashes != after_hashes or (before_answers is None) != (after_answers is None)
+                    or before_answers is not None and not before_answers <= after_answers):
+                raise RuntimeError('Content installation unexpectedly changed existing database rows')
         subprocess.run(['systemctl', 'start', 'graspmemoedu'], check=True); wait_for_health()
         receipt = {'target': 'production', 'health': 'passed', 'source_commit': release['commit'],
                    'existing_database_rows_unchanged_at_install': not database_transition, **transition, **installed}

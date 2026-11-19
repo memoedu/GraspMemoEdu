@@ -6,13 +6,19 @@ import html
 
 from .service import DomainError, LearningService, encode, now
 from .topic_runtime import is_introduction, reread_pending
-from .topic_composition import authored_sequence, completed_reference, section_for
+from .topic_composition import authored_sequence, completed_reference, practice_progress, section_for
 from contextlib import closing
 
 
 class OrderedLearningService(LearningService):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, training_catalog=None, **kwargs):
         super().__init__(*args, **kwargs)
+        if binding := self.course.get('practice_group'):
+            from .hyperskill_answers import key
+            from .training_content import TrainingCatalog
+            catalog = training_catalog if training_catalog is not None else TrainingCatalog(self.data_dir)
+            self.practice_bank, self.practice_group = catalog.group(**binding)
+            self.practice_keys = {q['id']: key(q) for q in self.practice_group['questions']}
         if not is_introduction(self.course) and not authored_sequence(self.course):
             with self._transaction() as con:
                 state = self._load(con)
@@ -46,7 +52,7 @@ class OrderedLearningService(LearningService):
             if carried:
                 state.update(read_introductions=carried, carried_introductions=carried,
                              introduction_read=len(carried) == len(self.course['introductions']))
-            if self.course.get('bank_questions'):
+            if self.course.get('bank_questions') or self.course.get('practice_group'):
                 # Keep the previous achievement in history. Newly required bank
                 # questions cannot inherit a completed reading-only Topic.
                 if state.get('completed_at'):
@@ -102,8 +108,11 @@ class OrderedLearningService(LearningService):
                    'example_result': None, 'created_at': now(), 'completed_at': None, 'paused_at': None, 'pause_reason': None}
         state['attempts'].append(attempt)
         state['attempt_id'], state['module_index'] = attempt['id'], -1
-        self._add_step(state, kind=section['kind'])[
-            'bank_question_id' if section['kind'] == 'bank_question' else 'introduction_id'] = section['id']
+        step = self._add_step(state, kind=section['kind'])
+        if section['kind'] == 'bank_question':
+            step['bank_question_id'] = section['id']
+        elif section['kind'] == 'introduction':
+            step['introduction_id'] = section['id']
         if section['kind'] == 'introduction' and section['id'] in state.get('carried_introductions', []):
             self._step(state)['phase'] = 'completed'
             attempt.update(status='completed', completed_at=state.get('previous_completed_at') or now())
@@ -159,12 +168,21 @@ class OrderedLearningService(LearningService):
         with self._transaction() as con:
             state = self._load(con)
             step = self._step(state)
-            if step['kind'] == 'bank_question':
+            if step['kind'] in ('bank_question', 'bank_practice'):
                 ordinary = False
                 replay, fingerprint = self._request(con, 'continue', payload)
                 if not replay:
                     self._guard(state, payload)
-                    self._advance_bank_question(con, state)
+                    if step['kind'] == 'bank_question':
+                        self._advance_bank_question(con, state)
+                    else:
+                        if not self._practice_progress(con)['ready']:
+                            raise DomainError('bank_practice_required', '请先完成本任务中的必做练习。', 409)
+                        step['phase'] = 'completed'
+                        state['practice_completed'] = True
+                        self._attempt(state).update(status='completed', completed_at=now())
+                        self._event(con, state, 'bank_practice_completed', reference=self.course['practice_group'])
+                        self._start_order(state, state['order_index'] + 1)
                     self._record_action(con, 'continue', payload, fingerprint)
                     self._save(con, state)
             elif step['kind'] != 'introduction':
@@ -214,6 +232,13 @@ class OrderedLearningService(LearningService):
             raise DomainError('bank_question_required', '请先完成当前题库例题，再继续学习。')
         return item
 
+    def _practice_progress(self, con, *, finished=False):
+        from .hyperskill_training import available_keys
+        available = available_keys(self.db_path, self.practice_keys.values())
+        return practice_progress(con, self.learner_id, self.practice_bank, self.practice_group,
+                                 {ident: key in available for ident, key in self.practice_keys.items()},
+                                 finished=finished)
+
     def _public(self, state):
         result = super()._public(state)
         intros = {i['id']: i for i in self.course['introductions']}
@@ -229,6 +254,12 @@ class OrderedLearningService(LearningService):
                             section=section_for(self.course, item))
                 step['actions'] = ['continue'] if done and step['active'] and step['current'] \
                     and state['status'] == 'in_progress' and not state['pending_submission_id'] else []
+            elif step['kind'] == 'bank_practice':
+                with closing(self._connect()) as con:
+                    practice = self._practice_progress(con, finished=bool(state.get('practice_completed')))
+                step.update(title='练习', html='', practice=practice)
+                if not practice['ready']:
+                    step['actions'] = []
             if len(group) > 1:
                 step['html'] = ''.join('<section><h3>' + html.escape(intros[i]['title']) + '</h3>' + intros[i]['html'] + '</section>' for i in group)
                 step['introduction_ids'] = group
@@ -239,6 +270,8 @@ class OrderedLearningService(LearningService):
                       reread_pending=state.get('reread_pending', False), completed_at=state.get('completed_at'))
         if self.course.get('sections'):
             result['sections'] = self.course['sections']
+        if self.course.get('practice_group'):
+            result['has_practice'] = True
         if state.get('reread_pending') and not state.get('pause'):
             for step in result['steps']:
                 if step['active'] and step['current'] and step['kind'] == 'introduction':
@@ -246,7 +279,9 @@ class OrderedLearningService(LearningService):
         if is_introduction(self.course):
             count = len(state.get('read_introductions', []))
             count += sum(s.get('bank_completed', False) for s in result['steps'] if s['kind'] == 'bank_question')
-            result['reading_progress'] = round(100 * count / (len(self.course['introductions']) + len(bank_questions)), 2)
+            extra = int(bool(self.course.get('practice_group')))
+            count += int(bool(state.get('practice_completed'))) if extra else 0
+            result['reading_progress'] = round(100 * count / (len(self.course['introductions']) + len(bank_questions) + extra), 2)
         return result
 
     def pause(self, payload):
