@@ -11,7 +11,7 @@ const source=readFileSync(new URL('../web/training.js',import.meta.url),'utf8')
   .replace('function renderSidebar() {','function renderSidebar() { observed.sidebar++; return;')
   .replace('function renderQuestion() {','function renderQuestion() { clearTimeout(timer); observed.question++; if(observed.renderAnswer)hyperskillAnswer(current,epoch,selection); return;')
   .replace('function error(container, failure, retry) {','function error(container, failure, retry) { observed.errors.push(failure); return;')
-  .replace(/return \{open, (?:mount, )?stop, renderReviews\};/,`return {stop,
+  .replace(/return \{open, mount, stop, renderReviews, updatePractice\};/,`return {stop,
     probe: force=>probeHyperskill(epoch,force),refresh:()=>refreshHyperskill(epoch),
     warm: force=>warmHyperskill(current,epoch,force),resume:()=>resumeHyperskill(epoch),
     invoke:action=>requestHyperskill(action,{}),answer:()=>hyperskillAnswer(current,epoch,selection),
@@ -40,6 +40,7 @@ function fixture() {
     if(cloudFailure)throw cloudFailure;
     if(route.startsWith('training/group?'))return nextGroup;
     if(route.startsWith('training/state?'))return context.driver.current();
+    if(route === 'training/hyperskill-submit')return context.driver.current();
     assert.equal(route,'academy/training/launch');return {ticket:'synthetic-capability'};
   };
   const element={append(){},querySelector:selector=>selector==='.hyperskillConnection'?status:
@@ -74,6 +75,15 @@ test('connection knowledge stays cached until an explicit check or scheduled rec
   assert.equal(await f.driver.probe(true),true);
   f.healthy(false);assert.equal(await f.driver.probe(true),false);
   f.healthy(true);assert.equal(await f.driver.probe(true),true);
+});
+
+test('verified answers submit on site even when the local bridge is reachable',async()=>{
+  const f=fixture();f.healthy(true);
+  Object.assign(f.driver.current().hyperskill,{local_only:true,local_ready:true});
+  await f.driver.warm();f.driver.resume();f.driver.answer();
+  await f.observed.action('submit','{"selected":"0"}');
+  assert.deepEqual(f.calls.filter(call=>call.target==='local'),[]);
+  assert.equal(f.calls[0].route,'training/hyperskill-submit');
 });
 
 test('native local code rounds never prepare an upstream attempt or require the Hyperskill relay',async()=>{

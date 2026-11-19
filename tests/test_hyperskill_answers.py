@@ -8,8 +8,8 @@ import uuid
 import test_hyperskill_training as fixtures
 from graspmemoedu.academy_import import install
 from graspmemoedu.hyperskill_answers import AnswerStore, canonical, key
-from graspmemoedu.hyperskill_training import HyperskillLocalTraining
-from graspmemoedu.service import DomainError
+from graspmemoedu.hyperskill_training import HyperskillLocalTraining, HyperskillTraining
+from graspmemoedu.service import DomainError, create_learning_service
 from graspmemoedu.topic_install import encoded
 from graspmemoedu.training import TrainingService
 from graspmemoedu.training_content import TrainingCatalog, fingerprint
@@ -64,6 +64,10 @@ class SharedHyperskillAnswersTests(unittest.TestCase):
         aid = other.open(self.bank['id'], self.old['id'], source.question['id'], str(uuid.uuid4()))
         state = other.state(aid)
         self.assertTrue(state['hyperskill']['prepared']); self.assertTrue(state['hyperskill']['local_ready'])
+        self.assertTrue(state['hyperskill']['local_only'])
+        with self.assertRaises(DomainError) as error:
+            HyperskillTraining(other, aid).launch()
+        self.assertEqual(error.exception.code, 'hyperskill_local_only')
         self.assertEqual(state['hyperskill']['submissions'], [])
         self.assertNotIn('answer_display', state['hyperskill'])
         self.assertNotIn('reference_submission_id', json.dumps(state))
@@ -82,6 +86,47 @@ class SharedHyperskillAnswersTests(unittest.TestCase):
         with closing(other._connect()) as con:
             self.assertEqual(con.execute("SELECT COUNT(*) FROM training_ratings WHERE learner='second'").fetchone()[0], 1)
             self.assertEqual(con.execute('SELECT COUNT(*) FROM hyperskill_answers').fetchone()[0], 1)
+
+    def test_practice_revision_carries_reading_and_existing_bank_progress(self):
+        from scripts.prepare_hyperskill_practice_revision import prepare
+        from graspmemoedu.catalog import Catalog
+
+        question = self.prepared()
+        backend = self.native()
+        self.accepted(backend)
+
+        def advance(service):
+            state = service.state()
+            return service.advance({'request_id': str(uuid.uuid4()), 'expected_revision': state['revision'],
+                                    'attempt_id': state['attempt_id'], 'step_id': state['active_step_id']})
+
+        former = create_learning_service(self.new, self.data, learner_id=backend.learner_id)
+        self.assertEqual(advance(former)['status'], 'completed')
+        bank_path = self.data / 'training-banks/hyperskill-practice.json'
+        original_bank = bank_path.read_bytes()
+        revision = self.root / 'practice-revision'
+        prepare(self.package, revision, self.course['id'])
+        self.assertEqual(install(revision, self.data, extend_course=True)['status'], 'installed')
+        self.assertEqual(install(revision, self.data, extend_course=True)['status'], 'unchanged')
+        self.assertEqual(bank_path.read_bytes(), original_bank)
+        revised = Catalog.load(Settings.load(self.data)).topic(self.new['id'])
+        carried = create_learning_service(revised, self.data, learner_id=backend.learner_id)
+        progress = next(step['practice'] for step in carried.state()['steps'] if step['active'])
+        self.assertEqual(progress['required_ids'], [question['id']])
+        self.assertEqual(progress['completed_ids'], [question['id']])
+        self.assertEqual(advance(carried)['status'], 'completed')
+
+        other = create_learning_service(revised, self.data, learner_id='new-learner')
+        self.assertEqual(other.state()['steps'][0]['kind'], 'introduction')
+        progress = next(step['practice'] for step in advance(other)['steps'] if step['active'])
+        self.assertFalse(progress['ready'])
+        with self.assertRaises(DomainError) as error:
+            advance(other)
+        self.assertEqual(error.exception.code, 'bank_practice_required')
+        fresh_bank = TrainingService(TrainingCatalog(self.data), self.data, 'new-learner')
+        attempt = fresh_bank.open(self.bank['id'], self.old['id'], question['id'], str(uuid.uuid4()))
+        HyperskillLocalTraining(fresh_bank, attempt).submit_local(str(uuid.uuid4()), '{"selected":"0"}')
+        self.assertEqual(advance(other)['status'], 'completed')
 
     def test_shared_reference_api_requires_attempt_owner_and_records_one_score(self):
         q = self.prepared(); backend = self.native(); self.accepted(backend)

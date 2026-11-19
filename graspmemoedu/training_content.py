@@ -163,6 +163,11 @@ class TrainingCatalog:
         from .linked_points import resolve
         from .topic_composition import question_references
         for topic in catalog.topics.values():
+            if binding := topic.get('practice_group'):
+                bank, group = self.group(**binding)
+                if (subjects.topic_subject(topic['id']) != bank['subject_id']
+                        or not (group.get('questions') or group.get('introductions'))):
+                    raise ValueError('A Topic requires a nonempty Practice group in its subject')
             for item in question_references(topic):
                 ref = item['reference']
                 bank, _, _ = self.question(ref['bank_id'], ref['group_id'], ref['question_id'])
@@ -213,6 +218,13 @@ class TrainingCatalog:
                     if question['id'] == question_id:
                         return bank, group, present_question(deepcopy(question))
         raise DomainError('unknown_question', '未找到此习题。', 404)
+
+    def group(self, bank_id, group_id):
+        bank = self.bank(bank_id)
+        for group in bank['groups']:
+            if group['id'] == group_id:
+                return bank, group
+        raise DomainError('unknown_group', '未找到此题组。', 404)
 
     def archive_blobs(self):
         from .training_format import DIRECTORY as FORMAT_DIRECTORY

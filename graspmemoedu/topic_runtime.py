@@ -82,12 +82,23 @@ def validate_runtime(topic):
         raise ValueError('Duplicate section ID')
     expected = ({('introduction', i['id']) for i in items} | {('example', mid) for mid in module_ids}
                 | {('bank_question', item['id']) for item in bank_questions})
+    practice = topic.get('practice_group')
+    if practice is not None:
+        if (not is_introduction(topic) or not items or bank_questions or not isinstance(practice, dict)
+                or set(practice) != {'bank_id', 'group_id'}
+                or any(not isinstance(value, str) or not re.fullmatch(r'[a-z0-9][a-z0-9_-]{0,63}', value)
+                       for value in practice.values())
+                or practice['group_id'] in seen):
+            raise ValueError('Invalid Topic Practice group')
+        expected.add(('bank_practice', practice['group_id']))
     order = topic.get('content_order')
     if not isinstance(order, list) or any(not isinstance(i, dict) or set(i) != {'kind', 'id'} for i in order):
         raise ValueError('Invalid content order')
     actual = [(i['kind'], i['id']) for i in order]
     if len(actual) != len(expected) or set(actual) != expected:
         raise ValueError('Content order must cover every section once')
+    if practice is not None and actual[-1] != ('bank_practice', practice['group_id']):
+        raise ValueError('Topic Practice must follow all reading')
     if order[0]['kind'] != 'introduction' and not bank_questions:
         raise ValueError('Every Example must follow its Introduction')
     owners = {('introduction', i['id'], 'html'): i['id'] for i in items}

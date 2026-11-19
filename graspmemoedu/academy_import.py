@@ -202,8 +202,13 @@ def install(package, data_dir, *, extend_course=False):
         from .atomic_reading_upgrade import AtomicReadingUpgrade
         migration = AtomicReadingUpgrade(package, data_dir)
     if manifest['adapter'] == 'hyperskill' and manifest.get('topic_format_version') == 2:
-        from .hyperskill_import import HyperskillImport
-        migration = HyperskillImport(package, data_dir)
+        from .hyperskill_import import HyperskillImport, HyperskillPracticeRevision
+        if manifest.get('hyperskill_practice_revision') is True:
+            if not extend_course or any(name.startswith('training-banks/') for name in manifest['files']):
+                raise ValueError('Practice revision requires the installed bank and an existing course')
+            migration = HyperskillPracticeRevision(package, data_dir)
+        else:
+            migration = HyperskillImport(package, data_dir)
     result = _install(package, data_dir, extend_course=extend_course, migration=migration)
     if reading_banks is not None:
         from .reading_book_import import install_banks

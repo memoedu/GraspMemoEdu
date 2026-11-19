@@ -4,9 +4,10 @@ Run installation during the ordinary stopped-service release window. The shared
 importer owns the activation pointer. This hook journals old rows and copies
 existing cards without grading them, with transaction and file rollback on failure.
 """
-from contextlib import closing, contextmanager
+from contextlib import closing, contextmanager, nullcontext
 from copy import deepcopy
 from datetime import datetime, timezone
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -19,6 +20,69 @@ from .topic_install import encoded
 from .training import TrainingService, packed
 from .training_content import TrainingCatalog, fingerprint, validate, permission_id
 from .review_cards import register_point
+
+
+def with_practice_group(topic):
+    if (topic.get('source_adapter') != 'hyperskill' or topic.get('topic_kind') != 'introduction'
+            or not topic.get('introductions') or topic.get('bank_questions')):
+        raise ValueError('Practice composition requires an existing Hyperskill reading Topic')
+    binding = {'bank_id': 'hyperskill-practice', 'group_id': topic['id']}
+    if topic.get('practice_group') == binding:
+        return topic
+    if 'practice_group' in topic or any(row['kind'] != 'introduction' for row in topic['content_order']):
+        raise ValueError('Existing Topic composition differs')
+    practice = deepcopy(topic)
+    practice['practice_group'] = binding
+    practice['content_order'].append({'kind': 'bank_practice', 'id': binding['group_id']})
+    practice['reading_lineage'] = {'content_version': topic['content_version'],
+                                   'introductions': {i['id']: [i['id']] for i in topic['introductions']}}
+    practice['content_version'] = hashlib.sha256(encoded({'reading': topic['content_version'], 'practice': binding})).hexdigest()
+    practice.pop('version')
+    practice['version'] = hashlib.sha256(encoded(practice)).hexdigest()
+    return practice
+
+
+def validate_practice_binding(topic, bank):
+    binding = topic.get('practice_group')
+    if not binding:
+        return
+    if binding != {'bank_id': bank['id'], 'group_id': topic['id']}:
+        raise ValueError('Hyperskill Practice must use its own Topic group')
+    group = next((group for group in bank['groups'] if group['id'] == topic['id']), None)
+    if not group or not (group['questions'] or group.get('introductions')):
+        raise ValueError('Hyperskill Practice group has no native questions or source exercises')
+    if any(q.get('hyperskill', {}).get('topic_id') != topic['hyperskill']['topic_id'] for q in group['questions']):
+        raise ValueError('Practice questions belong to another Hyperskill Topic')
+
+
+class HyperskillPracticeRevision:
+    """Activate a group link over existing, unchanged Hyperskill reading content."""
+    def __init__(self, package, data_dir):
+        self.package = Path(package)
+        self.bank = TrainingCatalog(data_dir).bank('hyperskill-practice')
+        self.replacements = set()
+        self.counts = {}
+
+    def prepare(self, catalog):
+        for course in json.loads((self.package / 'catalog.json').read_bytes())['courses']:
+            previous = catalog.course(course['id'])
+            expected = {**course, 'topics': [{k: v for k, v in t.items() if k != 'path'} for t in course['topics']]}
+            if previous != expected:
+                raise ValueError('Practice revision must preserve the installed course and its directory')
+            for entry in course['topics']:
+                original = catalog.topic(entry['id'])
+                incoming = json.loads((self.package / entry['path']).read_bytes())
+                if incoming != with_practice_group(original):
+                    raise ValueError('Practice revision would alter source reading or progress lineage')
+                validate_practice_binding(incoming, self.bank)
+                if incoming != original:
+                    self.replacements.add(entry['id'])
+
+    def unchanged(self):
+        return not self.replacements
+
+    def activate(self, old, loaded):
+        return nullcontext()
 
 
 def merge_bank(previous, incoming):
@@ -132,6 +196,7 @@ class HyperskillImport:
         questions = {q['id']: q for g in self.incoming['groups'] for q in g['questions']}
         for declaration in (t for c in course for t in c['topics']):
             topic = json.loads((self.package / declaration['path']).read_bytes())
+            validate_practice_binding(topic, self.bank)
             if (topic.get('source_adapter') != 'hyperskill' or topic.get('topic_format_version') != 2
                     or topic.get('topic_kind') != 'introduction'
                     or any(topic.get(k) for k in ('modules', 'memory_chunks', 'memory_points', 'flashcards'))):

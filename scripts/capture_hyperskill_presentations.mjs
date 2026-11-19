@@ -2,7 +2,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import {pathToFileURL} from 'node:url';
-import {publicDataset,publicCodeOptions} from './hyperskill_presentation.mjs';
+import {publicDataset,publicCodeOptions,upstreamOnly} from './hyperskill_presentation.mjs';
 import {presentation} from './hyperskill_protocol.mjs';
 const [configPath,source,output]=process.argv.slice(2);
 if(!output)throw Error('Usage: capture_hyperskill_presentations config source output');
@@ -33,6 +33,7 @@ for(const topic of inventory.topics) {
   const raw=JSON.parse(await fs.readFile(path.join(source,name)));
   let saved;try{saved=JSON.parse(await fs.readFile(target));}catch{}
   for(const problem of raw.practices) {
+    if (upstreamOnly(problem)) continue;
     const prior=saved?.practices.find(p=>p.id===problem.id);
     if(prior?.presentation_source&&JSON.stringify(prior.block)===JSON.stringify(problem.block)) {
       problem.presentation_source=prior.presentation_source;total++;continue;

@@ -4,6 +4,8 @@
 
 每次从正式服务器全部 `training-banks` 读取 Hyperskill 题，按现有判题器的题目内容键去重，跳过代码题和已有正确答案缓存的题。题面改变后会形成新键，旧答案不会套用到新题。正常运行没有题数上限；`--canary` 只用于显式的每类一题验收。
 
+定向处理既有课程时可加 `--question-ids <JSON 文件>`，输入为该课程的原生 `hyperskill-step-…` 题目 ID 列表。重跑时继续使用既有的全局逐题断点。已验证的答案从缓存启用站内判题，也会影响尚未完成的学习任务中的必做范围。
+
 ```powershell
 & D:\AppData\GraspMemoEdu\venv\Scripts\python.exe D:\Projects\GraspMemoEdu\scripts\hyperskill_answer_cache.py plan
 & D:\AppData\GraspMemoEdu\venv\Scripts\python.exe D:\Projects\GraspMemoEdu\scripts\hyperskill_answer_cache.py run
