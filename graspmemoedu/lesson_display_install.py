@@ -22,10 +22,12 @@ class MarkupSignature(HTMLParser):
     """Bind translated HTML to the renderer's tags, attributes and protected nodes."""
 
     PROTECTED = {'code', 'pre', 'svg', 'math', 'mjx-container'}
+    SVG_TEXT = {'text', 'tspan', 'title', 'desc'}
 
     def __init__(self, source):
         super().__init__()
         self.tags, self.protected, self.open = Counter(), Counter(), []
+        self.svg_text = 0
         self.feed(source)
         self.close()
         if self.open:
@@ -37,8 +39,10 @@ class MarkupSignature(HTMLParser):
             nodes.append(item)
 
     def handle_starttag(self, tag, attrs):
-        item = ('start', tag, tuple(sorted(attrs, key=lambda pair: pair[0])))
+        item = ('start', tag, self.attributes(attrs))
         self.record(item)
+        if tag in self.SVG_TEXT and any(node == 'svg' for node, _ in self.open):
+            self.svg_text += 1
         if tag in self.PROTECTED or 'data-tex' in dict(attrs):
             self.open.append((tag, [item]))
 
@@ -47,14 +51,25 @@ class MarkupSignature(HTMLParser):
             self.handle_starttag(tag, attrs)
             self.handle_endtag(tag)
         else:
-            self.record(('start', tag, tuple(sorted(attrs, key=lambda pair: pair[0]))))
+            self.record(('start', tag, self.attributes(attrs)))
+
+    @staticmethod
+    def attributes(attrs):
+        # HTML exposes an attribute without an explicit value as the empty DOM string.
+        return tuple(sorted((name, '' if value is None else value) for name, value in attrs))
 
     def handle_endtag(self, tag):
         self.record(('end', tag))
+        if tag in self.SVG_TEXT and self.svg_text:
+            self.svg_text -= 1
         if self.open and self.open[-1][0] == tag:
             self.protected[tuple(self.open.pop()[1])] += 1
 
     def handle_data(self, value):
+        tags = {tag for tag, _ in self.open}
+        if not value.strip() and not self.svg_text and tags & {'svg', 'mjx-container'} and not tags & {'code', 'pre'}:
+            # Inter-element indentation in the math renderer is outside SVG text and code.
+            return
         for _, nodes in self.open:
             nodes.append(value)
 

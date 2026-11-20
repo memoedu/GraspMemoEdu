@@ -40,3 +40,11 @@ class LessonDisplayTests(unittest.TestCase):
         self.assertEqual(signature, MarkupSignature(source.replace('See', '见')).signature())
         for changed in (source.replace('>x<', '>y<'), source.replace('src=', 'onerror='), source + '<script>alert(1)</script>'):
             self.assertNotEqual(signature, MarkupSignature(changed).signature())
+
+    def test_ignores_svg_indentation_but_preserves_math_text_and_code(self):
+        source = '<svg>\n  <path d></path> <text> </text></svg><pre>x\n  y</pre>'
+        signature = MarkupSignature(source).signature()
+        normalized = source.replace('\n  <path d>', '\n<path d="">')
+        self.assertEqual(signature, MarkupSignature(normalized).signature())
+        self.assertNotEqual(signature, MarkupSignature(normalized.replace('<text> </text>', '<text></text>')).signature())
+        self.assertNotEqual(signature, MarkupSignature(normalized.replace('x\n  y', 'x\ny')).signature())
