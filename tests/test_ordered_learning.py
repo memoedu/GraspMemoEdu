@@ -95,16 +95,38 @@ class OrderedLearningTests(unittest.TestCase):
         service.process_submission(result['submission_id'])
         self.assertEqual(active(service.advance(payload(service)))['introduction_id'], 'intro-a')
 
-    def test_mastered_correct_advances_between_groups_without_mandatory_guidance(self):
-        service = self.service(ordered_topic())
-        for question_id in ('module-1-example', 'module-2-example'):
-            self.assertEqual(active(service.state())['question_id'], question_id)
+    def test_mastered_correct_unlocks_only_its_guidance_and_advances_to_next_module(self):
+        topic = ordered_topic()
+        service = self.service(topic)
+        for index, (question_id, intro_id) in enumerate(
+                [('module-1-example', 'intro-a'), ('module-2-example', 'intro-b')], 1):
+            state = service.state()
+            self.assertEqual(active(state)['question_id'], question_id)
+            selection = {**payload(service), 'step_id': f'unlocked-introduction:{intro_id}'}
+            with self.assertRaises(DomainError) as error:
+                service.select(selection)
+            self.assertEqual(error.exception.code, 'locked_step')
             service.choose(payload(service, choice='mastered'))
             result = service.submit(payload(service, answer='correct'))
             service.process_submission(result['submission_id'])
+            service = self.service(topic)
+            state = service.state()
+            guidance = [step for step in state['steps'] if step['kind'] == 'introduction']
+            self.assertEqual(len(guidance), index)
+            intro = guidance[-1]
+            self.assertEqual(intro['introduction_id'], intro_id)
+            self.assertEqual(intro['html'], topic['introductions'][index - 1]['html'])
+            self.assertEqual(intro['phase'], 'available')
+            self.assertEqual(intro['actions'], [])
+            self.assertTrue(intro['visited'] and intro['unlocked'])
+            self.assertFalse(state['introduction_read'])
+            self.assertEqual(active(state)['actions'], ['continue'])
+            selected = service.select({**payload(service), 'step_id': intro['id']})
+            self.assertEqual(selected['current_step_id'], intro['id'])
+            self.assertEqual(selected['active_step_id'], state['active_step_id'])
+            service.select(payload(service))
             service.advance(payload(service))
         self.assertEqual(service.state()['status'], 'completed')
-        self.assertFalse(any(s['kind'] == 'introduction' for s in service.state()['steps']))
 
     def test_several_examples_share_preceding_guidance_without_repeating_it(self):
         topic = ordered_topic()
@@ -133,8 +155,11 @@ class OrderedLearningTests(unittest.TestCase):
         result = service.submit(payload(service, answer='correct'))
         service.process_submission(result['submission_id'])
         service.advance(payload(service))
+        self.assertEqual([s['phase'] for s in service.state()['steps'] if s['kind'] == 'introduction'], ['available'])
         service.choose(payload(service, choice='unmastered'))
-        self.assertEqual(active(service.advance(payload(service)))['introduction_id'], 'intro-a')
+        state = service.advance(payload(service))
+        self.assertEqual(active(state)['introduction_id'], 'intro-a')
+        self.assertEqual([s['phase'] for s in state['steps'] if s['kind'] == 'introduction'], ['reading'])
 
     def test_late_shared_guidance_exposes_source_order_without_rewriting_progress(self):
         topic = ordered_topic()

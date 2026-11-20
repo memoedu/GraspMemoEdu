@@ -118,13 +118,22 @@ class OrderedLearningService(LearningService):
             attempt.update(status='completed', completed_at=state.get('previous_completed_at') or now())
             self._start_order(state, index + 1)
 
-    def _learn(self, state):
-        example = next(s for s in state['steps'] if s['attempt_id'] == state['attempt_id'] and s['kind'] == 'example')
-        earlier = self.course['content_order'][:state['order_index']]
+    def _guidance_group(self, order_index):
+        earlier = self.course['content_order'][:order_index]
         last_example = next((i for i in range(len(earlier) - 1, -1, -1) if earlier[i]['kind'] == 'example'), -1)
         group = [s['id'] for s in earlier[last_example + 1:] if s['kind'] == 'introduction']
-        if not group:
-            group = [next(s['id'] for s in reversed(earlier) if s['kind'] == 'introduction')]
+        return group or [next(s['id'] for s in reversed(earlier) if s['kind'] == 'introduction')]
+
+    def _guidance_ids(self, module_id):
+        if authored_sequence(self.course):
+            return ()
+        order_index = next(i for i, item in enumerate(self.course['content_order'])
+                           if item['kind'] == 'example' and item['id'] == module_id)
+        return self._guidance_group(order_index)
+
+    def _learn(self, state):
+        example = next(s for s in state['steps'] if s['attempt_id'] == state['attempt_id'] and s['kind'] == 'example')
+        group = self._guidance_group(state['order_index'])
         introduction_id = group[0]
         if any(i not in state['read_introductions'] for i in group):
             prior = next((s for s in state['steps'] if s.get('introduction_id') == introduction_id), None)
@@ -244,10 +253,9 @@ class OrderedLearningService(LearningService):
         intros = {i['id']: i for i in self.course['introductions']}
         bank_questions = {q['id']: q for q in self.course.get('bank_questions', [])}
         for step in result['steps']:
-            saved = next((s for s in state['steps'] if s['id'] == step['id']), {})
-            group = saved.get('introduction_ids', [])
+            group = step.get('introduction_ids', [])
             if step['kind'] == 'bank_question':
-                item = bank_questions[saved['bank_question_id']]
+                item = bank_questions[step['bank_question_id']]
                 with closing(self._connect()) as con:
                     done = completed_reference(con, self.learner_id, item['reference'])
                 step.update(title='例题', html='', bank_reference=item['reference'], bank_completed=done,

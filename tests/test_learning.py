@@ -480,7 +480,7 @@ class LearningAcceptanceTests(unittest.TestCase):
         self.service.unlock(state["topic_id"], pause["module_id"], pause["event_id"])
         self.assertEqual(self.service.state()["status"], "completed")
 
-    def test_all_examples_correct_complete_without_introduction_or_practices(self):
+    def test_all_examples_correct_complete_with_optional_guidance_and_no_practices(self):
         for module_index in range(3):
             self.choose("mastered")
             self.answer("correct")
@@ -489,7 +489,8 @@ class LearningAcceptanceTests(unittest.TestCase):
         state = self.service.state()
         self.assertEqual(state["status"], "completed")
         self.assertFalse(state["introduction_read"])
-        self.assertFalse(any(step["kind"] in {"introduction", "practice"} for step in state["steps"]))
+        self.assertFalse(any(step["kind"] == "practice" for step in state["steps"]))
+        self.assertEqual([step["phase"] for step in state["steps"] if step["kind"] == "introduction"], ["available"])
         self.assertNotIn("mastery", state, "Topic must not invent an aggregate mastery")
         try:
             self.service.pause({"request_id": str(uuid.uuid4())})
