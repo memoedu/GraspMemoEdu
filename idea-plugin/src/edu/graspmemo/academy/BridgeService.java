@@ -199,7 +199,7 @@ public final class BridgeService implements Disposable {
             task.setStatus(CheckStatus.Unchecked); task.setFeedback(null);
         });
         for (Document doc : documents.values()) FileDocumentManager.getInstance().saveDocument(doc);
-        YamlFormatSynchronizer.INSTANCE.saveItem(task, YamlFormatSynchronizer.INSTANCE.mapper(task.getCourse()), "task-info.yaml");
+        YamlFormatSynchronizer.INSTANCE.requestSaveItem(task, YamlFormatSynchronizer.INSTANCE.mapper(task.getCourse()), "task-info.yaml");
     }
     private Project findProject(JsonObject binding) {
         Path root = Path.of(binding.get("project_root").getAsString()).toAbsolutePath().normalize();

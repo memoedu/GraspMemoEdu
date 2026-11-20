@@ -1,4 +1,4 @@
-"""Compile source-bound MA fill-in revisions for already installed Topic questions."""
+"""Compile source-bound MA answer revisions for already installed Topic questions."""
 import argparse
 from decimal import Decimal
 import json
@@ -25,21 +25,41 @@ def decimal_answers(value):
                                                    for n in range(max(1, len(digits)), 7))]))
 
 
-def fill_in_variant(topic_question, source, assets, choice_indices=()):
+def source_variant(topic_question, source, assets, choice_indices=()):
     qid = source['id']
     stem = (source.get('text') or '').strip()
     installed_stem = topic_question['question'].strip()
+    if source.get('graphic'):
+        installed_stem = re.sub(r'^<img alt="Source diagram" src="data:image/png;base64,[A-Za-z0-9+/=]+">\s*',
+                                '', installed_stem, count=1)
     if (topic_question['id'] != f'ma-question-{qid}' or not stem
             or topic_question.get('source_format') != source['format']
             or not (installed_stem == stem or installed_stem.startswith(stem + '\n\n'))
             or topic_question.get('_source', {}).get('parameter_changes')):
         raise ValueError(f'Question {qid} is not bound to the same source stem')
+    gaps = []
+    spec = controls(source, assets, gaps)
+    if source['format'] == 'MC':
+        if (not spec or len(choice_indices) != 1 or type(choice_indices[0]) is not int
+                or not 0 <= choice_indices[0] < len(spec['options'])):
+            raise ValueError(f'Question {qid} has no verified choice')
+        spec['correct_id'] = spec['options'][choice_indices[0]]['id']
+    else:
+        exact_fill_in(spec, source, choice_indices)
+    model = question_model(source, assets, gaps)
+    if any(item['code'] == 'image_missing' for item in gaps):
+        raise ValueError(f'Question {qid} has missing source graphics')
+    spec['grading'] = 'exact'
+    return {'source_sha256': digest(topic_question), 'question': model['question'],
+            'html': model['html'], 'interaction': spec}
+
+
+def exact_fill_in(spec, source, choice_indices):
+    qid = source['id']
     field = {'FR': 'freeResponse', 'SS': 'body'}.get(source['format'])
     segments = (source.get(field) or {}).get('segments') if field else None
     if not segments:
         raise ValueError(f'Question {qid} has no confirmed fill-in segments')
-    gaps = []
-    spec = controls(source, assets, gaps)
     inputs = [(key, segment[key]) for segment in segments for key in ('textbox', 'select') if key in segment]
     if not spec or len(spec['controls']) != len(inputs) or not all(part['complete'] for part in spec['sections']):
         raise ValueError(f'Question {qid} has incomplete or ambiguous answer controls')
@@ -57,12 +77,6 @@ def fill_in_variant(topic_question, source, assets, choice_indices=()):
             item['answers'] = decimal_answers(answer) if raw.get('type') == 'number' else [answer]
     if next(indices, None) is not None:
         raise ValueError(f'Question {qid} has unmatched dropdown answers')
-    model = question_model(source, assets, gaps)
-    if any(item['code'] == 'image_missing' for item in gaps):
-        raise ValueError(f'Question {qid} has missing source graphics')
-    spec['grading'] = 'exact'
-    return {'source_sha256': digest(topic_question), 'question': model['question'],
-            'html': model['html'], 'interaction': spec}
 
 
 def compile_revisions(snapshot, archive, selection, assets, output):
@@ -81,8 +95,8 @@ def compile_revisions(snapshot, archive, selection, assets, output):
                     raise ValueError('Source and installed Topic identities differ')
                 source = {step['question']['id']: step['question'] for step in lesson['steps'] if step['type'] == 'question'}
                 installed = source_questions(topic)
-                questions = {f'ma-question-{qid}': fill_in_variant(installed[f'ma-question-{qid}'], source[qid], assets,
-                                                                  evidence.get('choice_indices', []))
+                questions = {f'ma-question-{qid}': source_variant(installed[f'ma-question-{qid}'], source[qid], assets,
+                                                                 evidence.get('choice_indices', []))
                              for qid, evidence in selected.items()}
                 rendered = renderer.render({'id': tid, 'questions': questions})
                 bank = {'schema': 1, 'topic_id': tid, 'course_version': topic['version'],

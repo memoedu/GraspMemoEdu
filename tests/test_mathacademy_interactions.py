@@ -1,6 +1,6 @@
 import unittest
 
-from graspmemoedu.mathacademy_interactions import fill_in_variant
+from graspmemoedu.mathacademy_interactions import source_variant
 from graspmemoedu.question_types import demo_answer, deterministic_verdict, public_interaction
 
 
@@ -16,7 +16,7 @@ class MathAcademyInteractionTests(unittest.TestCase):
             {'newline': True}, {'text': 'Second: '}, {'textbox': {'type': 'number', 'answer': '-0.21'}},
         ]}}
         original = {'id': 'ma-question-42', 'source_format': 'FR', 'question': 'Calculate both values.\n\nFirst: [?]'}
-        variant = fill_in_variant(original, source, PlainAssets())
+        variant = source_variant(original, source, PlainAssets())
         spec = variant['interaction']
         self.assertEqual(spec['sections'][0]['control_ids'], [row['id'] for row in spec['controls']])
         self.assertIn('First: {{control:', spec['sections'][0]['html'])
@@ -32,8 +32,16 @@ class MathAcademyInteractionTests(unittest.TestCase):
         ]}}
         original = {'id': 'ma-question-64', 'source_format': 'SS', 'question': source['text']}
         with self.assertRaisesRegex(ValueError, 'verified answer'):
-            fill_in_variant(original, source, PlainAssets())
-        variant = fill_in_variant(original, source, PlainAssets(), [1])
+            source_variant(original, source, PlainAssets())
+        variant = source_variant(original, source, PlainAssets(), [1])
         self.assertEqual(variant['interaction']['controls'][0]['answers'], ['o1'])
         with self.assertRaisesRegex(ValueError, 'same source stem'):
-            fill_in_variant({**original, 'question': 'Choose a speed.'}, source, PlainAssets(), [1])
+            source_variant({**original, 'question': 'Choose a speed.'}, source, PlainAssets(), [1])
+
+    def test_source_multiple_choice_uses_the_verified_option(self):
+        source = {'id': 71, 'format': 'MC', 'text': 'Pick a private method.', 'choice1': 'one', 'choice2': 'two'}
+        original = {'id': 'ma-question-71', 'source_format': 'MC', 'question': source['text']}
+        variant = source_variant(original, source, PlainAssets(), [1])
+        self.assertTrue(deterministic_verdict(variant, '{"selected":"o2"}')[0])
+        self.assertFalse(deterministic_verdict(variant, '{"selected":"o1"}')[0])
+        self.assertNotIn('correct_id', public_interaction(variant))

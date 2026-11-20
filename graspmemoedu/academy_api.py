@@ -35,6 +35,40 @@ class Event(BaseModel):
     event: dict | None = None
 
 
+def uses_idea_plugin(backend):
+    if isinstance(backend, AcademyTraining):
+        return backend.provider == 'academy' or getattr(backend, 'native_ide', False)
+    return backend.course.get('source_adapter') != 'hyperskill'
+
+
+def record_idea_connection(con, learner, at):
+    con.execute('''INSERT INTO academy_idea_setup (learner, connected_at) VALUES (?,?)
+        ON CONFLICT(learner) DO UPDATE SET connected_at=excluded.connected_at
+        WHERE academy_idea_setup.connected_at IS NULL''', (learner, at))
+
+
+def offer_idea_setup(access_store, access, at, *, already_open):
+    if access['role'] != 'account':
+        return False
+    learner = access['learner_id']
+    with access_store._transaction() as con:
+        saved = con.execute('SELECT connected_at FROM academy_idea_setup WHERE learner=?', (learner,)).fetchone()
+        if saved and (saved['connected_at'] or not already_open):
+            return False
+        # Older native bank rounds also prove the plugin opened a task. The
+        # official Hyperskill relay sends "opened" before it contacts IDEA.
+        prior = already_open or con.execute('''SELECT 1 FROM training_attempts a
+            JOIN training_external_rounds r ON r.attempt=a.id WHERE a.learner=?
+            AND json_extract(r.body, '$.opened_at') IS NOT NULL
+            AND (json_type(a.snapshot, '$.academy')='object' OR json_type(r.body, '$.code_judge')='object')
+            LIMIT 1''', (learner,)).fetchone()
+        if prior:
+            record_idea_connection(con, learner, at)
+            return False
+        con.execute('INSERT INTO academy_idea_setup (learner, guided_at) VALUES (?,?)', (learner, at))
+        return True
+
+
 def register_academy_routes(app, settings, access_store, service_for, identity, public_state, Action, dependencies, clock=None):
     now = clock or (lambda: datetime.now(timezone.utc))
     with closing(access_store._connect()) as con:
@@ -42,6 +76,9 @@ def register_academy_routes(app, settings, access_store, service_for, identity, 
             digest TEXT PRIMARY KEY, identity_digest TEXT NOT NULL, preview_scope TEXT NOT NULL,
             learner TEXT NOT NULL, topic TEXT NOT NULL, version TEXT NOT NULL,
             step TEXT NOT NULL, round TEXT NOT NULL, expires TEXT NOT NULL, claimed INTEGER NOT NULL DEFAULT 0)''')
+        con.execute('''CREATE TABLE IF NOT EXISTS academy_idea_setup (
+            learner TEXT PRIMARY KEY REFERENCES access_principals(learner_id),
+            guided_at TEXT, connected_at TEXT)''')
         con.commit()
 
     def require_service(backend):
@@ -90,13 +127,19 @@ def register_academy_routes(app, settings, access_store, service_for, identity, 
         return token
 
     @app.post('/api/academy/training/launch')
-    def training_launch(payload: AttemptAction, request: Request):
+    def training_launch(payload: AttemptAction, request: Request, guide: bool = False):
         access, training = app.state.training_attempt_context(request, payload.attempt_id, 'submit_answer')
         backend = external_training(training, payload.attempt_id)
-        token = grant(request, access, permission_id(backend.bank_id), backend.launch())
-        return {**({'ticket': token} if backend.provider == 'hyperskill' and not getattr(backend, 'native_ide', False)
-                   else {'url': 'graspmemoedu://academy/open?ticket=' + token}),
-                'state': app.state.training_public_state(request, access, training, payload.attempt_id)}
+        run = backend.launch()
+        state = app.state.training_public_state(request, access, training, payload.attempt_id)
+        native = uses_idea_plugin(backend)
+        binding = state.get('academy') or (state.get('hyperskill') or {}).get('local_ide') or {}
+        if guide and native and offer_idea_setup(access_store, access, now().isoformat(),
+                                                 already_open=bool(binding.get('opened'))):
+            return {'setup_required': True, 'state': state}
+        token = grant(request, access, permission_id(backend.bank_id), run)
+        return {**({'url': 'graspmemoedu://academy/open?ticket=' + token} if native else {'ticket': token}),
+                'state': state}
 
     class TrainingFinish(AttemptAction):
         rating: int | None = Field(default=None, strict=True, ge=1, le=4)
@@ -108,26 +151,22 @@ def register_academy_routes(app, settings, access_store, service_for, identity, 
         return app.state.training_public_state(request, access, training, payload.attempt_id)
 
     @app.post('/api/academy/launch')
-    def launch(payload: Action, request: Request):
+    def launch(payload: Action, request: Request, guide: bool = False):
         access, backend = identity(request, 'submit_answer')
         require_service(backend)
         dependencies.require(access, backend.topic_id)
         run = backend.launch(payload.model_dump())
-        token = secrets.token_urlsafe(32)
-        digest = hashlib.sha256(token.encode()).hexdigest()
-        identity_token = request.headers.get('x-learning-identity')
-        with closing(access_store._connect()) as con:
-            con.execute('DELETE FROM academy_capabilities WHERE expires<?', (now().isoformat(),))
-            con.execute('INSERT INTO academy_capabilities VALUES (?,?,?,?,?,?,?,?,?,0)',
-                        (digest, credential_digest('identity', identity_token), credential_digest('preview', identity_token),
-                         access['learner_id'], backend.topic_id, run['version'], run['step_id'], run['round_id'],
-                         (now() + timedelta(minutes=10)).isoformat()))
-            con.commit()
         result = {'state': public_state(backend.state(), access, backend)}
-        if backend.course.get('source_adapter') == 'hyperskill':
-            result['ticket'] = token
-        else:
+        native = uses_idea_plugin(backend)
+        binding = (result['state'].get('current') or {}).get('academy') or {}
+        if guide and native and offer_idea_setup(access_store, access, now().isoformat(),
+                                                 already_open=bool(binding.get('opened'))):
+            return {**result, 'setup_required': True}
+        token = grant(request, access, backend.topic_id, run)
+        if native:
             result['url'] = 'graspmemoedu://academy/open?ticket=' + token
+        else:
+            result['ticket'] = token
         return result
 
     @app.post('/api/academy/claim')
@@ -153,7 +192,13 @@ def register_academy_routes(app, settings, access_store, service_for, identity, 
     def event(payload: Event, request: Request):
         row, backend = capability(request)
         if payload.kind == 'opened' and payload.event is None:
-            return backend.opened(row['round'], row['step'])
+            result = backend.opened(row['round'], row['step'])
+            if uses_idea_plugin(backend):
+                with access_store._transaction() as con:
+                    if con.execute("SELECT 1 FROM access_principals WHERE learner_id=? AND role='account'",
+                                   (row['learner'],)).fetchone():
+                        record_idea_connection(con, row['learner'], now().isoformat())
+            return result
         if payload.kind == 'check' and payload.event is not None:
             return backend.check_event(row['round'], row['step'], payload.event)
         raise DomainError('invalid_academy_event', '未知的 IDEA 回传类型。', 422)

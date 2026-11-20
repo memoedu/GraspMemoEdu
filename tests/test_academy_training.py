@@ -262,6 +262,73 @@ class NativeAcademyTests(unittest.TestCase):
             call('POST', 'access/logout', {})
             call('POST', 'academy/claim', {}, plugin, status=401)
 
+    def test_idea_setup_follows_the_account_until_plugin_opens(self):
+        self.native()
+        origin = 'https://native.test'
+        app = create_app(Settings(data_dir=self.root, public_api_origin=origin))
+        accounts = [app.state.access_store.create_account(name) for name in ('New', 'Other', 'Existing')]
+        with TestClient(app, base_url=origin) as client:
+            def post(path, body, credentials=None, status=200):
+                response = client.post('/api/' + path, json=body, headers={'origin': origin, **(credentials or {})})
+                self.assertEqual(response.status_code, status, response.text)
+                return response.json()
+
+            def sign_in(account):
+                login = post('access/login', {'invitation_code': account['invitation_code']})
+                return {'x-learning-identity': login['identity_token']}
+
+            def open_attempt(credentials, question):
+                state = post('training/open?subject_id=cs', {'request_id': str(uuid.uuid4()),
+                    'bank_id': self.course['id'], 'group_id': 'lesson', 'question_id': question}, credentials)
+                return {'attempt_id': state['attempt_id']}
+
+            def launch(credentials, attempt, guide=True):
+                return post(f'academy/training/launch?subject_id=cs&guide={int(guide)}', attempt, credentials)
+
+            def open_in_idea(response):
+                ticket = response['url'].split('ticket=')[1]
+                credentials = {'authorization': 'Bearer ' + ticket}
+                post('academy/claim', {}, credentials)
+                return credentials
+
+            credentials = sign_in(accounts[0])
+            attempt = open_attempt(credentials, self.topic['id'])
+            first = launch(credentials, attempt)
+            self.assertTrue(first['setup_required'])
+            self.assertNotIn('url', first)
+            self.assertFalse(first['state']['academy']['opened'])
+
+            post('access/logout', {}, credentials)
+            credentials = sign_in(accounts[0])
+            plugin = open_in_idea(launch(credentials, attempt))
+            with closing(app.state.access_store._connect()) as con:
+                state = con.execute('SELECT guided_at, connected_at FROM academy_idea_setup WHERE learner=?',
+                                    (accounts[0]['account']['learner_id'],)).fetchone()
+                self.assertIsNotNone(state['guided_at'])
+                self.assertIsNone(state['connected_at'])
+            post('academy/event', {'kind': 'opened'}, plugin)
+            later = launch(credentials, open_attempt(credentials, self.manual['id']))
+            self.assertIn('url', later)
+            self.assertNotIn('setup_required', later)
+            with closing(app.state.access_store._connect()) as con:
+                connected = con.execute('SELECT connected_at FROM academy_idea_setup WHERE learner=?',
+                                        (accounts[0]['account']['learner_id'],)).fetchone()
+                self.assertIsNotNone(connected['connected_at'])
+
+            other = sign_in(accounts[1])
+            self.assertTrue(launch(other, open_attempt(other, self.topic['id']))['setup_required'])
+            guest = post('access/guest', {})
+            guest_credentials = {'x-learning-identity': guest['identity_token']}
+            self.assertIn('url', launch(guest_credentials, open_attempt(guest_credentials, self.topic['id'])))
+            existing = sign_in(accounts[2])
+            existing_attempt = open_attempt(existing, self.topic['id'])
+            plugin = open_in_idea(launch(existing, existing_attempt, guide=False))
+            post('academy/event', {'kind': 'opened'}, plugin)
+            # Simulate an existing receipt recorded before the account-level table existed.
+            with app.state.access_store._transaction() as con:
+                con.execute('DELETE FROM academy_idea_setup WHERE learner=?', (accounts[2]['account']['learner_id'],))
+            self.assertIn('url', launch(existing, open_attempt(existing, self.manual['id'])))
+
     def test_partial_permissions_abort_without_publishing_native_bank(self):
         from graspmemoedu.access import AccessStore
         store = AccessStore(self.root, [{'id': t['id'], 'title': t['title']} for t in self.topics.values()])

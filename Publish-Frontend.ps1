@@ -2,12 +2,16 @@ param(
     [string]$Repository = 'memoedu/GraspMemoEdu-Pages',
     [string]$ExportDirectory = 'D:\Artifacts\GraspMemoEdu\pages-ready',
     [string]$EvidenceDirectory = 'D:\Artifacts\GraspMemoEdu\publication',
-    [string]$ExpectedParent = ''
+    [string]$ExpectedParent = '',
+    [string]$PublicationBranch = ''
 )
 $ErrorActionPreference = 'Stop'
 & python (Join-Path $PSScriptRoot 'scripts/version_web_assets.py')
 if ($LASTEXITCODE -ne 0) { throw 'Static asset version check failed. Refresh asset URLs before export and publication.' }
 if ($Repository -notmatch '^[A-Za-z0-9-]+/[A-Za-z0-9_.-]+$') { throw 'Invalid repository name.' }
+if ($PublicationBranch -and $PublicationBranch -notmatch '^(feat|fix|docs|codex)/[A-Za-z0-9][A-Za-z0-9-]*$') {
+    throw 'Invalid publication branch.'
+}
 $expected = @('.nojekyll','app.js','deployment.json','favicon.svg','index.html','portal.js','review.js','atomic.js','learning-cache.js','question-input.js','content-report.js','help-feedback.js','catalog-picker.js','portal.css','subjects.js','subjects.css','styles.css','i18n.js','reader-messages.js','portal-messages.js','static-messages.js','course-graph.js','course-graph.css')
 $files = @(Get-ChildItem -LiteralPath $ExportDirectory -File -Force -Recurse)
 $expected += @('training.js','training.css','training-messages.js','learning-ui.js')
@@ -16,7 +20,7 @@ $expected += @('review-papers.js','review-paper-messages.js')
 $expected += @('review-directory.js','task-tree.js','catalog-outline.js','content-timer.js','self-assessment.js')
 $expected += @('catalog-workspace.js')
 $expected += @('memory-chunk.js')
-$expected += @('academy-messages.js')
+$expected += @('academy-messages.js','idea-setup.js')
 $expected += @('hyperskill.js')
 $expected += @('topic-content.js','topic-content.css','topic-callouts.css')
 $expected += @('student-dashboard.js','presence.js')
@@ -80,6 +84,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Unable to inspect repository.' }
 $repo = @($existing | Where-Object nameWithOwner -EQ $Repository)
 $created = $repo.Count -eq 0
 if ($created) {
+    if ($PublicationBranch) { throw 'Create and configure Pages before preparing a publication branch.' }
     Write-Output 'Creating the authorized public frontend repository.'
     $createEndpoint = if ($owner -eq $login) { 'user/repos' } else { 'orgs/' + $owner + '/repos' }
     $info = Invoke-Api POST $createEndpoint @{name=$name;private=$false;auto_init=$true;description='GraspMemoEdu static frontend. Course data, answers and credentials remain local.'}
@@ -144,6 +149,13 @@ $verifiedExpected = $expected + @($publicationDocs | Where-Object { $priorBlobs.
 if ($verifiedTree.truncated -or @($verifiedTree.tree | Where-Object { $_.type -notin @('blob','tree') }).Count -or
     @(Compare-Object ($verifiedExpected | Sort-Object) (($verifiedTree.tree | Where-Object type -EQ 'blob').path | Sort-Object)).Count) {
     throw 'Remote publication tree failed the exact frontend allowlist.'
+}
+if ($PublicationBranch) {
+    $null = Invoke-Api POST ('repos/' + $Repository + '/git/refs') @{ref="refs/heads/$PublicationBranch";sha=$published.sha}
+    $receipt = @{repository=$Repository;branch=$PublicationBranch;commit=$published.sha;parent=$parent;status='ready_for_pull_request'}
+    $receipt | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $EvidenceDirectory 'deployment.json') -Encoding utf8
+    $receipt | ConvertTo-Json
+    return
 }
 $null = Invoke-Api PATCH ('repos/' + $Repository + '/git/refs/heads/' + $branch) @{sha=$published.sha;force=$false}
 Write-Output 'Frontend files are committed. Enabling GitHub Pages.'
