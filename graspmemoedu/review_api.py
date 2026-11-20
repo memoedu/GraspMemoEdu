@@ -10,6 +10,7 @@ from .public_limits import PublicLimitError
 from .question_types import public_interaction, display_answer, demo_answer
 from .self_assessment import enabled as self_rating_enabled, protect as protect_assessment
 from .reference_answers import reference_fields
+from .lesson_display import LessonDisplay
 
 
 def review_route_feature(path, method):
@@ -58,12 +59,13 @@ def register_review_routes(app, identity, admission_lock, limits, schedule, outs
             if not latest or latest['id'] != state['session_id']:
                 raise DomainError('feature_forbidden', '当前账号没有使用此功能的权限。', 403)
             state['answers'] = [answer for answer in state['answers'] if answer['question_id'] == state['practice']['id']]
-        module = learner.review_backend.modules[state['module_id']]
+        display = LessonDisplay(learner.data_dir, learner.course)
+        module = display.module(learner.review_backend.modules[state['module_id']])
         with closing(learner._connect()) as con:
             reasons = {row['question']: row['reason'] for row in con.execute(
                 "SELECT question,reason FROM review_submissions WHERE session=? AND learner=? AND topic=? AND status='judged'",
                 (state['session_id'], learner.learner_id, learner.topic_id))}
-        questions = {answer['question_id']: learner.review_backend.question_for_session(state, answer['question_id'])
+        questions = {answer['question_id']: display.question(learner.review_backend.question_for_session(state, answer['question_id']))
                      for answer in state['answers']}
         state['answers'] = [{**answer, 'title': questions[answer['question_id']]['title'],
                              'interaction': public_interaction(questions[answer['question_id']]),
