@@ -116,6 +116,10 @@ SQLite 事务限制已发送的在途请求数量并保持请求键去重。任�
 
 ## 发布、历史与恢复
 
+Math Academy 已安装的可训练 Topic 可以用 `python -m graspmemoedu.mathacademy_interactions` 根据原始 Topic ZIP 编译填空修订。输入包含已安装 Topic 的只读快照、原题 ID 的选择清单和源图形缓存。每道题须通过源题 ID、题干与版本绑定。原版输入框使用源包保存的答案，源下拉框使用按原选项顺序核实的索引。缺少完整分段、图形或明确作答依据时停止编译该选题。
+
+修订保留原题参考答案与解析。填空沿用协议 2 的答题空间、草稿和最终整题提交。编译输出使用下述 Topic 内题库安装入口，已呈现步骤和已开始的复习继续读取原题型。
+
 先备份正式站点，再经 SSH 将已验收的私有 `bank.json` 交给 `python -m graspmemoedu.question_bank --course <正式TopicJSON> --bank <题库JSON> --data-dir /var/lib/graspmemoedu`。无网页安装或改题接口。
 
 题库保存在 `question-banks/<topic_id>/<sha256>.json`，`active.json` 原子切换当前版本。已存版本不覆盖、不删除。原课程 JSON 及其 version 不修改，也不为转换重置或迁移学习记录。
