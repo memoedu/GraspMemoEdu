@@ -42,7 +42,9 @@ Windows 安装器只登记当前用户的 `graspmemoedu` 协议，直接交给�
 
 安装器会将标记为 `placement: question_bank` 的 Academy 内容机械转换为 `training-banks/<id>.json`。已有的投影式题库用 `python -m graspmemoedu.academy_training_import --data-dir <data> --course-id <id>` 迁移。该操作先备份数据库，保留原 Topic、版本与历史证据，原样复制已有 FSRS Card 和到期时间，并接续未结束的 IDEA 轮次及其授权。旧 Topic 地址跳转到题库，旧写入入口关闭，复习目录只使用题库排程，避免双份卡片。重复迁移不重评分。权限只有在原题目全部已授权时才映射到整个题库；遇到部分授权即停止，不扩大访问范围。测试材料在题库公开前继承测试标记。
 
-插件源代码位于 `idea-plugin`。`Build.ps1` 使用当前安装的 IDEA 262 和 Academy 2026.9 SDK 编译，依赖目标机已有的 Academy 插件；不复制其源码或重新打包其依赖。将生成的 `GraspMemoEduAcademy` 安装到 IDEA 插件目录，并在 IDEA config 目录放置 `graspmemoedu-academy.json`，指定 `api_origin`、`manifest`、`data_dir`。
+插件源代码位于 `idea-plugin`。公开安装包、校验文件与配置样例在 [GraspMemoEdu-IDEA](https://github.com/memoedu/GraspMemoEdu-IDEA)。v0.1.4 使用 IDEA 2026.2.2（262）和 JetBrains Academy 2026.10 构建，需要目标机预先安装兼容的 Academy 插件。根据所用版本的 Release 记录选择 `Build.ps1` 的 SDK。IDEA config 目录的 `graspmemoedu-academy.json` 提供 `api_origin`、`manifest` 和 `data_dir`，题目清单随授权课程项目提供。
+
+网站的头像菜单和 IDEA 题目提供 [安装指南](https://memoedu.github.io/GraspMemoEdu-Pages/#/idea-setup)。首次引导与成功连接均按学习账号记录。回到原题后，IDEA 实际打开所绑定的 Task 才会回传成功，领取打开票据本身不算连接完成。
 
 源码参考：[JetBrains Academy 导航](https://github.com/JetBrains/educational-plugin/blob/2026.9-release/intellij-plugin/educational-core/src/com/jetbrains/edu/learning/navigation/NavigationUtils.kt)、[检查回调](https://github.com/JetBrains/educational-plugin/blob/2026.9-release/intellij-plugin/educational-core/src/com/jetbrains/edu/learning/checker/CheckListener.kt)、[IDEA 协议扩展](https://github.com/JetBrains/intellij-community/blob/master/platform/platform-impl/src/com/intellij/openapi/application/JBProtocolCommand.kt)。
 
