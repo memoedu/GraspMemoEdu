@@ -116,9 +116,13 @@ SQLite 事务限制已发送的在途请求数量并保持请求键去重。任�
 
 ## 发布、历史与恢复
 
-Math Academy 已安装的可训练 Topic 可以用 `python -m graspmemoedu.mathacademy_interactions` 根据原始 Topic ZIP 编译填空修订。输入包含已安装 Topic 的只读快照、原题 ID 的选择清单和源图形缓存。每道题须通过源题 ID、题干与版本绑定。原版输入框使用源包保存的答案，源下拉框使用按原选项顺序核实的索引。缺少完整分段、图形或明确作答依据时停止编译该选题。
+Math Academy 已安装的可训练 Topic 可以用 `python -m graspmemoedu.mathacademy_interactions` 根据原始 Topic ZIP 编译答题修订。输入包含已安装 Topic 的只读快照、原题 ID 的选择清单和源图形缓存。每道题须通过源题 ID、题干与版本绑定。原版输入框使用源包保存的答案，选择题和下拉框使用按原选项顺序核实的索引。缺少完整分段、图形或明确作答依据时停止编译该选题。
 
 修订保留原题参考答案与解析。填空沿用协议 2 的答题空间、草稿和最终整题提交。编译输出使用下述 Topic 内题库安装入口，已呈现步骤和已开始的复习继续读取原题型。
+
+对可阅读但暂不可训练的来源课文，可通过 `graspmemoedu.lesson_display_install` 为明确选定的测试课程开放试答。页面复用相同的选择和分段输入控件，当前标签页按学员、Topic 版本和题目保存草稿。试答沿用原阅读权限与内容状态，没有提交、判分或复习排程。
+
+原生 MA Lesson 的中文显示包由 [SourcePrep 翻译工作流](../../GraspMemoEduSourcePrep/MA_LESSON_LOCALIZATION.md) 准备。安装器绑定原文字段和 Topic 版本，确认原网页标签、公式、图像与控件标记后切换内容指针。Lesson、Review 及来源阅读共用译文，原题与历史题型版本继续用于判分。
 
 先备份正式站点，再经 SSH 将已验收的私有 `bank.json` 交给 `python -m graspmemoedu.question_bank --course <正式TopicJSON> --bank <题库JSON> --data-dir /var/lib/graspmemoedu`。无网页安装或改题接口。
 

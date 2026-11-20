@@ -8,6 +8,7 @@ import sqlite3
 from .question_types import public_interaction
 from .service import DomainError
 from .atomic_content import public_source_attributions
+from .lesson_display import LessonDisplay
 
 
 def trainable(topic):
@@ -43,17 +44,23 @@ def validate_source_topic(topic):
             validate_interaction(q['interaction'], q.get('question', ''))
 
 
-def reading_blocks(topic):
+def reading_blocks(topic, display=None):
     intros = {i['id']: i for i in topic['introductions']}
     modules = {m['id']: m for m in topic['modules']}
     result = []
     def question(q):
+        if display:
+            q = display.question(q)
+        interaction = public_interaction(q)
         result.append({'id': q['id'], 'title': q.get('title', ''), 'kind': 'question', 'html': q['html'],
-                       'interaction': public_interaction(q), 'actions': [],
+                       'interaction': interaction, 'actions': [],
+                       **({'preview_answer': True} if display and display.preview and interaction else {}),
                        'explanation_html': q.get('explanation_html', '')})
     for section in topic['content_order']:
         if section['kind'] == 'introduction':
             item = intros[section['id']]
+            if display:
+                item = display.introduction(item)
             fragment = '<h3>' + html.escape(item['title']) + '</h3>' + item['html']
             if result and result[-1]['kind'] == 'introduction':
                 result[-1]['html'] += fragment
@@ -103,7 +110,7 @@ class SourceReader:
         return {'topic_id': self.topic_id, 'title': self.course['title'], 'course_version': self.course['version'],
                 'learner_id': self.learner_id,
                 'status': 'read_only', 'read_only': True, 'availability': deepcopy(self.course['availability']),
-                'blocks': reading_blocks(self.course), 'math_css': self.course.get('math_css', ''),
+                'blocks': reading_blocks(self.course, LessonDisplay(self.data_dir, self.course)), 'math_css': self.course.get('math_css', ''),
                 'references': deepcopy(self.course.get('external_references', [])), 'revision': 0,
                 'steps': [], 'modules': [], 'pending_submission_id': None, 'pause': None}
 

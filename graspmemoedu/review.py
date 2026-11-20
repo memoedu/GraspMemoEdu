@@ -395,7 +395,9 @@ class ReviewBackend:
         result.update(learner_id=self.key[0], topic_id=self.key[1], policy_version=state['policy']['version'])
         if state.get('question_bank_revision'):
             result['question_bank_revision'] = state['question_bank_revision']
-        question = self.question_for_session(state)
+        from .lesson_display import LessonDisplay
+        display = LessonDisplay(self.learning.data_dir, self.learning.course)
+        question = display.question(self.question_for_session(state))
         result['practice'] = {'id': question['id'], 'title': question['title'], 'html': question['html'],
                               'phase': state['phase'],
                               'content_version': state.get('question_bank_revision') or self.version,
