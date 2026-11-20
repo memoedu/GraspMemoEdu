@@ -316,6 +316,8 @@ class LearningService:
             return self._public(self._load(con))
 
     def _public(self, state):
+        from .lesson_display import LessonDisplay
+        display = LessonDisplay(self.data_dir, self.course)
         attempt = self._attempt(state)
         active = self._step(state)
         modules = []
@@ -328,13 +330,14 @@ class LearningService:
             if not last:
                 summary.update(status='locked', practice_error_count=0, practice_answered_count=0,
                                practice_target_count=LESSON_POLICY.targets[0] if self.practice_queue.supported(module) else LEGACY_LESSON_POLICY.targets[0])
-            summary.update(id=module['id'], title=module['title'], attempt_id=last['id'] if last else None)
+            summary.update(id=module['id'], title=display.module(module)['title'], attempt_id=last['id'] if last else None)
             modules.append(summary)
         steps, guidance_history = [], []
         for saved in [*state['steps'], *self._unlocked_guidance(state)]:
             step = dict(saved)
             question = self.question_for_step(saved) if saved['question_id'] else None
             if question:
+                question = display.question(question)
                 step.update(title=question['title'], html=question['html'], explanation_html=None)
                 from .topic_composition import section_for
                 module = next((m for m in self.course['modules'] if m['id'] == saved['module_id']), {})
@@ -352,6 +355,7 @@ class LearningService:
             elif saved['kind'] == 'introduction':
                 intro = (next(i for i in self.course['introductions'] if i['id'] == saved['introduction_id'])
                          if saved.get('introduction_id') else self.course['introduction'])
+                intro = display.introduction(intro)
                 step.update(title=intro.get('title', 'Introduction'), html=intro['html'], explanation_html=None)
                 for field in ('example', 'footnotes'):
                     if field in intro:
