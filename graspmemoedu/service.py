@@ -201,10 +201,30 @@ class LearningService:
 
     def _step(self, state, step_id=None):
         target = step_id or state['active_step_id']
-        try:
-            return next(s for s in state['steps'] if s['id'] == target)
-        except StopIteration:
+        step = next((s for s in state['steps'] if s['id'] == target), None)
+        if step is None and isinstance(target, str) and target.startswith('unlocked-introduction:'):
+            step = next((s for s in self._unlocked_guidance(state) if s['id'] == target), None)
+        if step is None:
             raise DomainError('locked_step', '该内容尚未解锁。', 403)
+        return step
+
+    def _guidance_ids(self, module_id):
+        return (None,) if self.course.get('introduction') else ()
+
+    def _unlocked_guidance(self, state):
+        # An answered Example can open guidance for recall without recording a read.
+        shown = {ident for step in state['steps'] if step['kind'] == 'introduction'
+                 for ident in step.get('introduction_ids', [step.get('introduction_id')])}
+        for attempt in state['attempts']:
+            if attempt['status'] != 'completed' or attempt['learning_path'] != 'direct_example':
+                continue
+            for ident in self._guidance_ids(attempt['module_id']):
+                if ident in shown:
+                    continue
+                shown.add(ident)
+                yield {'id': f"unlocked-introduction:{ident or 'legacy'}", 'kind': 'introduction',
+                       'phase': 'available', 'introduction_id': ident, 'module_id': attempt['module_id'],
+                       'attempt_id': attempt['id'], 'question_id': None, 'feedback': None, 'answer': None}
 
     def _new_attempt(self, state, index):
         module = self.course['modules'][index]
@@ -311,7 +331,7 @@ class LearningService:
             summary.update(id=module['id'], title=module['title'], attempt_id=last['id'] if last else None)
             modules.append(summary)
         steps = []
-        for saved in state['steps']:
+        for saved in [*state['steps'], *self._unlocked_guidance(state)]:
             step = dict(saved)
             question = self.question_for_step(saved) if saved['question_id'] else None
             if question:
