@@ -22,6 +22,7 @@ from .question_bank import QuestionBank
 from .topic_structure import has_atomic, sectioned_training, atomic_state
 from .course_hierarchy import pending_hierarchy, project_hierarchy, course_scope
 from .topic_runtime import is_introduction, learning_units, reread_pending
+from .topic_composition import has_embedded_practice
 
 
 class DashboardStore:
@@ -254,9 +255,10 @@ class DashboardStore:
                     half_checked=bool(state.get('skipped_modules')),
                     cooldown_until=(state.get('cooldown') or {}).get('resume_at'),
                     locked=bool(state.get('pause')))
-        if is_introduction(self.catalog.topic(topic_id)):
+        topic = self.catalog.topic(topic_id)
+        if is_introduction(topic):
             task.update(topic_kind='introduction', reread_pending=snapshot.get('reread_pending', False))
-            if self.catalog.topic(topic_id).get('practice_group'):
+            if has_embedded_practice(topic):
                 task['has_practice'] = True
         return task
 

@@ -118,6 +118,7 @@ class SharedHyperskillAnswersTests(unittest.TestCase):
 
         other = create_learning_service(revised, self.data, learner_id='new-learner')
         self.assertEqual(other.state()['steps'][0]['kind'], 'introduction')
+        self.assertTrue(other.state()['has_practice'])
         progress = next(step['practice'] for step in advance(other)['steps'] if step['active'])
         self.assertFalse(progress['ready'])
         with self.assertRaises(DomainError) as error:
