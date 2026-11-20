@@ -490,7 +490,8 @@ class LearningAcceptanceTests(unittest.TestCase):
         self.assertEqual(state["status"], "completed")
         self.assertFalse(state["introduction_read"])
         self.assertFalse(any(step["kind"] == "practice" for step in state["steps"]))
-        self.assertEqual([step["phase"] for step in state["steps"] if step["kind"] == "introduction"], ["available"])
+        self.assertEqual([step["phase"] for step in state["guidance_history"]], ["available"])
+        self.assertFalse(any(step["kind"] == "introduction" for step in state["steps"]))
         self.assertNotIn("mastery", state, "Topic must not invent an aggregate mastery")
         try:
             self.service.pause({"request_id": str(uuid.uuid4())})

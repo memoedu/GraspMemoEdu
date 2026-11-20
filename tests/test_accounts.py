@@ -356,13 +356,18 @@ class AccountAcceptanceTests(unittest.TestCase):
         submission_id = self._complete(token)
         before = self._state(token)
         previous = next(step for step in before['steps'] if step['question_id'])
+        guidance = before['guidance_history'][0]
+        self.assertTrue(guidance['unlocked'] and guidance['html'])
         self.store.set_permissions(account['account']['learner_id'], features=['learn', 'submit_answer', 'pause_topic'])
         current = self._state(token)
+        self.assertNotIn('guidance_history', current)
         self.assertEqual(len(current['steps']), 1)
         self.assertEqual(current['steps'][0]['id'], current['active_step_id'])
         self.assertNotIn(previous['id'], [step['id'] for step in current['steps']])
         select = self._payload(token, step_id=previous['id'])
         self._request('POST', '/api/select?topic_id=account-topic-a', token, select, 403, 'feature_forbidden')
+        self._request('POST', '/api/select?topic_id=account-topic-a', token,
+                      self._payload(token, step_id=guidance['id']), 403, 'feature_forbidden')
         self._request('GET', '/api/tasks/lesson:account-topic-a/answers', token, status=403, code='feature_forbidden')
         self._request('GET', '/api/submissions/' + submission_id + '?topic_id=account-topic-a', token, status=403, code='feature_forbidden')
         self.assertEqual(self._request('GET', '/api/dashboard?course_id=account-course-a', token)['history'], [])

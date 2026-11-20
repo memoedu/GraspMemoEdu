@@ -111,7 +111,7 @@ class OrderedLearningTests(unittest.TestCase):
             service.process_submission(result['submission_id'])
             service = self.service(topic)
             state = service.state()
-            guidance = [step for step in state['steps'] if step['kind'] == 'introduction']
+            guidance = state['guidance_history']
             self.assertEqual(len(guidance), index)
             intro = guidance[-1]
             self.assertEqual(intro['introduction_id'], intro_id)
@@ -121,6 +121,8 @@ class OrderedLearningTests(unittest.TestCase):
             self.assertTrue(intro['visited'] and intro['unlocked'])
             self.assertFalse(state['introduction_read'])
             self.assertEqual(active(state)['actions'], ['continue'])
+            self.assertEqual(state['steps'][-1], active(state))
+            self.assertTrue(all(step['kind'] == 'example' for step in state['steps']))
             selected = service.select({**payload(service), 'step_id': intro['id']})
             self.assertEqual(selected['current_step_id'], intro['id'])
             self.assertEqual(selected['active_step_id'], state['active_step_id'])
@@ -155,11 +157,12 @@ class OrderedLearningTests(unittest.TestCase):
         result = service.submit(payload(service, answer='correct'))
         service.process_submission(result['submission_id'])
         service.advance(payload(service))
-        self.assertEqual([s['phase'] for s in service.state()['steps'] if s['kind'] == 'introduction'], ['available'])
+        self.assertEqual([s['phase'] for s in service.state()['guidance_history']], ['available'])
         service.choose(payload(service, choice='unmastered'))
         state = service.advance(payload(service))
         self.assertEqual(active(state)['introduction_id'], 'intro-a')
         self.assertEqual([s['phase'] for s in state['steps'] if s['kind'] == 'introduction'], ['reading'])
+        self.assertNotIn('guidance_history', state)
 
     def test_late_shared_guidance_exposes_source_order_without_rewriting_progress(self):
         topic = ordered_topic()
