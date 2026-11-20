@@ -6,7 +6,7 @@ import html
 
 from .service import DomainError, LearningService, encode, now
 from .topic_runtime import is_introduction, reread_pending
-from .topic_composition import authored_sequence, completed_reference, practice_progress, section_for
+from .topic_composition import authored_sequence, completed_reference, has_embedded_practice, practice_progress, section_for
 from contextlib import closing
 
 
@@ -278,7 +278,7 @@ class OrderedLearningService(LearningService):
                       reread_pending=state.get('reread_pending', False), completed_at=state.get('completed_at'))
         if self.course.get('sections'):
             result['sections'] = self.course['sections']
-        if self.course.get('practice_group'):
+        if has_embedded_practice(self.course):
             result['has_practice'] = True
         if state.get('reread_pending') and not state.get('pause'):
             for step in result['steps']:

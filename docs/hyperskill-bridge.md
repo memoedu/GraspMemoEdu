@@ -2,7 +2,7 @@
 
 每篇 theory 对应一个统一架构的 Topic v2。译文按最外层正文标题拆成有序的多个 Introduction；首个标题前非空内容命名为“引言”，没有内容则不创建空引言。低一级标题留在所在节内。Topic 的 `modules`、`memory_chunks`、`memory_points`、`flashcards` 都为空，当前为纯引论；以后可按统一 Topic 规则在对应 Introduction 下增加范式训练或原子练习，空结构不产生 FSRS 卡。
 
-Practice 保存在原生 `TrainingCatalog` 的 `hyperskill-practice` 题库。新导入的 Topic 在读完引论后进入对应的题组，原题、作答和复习排程沿用题库记录。题组用稳定 ID 关联，增量导入导致题库版本变更时仍指向同一题组。已有验证答案的可站内判分题计入完成。缺少已验证答案和需要去 Hyperskill 作答的题可以选做。已读引论和已完成的题随现有记录继承。
+Practice 保存在原生 `TrainingCatalog` 的 `hyperskill-practice` 题库。接入 Practice 的 Topic 显示为“学习任务”，读完后进入对应的题组，原题、作答和复习排程沿用题库记录。题组用稳定 ID 关联，增量导入导致题库版本变更时仍指向同一题组。已有验证答案的可站内判分题计入完成。缺少已验证答案和需要去 Hyperskill 作答的题可以选做。已读内容和已完成的题随现有记录继承。
 
 `prepare_hyperskill.mjs` 从本地译文和已认证读取的 practice 生成确定性来源包，`prepare_hyperskill_branch.mjs` 按源目录合并完整分支。HTML 使用安全渲染器的 HTML 入口，避免 Markdown 解析改变代码里的星号和下划线。图片复用 Hyperskill→RemNote 的下载、哈希与 SVG 转 PNG 路径，优先复用本地已校验图片；原附件和来源 JSON 随包保存，网页内嵌图片。`academy_import --extend-course` 对新格式调用 `hyperskill_import`：追加新 Topic 和题组，已有问题及父子关系不能被覆盖，重复安装幂等。题库追加内容时仅迁移版本绑定，已存在的卡片、日期、作答快照和评分保持原值。
 

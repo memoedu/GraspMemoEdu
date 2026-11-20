@@ -72,6 +72,10 @@ answer and practice flow. Unmastered or incorrect Examples open their own unread
 guidance after Continue, then resume the Example explanation. Read guidance is not
 repeated for later Examples in that group. Pure Introduction Topics read their own
 guidance sections in source order. The Topic type is 引论; internal guidance is 指导.
+Ordered state and course dashboard tasks report `has_practice: true` for embedded
+bank questions and for a linked post-reading Practice group. This lets the UI
+label those tasks 学习任务 even when the underlying reading workflow uses
+`topic_kind: introduction`. Ungraded illustrations do not set this flag.
 Unread standalone guidance steps from the initial v2 release resume at the Example
 choice, retaining their original attempt/step in private `flow_history`. Answered
 work and content versions are unchanged; paused states wait for the exact-event unlock.

@@ -182,8 +182,13 @@ class TopicCompositionAPITests(unittest.TestCase):
         temp = temporary_test_directory(); self.addCleanup(temp.cleanup)
         self.root = Path(temp.name); (self.root/'training-banks').mkdir()
         bank = training_bank(); topic = composed_topic(bank)
-        for name, value in [('topic.json', topic), ('training-banks/isolated-bank.json', bank),
-            ('catalog.json', {'courses': [{'id': 'course', 'title': 'Course', 'topics': [{'id': topic['id'], 'path': 'topic.json'}]}]}),
+        reading = deepcopy(topic)
+        reading['id'] = 'reading-only'
+        del reading['bank_questions']
+        reading['content_order'] = [section for section in reading['content_order'] if section['kind'] == 'introduction']
+        for name, value in [('topic.json', topic), ('reading.json', reading), ('training-banks/isolated-bank.json', bank),
+            ('catalog.json', {'courses': [{'id': 'course', 'title': 'Course', 'topics': [
+                {'id': topic['id'], 'path': 'topic.json'}, {'id': reading['id'], 'path': 'reading.json'}]}]}),
             ('subjects.json', {'subjects': [{'id': 'math', 'course_ids': ['course']}]}),
             ('test-materials.json', {'schema': 1, 'banks': [bank['id']]})]:
             (self.root/name).write_text(json.dumps(value), encoding='utf-8')
@@ -215,7 +220,15 @@ class TopicCompositionAPITests(unittest.TestCase):
         account(is_advanced_learner=True, is_student=True, purpose='test', topic_ids=[topic['id']])
         self.call('GET', path, status=403)
         account(is_advanced_learner=True, is_student=True, purpose='test')
-        self.assertIn('steps', self.call('GET', path))
+        state = self.call('GET', path)
+        self.assertIn('steps', state)
+        self.assertTrue(state['has_practice'])
+        self.assertNotIn('has_practice', self.call('GET', '/api/state?topic_id=reading-only'))
+        dashboard = self.call('GET', '/api/dashboard?course_id=course&subject_id=math')
+        tasks = {task['topic_id']: task for task in dashboard['tasks']}
+        self.assertEqual(tasks[topic['id']]['topic_kind'], 'introduction')
+        self.assertTrue(tasks[topic['id']]['has_practice'])
+        self.assertNotIn('has_practice', tasks['reading-only'])
         admin = account(is_admin=True, purpose='test')
         self.assertTrue(self.call('GET', path)['access']['is_admin'])
         with closing(self.app.state.access_store._connect()) as con:

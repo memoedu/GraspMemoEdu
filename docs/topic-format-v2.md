@@ -8,7 +8,7 @@ Introduction 的 `children` 是普通正文，`example` 是不评分的说明性
 
 顶层节点还可为 `kind: "bank_question"`，只含稳定 `id`、空 `text` / `children`、可选 `section_id` 和 `reference`。引用必须精确指定 `bank_id`、`group_id`、`question_id`、64 位 `version`；不复制题干、解答或排程。它按作者顺序嵌入原生题库控件，复用同一来源、作答、评分及复习记录。完成该版本的题库题目后才能继续并学完 Topic；在题库先完成也可计入。只有 Topic 权限而没有对应题库权限不能通过引用访问。
 
-引论 Topic 可包含这些必做题库引用，正文仍不进入前置图谱。普通 Topic、原子训练和范式训练维持原有行为。已安装书籍只能用带来源覆盖证明的 `preserve_reading_composition` 更新：保留旧来源、题库版本、历史进度与目录，按 `reading_lineage` 携带已读字段，新加入的必做题仍须完成。
+使用阅读流程的 Topic 可包含这些必做题库引用，网站显示为“学习任务”，正文仍不进入前置图谱。已安装书籍只能用带来源覆盖证明的 `preserve_reading_composition` 更新：保留旧来源、题库版本、历史进度与目录，按 `reading_lineage` 携带已读字段，新加入的必做题仍须完成。
 
 本文件是 MathTopicPipeline、RemNote 转换流程与 GraspMemoEdu 的共用格式定义。适用于显式声明 `topic_format_version: 2` 的范式 Topic；旧 Markdown、原子训练 JSON、独立题库 JSON 继续沿用原协议。导入只解析、按字段映射、渲染与验证，不生成、改写或逐题审核教学内容。
 
@@ -22,7 +22,7 @@ Introduction 的 `children` 是普通正文，`example` 是不评分的说明性
 - 没有显式内部模块或新增阅读字段的旧范式 Topic 沿用 Example 优先流程：先显示掌握选择；已掌握直接作答，未掌握或答错后沿用“继续学习 → 对应指导 → 例题解析 → 练习”。显式 `sections`、题库引用或新增阅读字段按作者顺序推进，已读字段和原有范式评分规则继续保留。
 - 课程学习记录及上一页／下一页按 `content_order` 固定排列已开放内容：晚读的指导仍位于对应例题组之前，不按步骤创建时间移动位置。状态响应只补充章节种类与 ID，未读内容不因此解锁；保存的步骤、作答顺序和学习进度保持不变。题库原有排列不受影响。
 - 普通 Topic 保留连续 Example、Explanation、Interaction 和 Practice 规则。每个 Example 至少七道 Practice；5×3 编号仍展平显示，`source_practice` 保留原分组。
-- 引论是特殊 Topic，`modules=[]`，不含传统 Example / Practice；可包含自己的 Introduction 及题库引用。阅读字段不评分，题库引用须完成对应原生题目。“引论”是 Topic 类型，不是 Introduction 的通用名称。母节点下、子 Topic 前的 intro 导出为该母节点的独立引论；编号由上游安排，不由导入器重排其他 Topic。
+- `topic_kind: introduction` 使用阅读流程，`modules=[]`，可包含自己的 Introduction 及题库引用。阅读字段不评分，题库引用须完成对应原生题目。网站根据是否有可作答的题目显示“引论”或“学习任务”。母节点下、子 Topic 前的 intro 导出为该母节点的独立引论；编号由上游安排。
 - 引论保留在课程目录中，但不属于课程知识图谱，不接受或产生前置边。导入遇到旧图谱冲突时报错，不修改图谱、账号或学习记录。
 - 网站负责首次学习、完成记录及重读推送：完成后保留进度；已学过且教学内容版本变化时推送重读；未学过时更新首次内容；不产生定时复习或 FSRS 排期。
 

@@ -49,6 +49,10 @@ def question_references(topic):
     return topic.get('bank_questions', [])
 
 
+def has_embedded_practice(topic):
+    return bool(question_references(topic) or topic.get('practice_group'))
+
+
 def practice_progress(con, learner_id, bank, group, answer_keys, *, finished=False):
     reference = {'bank_id': bank['id'], 'group_id': group['id'], 'version': bank['version']}
     required = [q['id'] for q in group['questions'] if answer_keys.get(q['id'])]

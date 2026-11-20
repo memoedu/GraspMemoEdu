@@ -2,7 +2,7 @@
 
 本表从当前界面词库自动生成。修改以词库为准，随后重新生成并检查本表。术语约定见 [界面语言规范](ui-language.md)。
 
-共 1006 条界面文案映射（包括不同位置重复使用的文案）。花括号表示运行时填入的名称、数量或时间，不是页面上的固定文字。
+共 1027 条界面文案映射（包括不同位置重复使用的文案）。花括号表示运行时填入的名称、数量或时间，不是页面上的固定文字。
 
 不包括作者课程正文、题目、答案、解析或用户输入。首页的学科双语副标题按约定保留。
 
@@ -101,6 +101,10 @@
 
 | English | 中文 |
 |---|---|
+| Complete learning task | 完成学习任务 |
+| Back to reading | 返回阅读 |
+| Learning progress {progress}% | 学习进度 {progress}% |
+| Your reading and practice are saved. You can revisit them in your learning history. | 阅读和练习记录已保存，可通过学习记录回看。 |
 | Sources | 来源 |
 | View source | 查看来源 |
 | License | 许可 |
@@ -113,7 +117,7 @@
 | You can study again after 6 hours · {time} | 6 小时后可再次学习 · {time} |
 | Introduction | 引论 |
 | Updated introduction | 引论更新 |
-| This introduction has changed. Read the updated content; your original completion and course progress are preserved. | 引论内容已更新，请阅读本次内容。原完成记录和课程进度已保留。 |
+| The reading content has changed. Read the updated content; your original completion and course progress are preserved. | 阅读内容已更新，请阅读本次内容。原完成记录和课程进度已保留。 |
 | {progress}% read | 已阅读 {progress}% |
 | Your reading is saved. Use the learning history to revisit this introduction. | 阅读记录已保存，可通过学习记录回看引论。 |
 | The target is not yet imported or is currently unavailable | 目标尚未导入或当前不可访问 |
@@ -133,6 +137,14 @@
 | Select your answer, then submit. Ctrl + Enter to submit. | 选择答案后提交。Ctrl + Enter 提交。 |
 | Single choice | 单选 |
 | Multiple choice | 多选 |
+| Expected | 应选 |
+| Your choice | 你的选择 |
+| Multi step · {current} / {total} | 多步题 · 第 {current} / {total} 步 |
+| Step correct | 本步正确 |
+| Correct | 做对 |
+| Incorrect | 做错 |
+| Incorrect step. Remaining questions and the full solution are shown. | 本步有误，后续各问与完整解答已展开 |
+| Check this step | 检查本步 |
 | Move {side} item {number} up | 将{side}第 {number} 项上移 |
 | Move {side} item {number} down | 将{side}第 {number} 项下移 |
 | Moved to slot {number} | 已移动到位置 {number} |
@@ -703,6 +715,7 @@
 | {index}. {title} ({count} topics) | {index}. {title}（{count} 个主题） |
 | Course {progress} complete, view knowledge map | 课程完成 {progress}，查看知识图谱 |
 | Lesson | 学习任务 |
+| Teaching draft | 教研草稿 |
 | Review | 复习 |
 | Review task | 复习任务 |
 |  (Retake) | （重新学习） |
@@ -774,6 +787,14 @@
 
 | English | 中文 |
 |---|---|
+| Choose an exercise | 选择练习 |
+| Required | 必做 |
+| Optional | 选做 |
+| Required exercises {done} / {total} | 必做练习 {done} / {total} |
+| Previous exercise | 上一题 |
+| Next exercise | 下一题 |
+| Accepted on OJ | OJ 已 AC |
+| Submitted on OJ, not yet accepted | OJ 已提交，尚未 AC |
 | Finish learning | 完成学习 |
 | Question banks | 题库 |
 | Train | 训练 |

@@ -28,6 +28,13 @@ let state={learner_id:access.learner_id,access,topic_id:'isolated-topic',title:b
   introduction_read:false,steps:[introStep,example,{...second,kind:'introduction',visited:true,unlocked:true,phase:'reading',actions:['continue']}],
   modules:[{id:'module-a',title:'原题模块',status:'not_started',attempt_id:'isolated-attempt',practice_answered_count:0,practice_target_count:2}],
   math_css:bank.math_css,dependency_ready:true,pending_submission_id:null};
+const course={id:'task-labels',title:'任务名称验收',progress:25};
+const learningTask=(id, title, has_practice=false)=>({id:'lesson:'+id,topic_id:id,course_id:course.id,
+  type:'Lesson',topic_kind:'introduction',title,has_practice,status:'not_started',progress:0});
+const pure=learningTask('reading-only','纯正文主题');
+const embedded=learningTask('with-questions','嵌入题主题',true);
+const review={...embedded,id:'review:scheduled',type:'Review',due_at:'2026-10-01T00:00:00Z'};
+const history={...embedded,status:'completed',progress:100,completed_at:'2026-10-01T00:00:00Z'};
 const origin='http://127.0.0.1:18866',report={status:'pending',fixture_network:true,production_requests:0,checks:[],errors:[],requests:[]};
 const require=createRequire(path.join(os.homedir(),'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
 const {chromium}=require('playwright');
@@ -49,8 +56,13 @@ await context.route('**/*',async route=>{
     else if(endpoint==='access')data=access;
     else if(endpoint==='subjects')data={subjects:[{id:'math',name:'数学',title:'数学',available:true}]};
     else if(endpoint==='profile')data={display_name:'隔离验收',timezone:'Asia/Shanghai'};
-    else if(endpoint==='catalog')data={courses:[],selected_course_id:null};
-    else if(endpoint==='state')data=state;
+    else if(endpoint==='catalog')data={courses:[course],selected_course_id:null};
+    else if(endpoint==='dashboard')data={course,units:[],topics:[],tasks:[pure,review],history:[history]};
+    else if(endpoint==='state'){
+      const task=[pure,embedded].find(item=>item.topic_id===url.searchParams.get('topic_id'));
+      data=task ? {...state,topic_id:task.topic_id,title:task.title,topic_kind:task.topic_kind,
+        has_practice:task.has_practice,reading_status:'in_progress',reading_progress:0,steps:[introStep],modules:[]} : state;
+    }
     else if(endpoint==='select'||endpoint==='continue'){
       const body=req.postDataJSON();const pages=state.steps,index=pages.findIndex(s=>s.id===state.current_step_id);
       const id=endpoint==='select'?body.step_id:pages[index+1]?.id;
@@ -83,10 +95,24 @@ const shape=selector=>page.locator(selector).evaluate(el=>({header:el.querySelec
 try{
   await page.goto(origin+'/#/subjects/math/topic/isolated-topic',{waitUntil:'networkidle'});
   await page.locator('#stepCard .stepHeader').waitFor();const lessonIntro=await shape('#stepCard');
+  assert.equal(await page.locator('#topicTaskLabel').textContent(),'学习任务');
   assert.equal(await page.locator('#stepCard .stepCounter').textContent(),'阅读');
   await page.locator('#stepCard .primaryButton').click();await page.locator('#answerInput').waitFor({state:'attached'});
   assert.equal(await page.locator('#stepCard .questionTypeField').count(),1);
   assert.equal(await page.locator('#previousPageButton').count(),1);check('actual Lesson guidance, choice field and shared navigation');
+  await page.goto(origin+'/#/subjects/math/courses/'+course.id,{waitUntil:'networkidle'});
+  for (const [task, label] of [[pure,'引论'],[history,'学习任务'],[review,'复习任务']]) {
+    const heading=page.locator(`[data-task-id="${task.id}"] .taskHeading strong`);
+    await heading.waitFor();
+    assert.equal(await heading.textContent(),label);
+  }
+  for (const [task,label] of [[pure,'引论'],[embedded,'学习任务']]) {
+    await page.goto(origin+'/#/subjects/math/topic/'+task.topic_id,{waitUntil:'networkidle'});
+    await page.locator('#topicTaskLabel').waitFor();
+    assert.equal(await page.locator('#topicTaskLabel').textContent(),label);
+    assert.equal(await page.locator('#lessonTitle').textContent(),task.title);
+  }
+  check('course cards, learning history and reader derive task labels without modifying authored titles');
   await page.goto(origin+'/#/subjects/math/banks/'+bank.id,{waitUntil:'networkidle'});
   const only=page.locator('[data-task-id="only"]');await only.waitFor();
   assert.equal(await only.locator('.taskHeading strong').textContent(),'引论');
