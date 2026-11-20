@@ -312,6 +312,7 @@ def create_app(settings: Settings | None = None, service: LearningService | None
             return state
         action_feature = {'mastered': 'learn', 'unmastered': 'learn', 'continue': 'learn', 'submit': 'submit_answer'}
         if 'review_history' not in features:
+            state.pop('guidance_history', None)
             state['steps'] = [step for step in state['steps'] if step['id'] == state['active_step_id']]
             state['current_step_id'] = state['active_step_id']
             for step in state['steps']:

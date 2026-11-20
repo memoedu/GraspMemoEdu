@@ -330,7 +330,7 @@ class LearningService:
                                practice_target_count=LESSON_POLICY.targets[0] if self.practice_queue.supported(module) else LEGACY_LESSON_POLICY.targets[0])
             summary.update(id=module['id'], title=module['title'], attempt_id=last['id'] if last else None)
             modules.append(summary)
-        steps = []
+        steps, guidance_history = [], []
         for saved in [*state['steps'], *self._unlocked_guidance(state)]:
             step = dict(saved)
             question = self.question_for_step(saved) if saved['question_id'] else None
@@ -377,13 +377,14 @@ class LearningService:
                     step['actions'] = ['submit']
                 else:
                     step['actions'] = ['continue']
-            steps.append(step)
+            (guidance_history if saved['phase'] == 'available' else steps).append(step)
         return {'topic_id': self.topic_id, 'title': self.course['title'], 'course_version': self.course['version'],
                 'math_css': self.course.get('math_css', '') + self.question_bank.css(s.get('question_bank_revision') for s in state['steps']),
                 'learner_id': self.learner_id, 'revision': state['revision'], 'status': state['status'],
                 'introduction_read': state['introduction_read'], 'active_step_id': state['active_step_id'],
                 'current_step_id': state['current_step_id'], 'attempt_id': attempt['id'], 'pause': state['pause'],
                 'pending_submission_id': state['pending_submission_id'], 'modules': modules, 'steps': steps,
+                **({'guidance_history': guidance_history} if guidance_history else {}),
                 'skipped_modules': list(state.get('skipped_modules', {}).values()),
                 'cooldown_until': (state.get('cooldown') or {}).get('resume_at')}
 
