@@ -155,6 +155,34 @@ class MathAcademyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_interaction(spec)
 
+    def test_grouped_guidance_uses_the_existing_translation_for_each_section(self):
+        from graspmemoedu.lesson_display import DIRECTORY, display_key
+
+        topic = ordered_topic()
+        topic.update(id='ma-topic-682', source_adapter='mathacademy')
+        intro = topic['introductions'][0]
+        extra = {'id': 'next-guidance', 'title': 'Next & details', 'html': '<p>Second explanation.</p>'}
+        topic['introductions'].insert(1, extra)
+        topic['content_order'].insert(1, {'kind': 'introduction', 'id': extra['id']})
+        directory = self.data / DIRECTORY
+        directory.mkdir(parents=True)
+        (directory / (topic['id'] + '.json')).write_text(json.dumps({
+            'schema': 1, 'topic_id': topic['id'], 'version': topic['version'],
+            'values': {display_key('html', intro['html']): '<p>第一段指导。</p>',
+                       display_key('title', extra['title']): '下一节 & 细节',
+                       display_key('html', extra['html']): '<p>第二段指导。</p>'},
+        }), encoding='utf-8')
+
+        service = create_learning_service(topic, self.data, DeterministicJudge())
+        service.choose(payload(service, choice='unmastered'))
+        service.advance(payload(service))
+        guidance = active(service.state())
+        self.assertEqual(guidance['introduction_ids'], [intro['id'], extra['id']])
+        self.assertIn('<p>第一段指导。</p>', guidance['html'])
+        self.assertIn('<h3>下一节 &amp; 细节</h3><p>第二段指导。</p>', guidance['html'])
+        self.assertNotIn(extra['html'], guidance['html'])
+        self.assertEqual(service.course['introductions'][1], extra)
+
     def test_trailing_guidance_survives_mastered_path_refresh_and_replay(self):
         topic = ordered_topic()
         topic['introductions'].append({'id': 'tail', 'title': 'Final proof', 'html': '<p>Proof</p>'})

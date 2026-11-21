@@ -5,6 +5,7 @@ import uuid
 import html
 
 from .service import DomainError, LearningService, encode, now
+from .lesson_display import LessonDisplay
 from .topic_runtime import is_introduction, reread_pending
 from .topic_composition import authored_sequence, completed_reference, has_embedded_practice, practice_progress, section_for
 from contextlib import closing
@@ -251,6 +252,7 @@ class OrderedLearningService(LearningService):
     def _public(self, state):
         result = super()._public(state)
         intros = {i['id']: i for i in self.course['introductions']}
+        display = LessonDisplay(self.data_dir, self.course)
         bank_questions = {q['id']: q for q in self.course.get('bank_questions', [])}
         for step in result['steps']:
             group = step.get('introduction_ids', [])
@@ -269,7 +271,9 @@ class OrderedLearningService(LearningService):
                 if not practice['ready']:
                     step['actions'] = []
             if len(group) > 1:
-                step['html'] = ''.join('<section><h3>' + html.escape(intros[i]['title']) + '</h3>' + intros[i]['html'] + '</section>' for i in group)
+                sections = (display.introduction(intros[i]) for i in group)
+                step['html'] = ''.join('<section><h3>' + html.escape(section['title']) + '</h3>' + section['html'] + '</section>'
+                                       for section in sections)
                 step['introduction_ids'] = group
         result.update(topic_kind=self.course['topic_kind'], topic_format_version=2,
                       content_order=[{'kind': section['kind'], 'id': section['id']}
