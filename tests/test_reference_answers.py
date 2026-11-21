@@ -68,6 +68,21 @@ class ReferenceAnswerTests(unittest.TestCase):
         fields = reference_fields(q, True)
         self.assertEqual(fields['reference_answer_html'], q['interaction']['options'][0]['html'])
 
+    def test_preview_of_ungradable_choice_keeps_content_without_reference(self):
+        from graspmemoedu.materials import topic_blocks
+
+        question = {'id': 'example-1', 'title': 'Choose', 'html': '<p>Choose a shape.</p>',
+                    'explanation_html': '<p>Look at the sides.</p>', 'interaction': {
+                        'version': 2, 'type': 'choice', 'grading': 'unavailable',
+                        'options': [{'id': 'a', 'text': 'Square'}, {'id': 'b', 'text': 'Triangle'}]}}
+        topic = {'topic_format_version': 2, 'introductions': [], 'content_order': [],
+                 'modules': [{'id': 'module-1', 'example': question, 'practices': []}]}
+        stem, explanation = topic_blocks(topic)
+        self.assertEqual(stem['interaction']['options'], question['interaction']['options'])
+        self.assertEqual(explanation['html'], question['explanation_html'])
+        self.assertNotIn('reference_answer', explanation)
+        self.assertNotIn('choice_feedback', explanation)
+
     def test_fill_blank_reference_latex_uses_existing_offline_renderer(self):
         q = self.questions()['blank']; q['interaction']['grading'] = 'semantic'
         q['interaction']['blanks'][0]['answers'] = ['$\\frac{1}{2}$']
