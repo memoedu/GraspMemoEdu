@@ -46,6 +46,8 @@ Windows 安装器只登记当前用户的 `graspmemoedu` 协议，直接交给�
 
 计算机科学的指南包含 [IntelliJ IDEA 安装小节](https://memoedu.github.io/GraspMemoEdu-Pages/#/subjects/cs/guide?section=idea-setup)，IDEA 题目也链接到该小节。首次引导与成功连接均按学习账号记录。回到原题后，IDEA 实际打开所绑定的 Task 才会回传成功，领取打开票据本身不算连接完成。
 
+安装成功后，将可复用的解决办法及提示词改进作为「输入建议」。排查后仍然无法继续时，用「问题反馈」说明故障步骤、现象及尝试过的办法。优先用 GitHub CLI 或 API 在插件发布仓库或对应网站源码仓库检索同类 Issue、PR，再提交脱敏 Issue 或经过验证的 PR。站内两个入口复用学员的答疑主对话，使用现有归属和消息发送权限，分类写在新消息开头。
+
 源码参考：[JetBrains Academy 导航](https://github.com/JetBrains/educational-plugin/blob/2026.9-release/intellij-plugin/educational-core/src/com/jetbrains/edu/learning/navigation/NavigationUtils.kt)、[检查回调](https://github.com/JetBrains/educational-plugin/blob/2026.9-release/intellij-plugin/educational-core/src/com/jetbrains/edu/learning/checker/CheckListener.kt)、[IDEA 协议扩展](https://github.com/JetBrains/intellij-community/blob/master/platform/platform-impl/src/com/intellij/openapi/application/JBProtocolCommand.kt)。
 
 ## 验证
