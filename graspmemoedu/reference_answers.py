@@ -46,7 +46,7 @@ def _render(text):
 
 def reference_fields(question, visible=False, *, answer=None):
     spec = question.get('interaction') or {}
-    if not visible or spec.get('type', 'text') == 'text':
+    if not visible or spec.get('type', 'text') == 'text' or spec.get('grading') == 'unavailable':
         return {}
     submitted = answer
     answer = display_answer(question, demo_answer(question))
