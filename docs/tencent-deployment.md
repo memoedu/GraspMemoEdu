@@ -22,7 +22,7 @@ The frontend upgrades previous browser-storage keys on the same origin, preservi
 
 Guarded academy releases allow up to 600 seconds for a cold backend to return HTTP 200 while systemd reports an active or activating service; a stopped or failed service still fails immediately. A large catalog can outlast the former 60-second window. Backup creation and restore verification may also exceed ten minutes: retain release output on the server, and inspect the existing stage marker, active catalog and production receipt before retrying after an SSH timeout. Do not skip backup or health verification.
 
-SSH uses the existing `ubuntu` account and its existing key. Do not copy credentials into documentation or Git.
+Members of `memoedu/developers` connect with their personal SSH identities using the `memoedu-tencent` alias. The team guide provides the verified host key, enrollment and privilege check. The existing `ubuntu` identity is the operator's recovery account. [Team access](https://github.com/memoedu/developer-governance/blob/main/team-access/README.md)
 
 ```sh
 sudo systemctl status graspmemoedu nginx

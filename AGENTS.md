@@ -2,7 +2,7 @@
 
 - 代码提交、PR 合并、同步与共享边界遵守 [CONTRIBUTING.md](CONTRIBUTING.md)。历史任务授权、私人账号及生产数据权限不随源码共享转移给其他成员或 Agent。
 
-- 任何网站题库导入、修复或更新均从 `D:/Projects/GraspMemoEduSourcePrep/bank_import.py` 和该仓库的 `BANK_IMPORT_WORKFLOW.md` 开始；跨 Thread 使用 `graspmemoedu-bank-import` Skill。来源差异接入适配器，不按科目、题型或 Thread 复制完整流程。`docs/question-bank-workflow.md` 仅属于 Topic 内部题型修订。
+- 网站题库导入、修复或更新从 [准备仓](https://github.com/memoedu/GraspMemoEduSourcePrep) 的 `bank_import.py` 和 `BANK_IMPORT_WORKFLOW.md` 开始。新电脑可运行 `gh repo clone memoedu/GraspMemoEduSourcePrep`，从任意检出目录读取 [题库 Skill](https://github.com/memoedu/GraspMemoEduSourcePrep/blob/main/skills/graspmemoedu-bank-import/SKILL.md)。来源差异接入适配器；`docs/question-bank-workflow.md` 用于 Topic 内部题型修订。服务器登录和可信指纹见[团队维护入口](https://github.com/memoedu/developer-governance/blob/main/team-access/README.md)。
 
 - 腾讯云发布用服务器 `/usr/local/lib/tencent-cloud-maintenance/host.py run-stage --path <本次暂存目录> -- <发布及验证命令>` 包裹，成功即清理暂存；异常无占用残留由服务器每 15 分钟回收，闲置保留 24 小时。正式数据、运行目录及公开资产不属于暂存。服务器每类备份只保留最近两份，本机转存并校验后精确删除远端；本机离线允许淘汰未转存旧副本。维护源码位于 `D:/Projects/DeveloperGovernance/server-maintenance`，不得恢复旧的多份同机保留策略。
 

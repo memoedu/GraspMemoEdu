@@ -1,6 +1,6 @@
 # 协作开发
 
-本项目由 `memoedu/developers` 协作维护，成员拥有仓库 Admin 权限。每人和各自 Agent 使用本人的 GitHub 身份；仓库权限不包含服务器、云账号、私人知识库或生产数据权限。
+本项目由 `memoedu/developers` 协作维护。成员及其 Agent 使用本人的 GitHub 身份管理组织仓库，并以个人 SSH 账号和 sudo 权限维护团队腾讯云服务器。主机指纹、首次登录与退组回收见[团队接入说明](https://github.com/memoedu/developer-governance/blob/main/team-access/README.md)。其他云账户和私人知识库沿用各自的授权。
 
 ## 开发与合并
 
