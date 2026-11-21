@@ -82,8 +82,13 @@ class MathAcademyTests(unittest.TestCase):
         self.assertIsNone(catalog.course_context('ma-topic-2')['id'])
         self.assertEqual(GraphStore(settings, catalog).dependencies()['ma-topic-2'], ['ma-topic-1'])
         reader = create_learning_service(catalog.topic('ma-topic-2'), self.data)
-        self.assertTrue(reader.state()['read_only'])
-        self.assertNotIn('PRIVATE-CANDIDATE', json.dumps(reader.state()))
+        state = reader.state()
+        self.assertTrue(state['read_only'])
+        practice = next(row for row in state['blocks'] if row['id'] == 'ma-question-302')
+        self.assertTrue(practice['preview_answer'])
+        self.assertEqual(practice['interaction']['type'], 'composite')
+        self.assertEqual(practice['actions'], [])
+        self.assertNotIn('PRIVATE-CANDIDATE', json.dumps(state))
         with closing(sqlite3.connect(self.data / 'learning.sqlite3')) as con:
             self.assertEqual(con.execute('SELECT COUNT(*) FROM topics').fetchone()[0], 0)
         result = backup_site(settings, self.root / 'backup.zip')
@@ -91,6 +96,8 @@ class MathAcademyTests(unittest.TestCase):
         restored = Catalog.load(Settings(data_dir=self.root / 'restored'))
         self.assertEqual(restored.topics, catalog.topics)
         self.assertEqual(restored.topic_courses, catalog.topic_courses)
+        restored_state = create_learning_service(restored.topic('ma-topic-2'), self.root / 'restored').state()
+        self.assertTrue(next(row for row in restored_state['blocks'] if row['id'] == practice['id'])['preview_answer'])
 
     def test_reader_and_catalog_enforce_test_purpose_and_qualification(self):
         self.prepared(); install(self.package, self.data)
@@ -118,6 +125,22 @@ class MathAcademyTests(unittest.TestCase):
                     self.assertEqual(dashboard.status_code, 200, dashboard.text[:300])
                     self.assertEqual(dashboard.json()['tasks'], [])
                     self.assertEqual({t['status'] for t in dashboard.json()['topics']}, {'read_only'})
+
+    def test_later_import_keeps_earlier_previews_when_adding_shared_topics(self):
+        from graspmemoedu.lesson_display import DIRECTORY
+
+        first = self.root / 'first-package'
+        prepare(self.index, self.index.scope([10]), self.cache, first)
+        install(first, self.data)
+        path = Settings.load(self.data).content_dir / DIRECTORY / 'preview.json'
+        before = json.loads(path.read_bytes())['topics']
+        self.assertEqual(set(before), {'ma-topic-1', 'ma-topic-2'})
+        self.prepared()
+        install(self.package, self.data)
+        path = Settings.load(self.data).content_dir / DIRECTORY / 'preview.json'
+        after = json.loads(path.read_bytes())['topics']
+        self.assertEqual(set(after), {*before, 'ma-topic-3'})
+        self.assertEqual({tid: after[tid] for tid in before}, before)
 
     def test_composite_submission_requires_all_ten_sections_and_hides_keys(self):
         spec = composite(); validate_interaction(spec)
