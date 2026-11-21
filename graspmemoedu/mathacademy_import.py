@@ -254,6 +254,61 @@ class Assets:
         return {'_render': self.text(source, gaps)}
 
 
+def captured_sections(parts, declared, selects):
+    """Recover sparse captures using the original controls' zero-based section indices."""
+    anchors = {}
+    for position, part in enumerate(parts):
+        indices = {control['sectionIndex'] for segment in part for key in ('textbox', 'select')
+                   if isinstance(control := segment.get(key), dict) and type(control.get('sectionIndex')) is int}
+        if len(indices) > 1:
+            raise ValueError('One captured body belongs to multiple source sections')
+        if indices:
+            anchors[position] = indices.pop()
+    known = [c['sectionIndex'] for c in selects if type(c.get('sectionIndex')) is int]
+    count = declared or max(len(parts), max([*known, *anchors.values()], default=-1) + 1)
+    if not 1 <= count <= 64 or any(not 0 <= i < count for i in [*known, *anchors.values()]):
+        raise ValueError('Source section index is out of bounds')
+    if len(parts) == 1 and not anchors:
+        anchors[0] = 0  # The original legacy body without section evidence is the first part.
+    boundaries = [(-1, -1), *anchors.items(), (len(parts), count)]
+    slots = [None] * count
+    for (left, old), (right, new) in zip(boundaries, boundaries[1:]):
+        pending = right - left - 1
+        if new <= old or (pending and pending != new - old - 1):
+            raise ValueError('Source section boundaries cannot be placed unambiguously')
+        for position in range(left + 1, right):
+            slots[old + position - left] = parts[position] or None
+        if right < len(parts):
+            slots[new] = parts[right] or None
+    return slots
+
+
+def answer_sections(question):
+    """Read explicit section bodies and divider-based bodies from the same source."""
+    fmt = question['format']
+    data = question.get('freeResponse' if fmt == 'FR' else 'body')
+    segments = data.get('segments') if isinstance(data, dict) else None
+    if segments is None and fmt == 'FR':
+        segments = template_segments(question.get('freeAnswerChoice', ''))
+    declared = question.get('sections') or []
+    divided = [[]]
+    for segment in segments or []:
+        if segment.get('sectionDivider'):
+            divided.append([])
+        else:
+            divided[-1].append(segment)
+    multipart = fmt in ('PR', 'DS') or bool(declared) or len(divided) > 1
+    captured = captured_sections(divided, len(declared), question.get('selects') or []) if multipart else [segments]
+    bodies = []
+    for index, observed in enumerate(captured):
+        part = declared[index] if declared else {}
+        body = (part.get('body') or {}).get('segments', part.get('segments'))
+        if body and observed and teaching(body) != teaching(observed):
+            raise ValueError('Source section bodies conflict')
+        bodies.append(body or observed or None)
+    return bodies
+
+
 def controls(question, assets, gaps):
     fmt, qid = question.get('format'), question['id']
     if fmt is None:
@@ -267,24 +322,7 @@ def controls(question, assets, gaps):
         return {'version': 2, 'type': 'choice', 'grading': 'unavailable', 'shuffle': False, 'options': options}
     if fmt not in ('FR', 'SS', 'PR', 'DS', 'CO'):
         raise ValueError('Unsupported source question format: ' + str(fmt))
-    data = question.get('freeResponse' if fmt == 'FR' else 'body') or {}
-    segments = data.get('segments')
-    if segments is None and fmt == 'FR':
-        segments = template_segments(question.get('freeAnswerChoice', ''))
-    if not segments:
-        gaps.append({'code': 'interaction_missing', 'question': qid}); return None
-    section_count = len(question.get('sections') or []) if fmt in ('PR', 'DS') else 1
-    divided = [[]]
-    for segment in segments:
-        if segment.get('sectionDivider'):
-            divided.append([])
-        else:
-            divided[-1].append(segment)
-    if len(divided) > 1:
-        if section_count not in (0, len(divided)):
-            raise ValueError('Source section boundaries conflict')
-        section_count = len(divided)
-    section_count = max(1, section_count)
+    bodies = answer_sections(question)
     rows, sections, identities = [], [], {}
     def register(control, section, position, kind):
         identity = (kind, control.get('id'), control.get('index'), section)
@@ -304,13 +342,7 @@ def controls(question, assets, gaps):
             row['context'] = control['context']
         rows.append(row); identities[identity] = cid
         return cid
-    for section in range(section_count):
-        declared = (question.get('sections') or [{}] * section_count)[section]
-        body = (declared.get('body') or {}).get('segments', declared.get('segments'))
-        if body is None and len(divided) > 1:
-            body = divided[section]
-        if body is None and section == 0:
-            body = segments
+    for section, body in enumerate(bodies):
         parts, ids, floating = [], [], []
         for position, segment in enumerate(body or []):
             if 'select' in segment or 'textbox' in segment:
@@ -337,7 +369,7 @@ def controls(question, assets, gaps):
         # Missing later bodies retain the original controls and section identity.
         if body is None:
             gaps.append({'code': 'section_missing', 'question': qid, 'section': section})
-            for position, control in enumerate(question.get('selects', [])):
+            for position, control in enumerate(question.get('selects') or []):
                 if control.get('sectionIndex') == section and control.get('options'):
                     ids.append(register(control, section, position, 'select'))
         text = ''.join(parts) + ''.join('\n\n{{control:' + cid + '}}' for cid in floating)
@@ -514,7 +546,8 @@ def prepare(index, scope, cache, output, *, fail_at=None):
     assets = Assets(cache / 'graphics', graphics)
     # Code changes invalidate derived caches, never private input snapshots.
     root = Path(__file__).resolve().parents[1]
-    conversion = '\n'.join(inspect.getsource(value) for value in (teaching, source_fingerprint, Assets, controls, template_segments, adapt, question_model))
+    conversion = '\n'.join(inspect.getsource(value) for value in (
+        teaching, source_fingerprint, Assets, controls, answer_sections, captured_sections, template_segments, adapt, question_model))
     config_hash = digest((repr((ADAPTER_VERSION, sorted(SOURCE_FIELDS), GAP_LABELS)) + conversion).encode()
                          + (root / 'scripts/render_mathacademy.mjs').read_bytes())
     renderer = Renderer(); reused = 0
@@ -673,6 +706,18 @@ def install(package, data_dir, *, fail_at=None):
                         target.parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(p, target)
         staged = Settings(data_dir=data_dir, catalog_path=batch / 'catalog.json'); staged.content_dir = batch
         catalog = Catalog.load(staged); subjects = Subjects(staged, catalog)
+        from .lesson_display import DIRECTORY, read_display
+        preview = batch / DIRECTORY / 'preview.json'
+        inherited = read_display(old_root / DIRECTORY / 'preview.json').get('topics', {})
+        formats = {tid: catalog.topics[tid]['version'] for tid in added
+                   if catalog.topics[tid].get('source_adapter') == 'mathacademy'
+                   and not catalog.topics[tid]['availability']['trainable']
+                   and any(q.get('interaction') for q in (
+                       *catalog.topics[tid]['unassigned_questions'],
+                       *(q for m in catalog.topics[tid]['modules'] for q in m['practices'])))}
+        if formats:
+            preview.parent.mkdir(parents=True, exist_ok=True)
+            preview.write_bytes(encoded({'schema': 1, 'topics': inherited | formats}))
         GraphStore(staged, catalog, subjects).all()
         from .test_materials import TestMaterials
         test = TestMaterials(data_dir, catalog)

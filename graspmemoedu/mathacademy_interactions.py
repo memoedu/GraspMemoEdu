@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 from zipfile import ZipFile
 
-from .mathacademy_import import Assets, Renderer, controls, question_model, file_hash
+from .mathacademy_import import Assets, Renderer, answer_sections, controls, question_model, file_hash
 from .question_bank import digest, source_questions, validate_bank
 from .topic_install import encoded
 
@@ -56,11 +56,10 @@ def source_variant(topic_question, source, assets, choice_indices=()):
 
 def exact_fill_in(spec, source, choice_indices):
     qid = source['id']
-    field = {'FR': 'freeResponse', 'SS': 'body'}.get(source['format'])
-    segments = (source.get(field) or {}).get('segments') if field else None
-    if not segments:
+    if source['format'] not in ('FR', 'SS', 'PR', 'DS'):
         raise ValueError(f'Question {qid} has no confirmed fill-in segments')
-    inputs = [(key, segment[key]) for segment in segments for key in ('textbox', 'select') if key in segment]
+    inputs = [(key, segment[key]) for part in answer_sections(source) for segment in part or []
+              for key in ('textbox', 'select') if key in segment]
     if not spec or len(spec['controls']) != len(inputs) or not all(part['complete'] for part in spec['sections']):
         raise ValueError(f'Question {qid} has incomplete or ambiguous answer controls')
     indices = iter(choice_indices)

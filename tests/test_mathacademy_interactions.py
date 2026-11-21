@@ -1,6 +1,7 @@
 import unittest
 
 from graspmemoedu.mathacademy_interactions import source_variant
+from graspmemoedu.mathacademy_import import controls
 from graspmemoedu.question_types import demo_answer, deterministic_verdict, public_interaction
 
 
@@ -45,3 +46,42 @@ class MathAcademyInteractionTests(unittest.TestCase):
         self.assertTrue(deterministic_verdict(variant, '{"selected":"o2"}')[0])
         self.assertFalse(deterministic_verdict(variant, '{"selected":"o1"}')[0])
         self.assertNotIn('correct_id', public_interaction(variant))
+
+    def test_complete_section_bodies_work_without_a_top_level_body(self):
+        source = {'id': 90, 'format': 'PR', 'text': 'Work through both stages.', 'sections': [
+            {'body': {'segments': [{'text': 'First: '}, {'textbox': {'type': 'number', 'answer': '3'}}]}},
+            {'segments': [{'text': 'Then: '}, {'select': {'options': ['up', 'down'], 'sectionIndex': 1}}]},
+        ]}
+        original = {'id': 'ma-question-90', 'source_format': 'PR', 'question': source['text']}
+        variant = source_variant(original, source, PlainAssets(), [1])
+        spec = variant['interaction']
+        self.assertEqual([c['type'] for c in spec['controls']], ['text', 'select'])
+        self.assertEqual([s['control_ids'] for s in spec['sections']], [['c90s0p1'], ['c90s1p1']])
+        self.assertTrue(deterministic_verdict(variant, demo_answer(variant))[0])
+
+    def test_sparse_dividers_preserve_original_section_indices(self):
+        source = {'id': 91, 'format': 'DS', 'text': 'Check each stage.', 'sections': [{} for _ in range(5)],
+                  'body': {'segments': [
+                      {'text': 'First: '}, {'select': {'options': ['yes', 'no'], 'sectionIndex': 0}},
+                      {'sectionDivider': True},
+                      {'text': 'Fourth: '}, {'select': {'options': ['no', 'yes'], 'sectionIndex': 3}},
+                  ]}, 'selects': [{'sectionIndex': 4, 'options': ['yes', 'no']}]}
+        gaps = []
+        spec = controls(source, PlainAssets(), gaps)
+        self.assertEqual([s['complete'] for s in spec['sections']], [True, False, False, True, False])
+        self.assertEqual([g['section'] for g in gaps], [1, 2, 4])
+        self.assertEqual([s['control_ids'] for s in spec['sections']],
+                         [['c91s0p1'], [], [], ['c91s3p1'], ['c91s4p0']])
+        original = {'id': 'ma-question-91', 'source_format': 'DS', 'question': source['text']}
+        with self.assertRaisesRegex(ValueError, 'incomplete'):
+            source_variant(original, source, PlainAssets(), [0, 1, 0])
+
+    def test_dropdown_format_can_include_multiple_source_sections(self):
+        source = {'id': 93, 'format': 'SS', 'body': {'segments': [
+            {'text': 'Start: '}, {'select': {'options': ['a', 'b']}},
+            {'sectionDivider': True},
+            {'text': 'Continue: '}, {'select': {'options': ['c', 'd']}},
+        ]}}
+        spec = controls(source, PlainAssets(), [])
+        self.assertEqual([s['control_ids'] for s in spec['sections']], [['c93s0p1'], ['c93s1p1']])
+        self.assertEqual([c['type'] for c in spec['controls']], ['select', 'select'])
