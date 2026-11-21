@@ -2,7 +2,7 @@
 
 协作开发、Agent 提交与合并规则见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
-[IntelliJ IDEA 安装指南](https://memoedu.github.io/GraspMemoEdu-Pages/#/idea-setup)可从头像菜单及使用 GraspMemoEdu 插件的题目打开。账号首次点击打开此类题目时，如果还没有成功打开的记录，网站引导到指南一次。返回原题可继续尝试，插件实际打开题目后回传连接结果。插件安装包在 [GraspMemoEdu-IDEA](https://github.com/memoedu/GraspMemoEdu-IDEA) 发布，维护源码及课程配置约定见 [Academy Bridge](docs/academy-bridge.md)。
+计算机科学的指南包含 [IntelliJ IDEA 安装小节](https://memoedu.github.io/GraspMemoEdu-Pages/#/subjects/cs/guide?section=idea-setup)，使用 GraspMemoEdu 插件的题目也提供入口。账号首次点击打开此类题目时，如果还没有成功打开的记录，网站引导到该小节一次。返回原题可继续尝试，插件实际打开题目后回传连接结果。插件安装包在 [GraspMemoEdu-IDEA](https://github.com/memoedu/GraspMemoEdu-IDEA) 发布，维护源码及课程配置约定见 [Academy Bridge](docs/academy-bridge.md)。
 
 数学题库复习的同组变式由服务器按需补充：学习者未见变式为零时，每批生成两题，经一次 AI 审核及离线编译后自动入库；课程生产保持原流程。配置、运行和故障恢复见 [变式补题](docs/review-variant-production.md)。
 
