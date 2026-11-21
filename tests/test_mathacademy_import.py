@@ -126,6 +126,53 @@ class MathAcademyTests(unittest.TestCase):
                     self.assertEqual(dashboard.json()['tasks'], [])
                     self.assertEqual({t['status'] for t in dashboard.json()['topics']}, {'read_only'})
 
+    def test_material_and_help_previews_reuse_existing_guidance_translation(self):
+        from graspmemoedu.content_reports import ContentText
+        from graspmemoedu.lesson_display import DIRECTORY, display_key
+
+        self.prepared()
+        install(self.package, self.data)
+        settings = Settings.load(self.data)
+        topic = Catalog.load(settings).topics['ma-topic-2']
+        intro = topic['introductions'][0]
+        translated = '<p>学生当前看见的指导。</p>'
+        file = settings.content_dir / DIRECTORY / (topic['id'] + '.json')
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_text(json.dumps({'schema': 1, 'topic_id': topic['id'], 'version': topic['version'],
+                                    'values': {display_key('html', intro['html']): translated,
+                                               display_key('title', intro['title']): '已翻译的指导'}}),
+                        encoding='utf-8')
+        app = create_app(settings)
+        with TestClient(app, base_url='http://127.0.0.1:8767') as client:
+            headers = {'Origin': 'http://127.0.0.1:8767'}
+            headers['X-Learning-Session'] = client.get('/api/session', headers=headers).json()['session_token']
+            roles = [{'is_admin': True}, {'is_advanced_learner': True, 'is_student': True}]
+            accounts = []
+            for role in roles:
+                with app.state.access_store._transaction() as con:
+                    account = app.state.access_store._insert_account(con, 'Preview fixture', purpose='test', **role)
+                login = client.post('/api/access/login', headers=headers, json={'invitation_code': account['invitation_code']})
+                self.assertEqual(login.status_code, 200, login.text)
+                accounts.append(login.json())
+            admin = {**headers, 'X-Learning-Identity': accounts[0]['identity_token']}
+            student = {**headers, 'X-Learning-Identity': accounts[1]['identity_token']}
+            block = 'introduction:' + intro['id']
+            preview = client.get('/api/materials/content', headers=admin, params={'topic_id': topic['id'], 'subject_id': 'math'})
+            self.assertEqual(preview.status_code, 200, preview.text[:400])
+            material = next(item for item in preview.json()['blocks'] if item['id'] == block)
+            self.assertEqual((material['title'], material['html']), ('已翻译的指导', translated))
+
+            context = {'topic_id': topic['id'], 'content_block_id': block, 'content_version': topic['version']}
+            help_view = client.post('/api/help-requests/preview?subject_id=math', headers=student, json=context)
+            self.assertEqual(help_view.status_code, 200, help_view.text[:400])
+            self.assertIn('学生当前看见的指导。', help_view.json()['content_html'])
+
+            help_store = app.state.help_requests
+            legacy = {'id': 'legacy', 'learner_id': accounts[1]['access']['learner_id'], 'created_at': 'fixture',
+                      'body': json.dumps({'request': {**context, 'request_id': 'legacy', 'message': 'fixture'},
+                                          'content_text': ''.join(ContentText(intro['html']).parts)})}
+            self.assertEqual(help_store._render_record(legacy)['content_html'], intro['html'])
+
     def test_later_import_keeps_earlier_previews_when_adding_shared_topics(self):
         from graspmemoedu.lesson_display import DIRECTORY
 

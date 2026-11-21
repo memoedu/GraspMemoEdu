@@ -14,12 +14,15 @@ from .reference_answers import reference_fields
 from .topic_structure import has_atomic, sectioned_training, sections
 from .atomic_content import public_source_attributions
 from .topic_composition import question_references, section_for
+from .lesson_display import LessonDisplay
 
 
-def topic_blocks(topic, training=None):
+def topic_blocks(topic, training=None, *, display=None):
     """All authored blocks, independent of queues, mastery or spare-practice gates."""
     blocks = []
     def add(kind, item, ident=None, field='html'):
+        if display and kind == 'introduction':
+            item = display.introduction(item)
         attributions = public_source_attributions(item.get('source_attributions'))
         blocks.append({'id': ident or kind + ':' + item['id'], 'kind': kind,
                        'title': item.get('title', item.get('id', '')), 'html': item.get(field, ''),
@@ -31,6 +34,8 @@ def topic_blocks(topic, training=None):
         if section:
             blocks[-1]['section'] = section
     def question(item):
+        if display:
+            item = display.question(item)
         add('question', item)
         add('explanation', item, field='explanation_html')
         blocks[-1].update(reference_fields(item, True))
@@ -152,6 +157,7 @@ def register_material_routes(app, catalog, access_store, subjects, identity, pub
         subject_id = request.query_params.get('subject_id')
         subjects.authorize_subject(access, subject_id)
         helper = app.state.help_requests
+        display = None
         if bank_id:
             access_store.authorize(access, permission_id(bank_id))
             bank = helper.training.bank(bank_id)
@@ -173,13 +179,14 @@ def register_material_routes(app, catalog, access_store, subjects, identity, pub
             access_store.authorize(access, topic_id)
             subjects.authorize_topic(subject_id, topic_id)
             topic = catalog.topic(topic_id)
+            display = LessonDisplay(access_store.data_dir, topic)
             for item in question_references(topic):
                 access_store.authorize(access, permission_id(item['reference']['bank_id']))
             course = catalog.course_context(topic_id)
             result = {'title': topic['title'], 'course_title': course['title'], 'version': topic['version'],
                       'math_css': topic.get('math_css', '') + ''.join(helper.training.bank(bank_id).get('math_css', '')
                           for bank_id in sorted({q['reference']['bank_id'] for q in question_references(topic)})),
-                      'blocks': topic_blocks(topic, helper.training)}
+                      'blocks': topic_blocks(topic, helper.training, display=display)}
         result['version_changed'] = bool(version and version != result['version'])
         # A converted practice can be pinned to an immutable question-bank revision.
         if block and result['version_changed']:
@@ -191,8 +198,11 @@ def register_material_routes(app, catalog, access_store, subjects, identity, pub
                 if target is not None:
                     target['html'] = html
                     target['version'] = version
+                    if display and display.values and context.get('content_block_title'):
+                        target['title'] = context['content_block_title']
                     if question_id and not bank_id and target['kind'] == 'question':
-                        target['interaction'] = public_interaction(QuestionBank(catalog.topic(topic_id), access_store.data_dir).question(question_id, version))
+                        question = QuestionBank(catalog.topic(topic_id), access_store.data_dir).question(question_id, version)
+                        target['interaction'] = public_interaction(display.question(question))
                     result['math_css'] += '\n' + context.get('math_css', '')
                     result['version_changed'] = False
             except DomainError:

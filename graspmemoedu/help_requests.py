@@ -206,7 +206,7 @@ class HelpRequestStore:
             self.threads.baseline(con, request_id, body)
         return {'id': request_id, 'status': 'saved', 'created_at': created}
 
-    def _content(self, payload):
+    def _content(self, payload, *, localized=True):
         topic_id = payload['topic_id']
         block, question_id = payload['content_block_id'], payload.get('question_id')
         revision = payload['content_version']
@@ -228,6 +228,8 @@ class HelpRequestStore:
                 'math_css': bank.get('math_css', ''),
                 'content_block_type': block_type, 'content_block_title': question.get('title', question_id)}
         topic = self.catalog.topic(topic_id)
+        from .lesson_display import LessonDisplay
+        display = LessonDisplay(self.access_store.data_dir, topic) if localized else None
         bank_question = None
         if revision != topic['version']:
             # Converted questions pin an immutable bank revision rather than
@@ -248,15 +250,22 @@ class HelpRequestStore:
             question = bank_question or next((q for q in questions if q['id'] == question_id), None)
             field = {f'question:{question_id}': 'html', f'explanation:{question_id}': 'explanation_html'}.get(block)
             if question and field:
+                if display:
+                    question = display.question(question)
                 html = question[field]
                 block_title = question.get('title', question_id)
         elif block == 'introduction':
-            html = topic['introduction']['html']
-            block_title = topic['introduction'].get('title', '')
+            intro = topic['introduction']
+            if display:
+                intro = display.introduction(intro)
+            html = intro['html']
+            block_title = intro.get('title', '')
         elif block.startswith('introduction:') and topic.get('topic_format_version') == 2:
             intro = next((i for i in topic['introductions'] if 'introduction:' + i['id'] == block), None)
             if intro:
                 from .topic_composition import introduction_html
+                if display:
+                    intro = display.introduction(intro)
                 html, block_title = introduction_html(intro), intro.get('title', intro['id'])
         elif block.startswith('chunk:') and topic.get('memory_chunks'):
             chunk = next((c for c in topic['memory_chunks'] if 'chunk:' + c['id'] == block), None)
@@ -326,7 +335,7 @@ class HelpRequestStore:
             # and never substitute a changed current block for the saved text.
             fidelity = 'text_snapshot'
             try:
-                html, context = self._content(HelpRequest.model_validate(body['request']).model_dump())
+                html, context = self._content(HelpRequest.model_validate(body['request']).model_dump(), localized=False)
                 if ''.join(ContentText(html).parts) == body['content_text']:
                     body.update(content_html=html, math_css=context.get('math_css', ''))
                     fidelity = 'verified_source'
