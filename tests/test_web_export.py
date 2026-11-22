@@ -28,7 +28,7 @@ class PublicExportTests(unittest.TestCase):
                          'icon-180.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png'}
             pwa_files.update({'restore.html', 'migration-source.html', 'origin-transfer.js'})
             pwa_files.add('beginner-hints.js')
-            pwa_files.update({'calculator.js', 'calculator-panel.js', 'calculator-inputs.js', 'calculator-policy.js',
+            pwa_files.update({'question-tools.js', 'calculator.js', 'calculator-panel.js', 'calculator-inputs.js', 'calculator-policy.js',
                               'calculator-engine.js', 'calculator-worker.js', 'calculator.css'})
             self.assertTrue(pwa_files <= {p.name for p in output.iterdir()})
             self.assertEqual({p.name for p in output.iterdir()} - pwa_files - {'catalog-workspace.js', 'student-dashboard.js', 'presence.js', 'training.js', 'training.css', 'training-messages.js', 'learning-ui.js', 'review-papers.js', 'review-paper-messages.js', 'review-directory.js', 'task-tree.js', 'catalog-outline.js', 'content-timer.js', 'self-assessment.js', 'academy-messages.js', 'hyperskill.js', 'memory-chunk.js', 'point-assessment.js', 'context-library.js', 'context-library.css', 'context-library-messages.js', 'training-audio.js'},

@@ -9,7 +9,9 @@ import uvicorn
 from graspmemoedu.api import create_app
 from graspmemoedu.config import Settings
 from graspmemoedu.service import create_learning_service
+from graspmemoedu.training_content import fingerprint
 from tests.fixtures import DeterministicJudge, synthetic_course
+from tests.training_fixtures import training_bank
 
 
 def main():
@@ -44,6 +46,12 @@ def main():
     (root / 'catalog.json').write_text(json.dumps({'courses': [
         {'id': 'calculator-course', 'title': 'Calculator course', 'topics': [
             {'id': topic['id'], 'path': 'topic.json'}]}]}), encoding='utf-8')
+    bank = training_bank()
+    group = bank['groups'][1]
+    group['questions'][0]['calculate'] = {'level': 'scientific', 'enable_modules': ['graph']}
+    bank['version'] = fingerprint(bank)
+    (root / 'training-banks').mkdir()
+    (root / 'training-banks' / 'isolated-bank.json').write_text(json.dumps(bank), encoding='utf-8')
     app = create_app(Settings(data_dir=root, port=args.port), create_learning_service(topic, root, DeterministicJudge()))
     print('READY calculator fixture', flush=True)
     uvicorn.run(app, host='127.0.0.1', port=args.port, log_level='warning')

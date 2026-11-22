@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {calculate} from '../web/calculator-engine.js';
-import {permitsModule, tools} from '../web/calculator-policy.js';
+import {calculatorWorksheets, permitsModule, tools} from '../web/calculator-policy.js';
 
 const modules = tools.map(([id]) => id);
 const cas = {level: 'cas', enable_modules: modules};
@@ -10,6 +10,18 @@ const run = (module, operation, input, config = cas, options = {}) =>
   calculate({config, module, operation, input, ...options});
 const evaluate = (expression, config = basic, options) => run('expression', 'evaluate', {expression}, config, options);
 const approx = (a, b, tolerance = 1e-10) => assert.ok(Math.abs(a - b) < tolerance, `${a} != ${b}`);
+
+test('toolbar lists available worksheets without duplicating scientific constants', () => {
+  const ids = config => calculatorWorksheets(config).map(([id]) => id);
+  assert.deepEqual(ids(undefined), []);
+  assert.deepEqual(ids({level: 'none'}), []);
+  assert.deepEqual(ids(basic), ['expression']);
+  assert.deepEqual(ids({level: 'scientific', enable_modules: ['graph']}), ['expression', 'graph']);
+  assert.deepEqual(ids({level: 'scientific', disable_keys: ['evaluate']}), []);
+  assert.deepEqual(ids({level: 'advanced', enable_modules: ['modular'], disable_modules: ['matrix'],
+    disable_keys: ['describe', 'linear_regression']}), ['expression', 'graph', 'integral', 'probability', 'modular']);
+  assert.equal(ids(cas).includes('symbolic'), true);
+});
 
 test('all displayed example inputs run through their actual vendored component', async t => {
   for (const [module, , , operations] of tools) {
