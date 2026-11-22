@@ -75,6 +75,8 @@ try {
   for (const [width, direction] of [[1440, 'row'], [1120, 'column'], [768, 'column'], [414, 'column'],
                                     [375, 'column'], [320, 'column'], [1440, 'row']]) {
     await page.setViewportSize({width, height: 900});
+    await page.waitForFunction(expanded => document.getElementById('historyButton')
+      .getAttribute('aria-expanded') === expanded, String(width > 1000));
     assert.deepEqual(await sidebarOrientation('#stepCard'), {
       rightOfCard: true, leftHistory: true, direction, fits: true,
     }, String(width));

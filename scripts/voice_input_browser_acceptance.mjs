@@ -36,9 +36,9 @@ const toolbar = page.getByRole('toolbar', {name: '题目工具'});
 const mic = page.locator('#siteTools').getByRole('button', {name: '录音输入'});
 const stop = page.getByRole('button', {name: '结束录音', exact: true});
 const next = page.getByRole('button', {name: '下一页', exact: true}).last();
-const record = async field => {
+const record = async (field, control = mic) => {
   await field.focus();
-  await mic.click();
+  await control.click();
   await stop.waitFor();
   await new Promise(resolve => setTimeout(resolve, 290));
 };
@@ -73,7 +73,14 @@ try {
   await page.goto(base + '/#/subjects/math/banks/isolated-bank/group-a?question=essay');
   const answer = page.locator('#trainingAnswer');
   await answer.waitFor();
-  await record(answer);
+  await page.setViewportSize({width: 320, height: 844});
+  await record(answer, toolbar.getByRole('button', {name: '录音输入'}));
+  const voicePanel = toolbar.locator('.voiceToolPanel');
+  assert.equal(await voicePanel.evaluate(panel => {
+    const {left, right} = panel.getBoundingClientRect();
+    return left >= 0 && right <= document.documentElement.clientWidth;
+  }), true, 'Question voice controls fit a 320px viewport');
+  await page.setViewportSize({width: 390, height: 844});
   const submit = page.locator('#trainingSubmit');
   await submit.click();
   await wait(() => release);
