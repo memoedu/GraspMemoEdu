@@ -20,6 +20,11 @@ class Catalog:
         self.topic_paths = topic_paths
         self.topic_courses = {tid: frozenset(c['id'] for c in courses
                              if any(t['id'] == tid for t in c['topics'])) for tid in topics}
+        from .mathacademy_layout import ML1_COURSE, source_ordered_topic
+        self.reader_topics = {
+            tid: source_ordered_topic(topic) for tid, topic in topics.items()
+            if ML1_COURSE in self.topic_courses[tid] and topic.get('source_adapter') == 'mathacademy'
+        }
         for tid, topic in topics.items():
             scope = topic.get('prerequisite_scope_course_id')
             if scope is not None and (not isinstance(scope, str) or scope not in self.topic_courses[tid]):
@@ -208,7 +213,7 @@ class Catalog:
     def topic(self, topic_id):
         if topic_id not in self.topics:
             raise DomainError('unknown_topic', '未找到此 Topic。', 404)
-        return self.topics[topic_id]
+        return self.reader_topics.get(topic_id, self.topics[topic_id])
 
     def course(self, course_id):
         if course_id not in self.courses:

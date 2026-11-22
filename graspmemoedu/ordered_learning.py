@@ -20,7 +20,8 @@ class OrderedLearningService(LearningService):
             catalog = training_catalog if training_catalog is not None else TrainingCatalog(self.data_dir)
             self.practice_bank, self.practice_group = catalog.group(**binding)
             self.practice_keys = {q['id']: key(q) for q in self.practice_group['questions']}
-        if not is_introduction(self.course) and not authored_sequence(self.course):
+        if (not is_introduction(self.course) and not authored_sequence(self.course)
+                and not self.course.get('source_ordered_reading')):
             with self._transaction() as con:
                 state = self._load(con)
                 # The first v2 reader created mandatory standalone guidance steps.
@@ -79,7 +80,8 @@ class OrderedLearningService(LearningService):
 
     def _start_order(self, state, index):
         order = self.course['content_order']
-        if not is_introduction(self.course) and not authored_sequence(self.course) and not state.get('trailing_reading'):
+        if (not is_introduction(self.course) and not authored_sequence(self.course)
+                and not self.course.get('source_ordered_reading') and not state.get('trailing_reading')):
             if state.get('attempts'):
                 previous = self._attempt(state)
                 if previous.get('kind') == 'introduction' and previous['status'] != 'completed':
@@ -126,19 +128,21 @@ class OrderedLearningService(LearningService):
         return group or [next(s['id'] for s in reversed(earlier) if s['kind'] == 'introduction')]
 
     def _guidance_ids(self, module_id):
-        if authored_sequence(self.course):
+        if authored_sequence(self.course) or self.course.get('source_ordered_reading'):
             return ()
         order_index = next(i for i, item in enumerate(self.course['content_order'])
                            if item['kind'] == 'example' and item['id'] == module_id)
         return self._guidance_group(order_index)
 
     def _example_guidance_group(self, state):
+        if self.course.get('source_ordered_reading'):
+            return ()
         group = self._guidance_group(state['order_index'])
         return group[-1:] if authored_sequence(self.course) else group
 
     def _learn(self, state, *, open_guidance=False):
         group = self._example_guidance_group(state)
-        if open_guidance or any(i not in state['read_introductions'] for i in group):
+        if group and (open_guidance or any(i not in state['read_introductions'] for i in group)):
             introduction_id = group[0]
             prior = next((s for s in state['steps'] if s.get('introduction_id') == introduction_id), None)
             if prior:
@@ -153,6 +157,22 @@ class OrderedLearningService(LearningService):
         return [indexes[item['id']] for item in self.course['content_order'] if item['kind'] == 'example']
 
     def _next_module(self, state):
+        if self.course.get('source_ordered_reading'):
+            order = self.course['content_order']
+            current_id = self._attempt(state)['module_id']
+            index = next(i for i, item in enumerate(order) if item['id'] == current_id) + 1
+            while index < len(order) and order[index]['kind'] == 'introduction':
+                if order[index]['id'] not in state['read_introductions']:
+                    self._start_order(state, index)
+                    return
+                index += 1
+            super()._next_module(state)
+            state['reading_status'] = state['status']
+            if state['status'] == 'completed':
+                state.update(read_content_version=self.course['content_version'],
+                             trailing_reading=False, reread_pending=False)
+                state.setdefault('read_versions', {})[self.course['content_version']] = now()
+            return
         if is_introduction(self.course) or authored_sequence(self.course):
             self._start_order(state, state['order_index'] + 1)
         else:
@@ -212,6 +232,9 @@ class OrderedLearningService(LearningService):
                     self._event(con, state, 'introduction_read', introduction_id=step['introduction_id'])
                     if self._attempt(state)['module_index'] >= 0:
                         self._return_to_example(state)
+                    elif self.course.get('source_ordered_reading'):
+                        self._attempt(state).update(status='completed', completed_at=now())
+                        self._next_module(state)
                     elif is_introduction(self.course) or authored_sequence(self.course) or state.get('trailing_reading'):
                         self._attempt(state).update(status='completed', completed_at=now())
                         self._start_order(state, state['order_index'] + 1)

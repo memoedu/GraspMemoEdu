@@ -64,12 +64,14 @@ def reading_blocks(topic, display=None):
             item = intros[section['id']]
             if display:
                 item = display.introduction(item)
-            fragment = '<h3>' + html.escape(item['title']) + '</h3>' + item['html']
-            if result and result[-1]['kind'] == 'introduction':
+            standalone = topic.get('source_ordered_reading')
+            fragment = item['html'] if standalone else '<h3>' + html.escape(item['title']) + '</h3>' + item['html']
+            if not standalone and result and result[-1]['kind'] == 'introduction':
                 result[-1]['html'] += fragment
                 result[-1]['introduction_ids'].append(item['id'])
             else:
-                result.append({'id': item['id'], 'title': '', 'html': fragment, 'kind': 'introduction',
+                result.append({'id': item['id'], 'title': item['title'] if standalone else '',
+                               'html': fragment, 'kind': 'introduction',
                                'introduction_ids': [item['id']], 'actions': []})
             attributions = public_source_attributions(item.get('source_attributions'))
             if attributions:
