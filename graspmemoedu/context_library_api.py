@@ -197,6 +197,9 @@ def register_context_library_routes(app, catalog, access_store, subjects, *, act
             raise DomainError('transcription_busy', '语音转写正在处理其他录音，请稍后重试。', 429)
         try:
             result = recorded_text(access, lambda: recorded_wave(payload))
+            if payload.profile == 'answer_commands':
+                # The command interpreter takes the original ASR text, including ordinals and corrections.
+                return {'text': result['text']}
             return {'text': voice_refiner(result['text'], payload.profile)}
         finally:
             voice_slots.release()

@@ -314,6 +314,11 @@
 |---|---|
 | Autocomplete | 自动补全 |
 | Calculator | 计算器 |
+| Record | 记录 |
+| Recorded | 已记录 |
+| Undo last | 撤回末值 |
+| Next blank | 下一空 |
+| Selected blank | 已选空位 |
 | Answers | 回答 |
 | Other | 其他 |
 | Choose another topic | 重新选择主题 |

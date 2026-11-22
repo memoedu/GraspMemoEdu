@@ -129,6 +129,27 @@ class PublicAccessAcceptanceTests(unittest.TestCase):
         self.assertEqual(self._state(token)['revision'], before)
         self.assertEqual(self.judge.calls, [])
 
+    def test_numbered_commands_preserve_sparse_destinations_and_skips(self):
+        token, _ = self._guest()
+        controls = {'type': 'fields', 'fields': ['first', 'second', 'third']}
+        def commands(text):
+            result = self.client.post('/api/answer-conversion', headers=self._headers(token),
+                                      json={'text': text, 'controls': controls})
+            self.assertEqual(result.status_code, 200, result.text)
+            return result.json()['commands']
+        with patch('graspmemoedu.answer_conversion.complete') as provider:
+            self.assertEqual(commands('第三个空填 0，然后第二空填 -2.50。'), [[3, '0'], [2, '-2.50']])
+            self.assertEqual(commands('第一空先不填，第二个空填 7，第三空填 9'), [[2, '7'], [3, '9']])
+            self.assertEqual(commands('第4空填 8'), [])
+            self.assertEqual(commands('第一空填 1，第一空先不填，第二空填 负3'), [[2, '-3']])
+            provider.assert_not_called()
+            provider.return_value = '[[1,"imagined"],[3,"乙"],[2,"甲"]]'
+            self.assertEqual(commands('第三个空我写乙，第二个空是甲'), [[3, '乙'], [2, '甲']])
+            self.assertEqual(commands('第二、三个空分别是甲和乙'), [[3, '乙'], [2, '甲']])
+            self.assertEqual(commands('第一空留空，第二空写甲，第三空写乙'), [[3, '乙'], [2, '甲']])
+            provider.return_value = '```json\n[[1,null],[2,-0.50],[3,0]]\n```'
+            self.assertEqual(commands('第二空是负零点五，第三空是零'), [[2, '-0.50'], [3, '0']])
+
     def test_answer_conversion_provider_is_authenticated_bounded_and_does_not_load_keys(self):
         token, _ = self._guest()
         path = '/api/answer-conversion'
