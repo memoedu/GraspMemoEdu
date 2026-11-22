@@ -12,7 +12,7 @@
 - `graspmemoedu/judging.py`：共用现有 MathAnswerJudge 判题约定；网络判题不持有数据库写锁。
 - `graspmemoedu/review.py`：Example 卡片、到期任务、复习轮次、评分记录、参数配置和优化接口。
 
-每个 `learner_id + topic_id + module_id` 对应一张 FSRS 卡片。Practice 只是这张卡片某次复习时的抽题，不建立自己的调度卡片。课程版本不匹配时拒绝沿用旧卡，保留原数据。首次成功结算 Lesson 模块后，以该模块评分和真实完成时间调用 FSRS；后续完整复习轮次各调用一次。Topic v2 的 Introduction 阅读段不建立卡片；纯引论不安排定时复习，仅在已学过且教学内容更新时推送重读，见 [运行接口](API.md#ordered-topic-v2)。
+每个 `learner_id + topic_id + module_id` 对应一张 FSRS 卡片。Practice 和经「尝试完成」入队的例题均由这张卡片调度。课程版本不匹配时拒绝沿用旧卡，保留原数据。首次成功结算 Lesson 模块后，以该模块评分和真实完成时间调用 FSRS；后续完整复习轮次各调用一次。Topic v2 的 Introduction 阅读段不建立卡片；纯引论不安排定时复习，仅在已学过且教学内容更新时推送重读，见 [运行接口](API.md#ordered-topic-v2)。
 
 FSRS 计算与四档评分遵循上游实现。默认使用上游的目标保留度 0.9、学习步骤 1/10 分钟、重学步骤 10 分钟及间隔扰动。**不能保证与某台 Anki 的所有具体到期时间完全相同**：Anki 的牌组配置、每日切换时间、负载分配及版本也影响排程；py-fsrs 的优化实现与 Anki Rust 实现存在差异。本阶段没有复制 Anki 的整套应用调度层。
 
@@ -56,7 +56,7 @@ scheduled = reviews.record_module_result(
 - `GET /api/dashboard` 汇集当前课程已授权 Topic 的到期卡片和未完成轮次，返回 `type: "Review"` 与 `next_review_due_at`。主页到期自动查询，页面隐藏时暂停查询、恢复可见后继续。已完成轮次并入现有学习历史分页。课程完成度仍由 Lesson 决定。
 - `POST /api/review/begin` 接收 `module_id/request_id`；`GET /api/review/sessions/{id}` 读取当前轮次。前端地址为 `#/review/<topic>/<module>?session=<id>`，刷新恢复相同轮次。
 - `POST /api/review/sessions/{id}/submit`、`/continue` 对应提交与下一题；`GET /api/review/submissions/{id}` 读取判题结果。修改请求使用 revision 与 question_id 校验；所有请求带 `topic_id` 并核对身份和权限。旧 `/pause` 接口已停用，返回 403。
-- 复习页面只有当前 Practice 和本轮已答题，不提供 Example、Introduction、未来题或未作答题解析。所有用户均无主动暂停按钮；游客自愿开启体验浏览时，`GET /api/review/sessions/{id}/demo-answer` 只提供当前可提交题的标准答案，已有草稿不覆盖。
+- 复习页面只显示当前题和本轮已答题。例题入队后以普通复习题的形式出现，解析在作答判定后开放。所有用户均无主动暂停按钮；游客自愿开启体验浏览时，`GET /api/review/sessions/{id}/demo-answer` 只提供当前可提交题的标准答案，已有草稿不覆盖。
 - 保留度、优化及后台配置不开放网页接口。管理员可在“暂停管理”页解除自己负责学员的暂停，见 [管理员暂停管理](admin-pauses.md)；普通账号与游客不可使用。`review-status --learner ... --topic ...` 查看服务端复习状态；`review-unlock --learner ... --topic ... --pause-event ...` 按精确暂停事件解锁，Lesson 已完成时同样有效。
 - 本次推送指网站内到期任务；浏览器系统通知、邮件与站外消息未接入。
 
@@ -82,7 +82,7 @@ result = reviews.submission(submission["submission_id"])
 - `due()` 返回该学习者、当前 Topic 的到期 Example，按到期时间排序；返回任务类型、内容标识、时间与调度修订号。按账户的已授权 Topic 汇集这些结果即可组成网站复习队列。
 - `next_due_at()` 供后端决定下一次查询时间。SQLite 到期队列在停机后仍保留；未领取任务不会因某次轮询或服务重启丢失。它服务于网站内推送，本阶段不包含浏览器 Push、邮件或消息发送。
 - 同 Topic 同时最多进行一轮复习。开始后从可推送队列移除，刷新或重新领取同一 Example 会恢复该轮；不同请求争抢不会重复创建轮次。
-- 15 题库使用 [Practice 持久队列](practice-queue.md)：五组各随机首抽一题，首次错组补入其余两题，追加队尾且跨轮只补一次。每轮开始/继续时才取实际展示的题，余题留给后续复习；队列不足时先随机取未推送题，再按最久未推送顺序复用，同轮不重复。答题返回只包含当前 Practice 和已完成记录，不返回 Example、Introduction、未来题目或标准答案。答题成功后才提供该 Practice 的解析。升级前已经开始的轮次保持其原有冻结题序，非 15 题旧库继续原有抽题方式。
+- 15 题库使用 [Practice 持久队列](practice-queue.md)。复习独立初始化时，五组各随机首抽一题。首次错组补入其余两题，追加队尾且跨轮只补一次。每轮开始或继续时才抽取实际要显示的题，余题留给后续复习。队列不足时先随机取未推送题，再按最久未推送顺序复用，同轮不重复。升级前已开始的轮次继续使用原有题序，非 15 题旧库在例题入队后开始使用持久队列。
 - 未完成轮次的结果反馈必须由调用方调用 `advance(session_id, {request_id, expected_revision, question_id})` 推进。完成轮次的状态直接包含 `mastery` 与新的 `due_at`。
 - 重复提交不重复判题或补题。判题异常不计错，原请求可重试；启动恢复会把中断请求置为可重试。暂停或解锁后才到达的旧结果不能推进新轮次。
 

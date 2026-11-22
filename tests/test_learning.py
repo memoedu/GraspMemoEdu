@@ -72,6 +72,7 @@ class LearningAcceptanceTests(unittest.TestCase):
         if self.active(state)["kind"] == "introduction":
             state = self.advance()
         self.assertEqual(self.active(state)["kind"], "example")
+        state = self.choose("view_solution")
         self.assertIsNotNone(self.active(state)["explanation_html"])
         self.assertNotIn("mastered", self.active(state)["actions"])
         state = self.advance()
@@ -138,6 +139,9 @@ class LearningAcceptanceTests(unittest.TestCase):
         self.advance()
         self.assertTrue(self.service.state()["introduction_read"])
         self.assertEqual(self.active()["id"], example_id)
+        self.assertEqual(self.active()["actions"], ["attempt_example", "view_solution"])
+        self.assertIsNone(self.active()["explanation_html"])
+        self.choose("view_solution")
         self.assertIsNotNone(self.active()["explanation_html"])
         self.assertNotIn("mastered", self.active()["actions"])
         self.advance()
@@ -353,6 +357,7 @@ class LearningAcceptanceTests(unittest.TestCase):
         def at_explanation():
             at_intro()
             self.advance()
+            self.choose("view_solution")
 
         def at_practice():
             self.study()

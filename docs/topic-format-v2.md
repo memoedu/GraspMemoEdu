@@ -19,7 +19,7 @@ Introduction 的 `children` 是普通正文，`example` 是不评分的说明性
 - `id` 是稳定 Topic ID，显示编号（如 2.1）、标题、文件名变化不重编 ID。根 `source_rem_id` 保存原 RemNote Document 身份，可省略，不能按同名标题匹配。
 - `topic_kind` 为 `lesson` 或 `introduction`，不替换既有 `training_mode`。
 - 至少一个非空 Introduction（网站显示为“指导”），或一个有效的题库引用；只有题库引用的 Topic 也可运行。Introduction 可有多个，可与 Example 或题库引用穿插；严格保留源顺序，不合并、不前移。每个传统 Example 及其 Practice 归属前面最近的 Introduction。
-- 没有显式内部模块或新增阅读字段的旧范式 Topic 沿用 Example 优先流程：先显示掌握选择；已掌握直接作答，未掌握或答错后沿用“继续学习 → 对应指导 → 例题解析 → 练习”。显式 `sections`、题库引用或新增阅读字段按作者顺序推进，已读字段和原有范式评分规则继续保留。
+- 没有显式内部模块或新增阅读字段的旧范式 Topic 沿用 Example 优先流程。已掌握可直接作答，答错后经对应指导进入例题解析与练习。未掌握先读指导，回到例题可选择「尝试完成」，将作答计入练习并加入复习队列，或选择「修王子」，直接查看解析后做练习。显式 `sections`、题库引用或新增阅读字段按作者顺序推进，已读字段继续保留。
 - 课程学习记录及上一页／下一页按 `content_order` 固定排列已开放内容：晚读的指导仍位于对应例题组之前，不按步骤创建时间移动位置。状态响应只补充章节种类与 ID，未读内容不因此解锁；保存的步骤、作答顺序和学习进度保持不变。题库原有排列不受影响。
 - 普通 Topic 保留连续 Example、Explanation、Interaction 和 Practice 规则。每个 Example 至少七道 Practice；5×3 编号仍展平显示，`source_practice` 保留原分组。
 - `topic_kind: introduction` 使用阅读流程，`modules=[]`，可包含自己的 Introduction 及题库引用。阅读字段不评分，题库引用须完成对应原生题目。网站根据是否有可作答的题目显示“引论”或“学习任务”。母节点下、子 Topic 前的 intro 导出为该母节点的独立引论；编号由上游安排。

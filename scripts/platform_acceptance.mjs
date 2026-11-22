@@ -166,7 +166,9 @@ try{
      const active=stateBefore.steps.find(s=>s.id===stateBefore.active_step_id);assert.equal(active.kind,'example');
      await page.getByRole('button',{name:'未掌握，先学习',exact:true}).click();
      const next=()=>page.locator('#stepCard button').filter({hasText:/^下一页$/});
-     for(let step=0;step<3;step++){await next().click();await page.waitForLoadState('networkidle');}
+     for(let step=0;step<2;step++){await next().click();await page.waitForLoadState('networkidle');}
+     await page.getByRole('button',{name:'修王子',exact:true}).click();
+     await next().click();
      await page.locator('#answerInput').waitFor();await page.locator('#answerInput').fill('42');
      await page.locator('#submitButton').click();
      await page.getByText('回答正确',{exact:true}).waitFor();

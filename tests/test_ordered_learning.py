@@ -59,6 +59,7 @@ class OrderedLearningTests(unittest.TestCase):
         self.assertNotIn('intro-b', [s.get('introduction_id') for s in state['steps']])
         state = service.advance(payload(service))
         self.assertEqual(active(state)['kind'], 'example')
+        state = service.choose(payload(service, choice='view_solution'))
         self.assertIsNotNone(active(state)['explanation_html'])
         service.advance(payload(service))
         for index in range(3):
@@ -138,6 +139,7 @@ class OrderedLearningTests(unittest.TestCase):
         service.choose(payload(service, choice='unmastered'))
         self.assertEqual(active(service.advance(payload(service)))['introduction_id'], 'intro-a')
         service.advance(payload(service))
+        service.choose(payload(service, choice='view_solution'))
         service.advance(payload(service))
         for _ in range(3):
             result = service.submit(payload(service, answer='correct'))
@@ -146,6 +148,7 @@ class OrderedLearningTests(unittest.TestCase):
         service.choose(payload(service, choice='unmastered'))
         state = service.advance(payload(service))
         self.assertEqual(active(state)['kind'], 'example')
+        state = service.choose(payload(service, choice='view_solution'))
         self.assertIsNotNone(active(state)['explanation_html'])
         self.assertEqual([s.get('introduction_id') for s in state['steps'] if s['kind'] == 'introduction'], ['intro-a'])
 

@@ -282,6 +282,8 @@ class Exercise:
                     'all_assigned_guidance_visited': True, 'real_elapsed_learning_time_verified': False}
             if step['phase'] == 'choice':
                 self.action('choose', choice='unmastered')
+            elif step['phase'] == 'guided_choice':
+                self.action('choose', choice='view_solution')
             elif step['phase'] == 'answer':
                 assert step['kind'] == 'practice'
                 self.answer(demo_answer(self.questions[step['question_id']]), True)

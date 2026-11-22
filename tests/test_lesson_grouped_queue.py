@@ -1,13 +1,16 @@
 """Lesson integration boundaries for persistent grouped Practice queues."""
 
 from contextlib import closing
+from copy import deepcopy
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import random
 import unittest
 import uuid
 
-from graspmemoedu.service import LearningService
+from graspmemoedu.service import DomainError, LearningService
 from graspmemoedu.review import ReviewBackend
+from graspmemoedu.fsrs_engine import utc_time
 from tests.fixtures import DeterministicJudge, synthetic_course, temporary_test_directory
 
 
@@ -42,13 +45,68 @@ class GroupedLessonTests(unittest.TestCase):
     def study(self):
         state = self.service.choose(self.payload(choice='unmastered'))
         while self.active(state)['kind'] != 'practice':
-            state = self.advance()
+            if self.active(state)['phase'] == 'guided_choice':
+                state = self.service.choose(self.payload(choice='view_solution'))
+            else:
+                state = self.advance()
         return state
 
     def answer(self, correct):
         item = self.service.submit(self.payload(answer='correct' if correct else 'wrong'))
         self.service.process_submission(item['submission_id'])
         return self.service.submission(item['submission_id'])['state']
+
+    def test_guided_example_counts_once_and_returns_in_a_due_review(self):
+        grouped_course = self.course
+        for grouped, correct in ((True, True), (True, False), (False, True), (False, False)):
+            with self.subTest(grouped=grouped, correct=correct):
+                self.course = deepcopy(grouped_course)
+                module = self.course['modules'][0]
+                if not grouped:
+                    module['practices'] = module['practices'][:7]
+                learner = f'guided-{grouped}-{correct}'
+                self.restart(learner)
+                example_id = module['example']['id']
+                self.service.choose(self.payload(choice='unmastered'))
+                self.advance()
+                choice = self.advance()
+                self.assertEqual(self.active(choice)['actions'], ['attempt_example', 'view_solution'])
+                self.assertIsNone(self.active(choice)['explanation_html'])
+                with self.assertRaises(DomainError):
+                    self.advance()
+                request = self.payload(choice='attempt_example')
+                answer = self.service.choose(request)
+                self.assertEqual(self.service.choose(request), answer)
+                self.assertEqual(self.active(answer)['actions'], ['submit'])
+                self.assertIsNone(self.queue())
+                state = self.answer(correct)
+                summary = state['modules'][0]
+                self.assertEqual(summary['practice_answered_count'], 1)
+                self.assertEqual(summary['practice_error_count'], int(not correct))
+                self.assertEqual(summary['status'], 'in_progress')
+                self.assertIsNotNone(self.active(state)['explanation_html'])
+                self.assertEqual(self.queue()['pending'].count(example_id), 1)
+
+                self.restart(learner)
+                when = datetime.now(timezone.utc)
+                review = ReviewBackend(self.service, clock=lambda: when)
+                shown = [example_id]
+                for _ in range(summary['practice_target_count'] - 1):
+                    shown.append(self.active(self.advance())['question_id'])
+                    state = self.answer(True)
+                self.assertEqual(len(shown), len(set(shown)))
+                self.assertEqual(state['modules'][0]['mastery'], 4 if correct else 3)
+                pending = self.queue()['pending']
+                for expected in pending[:pending.index(example_id) + 1]:
+                    when = utc_time(review.next_due_at()) + timedelta(seconds=1)
+                    current = review.begin(module['id'], request_id=str(uuid.uuid4()))
+                    question_id = current['practice']['id']
+                    self.assertEqual(question_id, expected)
+                    payload = {'request_id': str(uuid.uuid4()), 'expected_revision': current['revision'],
+                               'question_id': question_id, 'answer': 'correct'}
+                    reserved = review.submit(current['session_id'], payload)
+                    review.process_submission(reserved['submission_id'])
+                    self.assertEqual(review.submission(reserved['submission_id'])['state']['mastery'], 4)
 
     def test_legacy_attempt_keeps_sequential_questions_and_never_creates_queue(self):
         with self.service._transaction() as con:

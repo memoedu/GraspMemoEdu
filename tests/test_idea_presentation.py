@@ -76,6 +76,7 @@ class IdeaPresentationTests(unittest.TestCase):
             service.choose(payload(service,choice='unmastered'))
             service.advance(payload(service))
             service.advance(payload(service))
+            service.choose(payload(service,choice='view_solution'))
             self.assertNotIn('方法引用', active(service.state())['html'])
             self.assertIn('方法引用', active(service.state())['explanation_html'])
             self.assertEqual(view()['outgoing'][0]['source_node_id'], 'ref')

@@ -93,7 +93,10 @@ def main():
 
     learning.choose(payload(choice='unmastered'))
     while active()['kind'] != 'practice':
-        learning.advance(payload())
+        if active()['phase'] == 'guided_choice':
+            learning.choose(payload(choice='view_solution'))
+        else:
+            learning.advance(payload())
     initial_body = json.loads(queue()['rows'][0]['body'])
     initial_three = [active()['question_id'], *initial_body['pending']]
     assert initial_three == ['q-1', 'q-4', 'q-7']

@@ -82,6 +82,7 @@ try {
   pass('Introduction, annotated chunk, atomic learning, then Example in the same Topic');
   await page.locator('#stepCard').getByRole('button', {name: '未掌握，先学习', exact: true}).click();
   await next();
+  await page.getByRole('button', {name: '修王子', exact: true}).click();
   const before = await state();
   await screenshot('example-desktop');
   await page.setViewportSize({width: 390, height: 844});

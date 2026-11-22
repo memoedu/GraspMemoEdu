@@ -64,6 +64,9 @@ class PersistentPracticeQueue:
     def supported(module):
         return PersistentPracticeQueue._groups(module) is not None
 
+    def lesson_seeds(self, module):
+        return [group[0] for group in self._groups(module)[:3]]
+
     def _key(self, module):
         return (*self.learning.key, module['id'])
 
@@ -86,23 +89,51 @@ class PersistentPracticeQueue:
             (*self._key(module), self.learning.course['version'],
              json.dumps(state, ensure_ascii=False, sort_keys=True, separators=(',', ':'))))
 
+    @staticmethod
+    def _new_state(pending):
+        return {'queue_version': VERSION, 'pending': list(pending),
+                'expanded_groups': [], 'sequence': 0, 'presented': [], 'last_presented': {}}
+
+    @staticmethod
+    def _present(state, question_id):
+        state['sequence'] += 1
+        state['presented'].append(question_id)
+        state['last_presented'][question_id] = state['sequence']
+
+    def has_example(self, con, module):
+        state = self.snapshot(con, module)
+        return state is not None and module['example']['id'] in state['last_presented']
+
+    def enqueue_example(self, con, module):
+        """Record a judged guided example and queue it for a later round."""
+        state = self.snapshot(con, module)
+        if state is None:
+            state = self._new_state(self.lesson_seeds(module) if self.supported(module) else [])
+        question_id = module['example']['id']
+        self._present(state, question_id)
+        if question_id not in state['pending']:
+            state['pending'].append(question_id)
+        self._save(con, module, state)
+
     def draw(self, con, module, exclude=(), *, initial=None, selected=None):
         """Take the next eligible question and persist its actual exposure."""
         groups = self._groups(module)
-        if groups is None:
+        state = self.snapshot(con, module)
+        example_id = module.get('example', {}).get('id')
+        has_example = state is not None and example_id in state['last_presented']
+        if groups is None and not has_example:
             raise _error('unsupported_practice_queue', '此旧题库继续使用原有练习顺序。')
-        all_ids = [question for group in groups for question in group]
+        all_ids = [question for group in groups for question in group] if groups else [
+            question['id'] for question in module['practices']]
+        if has_example:
+            all_ids.append(example_id)
         excluded = set(exclude)
         if selected is not None and (selected not in all_ids or selected in excluded):
             raise _error('invalid_practice_question', '本轮指定的练习不合法或已经推送。', 422)
         if not any(question not in excluded for question in all_ids):
             raise _error('practice_queue_exhausted', '本轮已使用全部练习，不能重复推送。')
-        state = self.snapshot(con, module)
         if state is None:
-            state = {'queue_version': VERSION,
-                     'pending': list(initial) if initial is not None else [self.rng.choice(group) for group in groups],
-                     'expanded_groups': [], 'sequence': 0,
-                     'presented': [], 'last_presented': {}}
+            state = self._new_state(initial if initial is not None else [self.rng.choice(group) for group in groups])
         pending = state['pending']
         question = selected or next((item for item in pending if item not in excluded), None)
         if question is not None:
@@ -115,9 +146,7 @@ class PersistentPracticeQueue:
                 question = self.rng.choice(unseen)
             else:
                 question = min(eligible, key=lambda item: state['last_presented'][item])
-        state['sequence'] += 1
-        state['presented'].append(question)
-        state['last_presented'][question] = state['sequence']
+        self._present(state, question)
         self._save(con, module, state)
         return question
 
@@ -125,17 +154,22 @@ class PersistentPracticeQueue:
         """The first judged mistake in a group appends its other two members."""
         if type(correct) is not bool:
             raise ValueError('Only a successful boolean judgement may update practice queues')
+        state = self.snapshot(con, module)
+        example_id = module.get('example', {}).get('id')
+        has_example = state is not None and example_id in state['last_presented']
         groups = self._groups(module)
-        if groups is None:
+        if groups is None and not has_example:
             raise _error('unsupported_practice_queue', '此旧题库继续使用原有练习顺序。')
-        group_index = next((index for index, group in enumerate(groups, 1)
+        group_index = next((index for index, group in enumerate(groups or (), 1)
                             if question_id in group), None)
-        if group_index is None:
+        if group_index is None and not (has_example and (
+                question_id == example_id or groups is None
+                and any(question['id'] == question_id for question in module['practices']))):
             raise _error('invalid_practice_question', '题目不属于当前 Example。', 422)
         state = self.snapshot(con, module)
         if state is None or question_id not in state['last_presented']:
             raise _error('practice_not_presented', '题目尚未推送，不能记录答题结果。')
-        if correct or group_index in state['expanded_groups']:
+        if correct or group_index is None or group_index in state['expanded_groups']:
             return
         state['expanded_groups'].append(group_index)
         state['pending'].extend(item for item in groups[group_index - 1]

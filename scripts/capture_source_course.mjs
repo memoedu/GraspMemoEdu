@@ -189,6 +189,7 @@ try {
         await action('continue');
       }
       assert.ok(guidance.includes(questionOwners.get(exampleId)));
+      await action('choose', {choice: 'view_solution'});
       assert.equal(active().question_id, exampleId); assert.equal(active().phase, 'reading');
       assert.equal(active().explanation_html, modules.get(moduleId).example.explanation_html);
       await page.reload({waitUntil: 'networkidle'});

@@ -456,10 +456,12 @@ class ReviewBackend:
             else:
                 if utc_time(card['due_at']) > self._now():
                     raise DomainError('review_not_due', '此 Example 尚未到复习时间。')
-                if len(module['practices']) < self.policy.targets[-1]:
+                queue = self.learning.practice_queue
+                has_example = queue.has_example(con, module)
+                if len(module['practices']) + has_example < self.policy.targets[-1]:
                     raise DomainError('insufficient_practices', '当前练习库不足以完成这套复习规则。', 422)
-                grouped = self.learning.practice_queue.supported(module)
-                order = ([self.learning.practice_queue.draw(con, module, exclude=[])] if grouped else
+                queued = has_example or queue.supported(module)
+                order = ([queue.draw(con, module)] if queued else
                          self.rng.sample([question['id'] for question in module['practices']], self.policy.targets[-1]))
                 state = {'session_id': str(uuid.uuid4()), 'module_id': module_id,
                          'course_version': self.version, 'revision': 0, 'status': 'in_progress',
@@ -472,7 +474,7 @@ class ReviewBackend:
                 revision = self.learning.question_bank.active_revision()
                 if revision:
                     state['question_bank_revision'] = revision
-                if grouped:
+                if queued:
                     state['practice_queue_version'] = PRACTICE_QUEUE_VERSION
                 con.execute('INSERT INTO review_sessions VALUES (?,?,?,?,?,?,?)',
                             (state['session_id'], *self.key, module_id, self.version, state['status'], encode(state)))
