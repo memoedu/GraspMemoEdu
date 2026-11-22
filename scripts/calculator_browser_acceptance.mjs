@@ -13,9 +13,11 @@ const context = await browser.newContext({viewport: {width: 1440, height: 900}, 
 const page = await context.newPage();
 page.setDefaultTimeout(15000);
 const errors = [], workerRequests = [], checks = [];
+let workerStarts = 0;
 page.on('pageerror', error => errors.push(error.message));
 page.on('request', request => {
   const asset = new URL(request.url()).pathname;
+  if (asset.endsWith('/calculator-worker.js')) workerStarts++;
   if (/\/vendor\/calculator\/(core|advanced|applied|symbolic)\.mjs$/.test(asset)) workerRequests.push(asset.split('/').at(-1));
 });
 const toolbar = page.getByRole('toolbar', {name: '题目工具'});
@@ -25,8 +27,6 @@ const dialog = page.locator('.questionCalculator');
 const outputBox = dialog.locator('.calculatorResult');
 const next = page.getByRole('button', {name: '下一页', exact: true}).last();
 async function select(value) {
-  if (await dialog.isVisible() && await dialog.getAttribute('data-layout') === 'center')
-    await dialog.getByRole('button', {name: '关闭计算器'}).click();
   await tool(value).click();
   await page.locator(`.questionCalculator[data-module="${value}"]`).waitFor();
 }
@@ -93,21 +93,53 @@ try {
   await launch.focus();
   await launch.press('ArrowRight');
   assert.equal(await tool('graph').evaluate(button => button === document.activeElement), true);
+  const backend = '**/api/**';
+  const worker = /\/calculator-worker\.js\?v=/;
+  const rejectBackend = route => route.abort('internetdisconnected');
+  let releaseWorker;
+  const workerReady = new Promise(resolve => { releaseWorker = resolve; });
+  await context.route(backend, rejectBackend);
+  await context.route(worker, async route => {
+    await workerReady;
+    await route.continue();
+  });
   await tool('graph').press('Enter');
   await page.locator('.questionCalculator[data-module="graph"]').waitFor();
   await dialog.getByRole('button', {name: '关闭计算器'}).click();
   assert.equal(await tool('graph').evaluate(button => button === document.activeElement), true);
   assert.equal(await tool('graph').getAttribute('aria-expanded'), 'false');
+  await launch.evaluate(button => {
+    button.addEventListener('click', event => {
+      requestAnimationFrame(() => {
+        const panel = document.querySelector('.questionCalculator[open]');
+        button.dataset.openInClickFrame = String(!!panel && panel.contains(document.activeElement));
+        requestAnimationFrame(now => { button.dataset.openFrameMs = String(now - event.timeStamp); });
+      });
+    }, {once: true});
+  });
   await open();
-  assert.equal(await dialog.getAttribute('data-layout'), 'side');
+  await page.waitForFunction(() => document.querySelector('[data-question-tool="expression"]')?.dataset.openFrameMs);
+  assert.equal(await launch.getAttribute('data-open-in-click-frame'), 'true');
+  const openFrameMs = Number(await launch.getAttribute('data-open-frame-ms'));
+  assert.ok(openFrameMs >= 0 && openFrameMs < 100, `Calculator took ${openFrameMs} ms to render`);
+  assert.equal(workerStarts, 0);
+  assert.deepEqual(workerRequests, []);
+  assert.equal(await dialog.locator('.calculatorHeader button').count(), 1);
+  assert.equal(await dialog.evaluate(panel => panel.getBoundingClientRect().right
+    < document.querySelector('#stepCard').getBoundingClientRect().left), true);
   assert.equal(await page.getByText('Calculator: Graphing', {exact: true}).count(), 0);
   assert.equal(await dialog.locator('.calculatorNavigation').count(), 0);
   assert.equal(await dialog.locator('[data-calculator-key="sin"]').isDisabled(), true);
   await dialog.getByRole('textbox', {name: '表达式'}).fill('sin(30)');
-  await calculate(); await text('当前题目未开放此运算。');
+  await context.unroute(backend, rejectBackend);
+  await calculate(); await text('计算中…');
+  releaseWorker();
+  await text('当前题目未开放此运算。');
+  checks.push('Panels accept input with the backend unavailable and before any Worker request. Evaluation waits for the Worker.');
   await dialog.getByRole('textbox', {name: '表达式'}).fill('2^8');
   await dialog.getByRole('textbox', {name: '表达式'}).press('Enter');
   await text('256');
+  await page.screenshot({path: path.join(output, 'desktop-scientific.png')});
   await expressionInput.fill('f');
   await option('floor').waitFor();
   await expressionInput.press('Tab');
@@ -234,18 +266,31 @@ try {
   await text('7');
   for (const width of [320, 375, 414, 768]) {
     await page.setViewportSize({width, height: 840});
-    await page.waitForFunction(() => document.querySelector('.questionCalculator')?.dataset.layout === 'center');
+    await expressionInput.fill('x+y+z');
+    await page.waitForFunction(() => {
+      const panel = document.querySelector('.questionCalculator[open]').getBoundingClientRect();
+      const tools = document.querySelector('.questionToolRow[data-calculator-open]').getBoundingClientRect();
+      return panel.right <= tools.left || panel.top >= tools.bottom;
+    });
     const fit = await dialog.evaluate(element => ({
       body: document.documentElement.scrollWidth <= innerWidth,
       panel: element.scrollWidth <= element.clientWidth + 1,
+      left: Math.abs(element.getBoundingClientRect().left - 8) < 1,
       keys: [...element.querySelectorAll('.calculatorKey')].filter(key => key.getClientRects().length)
-        .every(key => key.getBoundingClientRect().height >= 44),
+        .every(key => key.getBoundingClientRect().height >= 44 && key.getBoundingClientRect().width >= 44),
     }));
-    assert.deepEqual(fit, {body: true, panel: true, keys: true}, String(width));
+    assert.deepEqual(fit, {body: true, panel: true, left: true, keys: true}, String(width));
+    const primaryActionsVisible = await dialog.evaluate(element => {
+      const bottom = element.getBoundingClientRect().bottom;
+      return ['digit_7', 'evaluate'].every(id =>
+        element.querySelector(`[data-calculator-key="${id}"]`).getBoundingClientRect().bottom <= bottom);
+    });
+    assert.equal(primaryActionsVisible, true, String(width));
     assert.equal(await toolbar.getByRole('button').evaluateAll(buttons => buttons.every(button => {
       const bounds = button.getBoundingClientRect();
       return bounds.left >= 0 && bounds.right <= innerWidth && bounds.width >= 44 && bounds.height >= 44;
     })), true, String(width));
+    if (width === 375) await page.screenshot({path: path.join(output, 'mobile-left.png')});
     await expressionInput.fill('f');
     await option('floor').waitFor();
     assert.equal(await completions.evaluate(menu => {
@@ -255,13 +300,12 @@ try {
     }), true, String(width));
     if (width === 375) await page.screenshot({path: path.join(output, 'mobile-completions.png')});
     await expressionInput.press('Escape');
-    checks.push(`${width}px calculator fits and keypad targets are at least 44px tall.`);
+    checks.push(`${width}px left calculator fits and keypad targets are at least 44px by 44px.`);
   }
   await page.setViewportSize({width: 375, height: 840});
   await launch.press('End');
   assert.equal(await tool('modular').evaluate(button => button === document.activeElement), true);
   assert.ok(await toolbar.locator('.questionToolGroups').evaluate(list => list.scrollTop > 0));
-  await page.screenshot({path: path.join(output, 'mobile-center.png')});
   await dialog.getByRole('button', {name: '关闭计算器'}).click();
   assert.equal(await launch.evaluate(element => element === document.activeElement), true);
   await next.click(); await open();
@@ -369,8 +413,8 @@ try {
   await completions.waitFor({state: 'hidden'});
   checks.push('Three independent settings persist on reload. Timezones and modal feedback use the same list.');
   assert.deepEqual(errors, []);
-  await writeFile(path.join(output, 'browser-result.json'), JSON.stringify({checks, workerRequests, errors}, null, 2) + '\n');
-  console.log(JSON.stringify({checks, pageErrors: errors.length}));
+  await writeFile(path.join(output, 'browser-result.json'), JSON.stringify({checks, openFrameMs, workerRequests, errors}, null, 2) + '\n');
+  console.log(JSON.stringify({checks, openFrameMs, pageErrors: errors.length}));
 } catch (error) {
   await page.screenshot({path: path.join(output, 'failure.png')}).catch(() => {});
   throw error;
