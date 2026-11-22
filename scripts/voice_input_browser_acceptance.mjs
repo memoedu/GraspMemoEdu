@@ -33,12 +33,12 @@ const wait = async condition => {
   assert.fail('Timed out waiting for condition');
 };
 const toolbar = page.getByRole('toolbar', {name: '题目工具'});
-const mic = page.locator('#siteTools').getByRole('button', {name: '录音输入'});
+const mic = page.getByRole('button', {name: '录音输入', exact: true});
 const stop = page.getByRole('button', {name: '结束录音', exact: true});
 const next = page.getByRole('button', {name: '下一页', exact: true}).last();
-const record = async (field, control = mic) => {
+const record = async field => {
   await field.focus();
-  await control.click();
+  await mic.click();
   await stop.waitFor();
   await new Promise(resolve => setTimeout(resolve, 290));
 };
@@ -53,6 +53,18 @@ try {
   await page.locator('#identitySubmitButton').click();
   await mic.waitFor();
   await next.click();
+  await toolbar.getByRole('button', {name: '录音输入', exact: true}).waitFor();
+  assert.equal(await mic.count(), 1);
+  assert.equal(await page.locator('.topRibbon .voiceTool').count(), 0);
+  assert.equal(await toolbar.locator('.toolbarMarker').isVisible(), true);
+  await toolbar.locator('[data-question-tool=graph]').press('End');
+  assert.equal(await mic.evaluate(button => button === document.activeElement), true);
+  await mic.blur();
+  await page.screenshot({path: path.join(output, 'question-tools-mobile.png')});
+  await page.setViewportSize({width: 1440, height: 900});
+  assert.equal(await mic.count(), 1);
+  await page.screenshot({path: path.join(output, 'question-tools-desktop.png')});
+  await page.setViewportSize({width: 390, height: 844});
   await toolbar.locator('[data-question-tool=expression]').click();
   const calculator = page.locator('.questionCalculator');
   const expression = calculator.getByRole('textbox', {name: '表达式'});
@@ -73,10 +85,11 @@ try {
   await page.goto(base + '/#/subjects/math/banks/isolated-bank/group-a?question=essay');
   const answer = page.locator('#trainingAnswer');
   await answer.waitFor();
+  await toolbar.getByRole('button', {name: '录音输入'}).waitFor();
+  assert.equal(await mic.count(), 1);
   await page.setViewportSize({width: 320, height: 844});
-  await record(answer, toolbar.getByRole('button', {name: '录音输入'}));
-  const voicePanel = toolbar.locator('.voiceToolPanel');
-  assert.equal(await voicePanel.evaluate(panel => {
+  await record(answer);
+  assert.equal(await toolbar.locator('.voiceToolPanel').evaluate(panel => {
     const {left, right} = panel.getBoundingClientRect();
     return left >= 0 && right <= document.documentElement.clientWidth;
   }), true, 'Question voice controls fit a 320px viewport');
@@ -96,6 +109,7 @@ try {
   await page.goto(base + '/#/settings');
   const displayName = page.locator('#profileDisplayName');
   await displayName.fill('原始');
+  assert.equal(await page.locator('#pageTools .voiceTool').count(), 1);
   await record(displayName);
   await stop.click();
   await wait(() => release);
@@ -108,7 +122,20 @@ try {
   await displayName.evaluate(input => input.setSelectionRange(0, 0));
   await insert.click();
   assert.equal(await displayName.inputValue(), '补充录音后的编辑');
-  assert.deepEqual(calls, ['calculator', 'answer', 'answer', 'general']);
+  await page.locator('#userMenuButton').click();
+  await page.locator('#supportButton').click();
+  const feedback = page.locator('.feedbackDialog');
+  await feedback.getByRole('toolbar').getByRole('button', {name: '录音输入'}).waitFor();
+  assert.equal(await page.locator('.voiceTool').count(), 1);
+  await record(feedback.locator('#feedbackMessage'));
+  await stop.click();
+  await wait(() => release);
+  release({body: {text: '反馈草稿'}});
+  await wait(async () => await feedback.locator('#feedbackMessage').inputValue() === '反馈草稿');
+  await feedback.locator('.dialogHeading button').click();
+  await page.locator('#pageTools').getByRole('toolbar').getByRole('button', {name: '录音输入'}).waitFor();
+  assert.equal(await page.locator('.voiceTool').count(), 1);
+  assert.deepEqual(calls, ['calculator', 'answer', 'answer', 'general', 'general']);
   assert.deepEqual(errors, []);
   await writeFile(path.join(output, 'voice-browser.json'), JSON.stringify({calls, graded: submissions.length, errors}, null, 2));
 } catch (error) {
