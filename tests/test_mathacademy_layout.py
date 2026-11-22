@@ -55,12 +55,13 @@ class MathAcademyLayoutTests(unittest.TestCase):
         for block in fragments:
             self.assertEqual(materials['introduction:' + block['id']]['html'], block['html'])
 
-    def test_recap_follows_practice_and_unmastered_does_not_open_unbound_reading(self):
+    def test_split_recap_follows_practice_and_only_nearest_block_is_guidance(self):
         topic = source_ordered_topic(source_topic())
         service = create_learning_service(topic, self.temp.name, DeterministicJudge())
-        self.assertEqual(active(service.state())['introduction_id'], 'intro-a')
-        service.advance(payload(service))
+        self.assertEqual(active(service.state())['phase'], 'choice')
         state = service.choose(payload(service, choice='unmastered'))
+        self.assertEqual(active(state)['introduction_ids'], ['intro-a'])
+        state = service.advance(payload(service))
         self.assertEqual(active(state)['phase'], 'guided_choice')
         service.choose(payload(service, choice='view_solution'))
         service.advance(payload(service))
@@ -68,12 +69,13 @@ class MathAcademyLayoutTests(unittest.TestCase):
             submitted = service.submit(payload(service, answer='correct'))
             service.process_submission(submitted['submission_id'])
             service.advance(payload(service))
-        for ident in ('intro-b', 'intro-b--body-2', 'intro-b--body-3'):
+        for ident in ('intro-b', 'intro-b--body-2'):
             self.assertEqual(active(service.state())['introduction_id'], ident)
             service = create_learning_service(topic, self.temp.name, DeterministicJudge())
             service.advance(payload(service))
         self.assertEqual(active(service.state())['question_id'], 'module-2-example')
-        self.assertEqual(active(service.choose(payload(service, choice='mastered')))['phase'], 'answer')
+        self.assertEqual(active(service.choose(payload(service, choice='unmastered')))['introduction_ids'],
+                         ['intro-b--body-3'])
 
     def test_existing_guidance_step_can_continue_and_skipped_examples_stay_skipped(self):
         raw = source_topic()
@@ -86,7 +88,7 @@ class MathAcademyLayoutTests(unittest.TestCase):
         self.assertEqual(active(service.advance(payload(service)))['phase'], 'guided_choice')
         state = service.skip_module(payload(service))
         first = state['skipped_modules'][0]
-        for _ in range(3):
+        for _ in range(2):
             state = service.advance(payload(service))
         self.assertEqual(active(state)['question_id'], 'module-2-example')
         state = service.skip_module(payload(service))
