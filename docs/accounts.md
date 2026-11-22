@@ -2,7 +2,7 @@
 
 游客和管理员均可在右上角开启“体验专用浏览版”，学习和复习沿用既有参考答案填入流程。普通账号不开放此功能；管理员仍使用临时浏览状态，不保存学习记录或安排复习推送。
 
-正式账号由服务器管理命令创建。网页只提供登录、退出和学习功能，不开放建号、权限修改或解锁等管理接口。2026-09-21 起正式数据库位于腾讯云；下文 Windows 命令仅作隔离开发示例，不能针对本机回滚快照管理正式账号。正式调用方法见 [腾讯云运维](tencent-deployment.md)。
+正式账号由服务器管理命令创建。管理员可在网页调整负责账号的两项资格和解除指定暂停。建号、账号归属、Topic 和功能名单仍由服务器管理。正式数据库位于腾讯云，下文 Windows 命令用于隔离开发。正式调用方法见 [腾讯云运维](tencent-deployment.md)。
 
 账号默认动态开放全部 Topic 和功能，后续新增内容会自动获得权限。Topic、功能分别支持明确覆盖：设置某一项的列表只覆盖该项，未设置的项继续继承默认值；空列表表示全部禁止。游客限制保持不变。`account-list` 的 `permission_defaults` 显示每项是否继承默认。
 
@@ -62,7 +62,9 @@ sudo -u graspmemoedu /opt/graspmemoedu/venv/bin/python -m graspmemoedu --data-di
 sudo -u graspmemoedu /opt/graspmemoedu/venv/bin/python -m graspmemoedu --data-dir /var/lib/graspmemoedu account-permissions --learner '<learner_id>' --non-student
 ```
 
-`--advanced-learner` 与 `--standard-learner` 互斥，`--student` 与 `--non-student` 互斥；两个维度可以组合，例如 `--advanced-learner --student`。可与现有权限选项一起使用；省略某维度时保留该维度原值。`account-list`、权限修改回执及登录身份均返回 `is_advanced_learner` 和 `is_student`。调整下一次请求生效，不需要换邀请码或清空进度；网页显示两个资格，不能修改它们。普通和高阶账号均正常记录进度与复习参数，资格随数据库备份恢复。
+`--advanced-learner` 与 `--standard-learner` 互斥，`--student` 与 `--non-student` 互斥。两个维度可以组合，例如 `--advanced-learner --student`，省略的维度保留原值。`account-list`、权限修改回执及登录身份均返回 `is_advanced_learner` 和 `is_student`。负责该账号的管理员也可在[学员学习情况](admin-students.md)中保存资格。调整在下一次 API 请求生效，学习进度和管理归属保留。资格随数据库备份恢复。
+
+用户可在“设置”中的“入门模式”开关控制学习机制提示。现有账号和新账号默认开启，游客也可按当前浏览器身份自行设置。模式设置按学习身份保存。提示约 4.5 秒后自动消失，用于解释补题、题量变化、暂停、原子卡排程、错题本和交卷等当前操作的结果。
 
 ```powershell
 & $python -m graspmemoedu.cli --data-dir $data account-list
@@ -120,13 +122,14 @@ sudo -u graspmemoedu /opt/graspmemoedu/venv/bin/python -m graspmemoedu --data-di
 
 答疑入口仅在选定学科后显示，路由为 `#/subjects/<学科ID>/qa`；总首页不显示该入口。学员查看自己的请求与回复，管理员查看自己负责学员的请求并回复，可前往对应内容。列表、计数、详情、回复和已读操作均传入当前 `subject_id`，服务端同时核验学科权限、内容权限和学员归属，跨学科详情与操作返回 404。学员不能读取他人的请求，管理员不能读取其他管理员负责学员的请求。账号管理仍通过服务器 CLI，网页暂停解锁沿用原有精确事件授权。
 
-当前所有学员默认对应邀请码清单中的 1 号管理员，只有该管理员可以看到他们的答疑。以后新增的学员或升级为学员的账号也继承默认归属；可以通过服务器 CLI 单独调整，调整后已有和后续请求都跟随该学员的新归属，不改写请求内容或学习记录。未配置默认管理员或负责管理员被停用时，新提交返回明确错误，不能自动转给其他管理员。
+未明确分配的非管理员账号由现有默认管理员负责。显式名单可指定一名或多名管理员，已有单人归属自动保留。学员情况、答疑和暂停管理共用该归属。若显式名单无启用管理员，系统保留名单，新的答疑请求会提示管理员暂不可用。
 
 ```sh
 sudo -u graspmemoedu /opt/graspmemoedu/venv/bin/python -m graspmemoedu --data-dir /var/lib/graspmemoedu help-admin-default --admin '<1号管理员 learner_id>'
 sudo -u graspmemoedu /opt/graspmemoedu/venv/bin/python -m graspmemoedu --data-dir /var/lib/graspmemoedu help-assignments
 sudo -u graspmemoedu /opt/graspmemoedu/venv/bin/python -m graspmemoedu --data-dir /var/lib/graspmemoedu help-assign --learner '<学员 learner_id>' --admin '<管理员 learner_id>'
+sudo -u graspmemoedu /opt/graspmemoedu/venv/bin/python -m graspmemoedu --data-dir /var/lib/graspmemoedu help-assign --learner '<账号 learner_id>' --admin '<管理员甲 learner_id>' --admin '<管理员乙 learner_id>'
 sudo -u graspmemoedu /opt/graspmemoedu/venv/bin/python -m graspmemoedu --data-dir /var/lib/graspmemoedu help-assign --learner '<学员 learner_id>' --default-admin
 ```
 
-对应关系保存在同一 SQLite 的 `help_admin_config` 与 `help_admin_assignments`，随网站备份恢复；不在网页开放修改接口。
+每次 `help-assign` 指定完整管理员名单，`--default-admin` 恢复默认归属。对应关系保存在同一 SQLite 的 `help_admin_config` 与 `help_admin_assignments`，随网站备份恢复。

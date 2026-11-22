@@ -4,6 +4,7 @@ import json
 import uuid
 from pydantic import BaseModel, ConfigDict, Field
 from .service import DomainError, now
+from .managed_accounts import includes as manages
 
 
 class HelpMessage(BaseModel):
@@ -118,7 +119,7 @@ class HelpThreads:
             self.store._require_admin(con, access['learner_id'])
         row = con.execute('SELECT * FROM help_requests WHERE id=?', (report_id,)).fetchone()
         if (not row or (viewer == 'student' and row['learner_id'] != access['learner_id']) or
-                (viewer == 'admin' and self.store._owner(con, row['learner_id']) != access['learner_id']) or
+                (viewer == 'admin' and not manages(con, row['learner_id'], access['learner_id'])) or
                 not self.store.access_store.test_materials.snapshot_visible(json.loads(row['body'])['request']['topic_id'], access)):
             raise DomainError('unknown_help_request', '未找到此提交记录。', 404)
         return row, viewer

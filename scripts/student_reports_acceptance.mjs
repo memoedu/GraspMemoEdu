@@ -173,6 +173,65 @@ try {
   await personalMobile.screenshot({path: path.join(out, 'personal-mobile.png'), fullPage: true});
   assert.equal(await snapshot(), ownBefore); assert.deepEqual(errors, []);
   pass('Student menu opens the shared personal dashboard, private roster names stay admin-only, and both trees omit the storage root');
+
+  active = page;
+  await page.goto(url(auth.target)); await page.locator('.studentQualifications').waitFor();
+  const qualifications = page.locator('.studentQualifications');
+  const studentFlag = qualifications.getByRole('checkbox', {name: '学员', exact: true});
+  assert.ok(await studentFlag.isChecked());
+  await studentFlag.uncheck();
+  await qualifications.getByRole('button', {name: '保存资格', exact: true}).click();
+  await qualifications.getByText('账号资格已保存。', {exact: true}).waitFor();
+  await page.reload(); await qualifications.waitFor();
+  assert.equal(await studentFlag.isChecked(), false);
+  await studentFlag.check();
+  await qualifications.getByRole('button', {name: '保存资格', exact: true}).click();
+  await qualifications.getByText('账号资格已保存。', {exact: true}).waitFor();
+  pass('A managing administrator can demote, reload and restore a student while the account remains managed');
+
+  if (!publicBase) {
+    active = ordinary;
+    await ordinary.goto(base + '/#/settings');
+    const mode = ordinary.getByRole('checkbox', {name: '入门模式', exact: true});
+    await mode.waitFor(); assert.ok(await mode.isChecked());
+    await mode.uncheck(); await ordinary.locator('.profileForm button[type=submit]').click();
+    await ordinary.waitForFunction(() => document.querySelector('.profileStatus')?.textContent.includes('已保存'));
+    await ordinary.reload(); await mode.waitFor();
+    assert.equal(await mode.isChecked(), false);
+    await mode.check(); await ordinary.locator('.profileForm button[type=submit]').click();
+    await ordinary.waitForFunction(() => document.querySelector('.profileStatus')?.textContent.includes('已保存'));
+    pass('Beginner mode starts enabled and persists the account’s toggle across reloads');
+
+    const lessonUrl = base + '/#/subjects/math/topic/synthetic-course';
+    const advance = ordinary.locator('#stepCard .continueRow .primaryButton:not(#submitButton)');
+    const answer = async () => {
+      await ordinary.locator('#answerInput').fill('wrong');
+      await ordinary.locator('#submitButton').click();
+      await advance.waitFor();
+    };
+    await ordinary.goto(lessonUrl); await answer();
+    const hint = ordinary.locator('.beginnerHint');
+    await ordinary.waitForFunction(() => document.querySelector('.beginnerHint')?.textContent.includes('队列中已添加一道题'));
+    assert.equal(await hint.evaluate(el => getComputedStyle(el).pointerEvents), 'none');
+    await advance.click(); await answer();
+    await ordinary.waitForFunction(() => document.querySelector('.beginnerHint')?.textContent.includes('队列中已添加两道题'));
+    for (const width of [320, 375, 414, 768]) {
+      await ordinary.setViewportSize({width, height: 844});
+      assert.ok(await hint.evaluate(el => {
+        const rect = el.getBoundingClientRect(); return rect.left >= 0 && rect.right <= innerWidth;
+      }));
+    }
+    await ordinary.screenshot({path: path.join(out, 'beginner-hint.png')});
+    await ordinary.waitForFunction(() => !document.querySelector('.beginnerHint')?.textContent);
+    await ordinary.goto(base + '/#/settings'); await mode.waitFor(); await mode.uncheck();
+    await ordinary.locator('.profileForm button[type=submit]').click();
+    await ordinary.waitForFunction(() => document.querySelector('.profileStatus')?.textContent.includes('已保存'));
+    await ordinary.goto(lessonUrl);
+    await advance.click(); await answer();
+    assert.equal(await ordinary.locator('.beginnerHint:not(:empty)').count(), 0);
+    pass('Actual wrong answers display the committed one- and two-question queue additions, then disappear or stay suppressed');
+  }
+  assert.deepEqual(errors, []);
 } catch (error) {
   if (active) await active.screenshot({path: path.join(out, 'failure.png'), fullPage: true}).catch(() => {});
   throw error;

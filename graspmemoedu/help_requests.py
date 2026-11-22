@@ -14,6 +14,7 @@ from .training_content import TrainingCatalog, permission_id
 from .feedback_selection import FeedbackContent, content_hash, normalize_selection, validate_selection
 from .help_threads import HelpThreads, HelpMessage, HelpThreadRead
 from .help_main import MainHelpThreads
+from .managed_accounts import includes as manages, manager_ids, scope as management_scope
 from .help_images import HelpImages, HelpImageUpload
 from .access import admin_display_name
 
@@ -85,12 +86,6 @@ class HelpRequestStore:
                 request_id TEXT NOT NULL, body TEXT NOT NULL, created_at TEXT NOT NULL,
                 UNIQUE(learner_id,request_id));
                 CREATE INDEX IF NOT EXISTS help_request_created ON help_requests(created_at,id);
-                CREATE TABLE IF NOT EXISTS help_admin_config (
-                    id INTEGER PRIMARY KEY CHECK(id=1),
-                    admin_id TEXT NOT NULL REFERENCES access_principals(learner_id));
-                CREATE TABLE IF NOT EXISTS help_admin_assignments (
-                    learner_id TEXT PRIMARY KEY REFERENCES access_principals(learner_id),
-                    admin_id TEXT NOT NULL REFERENCES access_principals(learner_id));
                 CREATE TABLE IF NOT EXISTS help_replies (
                     id TEXT PRIMARY KEY, report_id TEXT NOT NULL REFERENCES help_requests(id),
                     admin_id TEXT NOT NULL REFERENCES access_principals(learner_id),
@@ -112,11 +107,10 @@ class HelpRequestStore:
             raise DomainError('invalid_help_admin', '答疑归属必须指定有效的管理员账号。', 422)
 
     @staticmethod
-    def _owner(con, learner_id):
-        row = con.execute('''SELECT COALESCE(
-            (SELECT admin_id FROM help_admin_assignments WHERE learner_id=?),
-            (SELECT admin_id FROM help_admin_config WHERE id=1))''', (learner_id,)).fetchone()
-        return row[0]
+    def _managers(con, learner_id, *, enabled_only=False):
+        active = "AND p.enabled=1 AND p.is_admin=1 AND p.role='account'" if enabled_only else ''
+        return [row[0] for row in con.execute(f'''SELECT p.learner_id FROM access_principals p
+            WHERE p.learner_id IN ({manager_ids('?1')}) {active} ORDER BY p.learner_id''', (learner_id,))]
 
     def set_default_admin(self, admin_id):
         with self.access_store._transaction() as con:
@@ -125,28 +119,35 @@ class HelpRequestStore:
         return {'default_admin_id': admin_id}
 
     def assign_admin(self, learner_id, admin_id=None):
+        return self.assign_admins(learner_id, [] if admin_id is None else [admin_id])
+
+    def assign_admins(self, learner_id, admin_ids):
+        admins = list(dict.fromkeys(admin_ids))
         with self.access_store._transaction() as con:
-            learner = con.execute('SELECT role,is_student FROM access_principals WHERE learner_id=?', (learner_id,)).fetchone()
-            if not learner or learner['role'] != 'account' or not learner['is_student']:
-                raise DomainError('invalid_help_learner', '答疑归属只能设置给学员账号。', 422)
-            if admin_id is None:
-                con.execute('DELETE FROM help_admin_assignments WHERE learner_id=?', (learner_id,))
-            else:
-                self._require_admin(con, admin_id)
-                con.execute('INSERT INTO help_admin_assignments VALUES (?,?) ON CONFLICT(learner_id) DO UPDATE SET admin_id=excluded.admin_id', (learner_id, admin_id))
-            owner = self._owner(con, learner_id)
-        return {'learner_id': learner_id, 'admin_id': owner, 'uses_default': admin_id is None}
+            learner = con.execute('SELECT role,is_admin FROM access_principals WHERE learner_id=?', (learner_id,)).fetchone()
+            if not learner or learner['role'] != 'account' or learner['is_admin']:
+                raise DomainError('invalid_help_learner', '管理归属只能设置给非管理员账号。', 422)
+            for admin in admins:
+                self._require_admin(con, admin)
+            con.execute('DELETE FROM help_admin_assignments WHERE learner_id=?', (learner_id,))
+            con.executemany('INSERT INTO help_admin_assignments VALUES (?,?)',
+                            [(learner_id, admin) for admin in admins])
+            managers = self._managers(con, learner_id)
+        return {'learner_id': learner_id, 'admin_id': managers[0] if len(managers) == 1 else None,
+                'admin_ids': managers, 'uses_default': not admins}
 
     def assignments(self):
         with closing(self.access_store._connect()) as con:
             default = con.execute('SELECT admin_id FROM help_admin_config WHERE id=1').fetchone()
-            rows = con.execute('''SELECT p.learner_id,COALESCE(NULLIF(p.admin_name,''),p.display_name) AS display_name,COALESCE(a.admin_id,c.admin_id) AS admin_id,
-                a.admin_id IS NULL AS uses_default FROM access_principals p
-                LEFT JOIN help_admin_assignments a ON a.learner_id=p.learner_id
-                LEFT JOIN help_admin_config c ON c.id=1
-                WHERE p.role='account' AND p.is_student=1 ORDER BY p.learner_id''').fetchall()
-        return {'default_admin_id': default[0] if default else None,
-                'items': [{**dict(row), 'uses_default': bool(row['uses_default'])} for row in rows]}
+            rows = con.execute('''SELECT p.learner_id,COALESCE(NULLIF(p.admin_name,''),p.display_name) AS display_name,
+                NOT EXISTS (SELECT 1 FROM help_admin_assignments a WHERE a.learner_id=p.learner_id) AS uses_default
+                FROM access_principals p WHERE p.role='account' AND p.is_admin=0 ORDER BY p.learner_id''').fetchall()
+            items = []
+            for row in rows:
+                managers = self._managers(con, row['learner_id'])
+                items.append({**dict(row), 'uses_default': bool(row['uses_default']),
+                              'admin_ids': managers, 'admin_id': managers[0] if len(managers) == 1 else None})
+        return {'default_admin_id': default[0] if default else None, 'items': items}
 
     def _authorize_context(self, access, values, subject_id):
         topic_id = values['topic_id']
@@ -184,13 +185,8 @@ class HelpRequestStore:
                 if HelpRequest.model_validate(json.loads(existing['body'])['request']).model_dump() != payload:
                     raise DomainError('request_conflict', '同一请求标识不能用于不同内容。', 409)
                 return {'id': existing['id'], 'status': 'saved', 'created_at': existing['created_at']}
-            owner = self._owner(con, access['learner_id'])
-            if owner is None:
-                raise DomainError('help_admin_unavailable', '答疑管理员尚未配置，请稍后重试。', 503)
-            try:
-                self._require_admin(con, owner)
-            except DomainError:
-                raise DomainError('help_admin_unavailable', '答疑管理员暂不可用，请稍后重试。', 503) from None
+            if not self._managers(con, access['learner_id'], enabled_only=True):
+                raise DomainError('help_admin_unavailable', '答疑管理员暂不可用，请稍后重试。', 503)
             html, context = self._content(payload)
             validate_selection(html, payload['selection'], payload['selection_hash'])
             created = now()
@@ -295,10 +291,7 @@ class HelpRequestStore:
         with closing(self.access_store._connect()) as con:
             con.execute('BEGIN')
             # No administrator bypass: records and counts use the same owner filter.
-            scope = '''FROM help_requests r
-                LEFT JOIN help_admin_assignments a ON a.learner_id=r.learner_id
-                LEFT JOIN help_admin_config c ON c.id=1
-                WHERE COALESCE(a.admin_id,c.admin_id)=?'''
+            scope = 'FROM help_requests r WHERE ' + management_scope('r.learner_id')
             scope, parameters = self.visible_scope(scope, (access['learner_id'],), access)
             rows = con.execute('SELECT r.id,r.learner_id,r.body,r.created_at ' + scope +
                                ' ORDER BY r.created_at DESC,r.id DESC LIMIT ? OFFSET ?', (*parameters, limit + 1, offset)).fetchall()
@@ -314,9 +307,7 @@ class HelpRequestStore:
             raise DomainError('feature_forbidden', '此页面仅供管理员查看。', 403)
         with closing(self.access_store._connect()) as con:
             row = con.execute('''SELECT r.id,r.learner_id,r.body,r.created_at FROM help_requests r
-                LEFT JOIN help_admin_assignments a ON a.learner_id=r.learner_id
-                LEFT JOIN help_admin_config c ON c.id=1
-                WHERE r.id=? AND COALESCE(a.admin_id,c.admin_id)=?''',
+                WHERE r.id=? AND ''' + management_scope('r.learner_id'),
                 (report_id, access['learner_id'])).fetchone()
         if not row or not self.access_store.test_materials.snapshot_visible(json.loads(row['body'])['request']['topic_id'], access):
             raise DomainError('unknown_help_request', '未找到此提交记录。', 404)
@@ -357,12 +348,10 @@ class HelpRequestStore:
     @staticmethod
     def _center_scope(viewer):
         return '''FROM help_requests r
-            LEFT JOIN help_admin_assignments a ON a.learner_id=r.learner_id
-            LEFT JOIN help_admin_config c ON c.id=1
             LEFT JOIN help_replies reply ON reply.report_id=r.id AND reply.revision=
                 (SELECT MAX(revision) FROM help_replies WHERE report_id=r.id)
             LEFT JOIN help_reply_reads seen ON seen.report_id=r.id AND seen.learner_id=r.learner_id
-            WHERE ''' + ('COALESCE(a.admin_id,c.admin_id)=?' if viewer == 'admin' else 'r.learner_id=?')
+            WHERE ''' + (management_scope('r.learner_id') if viewer == 'admin' else 'r.learner_id=?')
 
     def center(self, access, limit=10, offset=0, summary=False, report_id=None, subject_id=None, learner_id=None):
         viewer = self._viewer(access)
@@ -428,7 +417,7 @@ class HelpRequestStore:
         with self.access_store._transaction() as con:
             self._require_admin(con, access['learner_id'])
             row = con.execute('SELECT learner_id,body FROM help_requests WHERE id=?', (values['report_id'],)).fetchone()
-            if (not row or self._owner(con, row['learner_id']) != access['learner_id'] or
+            if (not row or not manages(con, row['learner_id'], access['learner_id']) or
                     not self.access_store.test_materials.snapshot_visible(json.loads(row['body'])['request']['topic_id'], access)):
                 raise DomainError('unknown_help_request', '未找到此提交记录。', 404)
             existing = con.execute('SELECT * FROM help_replies WHERE admin_id=? AND request_id=?',

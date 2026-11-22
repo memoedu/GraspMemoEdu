@@ -594,6 +594,7 @@ class PublicAccessAcceptanceTests(unittest.TestCase):
                    "/api/help-images", "/api/presence",
                    "/api/admin/students", "/api/admin/students/{learner_id}",
                    "/api/admin/students/{learner_id}/questions", "/api/admin/students/{learner_id}/history",
+                   "/api/admin/students/{learner_id}/qualifications",
                    "/api/student-report", "/api/student-report/questions", "/api/student-report/history",
                    "/api/materials", "/api/materials/open", "/api/materials/content",
                    "/api/graphs", "/api/graphs/{course_id}",
@@ -625,11 +626,16 @@ class PublicAccessAcceptanceTests(unittest.TestCase):
             headers=self._headers()), 401, 'identity_required')
         identity, _ = self._guest()
         before = self._state(identity)
-        # These two explicitly authorized admin routes remain inaccessible to learners.
+        # Administrator routes remain inaccessible to learners and guests.
         self._assert_error(self.client.get('/api/admin/pauses', headers=self._headers(identity)), 403, 'feature_forbidden')
         self._assert_error(self.client.post('/api/admin/pauses/unlock', json={}, headers=self._headers(identity)), 403, 'feature_forbidden')
         self._assert_error(self.client.get('/api/admin/students', headers=self._headers(identity)), 403, 'feature_forbidden')
         self._assert_error(self.client.get('/api/admin/students/someone', headers=self._headers(identity)), 403, 'feature_forbidden')
+        qualifications = '/api/admin/students/someone/qualifications'
+        self._assert_error(self.client.post(qualifications, json={'is_student': True},
+            headers=self._headers(identity)), 403, 'feature_forbidden')
+        self._assert_error(self.client.post(qualifications, json={'is_student': True},
+            headers=self._headers()), 401, 'identity_required')
         self._assert_error(self.client.get('/api/atomic/reviews', headers=self._headers()), 401, 'identity_required')
         self.assertEqual(self.client.get('/api/atomic/reviews', headers=self._headers(identity)).status_code, 200)
         self.assertEqual(self.client.post('/api/atomic/reviews', json={}, headers=self._headers(identity)).status_code, 405)

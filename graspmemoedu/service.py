@@ -764,8 +764,11 @@ class LearningService:
                         attempt['learning_path'] = 'direct_example' if correct else 'example_incorrect'
                         if correct:
                             self._complete(con, state, 4)
+                            step['feedback']['learning_effect'] = {'example_passed': True}
                     if not direct_example or (policy.adaptive_queue and not correct):
+                        previous_target = attempt['practice_target_count']
                         must_pause, mastery = apply_practice_result(attempt, correct, policy)
+                        added_to_queue = 0
                         if (attempt.get('practice_queue_version') == self.practice_queue.VERSION
                                 and (not is_example or policy.adaptive_queue)
                                 and (not must_pause or policy.version == LEGACY_LESSON_POLICY.version)):
@@ -774,10 +777,16 @@ class LearningService:
                                 reserved = {s['question_id'] for s in state['steps']
                                             if s['attempt_id'] == attempt['id'] and s['question_id']}
                                 reserved.update(self.practice_queue.lesson_seeds(module))
-                            self.practice_queue.record_result(
+                            added_to_queue = self.practice_queue.record_result(
                                 con, module, item['question'], correct,
                                 additions=policy.queue_additions(attempt['practice_error_count']),
                                 exclude=reserved)
+                        if not correct:
+                            step['feedback']['learning_effect'] = {
+                                'queue_added': added_to_queue,
+                                'target_added': attempt['practice_target_count'] - previous_target,
+                                'paused': must_pause,
+                            }
                         if must_pause:
                             self._pause(con, state, 'practice_error_limit', submission={**item, 'correct': correct, 'reason': reason})
                         elif mastery is not None:

@@ -136,6 +136,8 @@ class AtomicLearningService(LearningService):
                 result['assessment_result'] = active['assessment_result']
             if active.get('stop_requested'):
                 result['stop_requested'] = True
+            if active.get('learning_effect'):
+                result['learning_effect'] = active['learning_effect']
         return result
 
     def _public(self, state):
@@ -269,6 +271,7 @@ class AtomicLearningService(LearningService):
     def _grade(self, con, state, item, correct, reason):
         active, when = state['active'], self._time()
         ratings = {}
+        learning_effect = {}
         assessment = active.get('self_assessment') or {}
         whole_success = active.get('whole_question_rating') == 5
         stop = whole_success or assessment.get('submission_id') == item['id'] and assessment.get('rating') == 5
@@ -286,6 +289,7 @@ class AtomicLearningService(LearningService):
                            self.course['subject_id'], when.isoformat())
             memory = state['points'][point_id]
             if stop:
+                learning_effect['stopped'] = True
                 # The fifth control retires the memory point; it is not an
                 # FSRS rating. Retain any existing card state for audit/history.
                 memory.update(mastered=True, first_passed_at=memory.get('first_passed_at') or when.isoformat(),
@@ -299,12 +303,15 @@ class AtomicLearningService(LearningService):
             rating = (None if passed else 1) if learning else (state['policy']['correct_rating'] if passed else 1)
             ratings[point_id] = rating
             if rating is not None:
+                if not learning:
+                    learning_effect['rescheduled'] = True
                 scheduled = self.engine.schedule(memory['card_json'], rating, when, item['elapsed_ms'])
                 memory.update(card_json=scheduled['card_json'], due_at=scheduled['due_at'], last_rating=rating)
                 self._event(con, state, 'atomic_rating', point_id=point_id, card_id=active['card_id'],
                             submission_id=item['id'], rating=rating, review_log=scheduled['review_log_json'],
                             algorithm=scheduled['algorithm'], scheduler=scheduled['scheduler_json'], mode='learn' if learning else 'review')
             if learning and passed:
+                learning_effect['first_review'] = True
                 memory.update(mastered=True, first_passed_at=when.isoformat())
                 first_due = when + timedelta(seconds=state['policy']['first_review_seconds'])
                 memory['due_at'] = first_due.isoformat()
@@ -313,7 +320,7 @@ class AtomicLearningService(LearningService):
                     card.due = first_due
                     memory['card_json'] = card.to_json()
         active.update(phase='feedback', answer=item['answer'], correct=correct, reason=reason,
-                      ratings=ratings, answered_at=when.isoformat())
+                      ratings=ratings, answered_at=when.isoformat(), learning_effect=learning_effect)
         if whole_success:
             active['stopped'] = True
         elif stop:

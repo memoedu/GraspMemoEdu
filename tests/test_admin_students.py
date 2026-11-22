@@ -8,6 +8,7 @@ import unittest
 import uuid
 
 from fastapi.testclient import TestClient
+from graspmemoedu.access import AccessStore
 from graspmemoedu.api import create_app
 from graspmemoedu.config import Settings
 from graspmemoedu.service import LearningService
@@ -18,7 +19,7 @@ from tests.training_fixtures import training_bank
 
 
 class AdminStudentsTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self, *, start_client=True):
         temp = temporary_test_directory(); self.addCleanup(temp.cleanup)
         self.root = Path(temp.name)
         self.course = synthetic_course(2)
@@ -37,8 +38,10 @@ class AdminStudentsTests(unittest.TestCase):
         self.time = datetime.now(timezone.utc)
         self.app = create_app(Settings(data_dir=self.root, public_api_origin='https://api.test', allowed_origins=('https://site.test',)),
             LearningService(self.course, self.root, DeterministicJudge()), atomic_clock=lambda: self.time)
-        self.client = TestClient(self.app, base_url='https://api.test'); self.client.__enter__()
-        self.addCleanup(self.client.__exit__, None, None, None)
+        self.client = TestClient(self.app, base_url='https://api.test')
+        if start_client:
+            self.client.__enter__()
+            self.addCleanup(self.client.__exit__, None, None, None)
         self.store = self.app.state.access_store
         self.admin, self.admin_headers = self.identity('Admin', is_admin=True)
         self.other, self.other_headers = self.identity('Other admin', is_admin=True)
@@ -70,20 +73,25 @@ class AdminStudentsTests(unittest.TestCase):
         return {'request_id': str(uuid.uuid4()), 'expected_revision': state['revision'],
             'attempt_id': state['attempt_id'], 'step_id': state['active_step_id'], **values}
 
-    def test_all_student_scope_pagination_search_and_strict_roles(self):
+    def test_managed_account_scope_pagination_search_and_strict_roles(self):
         self.store.set_enabled(self.second, False)
         before = self.snapshot()
         services = list(self.app.state.learning_services)
-        for headers in (self.admin_headers, self.other_headers):
-            r = self.client.get('/api/admin/students?limit=1', headers=headers)
-            self.assertEqual(r.status_code, 200, r.text)
-            data = r.json(); self.assertEqual(data['total'], 2); self.assertEqual(data['next_offset'], 1)
-            tail = self.client.get('/api/admin/students?limit=1&offset=1', headers=headers).json()
-            self.assertIsNone(tail['next_offset']); self.assertFalse(tail['items'][0]['enabled'])
-            self.assertEqual(self.detail(self.second, headers).status_code, 200)
+        r = self.client.get('/api/admin/students?limit=1', headers=self.admin_headers)
+        self.assertEqual(r.status_code, 200, r.text)
+        data = r.json()
+        self.assertEqual((data['total'], data['next_offset']), (2, 1))
+        tail = self.client.get('/api/admin/students?limit=1&offset=1', headers=self.admin_headers).json()
+        self.assertIsNone(tail['next_offset'])
+        self.assertEqual({data['items'][0]['learner_id'], tail['items'][0]['learner_id']}, {self.student, self.normal})
+        other = self.client.get('/api/admin/students', headers=self.other_headers).json()
+        self.assertEqual(other['total'], 1)
+        self.assertFalse(other['items'][0]['enabled'])
+        self.assertEqual(self.detail(self.second, self.other_headers).status_code, 200)
+        self.assertEqual(self.detail(self.normal).status_code, 200)
         self.assertEqual(self.client.get('/api/admin/students?q=%25', headers=self.admin_headers).json()['total'], 0)
         self.assertEqual(self.client.get('/api/admin/students?q=Student', headers=self.admin_headers).json()['total'], 2)
-        for learner in (self.normal, self.admin, 'missing'):
+        for learner in (self.second, self.admin, 'missing'):
             self.assertEqual(self.detail(learner).status_code, 404)
         for headers in (self.headers, self.normal_headers):
             self.assertEqual(self.detail(headers=headers).status_code, 403)
@@ -94,6 +102,63 @@ class AdminStudentsTests(unittest.TestCase):
         self.assertEqual(self.client.options('/api/admin/students', headers={'Origin': 'https://evil.test', 'Access-Control-Request-Method': 'GET'}).status_code, 403)
         self.assertEqual(self.snapshot(), before)
         self.assertEqual(list(self.app.state.learning_services), services)
+
+    def test_shared_managers_can_change_only_qualifications_and_non_student_stays_managed(self):
+        help_store = self.app.state.help_requests
+        help_store.assign_admins(self.student, [self.admin, self.other])
+        route = '/api/admin/students/' + self.student + '/qualifications'
+        for headers, status in ((self.headers, 403), (self.normal_headers, 403), ({'Origin': 'https://site.test'}, 401)):
+            self.assertEqual(self.client.post(route, headers=headers, json={'is_student': False}).status_code, status)
+        self.assertEqual(self.client.post('/api/admin/students/' + self.second + '/qualifications',
+                                          headers=self.admin_headers, json={'is_student': False}).status_code, 404)
+        for payload in ({}, {'is_admin': True}, {'is_student': 1}, {'is_advanced_learner': None}):
+            self.assertEqual(self.client.post(route, headers=self.admin_headers, json=payload).status_code, 422)
+        original = self.store.list_principals(accounts_only=True)
+        result = self.client.post(route, headers=self.other_headers, json={'is_student': False})
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertFalse(result.json()['is_student'])
+        for headers in (self.admin_headers, self.other_headers):
+            self.assertFalse(self.detail(headers=headers).json()['student']['is_student'])
+        self.assertEqual(self.client.get('/api/student-report', headers=self.headers).status_code, 403)
+        promoted = self.client.post(route, headers=self.admin_headers, json={'is_advanced_learner': True}).json()
+        self.assertTrue(promoted['is_advanced_learner'])
+        self.assertFalse(promoted['is_student'])
+        self.assertTrue(self.client.post(route, headers=self.other_headers, json={'is_student': True}).json()['is_student'])
+        self.assertEqual(self.client.get('/api/student-report', headers=self.headers).status_code, 200)
+        updated = self.store.list_principals(accounts_only=True)
+        strip_qualifications = lambda accounts: [{key: value for key, value in account.items()
+            if key not in ('is_advanced_learner', 'features')} for account in accounts]
+        self.assertEqual(strip_qualifications(updated), strip_qualifications(original))
+
+    def test_legacy_single_manager_mapping_migrates_without_losing_assignments(self):
+        with self.store._transaction() as con:
+            con.execute('ALTER TABLE help_admin_assignments RENAME TO test_assignments')
+            con.execute('''CREATE TABLE help_admin_assignments (
+                learner_id TEXT PRIMARY KEY REFERENCES access_principals(learner_id),
+                admin_id TEXT NOT NULL REFERENCES access_principals(learner_id))''')
+            con.execute('INSERT INTO help_admin_assignments SELECT * FROM test_assignments')
+            con.execute('DROP TABLE test_assignments')
+        for _ in range(2):
+            AccessStore(self.root, list(self.store.topics.values()))
+            self.assertEqual(self.detail(self.second, self.other_headers).status_code, 200)
+            self.assertEqual(self.detail(self.second).status_code, 404)
+            self.assertEqual(self.detail(self.normal).status_code, 200)
+        self.app.state.help_requests.assign_admins(self.second, [self.admin, self.other])
+        self.assertEqual(self.detail(self.second).status_code, 200)
+
+    def test_beginner_mode_is_a_persistent_per_identity_preference_with_default_on(self):
+        self.assertTrue(self.client.get('/api/profile', headers=self.headers).json()['beginner_mode_enabled'])
+        result = self.client.post('/api/profile', headers=self.headers, json={'beginner_mode_enabled': False})
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertFalse(result.json()['beginner_mode_enabled'])
+        self.assertFalse(self.client.get('/api/access', headers=self.headers).json()['beginner_mode_enabled'])
+        self.assertTrue(self.client.get('/api/profile', headers=self.normal_headers).json()['beginner_mode_enabled'])
+        self.assertEqual(self.client.post('/api/profile', headers=self.headers,
+                                          json={'beginner_mode_enabled': 'false'}).status_code, 422)
+        self.assertFalse(self.client.post('/api/profile', headers=self.headers,
+                                          json={'timezone': 'UTC'}).json()['beginner_mode_enabled'])
+        self.assertTrue(self.client.post('/api/profile', headers=self.headers,
+                                         json={'beginner_mode_enabled': True}).json()['beginner_mode_enabled'])
 
     def test_future_modules_active_reviews_and_old_version_are_read_only(self):
         learner = self.learner(); backend = learner.review_backend; backend.clock = lambda: self.time
@@ -196,6 +261,7 @@ class AdminStudentsTests(unittest.TestCase):
         self.assertEqual(next(r for r in listing['items'] if r['learner_id'] == self.student)['started_topics'], 0)
         self.assertEqual(self.snapshot(), before)
         test_admin, test_headers = self.identity('Test admin', is_admin=True, purpose='test')
+        self.app.state.help_requests.assign_admins(self.student, [self.admin, test_admin])
         before = self.snapshot()
         visible = self.detail(headers=test_headers).json()
         self.assertTrue(visible['atomic_cards']); self.assertTrue(visible['training_learned'])

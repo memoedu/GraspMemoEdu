@@ -1,5 +1,6 @@
 """One subject-independent conversation per learner; no fabricated content report."""
 from .help_threads import HelpThreads
+from .managed_accounts import includes as manages, scope as management_scope
 from .service import DomainError
 
 
@@ -37,7 +38,7 @@ class MainHelpThreads(HelpThreads):
             self.store._require_admin(con, access['learner_id'])
         row = con.execute("SELECT * FROM access_principals WHERE learner_id=? AND role='account' AND is_student=1 AND is_admin=0", (learner_id,)).fetchone()
         if not row or (viewer == 'student' and learner_id != access['learner_id']) or (
-                viewer == 'admin' and self.store._owner(con, learner_id) != access['learner_id']):
+                viewer == 'admin' and not manages(con, learner_id, access['learner_id'])):
             raise DomainError('unknown_help_request', '未找到此学员的对话。', 404)
         return {'id': learner_id, 'learner_id': learner_id, 'created_at': row['created_at']}, viewer
 
@@ -61,6 +62,7 @@ class MainHelpThreads(HelpThreads):
             ids = [access['learner_id']]
         else:
             self.store._require_admin(con, access['learner_id'])
-            ids = [r[0] for r in con.execute("SELECT learner_id FROM access_principals WHERE role='account' AND is_student=1 AND is_admin=0 ORDER BY learner_id")
-                   if self.store._owner(con, r[0]) == access['learner_id']]
+            ids = [r[0] for r in con.execute("""SELECT p.learner_id FROM access_principals p
+                WHERE p.role='account' AND p.is_student=1 AND p.is_admin=0 AND """ +
+                management_scope('p.learner_id') + ' ORDER BY p.learner_id', (access['learner_id'],))]
         return [self.authorized(con, access, ident)[0] for ident in ids]

@@ -342,10 +342,10 @@ def main():
     feedback.add_argument('--limit', type=int, default=30)
     help_default = sub.add_parser('help-admin-default', help='设置未单独分配学员的默认答疑管理员')
     help_default.add_argument('--admin', required=True, help='管理员账号 learner_id')
-    help_assign = sub.add_parser('help-assign', help='设置学员的答疑管理员；已有请求同时按新归属隔离')
-    help_assign.add_argument('--learner', required=True, help='学员账号 learner_id')
+    help_assign = sub.add_parser('help-assign', help='设置非管理员账号的负责管理员；覆盖显式名单')
+    help_assign.add_argument('--learner', required=True, help='非管理员账号 learner_id')
     help_owner = help_assign.add_mutually_exclusive_group(required=True)
-    help_owner.add_argument('--admin', help='管理员账号 learner_id')
+    help_owner.add_argument('--admin', action='append', help='管理员账号 learner_id，可重复指定')
     help_owner.add_argument('--default-admin', action='store_true', help='恢复默认答疑管理员')
     sub.add_parser('help-assignments', help='查看学员与答疑管理员的对应关系，不含邀请码')
     permissions = sub.add_parser('account-permissions', help='设置账号权限；下一次 API 请求生效')
@@ -476,7 +476,7 @@ def main():
         elif args.command == 'help-admin-default':
             output(make_help_store(settings).set_default_admin(args.admin))
         elif args.command == 'help-assign':
-            output(make_help_store(settings).assign_admin(args.learner, None if args.default_admin else args.admin))
+            output(make_help_store(settings).assign_admins(args.learner, [] if args.default_admin else args.admin))
         elif args.command == 'help-assignments':
             output(make_help_store(settings).assignments())
         elif args.command == 'account-permissions':

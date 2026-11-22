@@ -6,6 +6,7 @@ from fastapi import Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from .service import DomainError
+from .managed_accounts import scope as management_scope
 
 
 PUBLIC_PATHS = {'/api/admin/pauses', '/api/admin/pauses/unlock', '/api/admin/pauses/skip-policy'}
@@ -39,10 +40,8 @@ class AdminPauses:
     def _owned(self, con, admin_id, learner_id=None):
         scope = '''SELECT p.learner_id,COALESCE(NULLIF(p.admin_name,''),p.display_name) AS display_name,t.topic,t.version,t.body
             FROM access_principals p JOIN topics t ON t.learner=p.learner_id
-            LEFT JOIN help_admin_assignments a ON a.learner_id=p.learner_id
-            LEFT JOIN help_admin_config c ON c.id=1
             WHERE p.role='account' AND p.is_student=1 AND p.is_admin=0 AND p.enabled=1
-            AND COALESCE(a.admin_id,c.admin_id)=?'''
+            AND ''' + management_scope('p.learner_id')
         args = [admin_id]
         if learner_id is not None:
             scope += ' AND p.learner_id=?'; args.append(learner_id)
