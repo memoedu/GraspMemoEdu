@@ -334,12 +334,14 @@ class PaperService:
                 topic = self.catalog.topic(source['container'])
                 if topic['version'] == source['version']:
                     owner = topic
+            default_level = 'scientific' if source['kind'] == 'atomic' and owner else 'none'
             context = ({'topic_id': permission_id(source['container']), 'bank_id': source['container'],
                         'group_id': source['group_id'], 'question_id': source['local_points'][0]}
                        if source['kind'] == 'training' else
                        {'topic_id': source['container'], 'question_id': source['local_card']} if source['kind'] == 'atomic' else None)
             items.append({'index': index, 'point_ids': item['point_ids'], 'title': question.get('title', ''),
-                          'source_title': item['source_title'], **calculator.presentation(owner, question),
+                          'source_title': item['source_title'],
+                          **calculator.presentation(owner, question, default_level=default_level),
                           'content_context': context,
                           'content_version': item['id'] if item['id'].startswith('variant-') else source['version'],
                           'source_kind': source['kind'],

@@ -24,7 +24,16 @@ class CalculatorSchemaTests(unittest.TestCase):
         self.assertEqual(policy(topic, {'calculate': {'disable_keys': ['add']}})['level'], 'cas')
         self.assertIsNone(policy(topic, {'calculate': 'none'}))
         self.assertIsNone(policy(topic, {'calculate': None}))
-        self.assertIsNone(policy({}, {}))
+
+    def test_unconfigured_topic_defaults_to_scientific(self):
+        self.assertEqual(policy({}, {}), {'level': 'scientific'})
+        self.assertEqual(policy({'calculate': {'disable_modules': ['constants']}}, {'calculate': {'disable_keys': ['sin']}}),
+                         {'level': 'scientific', 'disable_modules': ['constants'], 'disable_keys': ['sin']})
+        self.assertEqual(policy({}, {'calculate': 'basic'}), {'level': 'basic'})
+        self.assertIsNone(policy({'calculate': 'none'}, {}))
+        self.assertIsNone(policy({}, {'constraints': 'None'}, mathacademy=True))
+        self.assertIsNone(policy({}, {}, default_level='none'))
+        self.assertEqual(policy({'calculate': 'basic'}, {}, default_level='none'), {'level': 'basic'})
 
     def test_invalid_configuration_cannot_silently_enable(self):
         for value in (True, 3, 'Scientific', {'level': 'no-limit'}, {},
@@ -58,7 +67,7 @@ class CalculatorSchemaTests(unittest.TestCase):
         })
         self.assertEqual(blocks[0]['html'], 'Test' + authored)
         self.assertEqual(blocks[0]['calculate'], from_mathacademy('Graphing'))
-        self.assertIsNone(policy({}, {'constraints': 'Graphing'}))
+        self.assertEqual(policy({}, {'constraints': 'Graphing'}), {'level': 'scientific'})
 
     def test_legacy_calculator_callout_recovers_missing_permission(self):
         topic = {'source_adapter': 'mathacademy', 'calculate': {'level': 'cas', 'disable_keys': ['cos']}}
@@ -75,7 +84,7 @@ class CalculatorSchemaTests(unittest.TestCase):
                                  {**expected, 'disable_keys': ['cos']} if mode != 'None' else None)
                 self.assertIsNone(presentation(topic, {**item, 'calculate': None}).get('calculate'))
                 self.assertEqual(presentation(topic, {**item, 'constraints': 'Standard'})['calculate']['level'], 'basic')
-                self.assertEqual(presentation({}, item), {'html': item['html']})
+                self.assertEqual(presentation({}, item), {'html': item['html'], 'calculate': {'level': 'scientific'}})
 
     def test_topic_author_format_keeps_metadata_only_on_questions(self):
         original = {'topic_format_version': 2, 'title': 'Calculator', 'id': 'calculator-fixture',
@@ -102,6 +111,21 @@ class CalculatorSchemaTests(unittest.TestCase):
             state = service.state()
         example = next(step for step in state['steps'] if step['kind'] == 'example')
         self.assertEqual(example['calculate'], {'level': 'basic', 'disable_modules': ['symbolic']})
+
+    def test_default_is_projected_on_questions_only(self):
+        topic = synthetic_course(1)
+        with tempfile.TemporaryDirectory() as folder:
+            state = LearningService(topic, Path(folder)).state()
+        example = next(step for step in state['steps'] if step['kind'] == 'example')
+        self.assertEqual(example['calculate'], {'level': 'scientific'})
+        introduction = topic['introduction']
+        topic.update(introductions=[introduction], content_order=[
+            {'kind': 'introduction', 'id': introduction['id']},
+            {'kind': 'example', 'id': topic['modules'][0]['id']},
+        ])
+        reading = reading_blocks(topic)
+        self.assertNotIn('calculate', reading[0])
+        self.assertEqual(reading[1]['calculate'], {'level': 'scientific'})
 
     def test_mechanical_author_import_preserves_topic_and_question_metadata(self):
         document = lesson_document()
