@@ -1,4 +1,4 @@
-"""Resolve the calculation tools explicitly allowed by published material."""
+"""Resolve the calculation tools allowed by published material."""
 import re
 
 
@@ -64,7 +64,7 @@ def legacy_mathacademy_mode(question):
     return None
 
 
-def policy(parent, question, *, mathacademy=False):
+def policy(parent, question, *, mathacademy=False, default_level='scientific'):
     inherited = normalize(parent['calculate']) if 'calculate' in parent else {}
     if 'calculate' in question:
         local = normalize(question['calculate'])
@@ -72,7 +72,7 @@ def policy(parent, question, *, mathacademy=False):
         local = from_mathacademy(mode)
     else:
         local = {}
-    level = local.get('level', inherited.get('level', 'none'))
+    level = local.get('level', inherited.get('level', default_level))
     if level == 'none':
         return None
     result = {'level': level}
@@ -86,10 +86,10 @@ def policy(parent, question, *, mathacademy=False):
     return result
 
 
-def presentation(parent, question):
+def presentation(parent, question, *, default_level='scientific'):
     ma = parent.get('source_adapter') == 'mathacademy'
     html = question['html']
     if ma:
         html = LEGACY_CALLOUT.sub('', html)
-    calculator_policy = policy(parent, question, mathacademy=ma)
+    calculator_policy = policy(parent, question, mathacademy=ma, default_level=default_level)
     return {'html': html, **({'calculate': calculator_policy} if calculator_policy else {})}

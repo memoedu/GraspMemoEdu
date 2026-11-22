@@ -1,6 +1,6 @@
 # 按题配置计算器
 
-课程作者用 `calculate` 指定站内计算器权限。Topic 可以给默认档位，Example 或 Practice 可以覆盖。两级 `disable_modules` 和 `disable_keys` 取并集。题库题目继承所在题组的同名字段。未授权的题目不显示入口。
+Topic 省略计算器档位时，题目默认开放科学计算器。课程作者可用 `calculate` 设置 Topic 档位，Example 或 Practice 可以覆盖或明确关闭。两级 `disable_modules` 和 `disable_keys` 取并集。独立题库由题组或单题显式开放计算器。
 
 ## 材料字段
 
@@ -17,7 +17,7 @@ Topic v2 JSON 的根和 Example、Practice 节点都可写 `calculate`。Markdow
 }
 ```
 
-- `none` 或 `null` 明确关闭，省略档位则继承。只配置禁用项时也会继承档位。
+- `none` 或 `null` 明确关闭。只配置禁用项时沿用当前默认档位。
 - `basic` 提供算术、乘方、根式、绝对值和对数。
 - `scientific` 增加三角及反三角函数、角度制、双曲函数、阶乘、排列组合、复数、科学记数法和常数。可单独加开 `graph`。
 - `advanced` 增加函数绘图、数值定积分、矩阵、概率分布和统计回归。
