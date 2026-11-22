@@ -1,0 +1,15 @@
+{
+  "dependencies": {
+    "@milkdown/core": "7.23.0",
+    "@milkdown/preset-commonmark": "7.23.0",
+    "@milkdown/prose": "7.23.0",
+    "@milkdown/utils": "7.23.0",
+    "@unified-latex/unified-latex-lint": "1.8.4",
+    "@unified-latex/unified-latex-util-parse": "1.8.4",
+    "@unified-latex/unified-latex-util-print-raw": "1.8.4",
+    "esbuild": "0.28.2",
+    "katex": "0.19.0",
+    "mathlive": "0.111.4",
+    "unified": "11.0.5"
+  }
+}

@@ -1,4 +1,5 @@
 import json
+import hashlib
 from pathlib import Path
 import subprocess
 import sys
@@ -31,6 +32,11 @@ class PublicExportTests(unittest.TestCase):
             pwa_files.update({'microphone-recorder.js', 'voice-input.js', 'answer-conversion.js'})
             pwa_files.update({'autocomplete.js', 'autocomplete.css'})
             self.assertTrue((output / 'vendor/calculator/completion.mjs').is_file())
+            pwa_files.update({'formula-input.js', 'formula-catalog.js', 'formula-input.css'})
+            formula_assets = Path(__file__).resolve().parents[1] / 'scripts/formula-assets.json'
+            for name, digest in json.loads(formula_assets.read_text(encoding='utf-8'))['files'].items():
+                with self.subTest(asset=name):
+                    self.assertEqual(hashlib.sha256((output / name).read_bytes()).hexdigest(), digest)
             pwa_files.update({'question-tools.js', 'calculator.js', 'calculator-panel.js', 'calculator-inputs.js', 'calculator-policy.js',
                               'calculator-engine.js', 'calculator-worker.js', 'calculator.css'})
             self.assertTrue(pwa_files <= {p.name for p in output.iterdir()})
