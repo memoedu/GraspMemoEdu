@@ -8,6 +8,7 @@ class PracticePolicy:
     version: str
     targets: tuple[int, ...]
     ratings: tuple[int, ...]
+    adaptive_queue: bool = False
 
     def __post_init__(self):
         if (not self.version or len(self.targets) != len(self.ratings) or not self.targets
@@ -17,16 +18,27 @@ class PracticePolicy:
             raise ValueError('Invalid practice policy')
 
     def to_dict(self):
-        return asdict(self)
+        value = asdict(self)
+        if not self.adaptive_queue:
+            del value['adaptive_queue']
+        return value
 
     @classmethod
     def from_dict(cls, value):
-        return cls(value['version'], tuple(value['targets']), tuple(value['ratings']))
+        return cls(value['version'], tuple(value['targets']), tuple(value['ratings']),
+                   adaptive_queue=value.get('adaptive_queue', False))
+
+    def queue_additions(self, error_count):
+        if not self.adaptive_queue:
+            return None
+        index = min(error_count, len(self.targets) - 1)
+        return self.targets[index] - self.targets[max(0, index - 1)]
 
 
 LEGACY_LESSON_POLICY = PracticePolicy('lesson-v1', (2, 3, 5, 7), (4, 3, 2, 1))
-LESSON_POLICY = PracticePolicy('lesson-v2', (3, 5, 7, 9), (4, 3, 2, 1))
-REVIEW_POLICY = PracticePolicy('review-v1', (1, 3, 5), (4, 2, 1))
+SEQUENTIAL_LESSON_POLICY = PracticePolicy('lesson-v3-sequential', (2, 3, 5, 7), (4, 3, 2, 1), adaptive_queue=True)
+LESSON_POLICY = PracticePolicy('lesson-v3', (3, 4, 6, 8), (4, 3, 2, 1), adaptive_queue=True)
+REVIEW_POLICY = PracticePolicy('review-v2', (1, 2, 4), (4, 2, 1), adaptive_queue=True)
 
 
 def apply_practice_result(attempt, correct, policy):

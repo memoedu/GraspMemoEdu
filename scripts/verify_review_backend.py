@@ -85,7 +85,7 @@ def main():
     assert review.due() == []
     sequence = []
     final_payload = None
-    for index in range(3):
+    for index in range(2):
         answer = '0' if index == 0 else learning.questions[state['practice']['id']]['reference_answer']
         payload = {'request_id': str(uuid.uuid4()), 'expected_revision': state['revision'],
                    'question_id': state['practice']['id'], 'answer': answer, 'elapsed_ms': 2100}
@@ -98,8 +98,8 @@ def main():
                 break
         assert result['status'] == 'judged' and result['correct'] == (index != 0)
         state = result['state']
-        assert state['practice_target_count'] == 3
-        if index < 2:
+        assert state['practice_target_count'] == 2
+        if index == 0:
             assert state['mastery'] is None
             state = review.advance(state['session_id'], {
                 'request_id': str(uuid.uuid4()), 'expected_revision': state['revision'],

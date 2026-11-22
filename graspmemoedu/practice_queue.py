@@ -100,6 +100,19 @@ class PersistentPracticeQueue:
         state['presented'].append(question_id)
         state['last_presented'][question_id] = state['sequence']
 
+    def _fallback(self, state, eligible):
+        last_seen = state['last_presented']
+        unseen = [item for item in eligible if item not in last_seen]
+        return self.rng.choice(unseen) if unseen else min(eligible, key=last_seen.__getitem__)
+
+    @staticmethod
+    def _question_ids(module, groups, has_example):
+        ids = ([item for group in groups for item in group] if groups else
+               [question['id'] for question in module['practices']])
+        if has_example:
+            ids.append(module['example']['id'])
+        return ids
+
     def has_example(self, con, module):
         state = self.snapshot(con, module)
         return state is not None and module['example']['id'] in state['last_presented']
@@ -123,10 +136,7 @@ class PersistentPracticeQueue:
         has_example = state is not None and example_id in state['last_presented']
         if groups is None and not has_example:
             raise _error('unsupported_practice_queue', '此旧题库继续使用原有练习顺序。')
-        all_ids = [question for group in groups for question in group] if groups else [
-            question['id'] for question in module['practices']]
-        if has_example:
-            all_ids.append(example_id)
+        all_ids = self._question_ids(module, groups, has_example)
         excluded = set(exclude)
         if selected is not None and (selected not in all_ids or selected in excluded):
             raise _error('invalid_practice_question', '本轮指定的练习不合法或已经推送。', 422)
@@ -141,17 +151,13 @@ class PersistentPracticeQueue:
                 pending.remove(question)
         else:
             eligible = [item for item in all_ids if item not in excluded and item not in pending]
-            unseen = [item for item in eligible if item not in state['last_presented']]
-            if unseen:
-                question = self.rng.choice(unseen)
-            else:
-                question = min(eligible, key=lambda item: state['last_presented'][item])
+            question = self._fallback(state, eligible)
         self._present(state, question)
         self._save(con, module, state)
         return question
 
-    def record_result(self, con, module, question_id, correct):
-        """The first judged mistake in a group appends its other two members."""
+    def record_result(self, con, module, question_id, correct, *, additions=None, exclude=()):
+        """Append by the round's policy, preferring siblings on a group's first miss."""
         if type(correct) is not bool:
             raise ValueError('Only a successful boolean judgement may update practice queues')
         state = self.snapshot(con, module)
@@ -166,12 +172,26 @@ class PersistentPracticeQueue:
                 question_id == example_id or groups is None
                 and any(question['id'] == question_id for question in module['practices']))):
             raise _error('invalid_practice_question', '题目不属于当前 Example。', 422)
-        state = self.snapshot(con, module)
         if state is None or question_id not in state['last_presented']:
             raise _error('practice_not_presented', '题目尚未推送，不能记录答题结果。')
-        if correct or group_index is None or group_index in state['expanded_groups']:
+        first_group_miss = group_index is not None and group_index not in state['expanded_groups']
+        if correct or (additions is None and not first_group_miss):
             return
-        state['expanded_groups'].append(group_index)
-        state['pending'].extend(item for item in groups[group_index - 1]
-                                if item != question_id and item not in state['pending'])
+        pending = state['pending']
+        unavailable = {*exclude, question_id, *pending}
+        siblings = []
+        if first_group_miss:
+            state['expanded_groups'].append(group_index)
+            siblings = [item for item in groups[group_index - 1] if item not in unavailable]
+        if additions is None:
+            pending.extend(siblings)
+        else:
+            chosen = siblings[:additions]
+            eligible = [item for item in self._question_ids(module, groups, has_example)
+                        if item not in unavailable and item not in chosen]
+            while eligible and len(chosen) < additions:
+                item = self._fallback(state, eligible)
+                chosen.append(item)
+                eligible.remove(item)
+            pending.extend(chosen)
         self._save(con, module, state)

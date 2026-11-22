@@ -176,7 +176,7 @@ class QuestionWorkflowTests(unittest.TestCase):
         state = backend.submission(result['submission_id'])['state']
         self.assertEqual(state['practice_error_count'], 1)
         self.assertEqual(state['practice_answered_count'], 1)
-        self.assertEqual(state['practice_target_count'], 3)
+        self.assertEqual(state['practice_target_count'], 2)
         self.assertEqual(backend.submit(state['session_id'], payload)['submission_id'], result['submission_id'])
         self.judge.assert_not_called()
 
