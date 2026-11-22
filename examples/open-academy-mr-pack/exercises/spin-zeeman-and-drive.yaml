@@ -1,0 +1,639 @@
+concept: spin-zeeman-and-drive
+exercises:
+  # ==========================================================================
+  # Step 1: zeeman-gyromagnetic-and-splitting (5 题课堂 + 3 题 recall)
+  # ==========================================================================
+  - id: zm-level-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "在沿 $+z$ 轴方向的静磁场 $B_0 > 0$ 中，为什么电子自旋（$\\gamma_e < 0$）的下能级是 $|m_S = -1/2\\rangle$，而质子核自旋（$\\gamma_n > 0$）的下能级却是 $|m_S = +1/2\\rangle$？"
+    options:
+      - id: a
+        text: "电子自旋质量更轻，导致静态哈密顿量中的正负号与原子核自动相反。"
+        correct: false
+        feedback: "质量大小只影响旋磁比绝对值（$10^3$ 倍数量级差），决定上下能级顺序的是旋磁比 $\\gamma$ 的正负号与 $H_0 = -\\gamma B_0 S_z$。"
+      - id: b
+        text: "由 $H_0 = -\\gamma B_0 S_z$，$B_0 > 0$ 时电子因 $\\gamma_e < 0$ 使 $-\\gamma_e B_0 > 0$，故 $m_S=-1/2$ 能量为负更低；质子因 $\\gamma_n > 0$ 使 $-\\gamma_n B_0 < 0$，故 $m_S=+1/2$ 能量更低。"
+        correct: true
+        feedback: "完全正确。代入 $S_z|m_S=\\pm 1/2\\rangle = \\pm\\frac{1}{2}|m_S=\\pm 1/2\\rangle$ 并结合 $\\gamma$ 的正负号，就能直接判断能量谁高谁低。"
+      - id: c
+        text: "质子带正电因此自旋量子数取 $m_S = +1$ 和 $0$，而不再是 $\\pm 1/2$。"
+        correct: false
+        feedback: "质子同样是自旋 $1/2$ 粒子，$m_S$ 依然只有 $\\pm 1/2$ 两个取值；改变的只是两个能级谁在上、谁在下。"
+      - id: d
+        text: "只有电子受静磁场 $B_0$ 劈裂，质子在静磁场下两能级依然保持简并。"
+        correct: false
+        feedback: "质子同样受塞曼劈裂，只是 $\\gamma_n$ 处于 $\\text{kHz/G}$ 量级，劈裂幅度比电子小约 $10^3$ 倍。"
+    solution: "依据 $H_0 = -\\gamma B_0 S_z$（$B_0 > 0$），电子 $\\gamma_e < 0$ 使 $-\\gamma_e B_0 > 0$，于是 $|m_S = -1/2\\rangle$ 能量更低；质子 $\\gamma_n > 0$ 使 $-\\gamma_n B_0 < 0$，于是 $|m_S = +1/2\\rangle$ 能量更低。"
+
+  - id: zm-level-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "在刚才 $B_0 = 500\\text{ G}$ 的例题中，电子自旋与旁侧质子核自旋处在同一静磁场里，为何两者的能级分裂频率相差约 $658$ 倍？"
+    options:
+      - id: a
+        text: "因为两者质量差约 $10^3$ 倍，导致电子 $|\\gamma_e|$ 处于 $\\text{MHz/G}$ 量级而质子 $\\gamma_n$ 仅在 $\\text{kHz/G}$ 量级，同一 $B_0$ 下能隙之比等于旋磁比幅度之比。"
+        correct: true
+        feedback: "抓住核心！电子质量远小于质子，使 $|\\gamma_e|/\\gamma_n \\approx 2803.3 / 4.2577 \\approx 658$，因此相同静磁场产生的塞曼劈裂悬殊两个半数量级。"
+      - id: b
+        text: "因为质子电荷量仅为电子电荷量的 $1/658$，削弱了磁矩耦合强度。"
+        correct: false
+        category: missing_prerequisite
+        feedback: "质子与电子带电量大小相等均为 $|e|$，旋磁比反比于质量（$\\propto e/2m$），数量级差距来自质量而非电荷量。"
+      - id: c
+        text: "因为电子自旋哈密顿量除以了 $\\hbar$，而核自旋计算时额外除以了 $2\\pi$。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "两者都是除以 $\\hbar$ 后再除以 $2\\pi$ 换算为普通频率（$\\text{Hz}$），$658$ 倍完全源于物理常数 $\\gamma_e$ 与 $\\gamma_n$ 的差异。"
+      - id: d
+        text: "因为 $B_0 = 500\\text{ G}$ 太弱，质子自旋还没进入线性塞曼区域。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "单个自由自旋 $1/2$ 的塞曼哈密顿量 $-\\gamma B_0 S_z$ 对任意 $B_0$ 都严格与 $B_0$ 成正比。"
+    solution: "在同一静磁场 $B_0$ 下，塞曼能隙分别正比于 $|\\gamma_e|$ 和 $\\gamma_n$。由于原子核质量约为电子的 $10^3$ 倍，质子旋磁比约 $4.2577\\text{ kHz/G}$，远小于 NV 电子的 $2.8033\\text{ MHz/G}$，比值约为 $658$。"
+
+  - id: zm-electron-freq-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    params:
+      B0:
+        min: 100
+        max: 600
+        step: 100
+    prompt: "将自由电子置于静磁场 $B_0 = {{=B0}}\\text{ G}$ 中（取自由电子旋磁比 $\\gamma_e/(2\\pi) = -2.8025\\text{ MHz/G}$）。根据 $\\omega_0 = -\\gamma_e B_0$，电子自旋上下两能级之间的共振普通频率 $\\omega_0/(2\\pi)$ 是多少 $\\text{MHz}$？"
+    answer_expr: "2.8025 * B0"
+    tolerance:
+      abs: 0.05
+    common_wrong:
+      - answer_expr: "-2.8025 * B0"
+        category: math_error
+        feedback: "注意 $\\omega_0 = -\\gamma_e B_0$ 自带负号，与 $\\gamma_e = -2\\pi\\times 2.8025$ 中的负号负负得正，共振能隙频率 $\\omega_0/(2\\pi)$ 应为正值。"
+      - answer_expr: "2.8025 * B0 / 2"
+        category: misunderstood_definition
+        feedback: "这只是上（或下）单个能级到零能点的距离 $|\\omega_0/2|/(2\\pi)$，两能级之间的总能隙是 $\\omega_0$ 而不是 $\\omega_0/2$。"
+    hints:
+      - "由 $\\omega_0 = -\\gamma_e B_0$ 计算，注意两个负号相消。"
+      - "结果直接以 $\\text{MHz}$ 为单位：$2.8025 \\times {{=B0}}$。"
+    solution: "代入公式得 $\\omega_0/(2\\pi) = -(-2.8025\\text{ MHz/G})\\times {{=B0}}\\text{ G} = {{=2.8025*B0}}\\text{ MHz}$。"
+
+  - id: zm-proton-spot-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "一位同学整理笔记时把水中质子的旋磁比写成了「$\\gamma_e \\approx 2\\pi\\times 4.2576\\text{ kHz/G}$」，并据此认为室温水分子里的氢核（质子）在磁场中带负旋磁比。这段笔记出了哪两处相关问题？"
+    options:
+      - id: a
+        text: "下标误将核自旋 $\\gamma_n$ 写成了电子下标 $\\gamma_e$；且数值本身为正，说明质子旋磁比 $\\gamma_n > 0$（正比于正核电荷），只是受化学环境微调比自由质子 $4.2577\\text{ kHz/G}$ 略低一点。"
+        correct: true
+        feedback: "排查准确！核自旋应记为 $\\gamma_n$ 而非 $\\gamma_e$，且氢核旋磁比为正值（约 $+2\\pi\\times 4.2576\\text{ kHz/G}$），不能按电子的负旋磁比套用。"
+      - id: b
+        text: "水中质子的旋磁比与自由电子大小完全相同，应该是 $2.8025\\text{ MHz/G}$ 而不是 $\\text{kHz/G}$。"
+        correct: false
+        category: missing_prerequisite
+        feedback: "质子是核自旋，其质量远大于电子，旋磁比确实是 $4.2576\\text{ kHz/G}$ 量级，出错的是符号下标与正负理解。"
+      - id: c
+        text: "质子磁矩与角动量之间不满足 $\\vec{\\boldsymbol{\\mu}} = \\gamma\\vec{\\boldsymbol{S}}$，只对电子才定义旋磁比。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "任意自旋粒子都满足 $\\vec{\\boldsymbol{\\mu}} = \\gamma\\vec{\\boldsymbol{S}}$，核自旋同样通过 $\\gamma_n$ 刻画磁矩与角动量的比例。"
+      - id: d
+        text: "化学位移会把旋磁比乘上 $-1$，所以水中质子的旋磁比确实变成了负值。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "化学位移只在万分之几量级微调有效磁场，把自由质子 $4.2577\\text{ kHz/G}$ 微调为 $4.2576\\text{ kHz/G}$，绝不会改变旋磁比正负号。"
+    solution: "质子属于核自旋，应记为 $\\gamma_n \\approx 2\\pi\\times 4.2576\\text{ kHz/G} > 0$（电子才用 $\\gamma_e < 0$）；水中化学环境只是微调有效数值，而不改变正负符号。"
+
+  - id: zm-isotope-ratio-transfer
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "在固体核磁共振或金刚石核自旋控制中，除氢核外还常遇到 $^{13}\\text{C}$（$\\gamma_n = 2\\pi\\times 1.07051\\text{ kHz/G}$）与 $^{15}\\text{N}$（$\\gamma_n = -2\\pi\\times 0.43156\\text{ kHz/G}$，两者均为自旋 $1/2$ 核）。在相同的静磁场 $B_0 > 0$ 中，下列对这两个核自旋的比较哪项正确？"
+    options:
+      - id: a
+        text: "$^{13}\\text{C}$ 的下能级是 $|m_S = -1/2\\rangle$，而 $^{15}\\text{N}$ 的下能级是 $|m_S = +1/2\\rangle$。"
+        correct: false
+        category: misapplied_technique
+        feedback: "把两者符号记反了：$^{13}\\text{C}$ 的 $\\gamma_n > 0$ 让 $-\\gamma_n B_0 < 0$，故 $|m_S=+1/2\\rangle$ 在下能级；$^{15}\\text{N}$ 因 $\\gamma_n < 0$ 让 $|m_S=-1/2\\rangle$ 在下能级。"
+      - id: b
+        text: "$^{13}\\text{C}$ 的下能级是 $|m_S = +1/2\\rangle$、能隙较大；而 $^{15}\\text{N}$ 因 $\\gamma_n < 0$ 下能级是 $|m_S = -1/2\\rangle$，且同一 $B_0$ 下 $^{13}\\text{C}$ 的共振频率约为 $^{15}\\text{N}$ 的 $2.48$ 倍。"
+        correct: true
+        feedback: "迁移完全正确！由 $H_0 = -\\gamma_n B_0 S_z$ 可知：$\\gamma_n > 0$ 的 $^{13}\\text{C}$ 以 $|+1/2\\rangle$ 为下态，$\\gamma_n < 0$ 的 $^{15}\\text{N}$ 以 $|-1/2\\rangle$ 为下态，且 $|1.07051 / (-0.43156)| \\approx 2.48$。"
+      - id: c
+        text: "因为两者都是原子核，所以即使 $^{15}\\text{N}$ 旋磁比为负，它的下能级依然必须是 $|m_S = +1/2\\rangle$。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "能级顺序由哈密顿量 $H_0 = -\\gamma B_0 S_z$ 中 $\\gamma$ 的正负号唯一决定，与它是核还是电子无关。"
+      - id: d
+        text: "两者同在静磁场 $B_0$ 中，能级分裂频率一定与核质量成反比相等，故两者频率完全一样。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "核 $g$ 因子 $g_n$ 随核结构不同而异（甚至可为负），因此不同核素的旋磁比并不相同。"
+    solution: "代入 $H_0 = -\\gamma_n B_0 S_z$：$^{13}\\text{C}$ 的 $\\gamma_n > 0$ 使 $|m_S=+1/2\\rangle$ 为下态；$^{15}\\text{N}$ 的 $\\gamma_n < 0$ 使 $|m_S=-1/2\\rangle$ 为下态；分裂频率比值为 $1.07051 / 0.43156 \\approx 2.48$。"
+
+  - id: zm-recall-level-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: zeeman-gyromagnetic-and-splitting
+    difficulty: 1
+    est_minutes: 1
+    prompt: "用一两句话说明：电子自旋（$\\gamma_e < 0$）与质子核自旋（$\\gamma_n > 0$）在静磁场 $B_0 > 0$ 中，能级上下顺序和分裂量级分别有什么不同？"
+    rubric:
+      - id: r1
+        criterion: "写出静态哈密顿量 $H_0 = -\\gamma B_0 S_z$（$\\hbar=1$），指出电子 $\\gamma_e < 0$ 使 $|m_S = -1/2\\rangle$ 在下能级，而质子 $\\gamma_n > 0$ 使 $|m_S = +1/2\\rangle$ 在下能级。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "指出由于核质量比电子大 $10^3$ 倍，质子旋磁比处于 $\\text{kHz/G}$ 量级，远小于电子的 $\\text{MHz/G}$ 量级。"
+        weight: 1
+        required: true
+      - id: r3
+        criterion: "补充说明电子与核自旋的能隙比值约为数百到数千倍（如 NV 电子相对质子约 $658$ 倍）。"
+        weight: 1
+        required: false
+    exemplar: "由 $H_0 = -\\gamma B_0 S_z$ 可知，静磁场 $B_0 > 0$ 下，电子因 $\\gamma_e < 0$ 使 $|m_S=-1/2\\rangle$ 处于下能级、能隙位于 $\\text{MHz/G}$ 量级；质子因 $\\gamma_n > 0$ 使 $|m_S=+1/2\\rangle$ 反转为下能级，且因质量大约千倍而旋磁比仅在 $\\text{kHz/G}$ 量级。"
+
+  - id: zm-recall-level-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: zeeman-gyromagnetic-and-splitting
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "在静磁场 $B_0 > 0$ 中，下列哪个粒子的塞曼下能级是 $|m_S = +1/2\\rangle$ 而非 $|m_S = -1/2\\rangle$？"
+    options:
+      - id: a
+        text: "自由质子（$\\gamma_n = +2\\pi\\times 4.2577\\text{ kHz/G} > 0$）"
+        correct: true
+        feedback: "正确。$\\gamma > 0$ 使 $-\\gamma B_0 < 0$，所以 $m_S = +1/2$ 对应的本征能量为负、处于低能级。"
+      - id: b
+        text: "自由电子（$\\gamma_e \\approx -2\\pi\\times 2.8025\\text{ MHz/G} < 0$）"
+        correct: false
+        feedback: "电子 $\\gamma_e < 0$ 使 $-\\gamma_e B_0 > 0$，低能级是 $|m_S = -1/2\\rangle$。"
+      - id: c
+        text: "金刚石 NV 色心电子（$\\gamma_e \\approx -2\\pi\\times 2.8033\\text{ MHz/G} < 0$）"
+        correct: false
+        feedback: "NV 色心电子旋磁比同样为负，低能级仍是 $|m_S = -1/2\\rangle$。"
+      - id: d
+        text: "$^{15}\\text{N}$ 核自旋（$\\gamma_n = -2\\pi\\times 0.43156\\text{ kHz/G} < 0$）"
+        correct: false
+        feedback: "$^{15}\\text{N}$ 的旋磁比为负，与电子相同以 $|m_S = -1/2\\rangle$ 为低能级。"
+    solution: "在 $H_0 = -\\gamma B_0 S_z$（$B_0 > 0$）下，只有 $\\gamma > 0$ 的粒子（如自由质子与 $^{13}\\text{C}$）会让 $|m_S=+1/2\\rangle$ 处于能量更低的下态。"
+
+  - id: zm-recall-level-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: zeeman-gyromagnetic-and-splitting
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "已知电子旋磁比 $\\gamma_e < 0$ 与静磁场强度 $B_0 > 0$，写出磁共振中定义为正值的电子共振角频率 $\\omega_0$ 表达式（用 `ge` 表示 $\\gamma_e$，`B0` 表示 $B_0$）。"
+    answer: "-ge * B0"
+    variables:
+      ge: [-30, -1]
+      B0: [10, 500]
+    solution: "为使电子静磁场哈密顿量写为正系数的 $\\omega_0 S_z$，定义 $\\omega_0 = -\\gamma_e B_0$。"
+
+  # ==========================================================================
+  # Step 2: transverse-drive-hamiltonian (5 题课堂 + 3 题 recall)
+  # ==========================================================================
+  - id: zm-drive-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "在无量纲自旋哈密顿量 $H = \\omega_0 S_z + 2\\Omega\\cos(\\omega t+\\varphi)S_x$ 中，为什么我们把横向驱动项的系数写成 $2\\Omega$（即 $2\\Omega = -\\gamma_e B_x$）而不是直接写成 $\\Omega$？"
+    options:
+      - id: a
+        text: "因为无量纲自旋算符 $S_x$ 本身自带了一个 $2$ 倍权重，必须用 $2\\Omega$ 去抵消。"
+        correct: false
+        feedback: "$S_x$ 对应自旋角动量分量 $\\pm 1/2$ 矩阵，并不自动要求在符号里额外补 $2$ 倍；因子 $2$ 是为了方便把线偏振拆成一正一反两个旋转场。"
+      - id: b
+        text: "因为沿单一轴振荡的余弦驱动场随后要一分为二拆成正反两个等幅度的圆偏振分量，提前记作 $2\\Omega$ 正好让每个圆偏振分量的幅度干净地等于 $\\Omega$。"
+        correct: true
+        feedback: "非常清楚！后续做旋波近似拆分时，$2\\Omega$ 平分到正向和反向分量后正好都是 $\\Omega$，省去了在所有后续公式里背着分数 $\\Omega/2$。"
+      - id: c
+        text: "因为交变磁场 $B_x\\cos(\\omega t+\\varphi)$ 是复数场，取实部时会使真实物理幅度翻倍。"
+        correct: false
+        feedback: "$B_x\\cos(\\omega t+\\varphi)$ 本身已经是实数磁场表达式，并不会因为取实部再次翻倍。"
+      - id: d
+        text: "因为只有当线圈不垂直于 $z$ 轴时驱动系数才是 $2\\Omega$，垂直时应该是 $\\Omega$。"
+        correct: false
+        feedback: "恰好相反：在垂直布置 $\\theta_B = 90^\\circ$、$B_z = 0$ 的标准横向驱动下，我们依然记作 $2\\Omega = -\\gamma_e B_x$。"
+    solution: "余弦线偏振项 $2\\Omega\\cos(\\omega t+\\varphi)S_x$ 随后会拆分成幅值相等的正反两个圆偏振分量，提前把线性系数记为 $2\\Omega$，可使保留下来的旋转驱动幅度直接记作 $\\Omega$。"
+
+  - id: zm-drive-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "在 $B_0 = 200\\text{ G}, B_x = 10\\text{ G}$ 的例题推导里，为什么要先从 $-\\vec{\\boldsymbol{\\mu}}\\cdot\\boldsymbol{B}(t)$ 除以 $\\hbar$ 再写出 $\\omega_0 = -\\gamma_e B_0$ 与 $2\\Omega = -\\gamma_e B_x$？"
+    options:
+      - id: a
+        text: "除以 $\\hbar$ 后原本带角动量量纲的算符变成无量纲算符 $\\vec{\\boldsymbol{S}}$，哈密顿量整体就统一成了角频率量纲，$\\omega_0$ 与 $\\Omega$ 可直接写成 $\\text{rad/s}$ 或除以 $2\\pi$ 以 $\\text{MHz}$ 比较大小。"
+        correct: true
+        feedback: "抓住了物理量纲规范！统一以角频率表示能量（等同取自然单位 $\\hbar = 1$）是后续核对强/弱驱动条件以及对比演化时间的基础。"
+      - id: b
+        text: "因为外磁场 $B_0$ 和 $B_x$ 本身是用瓦特而不是高斯测量的，除以 $\\hbar$ 才能转成高斯。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "磁场依然用高斯（$\\text{G}$）计量，乘以旋磁比 $\\gamma_e$（$\\text{rad/s/G}$）就直接转成了角频率（$\\text{rad/s}$）。"
+      - id: c
+        text: "不除以 $\\hbar$ 就无法代入 $\\cos(\\omega t+\\varphi)$ 的三角函数。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "时间函数 $\\cos(\\omega t+\\varphi)$ 原本就是无量纲的，除以 $\\hbar$ 针对的是整条哈密顿量的能量量纲与自旋算符的角动量量纲。"
+      - id: d
+        text: "只有除以 $\\hbar$ 才能让 $\\gamma_e$ 从负数变成正数。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "$\\hbar > 0$ 不改变正负号；让 $\\omega_0$ 与 $\\Omega$ 变成正数的是定义里前面的负号 $-\\gamma_e$。"
+    solution: "因为 $\\vec{\\boldsymbol{S}}$ 原本携带 $\\hbar$ 量纲，把 $H = -\\gamma\\vec{\\boldsymbol{S}}\\cdot\\boldsymbol{B}$ 两边同除以 $\\hbar$ 后，$\\vec{\\boldsymbol{S}}$ 成为无量纲自旋算符，而 $\\omega_0 = -\\gamma_e B_0$ 与 $2\\Omega = -\\gamma_e B_x$ 正好以角频率为单位。"
+
+  - id: zm-drive-rabi-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    params:
+      Bx:
+        min: 2
+        max: 12
+        step: 2
+    prompt: "某金刚石 NV 色心电子自旋（$\\gamma_e/(2\\pi) = -2.8033\\text{ MHz/G}$）受到沿 $x$ 轴的交变磁场驱动，振幅 $B_x = {{=Bx}}\\text{ G}$。写出标准哈密顿量 $H = \\omega_0 S_z + 2\\Omega\\cos(\\omega t+\\varphi)S_x$ 时，单分量驱动参数 $\\Omega/(2\\pi)$ 是多少 $\\text{MHz}$（保留两位小数）？"
+    answer_expr: "2.8033 * Bx / 2"
+    tolerance:
+      abs: 0.02
+    common_wrong:
+      - answer_expr: "2.8033 * Bx"
+        category: misapplied_technique
+        feedback: "这是线性驱动项中的 $2\\Omega/(2\\pi)$，题目求的是半系数 $\\Omega/(2\\pi)$，需要除以 $2$。"
+      - answer_expr: "-2.8033 * Bx / 2"
+        category: math_error
+        feedback: "由 $2\\Omega = -\\gamma_e B_x$ 与 $\\gamma_e < 0$，负号相互抵消，因此 $\\Omega/(2\\pi) > 0$。"
+    hints:
+      - "先算线性总系数 $2\\Omega/(2\\pi) = -(\\gamma_e/(2\\pi)) B_x = 2.8033 \\times {{=Bx}}\\text{ MHz}$。"
+      - "再除以 $2$ 得到 $\\Omega/(2\\pi)$。"
+    solution: "$2\\Omega/(2\\pi) = 2.8033\\times {{=Bx}} = {{=2.8033*Bx}}\\text{ MHz}$，故 $\\Omega/(2\\pi) = {{=2.8033*Bx/2}}\\text{ MHz}$。"
+
+  - id: zm-coil-tilt-spot-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "一位同学整理磁共振驱动哈密顿量时写下两条结论：「第一，由 $H = -\\gamma B_0 S_z - \\gamma B_x S_x\\cos(\\omega t+\\varphi)$ 得系数定义 $2\\Omega = -\\gamma_e S_x$；第二，只要驱动场是交流的，不论线圈跟 $z$ 轴夹角 $\\theta_B$ 是多少度，都不会出现沿 $z$ 轴的 $B_z S_z\\cos(\\omega t+\\varphi)$ 项。」哪一处出了错？"
+    options:
+      - id: a
+        text: "两条都错了：$2\\Omega = -\\gamma_e B_x$ 中应当是磁场振幅数值 $B_x$ 而非自旋算符 $S_x$；且当线圈夹角 $\\theta_B \\ne 90^\\circ$ 时必然投影出非零的纵向振荡分量 $B_z = B_{\\text{dri}}\\cos\\theta_B$。"
+        correct: true
+        feedback: "火眼金睛！第一处把实数参数 $B_x$ 错写成了算符 $S_x$；第二处忽视了线圈未严格垂直 $z$ 轴时会产生纵向驱动项 $B_z\\cos(\\omega t+\\varphi)S_z$。"
+      - id: b
+        text: "第一条写对了，只有第二条不对，因为算符乘法要求把 $B_x$ 吸收进 $S_x$ 里。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "$\\Omega$ 是标量频率参数，而 $S_x$ 是算符，$2\\Omega = -\\gamma_e S_x$ 在两边类型与量纲上都说不通，正确定义必须是 $2\\Omega = -\\gamma_e B_x$。"
+      - id: c
+        text: "第二条是对的，因为静磁场 $B_0$ 会把任何方向的交流磁场自动拉直成垂直 $x$ 方向。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "静磁场并不会改变外加射频/微波线圈产生磁场的空间方向，叠加原理只是把各方向矢量分量相加。"
+      - id: d
+        text: "第一条错在多了一个负号，而算符 $S_x$ 应该出现在 $\\omega_0$ 的定义里。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "$\\omega_0 = -\\gamma_e B_0$ 与 $2\\Omega = -\\gamma_e B_x$ 都只含磁场分量与旋磁比，不该混入自旋算符。"
+    solution: "驱动强度 $2\\Omega = -\\gamma_e B_x$ 是标量频率，不可写成自旋算符 $S_x$；同时只有驱动场严格垂直于 $\\boldsymbol{B}_0$（$\\theta_B = 90^\\circ$）时纵向交变分量 $B_z = B_{\\text{dri}}\\cos\\theta_B$ 才为零。"
+
+  - id: zm-tilted-angle-numeric
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "实际实验中驱动线圈常有一定倾角：若总驱动磁场振幅为 $B_{\\text{dri}} = 10\\text{ G}$，磁场矢量与静磁场 $+z$ 轴的夹角为 $\\theta_B = 30^\\circ$（投影到 $x\\text{-}z$ 平面）。已知电子 $|\\gamma_e|/(2\\pi) = 2.8\\text{ MHz/G}$，先忽略同时产生的纵向 $B_z$ 项，此时有效横向分量产生的参数 $\\Omega/(2\\pi)$ 是多少 $\\text{MHz}$？"
+    answer: 7.0
+    tolerance:
+      abs: 0.05
+    common_wrong:
+      - answer: 14.0
+        category: misapplied_technique
+        feedback: "这是 $2\\Omega/(2\\pi) = |\\gamma_e| B_x/(2\\pi)$，题干问的是半幅值 $\\Omega/(2\\pi)$。"
+      - answer: 12.12
+        category: math_error
+        feedback: "你用成了 $\\cos 30^\\circ$ 算纵向分量 $B_z$；横向 $x$ 分量对应 $\\sin 30^\\circ = 0.5$。"
+    hints:
+      - "先由 $B_x = B_{\\text{dri}}\\sin\\theta_B$ 计算投影到横向 $x$ 轴的磁场振幅。"
+      - "再由 $2\\Omega/(2\\pi) = (|\\gamma_e|/(2\\pi)) B_x$ 算出后除以 $2$。"
+    solution: "横向分量 $B_x = 10\\sin 30^\\circ = 5\\text{ G}$，于是 $2\\Omega/(2\\pi) = 2.8 \\times 5 = 14\\text{ MHz}$，从而 $\\Omega/(2\\pi) = 7.0\\text{ MHz}$。"
+
+  - id: zm-recall-drive-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: transverse-drive-hamiltonian
+    difficulty: 1
+    est_minutes: 1
+    prompt: "用一两句话说明：磁共振哈密顿量是如何从 $H = -\\vec{\\boldsymbol{\\mu}}\\cdot\\boldsymbol{B}$ 化成无量纲标准式 $H = \\omega_0 S_z + 2\\Omega\\cos(\\omega t+\\varphi)S_x$ 的？"
+    rubric:
+      - id: r1
+        criterion: "说明先代入 $\\vec{\\boldsymbol{\\mu}} = \\gamma\\vec{\\boldsymbol{S}}$ 与总磁场 $\\boldsymbol{B}(t) = B_0\\vec{\\boldsymbol{e}}_z + B_x\\cos(\\omega t+\\varphi)\\vec{\\boldsymbol{e}}_x$（垂直驱动 $\\theta_B = 90^\\circ$ 时忽略 $B_z$），并除以 $\\hbar$ 使 $\\vec{\\boldsymbol{S}}$ 无量纲化。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "写出电子自旋的参数定义 $\\omega_0 = -\\gamma_e B_0$ 与 $2\\Omega = -\\gamma_e B_x$（明确系数是磁场振幅 $B_x$）。"
+        weight: 1
+        required: true
+    exemplar: "将 $\\vec{\\boldsymbol{\\mu}}=\\gamma\\vec{\\boldsymbol{S}}$ 和垂直布置（$B_z=0$）的总磁场代入 $H = -\\vec{\\boldsymbol{\\mu}}\\cdot\\boldsymbol{B}(t)$ 后，两边同除以 $\\hbar$ 让自旋算符无量纲化；再对电子自旋定义 $\\omega_0 = -\\gamma_e B_0$ 与 $2\\Omega = -\\gamma_e B_x$，即化为 $H = \\omega_0 S_z + 2\\Omega\\cos(\\omega t+\\varphi)S_x$。"
+
+  - id: zm-recall-drive-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: transverse-drive-hamiltonian
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "在电子自旋标准磁共振哈密顿量 $H = \\omega_0 S_z + 2\\Omega\\cos(\\omega t+\\varphi)S_x$ 的定义中，下列哪组参数替换完全正确？"
+    options:
+      - id: a
+        text: "$\\omega_0 = -\\gamma_e B_0$ 且 $2\\Omega = -\\gamma_e B_x$"
+        correct: true
+        feedback: "正确。两个定义里都用负号抵消 $\\gamma_e < 0$，且驱振参数只含外磁场振幅 $B_x$，绝不是算符 $S_x$。"
+      - id: b
+        text: "$\\omega_0 = -\\gamma_e B_0$ 且 $2\\Omega = -\\gamma_e S_x$"
+        correct: false
+        feedback: "把横向驱动场振幅 $B_x$ 错写成了算符 $S_x$，类型与量纲都不匹配。"
+      - id: c
+        text: "$\\omega_0 = +\\gamma_e B_0$ 且 $\\Omega = -\\gamma_e B_x$"
+        correct: false
+        feedback: "符号与因子 $2$ 同时错位：$\\gamma_e < 0$ 需要加负号令 $\\omega_0 > 0$，且 $-\\gamma_e B_x$ 等于 $2\\Omega$ 而非 $\\Omega$。"
+      - id: d
+        text: "$\\omega_0 = -\\gamma_e B_x$ 且 $2\\Omega = -\\gamma_e B_0$"
+        correct: false
+        feedback: "静磁场 $B_0$ 决定 $\\omega_0$，交变磁场 $B_x$ 决定 $2\\Omega$，两者颠倒了。"
+    solution: "对电子自旋（$\\gamma_e < 0$），将 $-\\gamma_e B_0 S_z - \\gamma_e B_x\\cos(\\omega t+\\varphi)S_x$ 记作 $\\omega_0 S_z + 2\\Omega\\cos(\\omega t+\\varphi)S_x$ 时，定义 $\\omega_0 = -\\gamma_e B_0$ 与 $2\\Omega = -\\gamma_e B_x$。"
+
+  - id: zm-recall-drive-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: transverse-drive-hamiltonian
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "写出单分量电子自旋驱动参数 $\\Omega$ 关于旋磁比 $\\gamma_e$ 与横向磁场振幅 $B_x$ 的表达式（用 `ge` 表示 $\\gamma_e$，`Bx` 表示 $B_x$）。"
+    answer: "-ge * Bx / 2"
+    variables:
+      ge: [-30, -1]
+      Bx: [1, 50]
+    solution: "由 $2\\Omega = -\\gamma_e B_x$ 两边除以 $2$，得 $\\Omega = -\\gamma_e B_x / 2$。"
+
+  # ==========================================================================
+  # Step 3: optical-electric-dipole-isomorphism (5 题课堂 + 3 题 recall)
+  # ==========================================================================
+  - id: zm-optical-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "在把量子光学二能级原子模型 $\\hat{H}/\\hbar = \\frac{1}{2}\\omega_0\\hat{\\sigma}_3 + (V/\\hbar)\\cos(\\omega t)(\\hat{\\sigma}_+ + \\hat{\\sigma}_-)$ 映射到电子自旋 $H = \\omega_0 S_z + 2\\Omega\\cos(\\omega t)S_x$ 时，下列哪组态与算符对应完全正确？"
+    options:
+      - id: a
+        text: "$|g\\rangle \\leftrightarrow |m_S = -1/2\\rangle$，$|e\\rangle \\leftrightarrow |m_S = +1/2\\rangle$，$\\hat{\\sigma}_3 \\leftrightarrow 2S_z$，$\\hat{\\sigma}_+ + \\hat{\\sigma}_- \\leftrightarrow 2S_x$。"
+        correct: true
+        feedback: "完全准确！下态配对 $|g\\rangle$、上态配对 $|e\\rangle$，于是 $\\frac{1}{2}\\hat{\\sigma}_3$ 正好等于 $S_z$，且 $(\\hat{\\sigma}_+ + \\hat{\\sigma}_-)$ 正好等于 $2S_x$。"
+      - id: b
+        text: "$|g\\rangle \\leftrightarrow |m_S = +1/2\\rangle$，$|e\\rangle \\leftrightarrow |m_S = -1/2\\rangle$，$\\hat{\\sigma}_3 \\leftrightarrow S_z$，$\\hat{\\sigma}_+ + \\hat{\\sigma}_- \\leftrightarrow S_x$。"
+        correct: false
+        feedback: "对电子自旋，下能级是 $|m_S=-1/2\\rangle$ 而不是 $|m_S=+1/2\\rangle$；同时 $\\hat{\\sigma}_3$ 本征值是 $\\pm 1$ 而非 $\\pm 1/2$，差了 $2$ 倍因子。"
+      - id: c
+        text: "$|g\\rangle \\leftrightarrow |m_S = -1/2\\rangle$，$|e\\rangle \\leftrightarrow |m_S = +1/2\\rangle$，$\\hat{\\sigma}_3 \\leftrightarrow S_z$，$\\hat{\\sigma}_+ + \\hat{\\sigma}_- \\leftrightarrow 2S_x$。"
+        correct: false
+        feedback: "$\\hat{\\sigma}_3 = |e\\rangle\\langle e| - |g\\rangle\\langle g|$ 的本征值是 $\\pm 1$，而 $S_z$ 的本征值是 $\\pm 1/2$，因此必须有 $\\hat{\\sigma}_3 \\leftrightarrow 2S_z$。"
+      - id: d
+        text: "只有在共振条件 $\\omega = \\omega_0$ 成立时两种系统才能映射，非共振下矩阵结构完全不同。"
+        correct: false
+        feedback: "哈密顿量的算符同构在任意驱动频率 $\\omega$ 下都严格成立。"
+    solution: "在基矢映射 $|g\\rangle \\leftrightarrow |m_S=-1/2\\rangle$、$|e\\rangle \\leftrightarrow |m_S=+1/2\\rangle$ 下，算符对照关系为 $\\hat{\\sigma}_3 \\leftrightarrow 2S_z$ 与 $\\hat{\\sigma}_+ + \\hat{\\sigma}_- \\leftrightarrow 2S_x$。"
+
+  - id: zm-optical-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "在对照两条哈密顿量时，为什么原子耦合强度 $(V/\\hbar)$ 直接等于磁共振里的 $\\Omega$，而不是等于 $2\\Omega$（即不是 $\\Omega = V/(2\\hbar)$）？"
+    options:
+      - id: a
+        text: "因为磁共振驱动项写的是 $2\\Omega S_x = \\Omega(2S_x)$，而恰好是 $2S_x$（而非 $S_x$）整体对应着光偶极里的 $(\\hat{\\sigma}_+ + \\hat{\\sigma}_-)$，因此系数对等给出 $\\Omega = V/\\hbar$。"
+        correct: true
+        feedback: "一点就透！如果误以为 $S_x$ 对应 $\\hat{\\sigma}_+ + \\hat{\\sigma}_-$ 就会少算或错算因子 $2$；检查两个分量的矩阵元立刻证明 $(2S_x) = \\hat{\\sigma}_+ + \\hat{\\sigma}_-$。"
+      - id: b
+        text: "因为量子光学中的 $V$ 自带了 $2\\pi$ 换算因子，除以 $\\hbar$ 后自动消去系数 $2$。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "$V = -\\langle e|\\hat{\\boldsymbol{d}}\\cdot\\boldsymbol{E}_0|g\\rangle$ 是能量矩阵元，不自带 $2\\pi$ 因子；系数匹配完全来自 $2S_x = \\hat{\\sigma}_+ + \\hat{\\sigma}_-$ 的 $2$ 倍关系。"
+      - id: c
+        text: "因为光子是自旋为 $1$ 的玻色子，比自旋 $1/2$ 电子多出 $2$ 倍角动量。"
+        correct: false
+        category: missing_prerequisite
+        feedback: "这里只是把二能级哈密顿量的代数系数对齐，起作用的是自旋 $1/2$ 与二能级原子伪自旋矩阵元之间 $\\pm 1/2$ 对 $\\pm 1$ 的算符归一化差异。"
+      - id: d
+        text: "因为只有在零时刻 $t=0$ 时才取 $\\Omega = V/\\hbar$，其余时刻差 $1/2$。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "两个常数参数的对照关系与时间 $t$ 无关。"
+    solution: "因为 $2S_x$ 与 $(\\hat{\\sigma}_+ + \\hat{\\sigma}_-)$ 互相等价（两者的非对角矩阵元均为 $1$），所以 $2\\Omega\\cos(\\omega t)S_x = \\Omega\\cos(\\omega t)(2S_x)$ 对照 $(V/\\hbar)\\cos(\\omega t)(\\hat{\\sigma}_+ + \\hat{\\sigma}_-)$ 必然得出 $\\Omega = V/\\hbar$。"
+
+  - id: zm-optical-dipole-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    params:
+      V_mhz:
+        min: 4
+        max: 20
+        step: 4
+    prompt: "在激光与二能级原子耦合实验中，偶极矩阵元强度满足 $V/h = V/(2\\pi\\hbar) = {{=V_mhz}}\\text{ MHz}$。若将其改写为磁共振标准哈密顿量 $H = \\omega_0 S_z + 2\\Omega\\cos(\\omega t)S_x$ 的形式，对应驱动系数 $2\\Omega/(2\\pi)$ 应写为多少 $\\text{MHz}$？"
+    answer_expr: "2 * V_mhz"
+    tolerance:
+      abs: 0.01
+    common_wrong:
+      - answer_expr: "V_mhz"
+        category: misapplied_technique
+        feedback: "$V/h = {{=V_mhz}}\\text{ MHz}$ 对应的是单分量参数 $\\Omega/(2\\pi)$，题干问的是线偏振驱动项总系数 $2\\Omega/(2\\pi)$，需要乘以 $2$。"
+      - answer_expr: "V_mhz / 2"
+        category: math_error
+        feedback: "不要重复除以 $2$：$2S_x \\leftrightarrow \\hat{\\sigma}_+ + \\hat{\\sigma}_-$ 意味着 $\\Omega = V/\\hbar$，从而 $2\\Omega = 2V/\\hbar$。"
+    hints:
+      - "先利用映射结论 $\\Omega/(2\\pi) = V/(2\\pi\\hbar) = V/h$。"
+      - "题目问的是 $2\\Omega/(2\\pi)$，把 $\\Omega/(2\\pi)$ 乘以 $2$。"
+    solution: "由 $\\Omega/(2\\pi) = V/h = {{=V_mhz}}\\text{ MHz}$，可得线偏振驱动项总系数 $2\\Omega/(2\\pi) = 2\\times {{=V_mhz}} = {{=2*V_mhz}}\\text{ MHz}$。"
+
+  - id: zm-optical-spot-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "某同学在对比自旋磁共振与《量子光学》二能级原子模型时，写出：『$\\hat{H}_A/\\hbar = \\omega_0\\hat{\\sigma}_3$，因此原子基态能量 $-\\omega_0$ 与激发态能量 $+\\omega_0$ 的差值为 $2\\omega_0$』。这处错在哪里？"
+    options:
+      - id: a
+        text: "忘了对称零能点约定下的 $\\frac{1}{2}$ 因子：应为 $\\hat{H}_A/\\hbar = \\frac{1}{2}\\omega_0\\hat{\\sigma}_3$，这样 $|e\\rangle$ 与 $|g\\rangle$ 能量分别为 $+\\omega_0/2$ 和 $-\\omega_0/2$，能隙才正好等于 $\\omega_0$。"
+        correct: true
+        feedback: "抓得非常准！$\\hat{\\sigma}_3$ 的本征值是 $\\pm 1$，所以前面必须带有 $\\frac{1}{2}$，才与本征值 $\\pm 1/2$ 的 $\\omega_0 S_z$ 一样给出能隙 $\\omega_0$。"
+      - id: b
+        text: "因为 $\\hat{\\sigma}_3 = |e\\rangle\\langle e| - |g\\rangle\\langle g|$ 的两个本征值是 $+1/2$ 和 $-1/2$，能隙依然是 $\\omega_0$。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "$\\hat{\\sigma}_3|e\\rangle = +|e\\rangle$、$\\hat{\\sigma}_3|g\\rangle = -|g\\rangle$，本征值差为 $(+1)-(-1)=2$，不是 $1$。"
+      - id: c
+        text: "电子自旋没有能隙 $\\omega_0$，只有电偶极原子才把零能量点放在中间。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "电子自旋 $\\omega_0 S_z$ 同样自然把零能点取在 $\\pm\\omega_0/2$ 正中，总能隙也是 $\\omega_0$。"
+      - id: d
+        text: "错把 $\\hat{\\sigma}_3$ 当成了横向耦合算符，应该改写为 $\\hat{\\sigma}_+ + \\hat{\\sigma}_-$。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "$\\hat{\\sigma}_3$ 确实表示自由原子静态能级，只是表达式前面漏掉了 $\\frac{1}{2}$ 因子。"
+    solution: "由于 $\\hat{\\sigma}_3|e\\rangle = +|e\\rangle$ 且 $\\hat{\\sigma}_3|g\\rangle = -|g\\rangle$，要让两能级能量差为 $\\omega_0$，自由原子项必须是 $\\hat{H}_A/\\hbar = \\frac{1}{2}\\omega_0\\hat{\\sigma}_3$（对应自旋 $\\omega_0 S_z$）。"
+
+  - id: zm-optical-transfer
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "设二能级原子的基态 $|g\\rangle$ 与激发态 $|e\\rangle$ 分别为具有确定宇称的能量本征态，置于单色激光场 $\\boldsymbol{E}(t) = \\boldsymbol{E}_0\\cos(\\omega t)$ 中。为什么电偶极相互作用 $\\hat{H}_{\\text{int}} = -\\hat{\\boldsymbol{d}}\\cdot\\boldsymbol{E}(t)$ 在 $\\{|e\\rangle, |g\\rangle\\}$ 基下自然写成纯粹的非对角形式 $V\\cos(\\omega t)(\\hat{\\sigma}_+ + \\hat{\\sigma}_-)$，在结构上严格等价于垂直驱动（$\\theta_B = 90^\\circ, B_z = 0$）下的自旋横向项 $2\\Omega\\cos(\\omega t)S_x$？"
+    options:
+      - id: a
+        text: "因为定态的确定宇称与奇宇称电偶极算符 $\\hat{\\boldsymbol{d}} = -e\\hat{\\boldsymbol{r}}$ 使对角期望 $\\langle g|\\hat{\\boldsymbol{d}}|g\\rangle = \\langle e|\\hat{\\boldsymbol{d}}|e\\rangle = 0$，只留 $|e\\rangle\\langle g|$ 与 $|g\\rangle\\langle e|$ 耦合（对应 $2S_x$）；而垂直磁场几何也恰好消除了纵向项 $B_z S_z$。"
+        correct: true
+        feedback: "迁移深刻！宇称选择定则天然消除了电偶极的纵向 $\\hat{\\sigma}_3$ 对角项，使其在结构上与垂直驱动（$B_z = 0$）下的纯横向自旋项 $2\\Omega S_x$ 严格同构。"
+      - id: b
+        text: "因为电偶极矩阵元 $V$ 必须是纯虚数，使得 $\\hat{\\sigma}_3$ 前的系数自动变成零。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "零对角元的根本物理原因是波函数的宇称对称性使奇算符 $\\hat{\\boldsymbol{d}}=-e\\hat{\\boldsymbol{r}}$ 期望值为零，而不是矩阵元的实虚性。"
+      - id: c
+        text: "因为可见光的波长与原子半径相等（$k\\cdot r = 1$），电偶极作用必须只保留非对角项。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "电偶极近似的前提是波长远大于原子尺度（$k\\cdot r \\ll 1$），使空间场强可看作均匀场。"
+      - id: d
+        text: "因为自旋 $1/2$ 系统中不存在纵向 $S_z$ 算符，任何磁场驱动都只能给出 $S_x$。"
+        correct: false
+        category: missing_prerequisite
+        feedback: "如果驱动线圈倾斜（$\\theta_B \\ne 90^\\circ$），磁共振中完全可能出现纵向项 $B_z S_z\\cos(\\omega t+\\varphi)$。"
+    solution: "电偶极近似（$k\\cdot r \\ll 1$）结合原子本征态的宇称选择规则保证了电偶极算符对角元为零，因此只有 $\\hat{\\sigma}_+ + \\hat{\\sigma}_-$ 形式的非对角耦合，与垂直驱动几何（$\\theta_B=90^\\circ, B_z=0$）下的横向 $S_x$ 耦合严格同构。"
+
+  - id: zm-recall-optical-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: optical-electric-dipole-isomorphism
+    difficulty: 1
+    est_minutes: 1
+    prompt: "用一两句话给出自旋磁共振标准哈密顿量与《量子光学》半经典电偶极哈密顿量之间的算符与参数对照字典。"
+    rubric:
+      - id: r1
+        criterion: "写出能级对应：$|m_S=-1/2\\rangle \\leftrightarrow |g\\rangle$、$|m_S=+1/2\\rangle \\leftrightarrow |e\\rangle$，以及算符对应 $2S_z \\leftrightarrow \\hat{\\sigma}_3$、$2S_x \\leftrightarrow \\hat{\\sigma}_+ + \\hat{\\sigma}_-$。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "明确指出耦合频率对照关系为 $\\Omega \\leftrightarrow V/\\hbar$（或 $2\\Omega\\leftrightarrow 2V/\\hbar$）。"
+        weight: 1
+        required: true
+    exemplar: "将电子自旋下能级 $|m_S=-1/2\\rangle$ 对应原子基态 $|g\\rangle$、上能级 $|m_S=+1/2\\rangle$ 对应激发态 $|e\\rangle$ 后，有 $\\hat{\\sigma}_3 \\leftrightarrow 2S_z$ 与 $\\hat{\\sigma}_+ + \\hat{\\sigma}_- \\leftrightarrow 2S_x$，电偶极耦合 $\\hat{H}/\\hbar = \\frac{1}{2}\\omega_0\\hat{\\sigma}_3 + (V/\\hbar)\\cos(\\omega t)(\\hat{\\sigma}_+ + \\hat{\\sigma}_-)$ 恰与 $H = \\omega_0 S_z + 2\\Omega\\cos(\\omega t)S_x$ 在 $\\Omega = V/\\hbar$ 下完全同构。"
+
+  - id: zm-recall-optical-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: optical-electric-dipole-isomorphism
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "在对比磁共振驱动项 $2\\Omega\\cos(\\omega t)S_x$ 与《量子光学》电偶极驱动项 $(V/\\hbar)\\cos(\\omega t)(\\hat{\\sigma}_+ + \\hat{\\sigma}_-)$ 时，如果令电子自旋取相同动力学参数，应当满足哪一关系？"
+    options:
+      - id: a
+        text: "$\\Omega = V/\\hbar$"
+        correct: true
+        feedback: "正确。因 $2S_x = \\hat{\\sigma}_+ + \\hat{\\sigma}_-$，比较系数即得 $\\Omega = V/\\hbar$。"
+      - id: b
+        text: "$\\Omega = V/(2\\hbar)$"
+        correct: false
+        feedback: "漏掉了 $2S_x$ 自带的 $2$ 倍关系；如果是只跟 $S_x$ 对比才是两倍，这里跟 $(\\hat{\\sigma}_+ + \\hat{\\sigma}_-) = 2S_x$ 对比。"
+      - id: c
+        text: "$\\Omega = 2V/\\hbar$"
+        correct: false
+        feedback: "弄反了比例方向：$2\\Omega$ 才等于 $2V/\\hbar$，因此 $\\Omega = V/\\hbar$。"
+      - id: d
+        text: "$\\Omega = -\\gamma_e V$"
+        correct: false
+        feedback: "$V$ 本身已经是耦合能量矩阵元，不含旋磁比 $\\gamma_e$，只需除以 $\\hbar$ 成为角频率。"
+    solution: "因算符上 $2S_x \\leftrightarrow \\hat{\\sigma}_+ + \\hat{\\sigma}_-$，代入 $2\\Omega S_x = \\Omega(2S_x)$ 对照 $(V/\\hbar)(\\hat{\\sigma}_+ + \\hat{\\sigma}_-)$，可得 $\\Omega = V/\\hbar$。"
+
+  - id: zm-recall-optical-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: optical-electric-dipole-isomorphism
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "若已知量子光学电偶极二能级模型的耦合能量矩阵元 $V$ 与普朗克常数 $\\hbar$，写出与之等价的磁共振线性项总系数 $2\\Omega$（用 `V` 和 `hbar` 表示）。"
+    answer: "2 * V / hbar"
+    variables:
+      V: [1, 20]
+      hbar: [1, 5]
+    solution: "因为 $\\Omega = V/\\hbar$，所以写入 $H = \\omega_0 S_z + 2\\Omega\\cos(\\omega t+\\varphi)S_x$ 中的总系数 $2\\Omega = 2V/\\hbar$。"
+
+  # ==========================================================================
+  # Lesson Final: Explain it 自评总结题
+  # ==========================================================================
+  - id: zeeman-final-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "请用自己的话系统阐述以下三个核心问题：（1）为什么静磁场中电子和质子的上下能级顺序及劈裂频率大小不同？（2）如何由 $-\\vec{\\boldsymbol{\\mu}}\\cdot\\boldsymbol{B}(t)$ 写出标准驱动哈密顿量 $H = \\omega_0 S_z + 2\\Omega\\cos(\\omega t+\\varphi)S_x$（并说明何时会出现 $B_z$ 项）？（3）自旋磁共振模型与《量子光学》电偶极二能级原子模型如何建立一一对应的字典？"
+    rubric:
+      - id: r1
+        criterion: "说明由 $H_0 = -\\gamma B_0 S_z$，电子因 $\\gamma_e < 0$ 使 $|m_S=-1/2\\rangle$ 为下态且处于 $\\text{MHz/G}$ 量级，质子因 $\\gamma_n > 0$ 与质量大约千倍而使 $|m_S=+1/2\\rangle$ 为下态且处于 $\\text{kHz/G}$ 量级。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "说明将 $\\vec{\\boldsymbol{\\mu}} = \\gamma\\vec{\\boldsymbol{S}}$ 与垂直驱动磁场（$\\theta_B=90^\\circ, B_z=0$；斜置会有 $B_z$ 投影）代入并除以 $\\hbar$，定义 $\\omega_0=-\\gamma_e B_0$ 与 $2\\Omega=-\\gamma_e B_x$ 得到标准驱动哈密顿量。"
+        weight: 1
+        required: true
+      - id: r3
+        criterion: "完整写出双源映射字典：$|m_S=-1/2\\rangle\\leftrightarrow|g\\rangle$、$|m_S=+1/2\\rangle\\leftrightarrow|e\\rangle$、$2S_z\\leftrightarrow\\hat{\\sigma}_3$、$2S_x\\leftrightarrow\\hat{\\sigma}_+ + \\hat{\\sigma}_-$，以及 $\\Omega\\leftrightarrow V/\\hbar$。"
+        weight: 1
+        required: true
+      - id: r4
+        criterion: "补充指出把驱动系数定义为 $2\\Omega$ 是为了便于后续旋波近似拆分，或指出量子光学电偶极无对角元的宇称原因。"
+        weight: 1
+        required: false
+    exemplar: "在静磁场 $B_0 > 0$ 中，由 $H_0 = -\\gamma B_0 S_z$，电子的负旋磁比（$\\text{MHz/G}$ 量级）使 $|m_S=-1/2\\rangle$ 为下态，而质子的正旋磁比（因质量大约千倍而仅为 $\\text{kHz/G}$ 量级）使 $|m_S=+1/2\\rangle$ 为下态。再加入垂直于 $B_0$ 轴（$\\theta_B = 90^\\circ, B_z = 0$）的横向驱动场 $B_x\\cos(\\omega t+\\varphi)\\vec{\\boldsymbol{e}}_x$ 并除以 $\\hbar$ 无量纲化，定义 $\\omega_0=-\\gamma_e B_0$ 与 $2\\Omega=-\\gamma_e B_x$ 即得 $H = \\omega_0 S_z + 2\\Omega\\cos(\\omega t+\\varphi)S_x$。对照《量子光学》电偶极近似下的二能级原子，$\\hat{\\sigma}_3 \\leftrightarrow 2S_z$、$\\hat{\\sigma}_+ + \\hat{\\sigma}_- \\leftrightarrow 2S_x$、$|g\\rangle\\leftrightarrow|m_S=-1/2\\rangle$、$|e\\rangle\\leftrightarrow|m_S=+1/2\\rangle$，且驱动强度满足 $\\Omega = V/\\hbar$。"

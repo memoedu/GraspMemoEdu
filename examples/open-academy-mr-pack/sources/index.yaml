@@ -4,3 +4,8 @@ sources:
     file: ch1-magnetic-resonance.pdf
     kind: notes
     added: "2026-11-22"
+  - id: introductory-quantum-optics
+    title: "Introductory Quantum Optics (C. C. Gerry & P. L. Knight, Cambridge, 2005)"
+    file: introductory-quantum-optics.pdf
+    kind: book
+    added: "2026-11-22"

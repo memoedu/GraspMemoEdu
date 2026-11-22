@@ -1,0 +1,208 @@
+concept: spin-zeeman-and-drive
+version: 1
+sources:
+  - source: ch1-magnetic-resonance
+    section: "1.1 节前段, pp. 1–2, 式 (1.1)–(1.4)"
+  - source: introductory-quantum-optics
+    section: "Chapter 4, §4.1–§4.2 & §4.4–§4.5, pp. 75–77, 87–88, 91"
+objective: |
+  **Goal:** 能够从偶极相互作用 $H = -\vec{\boldsymbol{\mu}}\cdot\boldsymbol{B}$ 出发导出静磁场与横向驱动场下的无量纲自旋哈密顿量，区分电子与核自旋的旋磁比符号及数量级，并建立与量子光学电偶极二能级模型的精确符号字典。
+where_this_fits: |
+  ### 为什么先统一磁共振与量子光学的起点哈密顿量？
+
+  把可控的二能级量子系统放进外场里，第一步总要写出它的**静态能级劈裂**与**外部交变驱动项**。在自旋磁共振中，静磁场配合横向交变磁场耦合自旋磁矩；在量子光学中，二能级原子的电偶极矩则与激光电场耦合。
+
+  虽然载体与能级差相差几个数量级，两者的数学骨架却完全同构。本课先把磁共振的标准起点 $H = \omega_0 S_z + 2\Omega\cos(\omega t+\varphi)S_x$ 推导透彻，再把符号映射到《量子光学》二能级原子模型，为下一课消去时间依赖打好基础。
+knowledge_points:
+  - id: zeeman-gyromagnetic-and-splitting
+    title: "用旋磁比确定塞曼分裂与能级顺序"
+    tldr: |
+      - 自旋磁矩满足 $\vec{\boldsymbol{\mu}} = \gamma\vec{\boldsymbol{S}}$，静磁场中相互作用为 $H_0 = -\gamma B_0 S_z$（$\hbar = 1$）。
+      - 电子旋磁比 $\gamma_e < 0$（约 $-2\pi\times 2.8\text{ MHz/G}$），使 $|m_S = -1/2\rangle$ 成为下能级、$|m_S = +1/2\rangle$ 成为上能级。
+      - 质子等核自旋 $\gamma_n > 0$（$\text{kHz/G}$ 量级，比电子小约 $10^3$ 倍），能级上下顺序恰好反转。
+    explain: |
+      ### 从磁矩耦合到静态哈密顿量
+
+      自旋可以等效为一个微型磁偶极子。在外磁场 $\boldsymbol{B}$ 中，自旋磁矩 $\vec{\boldsymbol{\mu}}$ 的相互作用能为 $H = -\vec{\boldsymbol{\mu}}\cdot\boldsymbol{B}$。磁矩与自旋角动量算符 $\vec{\boldsymbol{S}}$ 成正比：
+      $$\vec{\boldsymbol{\mu}} = \gamma\vec{\boldsymbol{S}}$$
+      比例系数 $\gamma$ 称为**旋磁比**。若把哈密顿量两边同除以 $\hbar$，就可以把角频率当作能量单位，此时 $\vec{\boldsymbol{S}} = (S_x, S_y, S_z)$ 是无量纲自旋算符（满足 $S_z|m_S=\pm 1/2\rangle = \pm\frac{1}{2}|m_S=\pm 1/2\rangle$）。仅加沿 $+z$ 轴的静磁场 $\boldsymbol{B}_0 = B_0\vec{\boldsymbol{e}}_z$（$B_0 > 0$）时，静态哈密顿量为
+      $$H_0 = -\gamma B_0 S_z$$
+
+      ### 比较电子自旋与核自旋的旋磁比
+
+      电子带负电，自由电子 $\gamma_e = g_s \frac{-|e|}{2m_e} \approx -2\pi\times 2.8025\text{ MHz/G}$（金刚石 NV 色心受晶体环境影响，约为 $-2\pi\times 2.8033\text{ MHz/G}$）。由于 $\gamma_e < 0$，我们令正参数 $\omega_0 = -\gamma_e B_0 > 0$，则 $H_0 = \omega_0 S_z$ 给 $|m_S=-1/2\rangle$ 与 $|m_S=+1/2\rangle$ 赋予能量 $-\omega_0/2$ 和 $+\omega_0/2$。
+
+      原子核质量约为电子的 $10^3$ 倍，因此核旋磁比 $\gamma_n$ 比 $|\gamma_e|$ 小 $10^3$ 到 $10^4$ 倍（例如自由质子 $\gamma_n = 2\pi\times 4.2577\text{ kHz/G}$，水中质子因化学位移约为 $2\pi\times 4.2576\text{ kHz/G}$；常见 $^{13}\text{C}$ 约为 $2\pi\times 1.07051\text{ kHz/G}$，$^{14}\text{N}$ 约为 $2\pi\times 0.30766\text{ kHz/G}$，$^{15}\text{N}$ 则因磁矩方向相反呈负值 $-2\pi\times 0.43156\text{ kHz/G}$）。对 $\gamma_n > 0$ 的质子，$-\gamma_n B_0 < 0$，低能级变为 $|m_S = +1/2\rangle$。
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="双体系能级对照图：左栏展示电子自旋在静磁场中的塞曼能级，因旋磁比小于零，下能级为 m_S 等于负二分之一、上能级为 m_S 等于正二分之一，能隙为 omega_0 等于负 gamma_e B_0（对质子约 658 倍，量级相差约 10 的 3 次方倍）；右栏展示质子核自旋能级，因旋磁比大于零而上下能级顺序反转。">
+      <defs>
+      <marker id="l1z-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker>
+      <marker id="l1z-red" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#ef4444"/></marker>
+      </defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#171717">
+      <line x1="320" y1="20" x2="320" y2="236" stroke="#d4d4d4" stroke-width="1"/>
+      <text x="160" y="28" text-anchor="middle" font-size="14" font-weight="600" fill="#3b82f6">电子自旋 (γ_e &lt; 0, MHz/G 量级)</text>
+      <line x1="40" y1="140" x2="290" y2="140" stroke="#d4d4d4" stroke-width="1" stroke-dasharray="4 4"/>
+      <text x="42" y="134" font-size="11" fill="#737373">E = 0</text>
+      <line x1="95" y1="74" x2="225" y2="74" stroke="#3b82f6" stroke-width="3"/>
+      <line x1="95" y1="206" x2="225" y2="206" stroke="#3b82f6" stroke-width="3"/>
+      <text x="90" y="79" text-anchor="end">|m_S = +1/2⟩</text>
+      <text x="232" y="79" fill="#3b82f6">上态 (+ω₀/2)</text>
+      <text x="90" y="211" text-anchor="end">|m_S = -1/2⟩</text>
+      <text x="232" y="211" fill="#3b82f6">下态 (-ω₀/2)</text>
+      <line x1="160" y1="200" x2="160" y2="81" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#l1z-amber)"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="168" y="128" fill="#f59e0b" font-weight="600">ω₀ = -γ_e B₀</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="168" y="156" fill="#737373" font-size="12">~ 2.8 MHz/G</text>
+      <text x="480" y="28" text-anchor="middle" font-size="14" font-weight="600" fill="#ef4444">质子核自旋 (γ_n &gt; 0, kHz/G 量级)</text>
+      <line x1="350" y1="140" x2="600" y2="140" stroke="#d4d4d4" stroke-width="1" stroke-dasharray="4 4"/>
+      <text x="352" y="134" font-size="11" fill="#737373">E = 0</text>
+      <line x1="415" y1="108" x2="535" y2="108" stroke="#ef4444" stroke-width="2.5"/>
+      <line x1="415" y1="172" x2="535" y2="172" stroke="#ef4444" stroke-width="2.5"/>
+      <text x="408" y="113" text-anchor="end">|m_S = -1/2⟩</text>
+      <text x="542" y="113" fill="#ef4444">上态 (+γ_n B₀/2)</text>
+      <text x="408" y="177" text-anchor="end">|m_S = +1/2⟩</text>
+      <text x="542" y="177" fill="#ef4444">下态 (-γ_n B₀/2)</text>
+      <line x1="475" y1="166" x2="475" y2="115" stroke="#ef4444" stroke-width="2" marker-end="url(#l1z-red)"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="483" y="153" fill="#737373" font-size="12">~ 4.26 kHz/G</text>
+      <rect x="34" y="246" width="572" height="40" rx="6" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.2"/>
+      <text x="320" y="270" text-anchor="middle" font-size="12.5" fill="#171717">能级顺序判据：H₀ = -γ B₀ S_z（γ_e &lt; 0 时 |-1/2⟩ 在下；γ_n &gt; 0 时 |+1/2⟩ 在下，分裂差约 10³ 倍）</text>
+      </g>
+      </svg>
+      ```
+
+      常见易混误区：质子的旋磁比符号应始终记为核自旋 $\gamma_n$（不要误写作电子 $\gamma_e$），判断上下能级顺序必须先看 $\gamma$ 的正负号。
+    worked: |
+      设金刚石 NV 色心电子自旋（$\gamma_e/(2\pi) = -2.8033\text{ MHz/G}$）与旁侧质子核自旋（$\gamma_n/(2\pi) = +4.2577\text{ kHz/G}$）共同处于静磁场 $B_0 = 500\text{ G}$ 中。
+
+      1. **计算电子自旋的静态共振频率 $\omega_0/(2\pi)$。** 代入 $\omega_0 = -\gamma_e B_0$，两个负号相消为正：
+         $$\omega_0/(2\pi) = -(-2.8033\text{ MHz/G})\times 500\text{ G} = 1401.65\text{ MHz}.$$
+         以普通频率 $E/h$ 表示，下能级 $|m_S = -1/2\rangle$ 对应 $-700.825\text{ MHz}$，上能级 $|m_S = +1/2\rangle$ 对应 $+700.825\text{ MHz}$。
+
+      2. **计算质子核自旋的静态劈裂并确定基态。** 因 $\gamma_n > 0$，静态哈密顿量系数 $-\gamma_n B_0 < 0$：
+         $$|-\gamma_n B_0|/(2\pi) = 4.2577\text{ kHz/G}\times 500\text{ G} = 2128.85\text{ kHz} \approx 2.129\text{ MHz}.$$
+         此时 $|m_S = +1/2\rangle$ 能量为负，处于下能级，而电子劈裂频率约为质子的 $658$ 倍。
+    problems:
+      - zm-level-basics
+      - zm-level-self-explain
+      - zm-electron-freq-template
+      - zm-proton-spot-mistake
+      - zm-isotope-ratio-transfer
+
+  - id: transverse-drive-hamiltonian
+    title: "推导横向交变驱动的标准哈密顿量"
+    tldr: |
+      - 实验室总磁场由静磁场 $B_0\vec{\boldsymbol{e}}_z$ 与含时驱动场 $(B_x\vec{\boldsymbol{e}}_x + B_z\vec{\boldsymbol{e}}_z)\cos(\omega t+\varphi)$ 构成。
+      - 线圈与 $z$ 轴垂直（$\theta_B = 90^\circ$）时纵向驱动 $B_z = 0$，只留横向项 $B_x\cos(\omega t+\varphi)S_x$。
+      - 对电子自旋令 $2\Omega = -\gamma_e B_x$（注意是磁场幅值 $B_x$ 而非算符 $S_x$），得到 $H = \omega_0 S_z + 2\Omega\cos(\omega t+\varphi)S_x$。
+    explain: |
+      ### 分解实验室总磁场与倾斜角几何
+
+      在磁共振实验中，除了提供能级分裂的静磁场 $\boldsymbol{B}_0 = B_0\vec{\boldsymbol{e}}_z$，还需要施加随时间振荡的交变驱动场 $\boldsymbol{B}_{\text{dri}}(t)$ 来翻转自旋：
+      $$\boldsymbol{B}(t) = B_0\vec{\boldsymbol{e}}_z + (B_x\vec{\boldsymbol{e}}_x + B_z\vec{\boldsymbol{e}}_z)\cos(\omega t + \varphi)$$
+      实际装置中，驱动场方向与 $+z$ 轴的夹角 $\theta_B$ 未必恰好是 $90^\circ$：若总振幅为 $B_{\text{dri}}$，则横向分量为 $B_x = B_{\text{dri}}\sin\theta_B$，纵向分量为 $B_z = B_{\text{dri}}\cos\theta_B$。在垂直驱动理想几何（$\theta_B = 90^\circ$）下，$B_z = 0$；若 $\theta_B \ne 90^\circ$ 带来的纵向项 $B_z$ 不为零，我们在本单元先暂忽略它，留到后面「纵向驱动与边带激发」专题专门处理。
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="实验室外磁场几何分解图：z 轴方向施加静磁场 B_0，倾斜角为 theta_B 的交变线圈驱动场 B_dri(t) 可分解为沿 x 轴的横向驱动分量 B_x（正比于 sin theta_B，产生横向耦合 S_x）与沿 z 轴的纵向分量 B_z（仅当 theta_B 等于 90 度时为零）；右侧展示由 -mu 点乘 B 除以 hbar 化为无量纲自旋算符哈密顿量的对应步骤。">
+      <defs>
+      <marker id="l1d-dark" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#171717"/></marker>
+      <marker id="l1d-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
+      <marker id="l1d-red" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#ef4444"/></marker>
+      <marker id="l1d-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker>
+      </defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#171717">
+      <text x="165" y="28" text-anchor="middle" font-size="14" font-weight="600">实验室静磁场与交变驱动场分解</text>
+      <line x1="120.0" y1="200.0" x2="315.0" y2="200.0" stroke="#d4d4d4" stroke-width="1.5" marker-end="url(#l1d-dark)"/>
+      <line x1="165.0" y1="235.0" x2="165.0" y2="50.0" stroke="#171717" stroke-width="2.5" marker-end="url(#l1d-dark)"/>
+      <text x="321.0" y="204.0">x</text>
+      <text x="153.0" y="56.0" font-weight="600">z (B₀ 方向)</text>
+      <line x1="283.73" y1="125.81" x2="283.73" y2="200.0" stroke="#d4d4d4" stroke-width="1.3" stroke-dasharray="3 3"/>
+      <line x1="283.73" y1="125.81" x2="165.0" y2="125.81" stroke="#d4d4d4" stroke-width="1.3" stroke-dasharray="3 3"/>
+      <line x1="165.0" y1="200.0" x2="283.73" y2="200.0" stroke="#3b82f6" stroke-width="3" marker-end="url(#l1d-blue)"/>
+      <line x1="165.0" y1="200.0" x2="165.0" y2="125.81" stroke="#ef4444" stroke-width="2.5" marker-end="url(#l1d-red)"/>
+      <line x1="165.0" y1="200.0" x2="283.73" y2="125.81" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#l1d-amber)"/>
+      <path d="M195.53 180.92 A36 36 0 0 0 165.0 164.0" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="1.5"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="180" y="156" fill="#737373">θ_B</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="291.73" y="119.81" fill="#f59e0b" font-weight="600">B_dri(t) cos(ωt+φ)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="195" y="220" fill="#3b82f6" font-weight="600">横向 B_x cos(ωt+φ)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="42" y="129.81" fill="#ef4444">纵向 B_z</text>
+      <text x="165" y="260" text-anchor="middle" font-size="12" fill="#737373">垂直布置 θ_B = 90° 时 B_z = 0（θ_B ≠ 90° 时另作边带处理）</text>
+      <rect x="355" y="48" width="265" height="218" rx="8" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.4"/>
+      <text x="372" y="76" font-weight="600" fill="#171717">除以 ℏ 后的标准驱动形式</text>
+      <text x="372" y="102" fill="#737373">1. 磁共振：H = -γ B₀ S_z - γ B_x S_x cos(ωt+φ)</text>
+      <text x="372" y="128" fill="#3b82f6" font-weight="600">2. 令 ω₀ = -γ_e B₀，2Ω = -γ_e B_x</text>
+      <text x="372" y="152" fill="#171717">   得 H = ω₀ S_z + 2Ω cos(ωt+φ) S_x</text>
+      <line x1="372" y1="168" x2="602" y2="168" stroke="#d4d4d4" stroke-width="1"/>
+      <text x="372" y="194" font-weight="600" fill="#171717">3. 量子光学电偶极同构 (§4.4–§4.5)</text>
+      <text x="372" y="218" fill="#737373">   H/ℏ = ½ω₀ σ_3 + (V/ℏ) cos(ωt) (σ_+ + σ_-)</text>
+      <text x="372" y="242" fill="#3b82f6" font-weight="600">   对应：2S_z ↔ σ_3，2S_x ↔ σ_+ + σ_-，Ω ↔ V/ℏ</text>
+      </g>
+      </svg>
+      ```
+
+      ### 写成频率单位的标准驱动哈密顿量
+
+      把垂直驱动磁场 $\boldsymbol{B}(t) = B_0\vec{\boldsymbol{e}}_z + B_x\cos(\omega t+\varphi)\vec{\boldsymbol{e}}_x$ 代入 $H = -\gamma\vec{\boldsymbol{S}}\cdot\boldsymbol{B}(t)$，除以 $\hbar$ 把 $\vec{\boldsymbol{S}}$ 无量纲化，就得到
+      $$H = -\gamma B_0 S_z - \gamma B_x S_x \cos(\omega t + \varphi)$$
+      对电子自旋（$\gamma = \gamma_e < 0$），我们定义两个正频率参数：共振角频率 $\omega_0 = -\gamma_e B_0$ 与半驱动幅度（拉比频率参数）$\Omega$，满足 $2\Omega = -\gamma_e B_x$（常见易混误区：定义中的系数因子是横向磁场振幅 $B_x$，绝不是自旋算符 $S_x$）。于是整条磁共振标准哈密顿量简化为
+      $$H = \omega_0 S_z + 2\Omega\cos(\omega t + \varphi)S_x$$
+      为什么要特地在 $S_x$ 前面保留系数 $2\Omega$ 而不是直接写成 $\Omega$？因为沿固定方向来回振荡的余弦场随后会一分为二，拆成正反两个等幅度的圆偏振反向旋转分量（幅值同为 $\Omega$）；提前放入因子 $2$，刚好让下一步的有效驱动强度简洁地等于 $\Omega$。
+    worked: |
+      某电子自旋实验（$\gamma_e/(2\pi) = -2.8\text{ MHz/G}$）的静磁场 $B_0 = 200\text{ G}$，横向线圈产生的交变驱动振幅 $B_x = 10\text{ G}$，驱动频率为 $\omega$，初相位 $\varphi = \pi/3$。
+
+      1. **求出静态项系数 $\omega_0/(2\pi)$。** 将 $\gamma_e$ 与 $B_0$ 代入 $\omega_0 = -\gamma_e B_0$：
+         $$\omega_0/(2\pi) = -(-2.8\text{ MHz/G})\times 200\text{ G} = 560\text{ MHz}.$$
+
+      2. **求出驱动幅值系数 $2\Omega/(2\pi)$ 与 $\Omega/(2\pi)$。** 由 $2\Omega = -\gamma_e B_x$ 先算出线偏振驱动项总系数，再除以 $2$ 得到单分量参数 $\Omega$：
+         $$2\Omega/(2\pi) = -(-2.8\text{ MHz/G})\times 10\text{ G} = 28\text{ MHz},\quad \Omega/(2\pi) = 14\text{ MHz}.$$
+
+      3. **写出频率单位下的标准哈密顿量。** 将参数代入 $H = \omega_0 S_z + 2\Omega\cos(\omega t+\varphi)S_x$：
+         $$H/(2\pi) = 560\text{ MHz}\cdot S_z + 28\text{ MHz}\cdot\cos(\omega t + \pi/3)S_x.$$
+    problems:
+      - zm-drive-basics
+      - zm-drive-self-explain
+      - zm-drive-rabi-template
+      - zm-coil-tilt-spot-mistake
+      - zm-tilted-angle-numeric
+
+  - id: optical-electric-dipole-isomorphism
+    title: "将磁共振哈密顿量映射至量子光学二能级原子"
+    tldr: |
+      - 激光场满足电偶极近似 $k\cdot r \ll 1$ 后，相互作用简化为 $H_{\text{int}} = -\hat{\boldsymbol{d}}\cdot\boldsymbol{E}(t)$。
+      - 二能级原子引入跃迁算符 $\hat{\sigma}_+ = |e\rangle\langle g|$、$\hat{\sigma}_- = |g\rangle\langle e|$ 与反转算符 $\hat{\sigma}_3 = |e\rangle\langle e| - |g\rangle\langle g|$。
+      - 两套模型严格对应：$2S_z \leftrightarrow \hat{\sigma}_3$、$2S_x \leftrightarrow \hat{\sigma}_+ + \hat{\sigma}_-$、磁驱动参数 $\Omega \leftrightarrow V/\hbar$。
+    explain: |
+      ### 量子光学中的电偶极相互作用与宇称选择规则
+
+      把《Introductory Quantum Optics》第 4 章的二能级原子放进单色激光电场 $\boldsymbol{E}(t) = \boldsymbol{E}_0\cos(\omega t)$ 中。由于可见光波长（约 $400\text{–}700\text{ nm}$）远大于原子尺度（埃量级，$k\cdot r \ll 1$），电场在整个原子范围内可视为空间均匀，经规范变换后只留下经典的**电偶极相互作用**（式 4.15 与 4.19）：
+      $$\hat{H} = \hat{H}_A - \hat{\boldsymbol{d}}\cdot\boldsymbol{E}(t)$$
+      这里 $\hat{H}_A$ 是自由原子哈密顿量，基态 $|g\rangle$ 与激发态 $|e\rangle$ 的能量差为 $E_e - E_g = \hbar\omega_0$。按书中的对称约定把零能量点取在两能级正中，使 $E_e = +\frac{1}{2}\hbar\omega_0$、$E_g = -\frac{1}{2}\hbar\omega_0$。因为原子能量定态具有确定宇称而电偶极算符 $\hat{\boldsymbol{d}} = -e\hat{\boldsymbol{r}}$ 为奇宇称算符，其同态对角元严格为零（$\langle g|\hat{\boldsymbol{d}}|g\rangle = \langle e|\hat{\boldsymbol{d}}|e\rangle = 0$），电偶极只在 $|g\rangle$ 与 $|e\rangle$ 之间产生跃迁。
+
+      ### 建立自旋与光偶极二能级系统的精确字典
+
+      引入原子跃迁算符 $\hat{\sigma}_+ = |e\rangle\langle g|$、$\hat{\sigma}_- = |g\rangle\langle e| = \hat{\sigma}_+^\dagger$，以及粒子数反转算符 $\hat{\sigma}_3 = |e\rangle\langle e| - |g\rangle\langle g|$（满足 $[\hat{\sigma}_+, \hat{\sigma}_-] = \hat{\sigma}_3$、$[\hat{\sigma}_3, \hat{\sigma}_\pm] = \pm 2\hat{\sigma}_\pm$）。令实耦合矩阵元 $V = -\langle e|\hat{\boldsymbol{d}}\cdot\boldsymbol{E}_0|g\rangle$，则 $\hat{H}_A = \frac{1}{2}\hbar\omega_0\hat{\sigma}_3$，相互作用项写作 $\hat{H}_{\text{int}} = V\cos(\omega t)(\hat{\sigma}_+ + \hat{\sigma}_-)$。两边除以 $\hbar$，得到：
+      $$\hat{H}/\hbar = \frac{1}{2}\omega_0\hat{\sigma}_3 + \frac{V}{\hbar}\cos(\omega t)(\hat{\sigma}_+ + \hat{\sigma}_-)$$
+      无量纲横向自旋算符对 $|m_S = \pm 1/2\rangle$ 的作用规则为 $S_x|m_S = \pm 1/2\rangle = \frac{1}{2}|m_S = \mp 1/2\rangle$（即 $2S_x$ 在 $\{|+1/2\rangle, |-1/2\rangle\}$ 间以矩阵元 $1$ 相互翻转）。因此将磁共振同样置于 $\hbar=1$ 角频率单位下（$H$ 对应 $\hat{H}/\hbar$，取 $\varphi=0$）并与上式并排比对：在基矢 $\{|m_S = +1/2\rangle \leftrightarrow |e\rangle,\; |m_S = -1/2\rangle \leftrightarrow |g\rangle\}$ 下，恰有 $2S_z \leftrightarrow \hat{\sigma}_3$ 与 $2S_x \leftrightarrow \hat{\sigma}_+ + \hat{\sigma}_-$。由于 $2S_x$ 直接整体对应 $(\hat{\sigma}_+ + \hat{\sigma}_-)$，故 $2\Omega S_x = \Omega(2S_x) \leftrightarrow \Omega(\hat{\sigma}_+ + \hat{\sigma}_-)$，磁共振中的 $\Omega$ 精确对应光学耦合强度 $V/\hbar$（而非 $V/(2\hbar)$）。
+    worked: |
+      某激光实验驱动铷原子的一对电偶极共振能级，原子跃迁频率 $\omega_0/(2\pi) = 384\text{ THz}$，偶极耦合能量矩阵元满足 $V/h = V/(2\pi\hbar) = 12\text{ MHz}$。请把它完整翻译为磁共振标准哈密顿量参数。
+
+      1. **把光学算符翻译成无量纲自旋算符。** 由映射 $|e\rangle \leftrightarrow |m_S=+1/2\rangle$、$|g\rangle \leftrightarrow |m_S=-1/2\rangle$，写出两项算符替换：
+         $$\frac{1}{2}\hat{\sigma}_3 \leftrightarrow S_z,\qquad \hat{\sigma}_+ + \hat{\sigma}_- \leftrightarrow 2S_x.$$
+
+      2. **求出等效的驱动幅值参数 $\Omega/(2\pi)$。** 直接使用 $\Omega = V/\hbar$ 关系，两边除以 $2\pi$ 得：
+         $$\Omega/(2\pi) = \frac{V}{2\pi\hbar} = \frac{V}{h} = 12\text{ MHz},\qquad 2\Omega/(2\pi) = 24\text{ MHz}.$$
+
+      3. **对应回等效横向磁场（对照电子 $\gamma_e/(2\pi) = -2.8\text{ MHz/G}$）。** 问产生同样 $\Omega/(2\pi)=12\text{ MHz}$ 需要多大电子自旋横向交变场 $B_x$：
+         $$B_x = \frac{2\Omega}{|\gamma_e|} = \frac{24\text{ MHz}}{2.8\text{ MHz/G}} \approx 8.57\text{ G}.$$
+    problems:
+      - zm-optical-basics
+      - zm-optical-self-explain
+      - zm-optical-dipole-template
+      - zm-optical-spot-mistake
+      - zm-optical-transfer
+final: zeeman-final-explain
+summary: |
+  - **静态塞曼能级与旋磁比**：由 $H_0 = -\gamma B_0 S_z$，电子因 $\gamma_e < 0$（约 $-2\pi\times 2.8\text{ MHz/G}$）使 $|m_S = -1/2\rangle$ 成为下能级且 $\omega_0 = -\gamma_e B_0 > 0$；质子等核自旋 $\gamma_n > 0$（$\text{kHz/G}$ 量级），上下能级颠倒且分裂小约 $10^3$ 倍。
+  - **标准横向驱动哈密顿量**：当驱动场垂直静磁场（$\theta_B = 90^\circ$，$B_z = 0$）时，令 $2\Omega = -\gamma_e B_x$ 即得 $H = \omega_0 S_z + 2\Omega\cos(\omega t+\varphi)S_x$。
+  - **量子光学电偶极同构**：在 $\{|g\rangle\leftrightarrow|m_S=-1/2\rangle,\; |e\rangle\leftrightarrow|m_S=+1/2\rangle\}$ 对应下，$\frac{1}{2}\hat{\sigma}_3\leftrightarrow S_z$、$\hat{\sigma}_+ + \hat{\sigma}_-\leftrightarrow 2S_x$，电偶极矩阵元给出 $\Omega \leftrightarrow V/\hbar$。
+  **Next:** 下一课「旋波近似与相互作用图像」将把带有时间 $t$ 的横向余弦项 $2\Omega\cos(\omega t+\varphi)S_x$ 拆解为旋转分量，并在旋转参考系下把时间依赖彻底消去。

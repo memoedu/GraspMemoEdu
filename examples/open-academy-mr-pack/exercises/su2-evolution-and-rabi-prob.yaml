@@ -1,0 +1,654 @@
+concept: su2-evolution-and-rabi-prob
+exercises:
+  # ==========================================================================
+  # Step 1: su2-effective-field-and-unitary (5 题课堂 + 3 题 recall)
+  # ==========================================================================
+  - id: rabi-axis-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "在把常系数有效哈密顿量写成 $H_I = \\Omega_{\\text{eff}}\\,\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}$ 时，严格共振（$\\delta = \\omega_0 - \\omega = 0$）对有效旋转轴 $\\vec{\\boldsymbol{n}}$ 的方向有什么决定性影响？"
+    options:
+      - id: a
+        text: "极角 $\\theta' = 90^\\circ$，有效转轴 $\\vec{\\boldsymbol{n}} = (\\cos\\varphi, \\sin\\varphi, 0)$ 完全倒在赤道 $x\\text{-}y$ 平面内，从而能将下态 $|m_S=-1/2\\rangle$ 沿水平轴彻底翻转到上态 $|m_S=+1/2\\rangle$。"
+        correct: true
+        feedback: "完全正确。当 $\\delta = 0$ 时 $\\cos\\theta' = \\delta/\\Omega_{\\text{eff}} = 0$，转轴不再向上偏移 $z$ 分量，正好实现极点到极点的完全翻转。"
+      - id: b
+        text: "有效转轴直接变成沿 $+z$ 轴方向的 $(0, 0, 1)$，与初相位 $\\varphi$ 无关。"
+        correct: false
+        feedback: "$\\delta = 0$ 恰恰让 $z$ 分量 $\\cos\\theta'=0$ 消失；只有驱动关闭（$\\Omega = 0$）且 $\\delta > 0$ 时转轴才指沿 $+z$ 轴。"
+      - id: c
+        text: "有效拉比频率 $\\Omega_{\\text{eff}}$ 变为零，使演化算符 $U_I$ 恒等于单位算符 $\\mathbb{1}$。"
+        correct: false
+        feedback: "$\\delta = 0$ 时 $\\Omega_{\\text{eff}} = \\sqrt{\\Omega^2 + 0} = \\Omega$，并不是零。"
+      - id: d
+        text: "转角公式里的 $\\theta = \\Omega_{\\text{eff}}t$ 固定死为 $90^\\circ$，不再随时间 $t$ 变化。"
+        correct: false
+        feedback: "固定在 $90^\\circ$ 的是不随时间变化的倾角 $\\theta'$；围绕转轴进行的旋转角 $\\theta = \\Omega_{\\text{eff}}t$ 始终随时间线性增加。"
+    solution: "共振时 $\\delta = 0$，故 $\\cos\\theta' = \\delta/\\Omega_{\\text{eff}} = 0$、$\\sin\\theta' = 1$，有效旋转轴 $\\vec{\\boldsymbol{n}} = (\\cos\\varphi, \\sin\\varphi, 0)$ 完全处于 $x\\text{-}y$ 赤道平面内。"
+
+  - id: rabi-axis-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "在刚刚写出 $U_I = e^{-i H_I t} = \\cos(\\theta/2)\\mathbb{1} - i\\sin(\\theta/2)\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}$ 时，为什么三角函数自变量里会出现二分之一因子 $\\theta/2$，而不是 $\\cos(\\theta)\\mathbb{1} - i\\sin(\\theta)\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}$？"
+    options:
+      - id: a
+        text: "因为泡利矢量满足 $\\vec{\\boldsymbol{\\sigma}} = 2\\vec{\\boldsymbol{S}}$，把 $H_I t = \\Omega_{\\text{eff}}t\\,\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}$ 改写成 $\\vec{\\boldsymbol{\\sigma}}$ 时自然多出了因子 $1/2$（即 $\\frac{\\theta}{2}\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}$），同时 $(\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}})^2=\\mathbb{1}$ 展开直接把它带进 $\\cos$ 与 $\\sin$。"
+        correct: true
+        feedback: "抓住了重点！自旋 $1/2$ 算符本征值为 $\\pm 1/2$ 而泡利矩阵本征值为 $\\pm 1$，两者差出的 $1/2$ 正是旋量旋转特征的“半角”来源。"
+      - id: b
+        text: "因为做了旋波近似时丢掉了一半能量项，所以演化角必须跟着减半。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "旋波近似后保留项已经用半幅值 $\\Omega$ 写入 $H_I$；这里的 $\\theta/2$ 纯粹来源于自旋算符 $\\vec{\\boldsymbol{S}} = \\vec{\\boldsymbol{\\sigma}}/2$。"
+      - id: c
+        text: "因为时间演化只需计算到半周期 $t/2$，之后状态就会自动保持不变。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "演化角是完整的 $\\theta = \\Omega_{\\text{eff}}t$，$\\theta/2$ 反映的是自旋态波函数相对于三维几何矢量旋转的半角规律。"
+      - id: d
+        text: "因为矩阵指数在取虚数单位 $i$ 之后会自动把角度系数缩小为原来的一半。"
+        correct: false
+        category: math_error
+        feedback: "$e^{-i\\alpha A}$ 当 $A^2=\\mathbb{1}$ 时展开为 $\\cos(\\alpha)\\mathbb{1} - i\\sin(\\alpha)A$，不会自己除以 $2$；这里的 $\\alpha$ 本身就等于 $\\theta/2$。"
+    solution: "由于泡利算符满足 $\\vec{\\boldsymbol{\\sigma}} = 2\\vec{\\boldsymbol{S}}$ 且 $(\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}})^2 = \\mathbb{1}$，所以 $e^{-i\\theta\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}} = e^{-i(\\theta/2)\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}} = \\cos(\\theta/2)\\mathbb{1} - i\\sin(\\theta/2)\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}$。"
+
+  - id: rabi-eff-freq-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    params:
+      Om:
+        min: 3
+        max: 9
+        step: 3
+      delta:
+        min: 4
+        max: 12
+        step: 4
+    constraints:
+      - "Om * 4 == delta * 3"
+    prompt: "某自旋脉冲实验的横向单分量驱动幅度为 $\\Omega/(2\\pi) = {{=Om}}\\text{ MHz}$，失谐偏共振为 $\\delta/(2\\pi) = {{=delta}}\\text{ MHz}$。求旋转坐标系中的有效拉比频率 $\\Omega_{\\text{eff}}/(2\\pi)$ 是多少 $\\text{MHz}$？"
+    answer_expr: "sqrt(Om*Om + delta*delta)"
+    tolerance:
+      abs: 0.01
+    common_wrong:
+      - answer_expr: "Om + delta"
+        category: math_error
+        feedback: "横向驱动与纵向失谐相互垂直，必须按直角三角形求矢量合成长度 $\\sqrt{\\Omega^2 + \\delta^2}$，不能直接代数相加。"
+      - answer_expr: "abs(delta - Om)"
+        category: math_error
+        feedback: "有效频率由正交分量合成，不可能比其中任一分量还小，应按 $\\sqrt{\\Omega^2+\\delta^2}$ 计算。"
+    hints:
+      - "利用勾股合成公式 $\\Omega_{\\text{eff}} = \\sqrt{\\Omega^2 + \\delta^2}$。"
+      - "这里恰好构成 $3\\text{–}4\\text{–}5$ 比例的直角三角形。"
+    solution: "由 $\\Omega_{\\text{eff}}/(2\\pi) = \\sqrt{{{=Om}}^2 + {{=delta}}^2} = {{=sqrt(Om*Om + delta*delta)}}\\text{ MHz}$。"
+
+  - id: rabi-angle-spot-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "一位同学在计算有失谐（$\\delta \\ne 0$）驱动下的演化算符时写道：『$t$ 时刻演化算符 $U_I = \\cos(\\theta'/2)\\mathbb{1} - i\\sin(\\theta'/2)\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}$，其中 $\\cos\\theta' = \\delta/\\Omega_{\\text{eff}}$，所以演化状态与时间 $t$ 无关』。这段推导混淆了哪两个角度？"
+    options:
+      - id: a
+        text: "把定义有效转轴倾斜度、与时间无关的极角 $\\theta'$（满足 $\\cos\\theta'=\\delta/\\Omega_{\\text{eff}}$）当成了随时间线性累积的旋转角度 $\\theta = \\Omega_{\\text{eff}}t$。"
+        correct: true
+        feedback: "一针见血！$\\theta'$ 只用来指向固定单位轴 $\\vec{\\boldsymbol{n}}$，而写进 $U_I$ 的是随时间演化的 $\\theta = \\Omega_{\\text{eff}}t$。"
+      - id: b
+        text: "错把 $\\cos\\theta'$ 的分母写成了 $\\Omega_{\\text{eff}}$，实际分母应该只有横向幅度 $\\Omega$。"
+        correct: false
+        category: math_error
+        feedback: "$\\cos\\theta' = \\delta/\\Omega_{\\text{eff}}$（分母是矢量斜边模长 $\\Omega_{\\text{eff}}$）这半句反而是对的，错在把 $\\theta'$ 填进了 $U_I$ 的演化解角里。"
+      - id: c
+        text: "当 $\\delta \\ne 0$ 时演化算符里不能出现 $\\vec{\\boldsymbol{\\sigma}}$，只能把 $H_I$ 当成纯对角矩阵演化。"
+        correct: false
+        category: misapplied_technique
+        feedback: "只要 $\\Omega \\ne 0$，有效场轴就存在横向分量，演化解算符必然同时含横向泡利分量与 $z$ 分量。"
+      - id: d
+        text: "应该把 $U_I$ 中的 $\\theta'/2$ 乘以 $2$ 变为 $\\theta'$，即无需半角。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "演化算符三角函数自变量不仅应当保持半角，而且里面的角度是 $\\theta = \\Omega_{\\text{eff}}t$ 而非 $\\theta'$。"
+    solution: "有效转轴 $\\vec{\\boldsymbol{n}}$ 的方向由静态极角 $\\theta'$（$\\cos\\theta'=\\delta/\\Omega_{\\text{eff}}$）与方位角 $\\varphi$ 确定；而演化算符 $U_I$ 绕该轴转过的角度是随时间增大的 $\\theta = \\Omega_{\\text{eff}}t$。"
+
+  - id: rabi-axis-phase-transfer
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "设某自旋在相互作用图像中恰好共振（$\\delta = 0$），实验者先令驱动初相位 $\\varphi = \\pi/2$ 作用了使旋转角 $\\theta = \\pi/2$ 的时长 $t$。根据 $H_I = \\Omega_{\\text{eff}}\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}$ 与 $U_I$，此时自旋态绕哪根坐标轴转动了多大角度？"
+    options:
+      - id: a
+        text: "绕 $+y$ 轴（单位轴 $\\vec{\\boldsymbol{n}} = (0, 1, 0)$）转过 $\\theta = \\pi/2$，演化算符 $U_I = \\cos(\\pi/4)\\mathbb{1} - i\\sin(\\pi/4)\\sigma_y$。"
+        correct: true
+        feedback: "迁移准确！$\\delta=0$ 给 $\\sin\\theta'=1, \\cos\\theta'=0$，再由 $\\varphi=\\pi/2$ 得 $\\vec{\\boldsymbol{n}} = (0,1,0)$，转角为 $\\theta = \\pi/2$（即半角 $\\pi/4$）。"
+      - id: b
+        text: "绕 $+x$ 轴转过 $\\pi/2$，对应演化算符 $\\cos(\\pi/4)\\mathbb{1} - i\\sin(\\pi/4)\\sigma_x$。"
+        correct: false
+        category: misapplied_technique
+        feedback: "绕 $+x$ 轴对应初相位 $\\varphi = 0$；当 $\\varphi = \\pi/2$ 时 $(\\cos\\varphi, \\sin\\varphi) = (0, 1)$，指向 $+y$ 轴。"
+      - id: c
+        text: "绕 $+z$ 轴转过 $\\pi/2$，因为共振时纵向项主导转动。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "共振 $\\delta = 0$ 恰恰令 $n_z = \\cos\\theta' = 0$，转轴全部躺在 $x\\text{-}y$ 平面，没有任何 $z$ 分量。"
+      - id: d
+        text: "绕 $+y$ 轴转过 $\\pi/4$，因此矩阵系数中出现 $\\cos(\\pi/8)$ 与 $\\sin(\\pi/8)$。"
+        correct: false
+        category: math_error
+        feedback: "算符式子里的半角 $\\theta/2 = \\pi/4$ 已经体现了几何转角 $\\theta = \\pi/2$ 的一半，不能再次除以 $2$。"
+    solution: "当 $\\delta = 0$ 且 $\\varphi = \\pi/2$ 时，有效转轴为 $\\vec{\\boldsymbol{n}} = (\\cos(\\pi/2), \\sin(\\pi/2), 0) = (0, 1, 0)$；故 $\\theta = \\pi/2$ 时有 $U_I = \\cos(\\pi/4)\\mathbb{1} - i\\sin(\\pi/4)\\sigma_y$。"
+
+  - id: rabi-recall-axis-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: su2-effective-field-and-unitary
+    difficulty: 1
+    est_minutes: 1
+    prompt: "用一两句话写出 $H_I$ 中有效拉比频率 $\\Omega_{\\text{eff}}$、单位转轴 $\\vec{\\boldsymbol{n}}$ 及 $SU(2)$ 演化算符 $U_I$ 的物理含义。"
+    rubric:
+      - id: r1
+        criterion: "说明定义偏共振 $\\delta = \\omega_0 - \\omega$ 与合成模长 $\\Omega_{\\text{eff}} = \\sqrt{\\Omega^2 + \\delta^2}$，将哈密顿量合成为绕单位轴 $\\vec{\\boldsymbol{n}}$ 的等效进动 $H_I = \\Omega_{\\text{eff}}\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}$。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "给出演化算符 $U_I = \\cos(\\theta/2)\\mathbb{1} - i\\sin(\\theta/2)\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}$（$\\theta=\\Omega_{\\text{eff}}t$、$\\vec{\\boldsymbol{\\sigma}}=2\\vec{\\boldsymbol{S}}$）。"
+        weight: 1
+        required: true
+    exemplar: "引入偏共振 $\\delta = \\omega_0 - \\omega$ 与有效拉比频率 $\\Omega_{\\text{eff}} = \\sqrt{\\Omega^2+\\delta^2}$ 后，常系数哈密顿量简化为 $H_I = \\Omega_{\\text{eff}}\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}$；利用泡利矢量 $\\vec{\\boldsymbol{\\sigma}} = 2\\vec{\\boldsymbol{S}}$ 展开指数算符，即得绕固定轴 $\\vec{\\boldsymbol{n}}$ 转动角度 $\\theta = \\Omega_{\\text{eff}}t$ 的 $SU(2)$ 演化算符 $U_I = \\cos(\\theta/2)\\mathbb{1} - i\\sin(\\theta/2)\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}$。"
+
+  - id: rabi-recall-axis-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: su2-effective-field-and-unitary
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "在有效转轴公式 $\\vec{\\boldsymbol{n}} = (\\sin\\theta'\\cos\\varphi,\\; \\sin\\theta'\\sin\\varphi,\\; \\cos\\theta')$ 中，哪一项决定转轴朝 $+z$ 轴还是赤道面偏斜的倾角 $\\theta'$？"
+    options:
+      - id: a
+        text: "由偏共振与总有效频率之比 $\\cos\\theta' = \\delta/\\Omega_{\\text{eff}}$ 决定"
+        correct: true
+        feedback: "正确。$\\delta = 0$ 时 $\\cos\\theta'=0$（倒在赤道面）；$|\\delta| \\gg \\Omega$ 时转轴几乎倒向 $z$ 轴。"
+      - id: b
+        text: "仅由驱动初相位 $\\varphi$ 的余弦 $\\cos\\varphi$ 决定"
+        correct: false
+        feedback: "初相位 $\\varphi$ 只决定 $\\vec{\\boldsymbol{n}}$ 投影在 $x\\text{-}y$ 平面中的方位角，不影响 $z$ 分量。"
+      - id: c
+        text: "随演化时间 $t$ 以 $\\theta' = \\Omega_{\\text{eff}}t$ 持续增大"
+        correct: false
+        feedback: "随时间线性增长的是围绕 $\\vec{\\boldsymbol{n}}$ 转动的角度 $\\theta$；转轴倾角 $\\theta'$ 由常数 $\\Omega, \\delta$ 固定。"
+      - id: d
+        text: "恒等于 $45^\\circ$，与驱动场幅值 $\\Omega$ 和失谐 $\\delta$ 都无关"
+        correct: false
+        feedback: "只有当 $\\delta = \\Omega$ 的特例才恰好出现 $\\theta' = 45^\\circ$。"
+    solution: "由于 $H_I = \\delta S_z + \\Omega[\\cos(\\varphi)S_x + \\sin(\\varphi)S_y]$，提取模长 $\\Omega_{\\text{eff}} = \\sqrt{\\Omega^2+\\delta^2}$ 后自然得到 $\\cos\\theta' = \\delta/\\Omega_{\\text{eff}}$。"
+
+  - id: rabi-recall-axis-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: su2-effective-field-and-unitary
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "写出单分量驱动幅值 $\\Omega$ 与偏共振 $\\delta = \\omega_0 - \\omega$ 合成的有效拉比频率 $\\Omega_{\\text{eff}}$ 表达式（用 `Om` 表示 $\\Omega$，`d` 表示 $\\delta$，平方根写成 `sqrt(...)`）。"
+    answer: "sqrt(Om^2 + d^2)"
+    variables:
+      Om: [1, 20]
+      d: [-15, 15]
+    solution: "横向驱动 $\\Omega$ 与纵向失谐 $\\delta$ 正交合成，有效拉比频率为 $\\Omega_{\\text{eff}} = \\sqrt{\\Omega^2 + \\delta^2}$。"
+
+  # ==========================================================================
+  # Step 2: rabi-probability-and-ode-duality (5 题课堂 + 3 题 recall)
+  # ==========================================================================
+  - id: rabi-prob-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "如果保持横向驱动幅度 $\\Omega$ 不变，逐渐把驱动频率 $\\omega$ 调得越来越偏离自旋共振频率 $\\omega_0$（使 $|\\delta| = |\\omega_0 - \\omega|$ 不断增大），拉比跃迁概率曲线 $P(t)$ 会出现哪两个同步变化？"
+    options:
+      - id: a
+        text: "最大跃迁峰值 $\\Omega^2/(\\Omega^2+\\delta^2)$ 会变小（越来越少原子被激发），同时有效振荡频率 $\\Omega_{\\text{eff}} = \\sqrt{\\Omega^2+\\delta^2}$ 变大（振荡节奏反而变快）。"
+        correct: true
+        feedback: "物理图像非常清晰！有效旋转轴越来越斜向 $z$ 轴，所以转出的圆圈很小、翻不到对极点，但因为合矢量变长所以绕那条轴转得更快。"
+      - id: b
+        text: "最大跃迁峰值依然能达到 $1.0$，只是需要更长的脉冲时间才能到达峰值。"
+        correct: false
+        feedback: "只有在绝对共振 $\\delta = 0$ 时最大概率才等于 $1.0$；任何 $\\delta \\ne 0$ 都会压低幅度，且因为 $\\Omega_{\\text{eff}}$ 变大峰值出现时间反而更早。"
+      - id: c
+        text: "最大跃迁峰值下降到 $\\Omega^2/(\\Omega^2+\\delta^2)$，但振荡速度跟着一起放慢。"
+        correct: false
+        feedback: "振荡速度由 $\\Omega_{\\text{eff}} = \\sqrt{\\Omega^2+\\delta^2}$ 决定，失谐越大速度越快而非越慢。"
+      - id: d
+        text: "跃迁概率不再作周期振荡，而是按指数律单调衰减至零。"
+        correct: false
+        feedback: "只要没有退相干与衰减，常系数闭合二能级系统的跃迁概率始终做严格的正弦平方周期振荡。"
+    solution: "在 $P(t) = \\frac{\\Omega^2}{\\Omega^2+\\delta^2}\\sin^2(\\frac{\\sqrt{\\Omega^2+\\delta^2}\\,t}{2})$ 中，增大 $|\\delta|$ 会降低幅度因子（抑制共振激发），同时增大有效角频率 $\\Omega_{\\text{eff}}$（加快拉比振荡频率）。"
+
+  - id: rabi-prob-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "在刚才的例题里，取 $\\Omega/(2\\pi)=6\\text{ MHz}$、$\\delta/(2\\pi)=8\\text{ MHz}$，我们分别用演化解 $|\\psi\\rangle = U_I|1\\rangle$ 和拉比公式都算出了 $P = 0.18$。若用《量子光学》二阶常微分方程 $\\ddot{C}_e - i\\delta\\dot{C}_e + \\frac{\\Omega^2}{4}C_e = 0$ 求解同一组参数，为什么一定会得到完全一样的概率 $0.18$？"
+    options:
+      - id: a
+        text: "因为两条路线本质上都在求解同一个相互作用图像薛定谔方程（只是在基底系数上直接消元成微分方程，与直接写幺正矩阵指数完全等价），而且两个系统的参数映射 $\\Omega \\leftrightarrow V/\\hbar$ 与 $\\delta \\leftrightarrow \\Delta$ 严格一致。"
+        correct: true
+        feedback: "打通了！无论是 $2\\times 2$ 矩阵演化算符还是一阶/二阶常微分方程，求解的是同一套耦合线性微分动力学，自然得到一字不差的精确结果。"
+      - id: b
+        text: "因为这只是 $t = 25\\text{ ns}$ 特殊时刻下的数值巧合，其他时刻两个公式差两倍。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "对所有时间 $t$ 和所有参数，$|\\langle 0|U_I|1\\rangle|^2$ 与 $|C_e(t)|^2$ 在解析公式上都一模一样。"
+      - id: c
+        text: "因为微分方程默认忽略了反向项以外的静态能级项 $\\delta$，只在失谐很大时相等。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "微分方程里的 $-i\\delta\\dot{C}_e$ 项正好完整保留了一般偏共振 $\\delta = \\omega_0 - \\omega$。"
+      - id: d
+        text: "因为两个模型都假设总概率 $|C_g|^2 + |C_e|^2 = 0.36$ 而不是 $1$。"
+        correct: false
+        category: math_error
+        feedback: "总概率始终严格归一等于 $1$，$0.36$ 是该失谐下的最大上态激发峰值 $\\Omega^2/\\Omega_{\\text{eff}}^2$。"
+    solution: "演化算符 $U_I = e^{-i H_I t}$ 是薛定谔方程的矩阵算符形式，而 Gerry & Knight §4.4 的耦合微分方程则是该方程在能级本征基上的分量展开；二者在任意时刻和任意失谐下严格等价。"
+
+  - id: rabi-prob-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    params:
+      Om:
+        min: 4
+        max: 8
+        step: 2
+      delta:
+        min: 4
+        max: 8
+        step: 2
+    constraints:
+      - "(Om == 4 and delta == 8) or (Om == 6 and delta == 8) or (Om == 8 and delta == 6) or (Om == 8 and delta == 4)"
+    prompt: "已知某二能级系统初态全部处于下能级 $|1\\rangle$（即 $|g\\rangle$），外加驱动强度为 $\\Omega/(2\\pi) = {{=Om}}\\text{ MHz}$、偏共振为 $\\delta/(2\\pi) = {{=delta}}\\text{ MHz}$。随着驱动时间延长，系统跃迁至上能级 $|0\\rangle$（即 $|e\\rangle$）所能达到的最大可能概率 $P_{\\max}$（用小数表示，例如 `0.5`）是多少？"
+    answer_expr: "(Om*Om) / (Om*Om + delta*delta)"
+    tolerance:
+      abs: 0.005
+    common_wrong:
+      - answer_expr: "Om / sqrt(Om*Om + delta*delta)"
+        category: math_error
+        feedback: "这是有效转轴在横向平面投影的振幅比 $\\Omega/\\Omega_{\\text{eff}}$，概率需要对振幅取平方！"
+      - answer_expr: "(delta*delta) / (Om*Om + delta*delta)"
+        category: misunderstood_definition
+        feedback: "你把公式分子误取成了 $\\delta^2$；随失谐增大，跃迁峰值应该变小，分子是横向驱动平方 $\\Omega^2$。"
+    hints:
+      - "令拉比概率式里的 $\\sin^2(\\Omega_{\\text{eff}}t/2)$ 取最大值 $1$。"
+      - "计算峰值系数 $P_{\\max} = \\Omega^2 / (\\Omega^2 + \\delta^2)$。"
+    solution: "在 $P(t) = \\frac{\\Omega^2}{\\Omega^2+\\delta^2}\\sin^2(\\frac{\\Omega_{\\text{eff}} t}{2})$ 中，取正弦平方最大值 $1$ 得 $P_{\\max} = \\frac{{{=Om}}^2}{{{=Om}}^2 + {{=delta}}^2} = {{=(Om*Om)/(Om*Om+delta*delta)}}$。"
+
+  - id: rabi-prob-spot-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "一位同学抄写课本上由 $U_I|1\\rangle$ 展开的末态公式时，漏看括号写成了：$|\\psi(t)\\rangle = (\\cos\\frac{\\theta}{2} + i\\sin\\frac{\\theta}{2})n_z|1\\rangle - i\\sin\\frac{\\theta}{2}(n_x - i n_y)|0\\rangle$。怎样一眼看出这条式子一定抄错了括号？"
+    options:
+      - id: a
+        text: "检验完全共振 $\\delta = 0$（即 $n_z = 0$）并取 $t = 0$（$\\theta = 0$）：错式会让整个 $|1\\rangle$ 振幅乘上 $n_z = 0$ 使态矢量归零，违背归一化；实际仅 $i\\sin(\\theta/2)$ 一项乘以 $n_z$，即 $(\\cos\\frac{\\theta}{2} + i\\sin\\frac{\\theta}{2}\\, n_z)|1\\rangle$。"
+        correct: true
+        feedback: "检验绝妙！用 $t=0$ 或 $n_z=0$ 等特例代入立刻就能排错：$U_I(0) = \\mathbb{1}$ 不含 $n_z$，因此 $\\cos(\\theta/2)$ 绝不能被 $n_z$ 乘上去。"
+      - id: b
+        text: "问题出在 $|0\\rangle$ 项前面的 $n_x - i n_y$ 漏掉了外层平方，括号位置反而是对的。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "末态波函数是量子态振幅（还不能取平方，算概率时才取模方），错误确确实实出现在第一项 $n_z$ 乘到了 $\\cos(\\theta/2)$ 上。"
+      - id: c
+        text: "错在第一项应该用减号而不是加号，因为 $\\sigma_z|1\\rangle = +|1\\rangle$。"
+        correct: false
+        category: math_error
+        feedback: "计算基规定 $|1\\rangle = |m_S=-1/2\\rangle$，因此 $\\sigma_z|1\\rangle = -|1\\rangle$，与演化算符里 $-i\\sin(\\theta/2)$ 负负得正正是加号。"
+      - id: d
+        text: "只有把 $\\theta/2$ 改成 $\\theta$ 才能满足归一化，括号位置并没有错。"
+        correct: false
+        category: math_error
+        feedback: "即便是改角度，只要 $\\cos$ 还乘在 $n_z$ 上，共振时 $n_z = 0$ 依然会丢掉全部 $|1\\rangle$ 成分，不可能守恒概率。"
+    solution: "因 $U_I = \\cos(\\theta/2)\\mathbb{1} - i\\sin(\\theta/2)\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}$ 中单位算符 $\\mathbb{1}$ 不含 $n_z$，故末态必须是 $(\\cos\\frac{\\theta}{2} + i\\sin\\frac{\\theta}{2}\\,n_z)|1\\rangle - i\\sin\\frac{\\theta}{2}(n_x-i n_y)|0\\rangle$。"
+
+  - id: rabi-ode-transfer
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "依据《量子光学》§4.4 由二阶微分方程 $\\ddot{C}_e - i\\delta\\dot{C}_e + \\frac{\\Omega^2}{4}C_e = 0$ 导出半经典拉比公式时，如果把激光强度调得极微弱、使相互作用时间极短（或大失谐极限下有 $\\Omega \\ll |\\delta|$），在什么条件下它恰好退化回微扰论给不出大布居转移的行为（$P_e(t) \\ll 1$）？"
+    options:
+      - id: a
+        text: "当驱动远弱于失谐（$\\Omega \\ll |\\delta|$）使得最大峰值因子 $\\Omega^2/(\\Omega^2+\\delta^2) \\approx \\Omega^2/\\delta^2 \\ll 1$ 时，上能级布居始终微小，正对应含时微扰论的成立区间。"
+        correct: true
+        feedback: "融会贯通！这也是 Gerry & Knight 第 4.4 节末尾专门指出微扰论只是拉比精确解在弱场大失谐或极短脉冲极限下的退化情形。"
+      - id: b
+        text: "只有在精确共振 $\\delta = 0$ 且驱动时间等于 $\\pi/\\Omega$ 时，微扰论才会退化出来。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "$\\delta = 0$ 且 $\\Omega t = \\pi$ 产生 $100\\%$ 布居反转，恰恰彻底破坏了微扰论假定 $P_e(t) \\ll 1$ 的前提。"
+      - id: c
+        text: "微扰论在量子力学里永远成立，与 $\\Omega/|\\delta|$ 的比值和持续时间 $t$ 无关。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "近共振强场驱动可引起高达 $100\\%$ 的布居数来回振荡，是微扰论无法描述而必须启用 Rabi 模型的根本原因。"
+      - id: d
+        text: "特征根 $\\lambda_\\pm$ 必须变成纯虚数使概率随时间单调发散。"
+        correct: false
+        category: math_error
+        feedback: "$\\Omega_{\\text{eff}} = \\sqrt{\\Omega^2 + \\delta^2} > 0$ 为实数，使 $P_e(t)$ 始终在 $[0, 1]$ 内有界振荡。"
+    solution: "当 $\\Omega \\ll |\\delta|$ 时，拉比概率最大振幅被压低至 $(\\Omega/\\delta)^2 \\ll 1$（或当作用极短 $\\Omega t \\ll 1$ 时 $\\sin(\\Omega t/2) \\approx \\Omega t/2$），上态布居保持微弱，正好恢复出含时微扰论的结果。"
+
+  - id: rabi-recall-prob-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: rabi-probability-and-ode-duality
+    difficulty: 1
+    est_minutes: 1
+    prompt: "用一两句话说明：从 $SU(2)$ 演化算符法与《量子光学》二阶耦合概率幅微分方程法得出的拉比跃迁概率公式是什么，失谐 $\\delta$ 对它有什么双重影响？"
+    rubric:
+      - id: r1
+        criterion: "写出 $P(t) = \\frac{\\Omega^2}{\\Omega^2+\\delta^2}\\sin^2\\left(\\frac{\\sqrt{\\Omega^2+\\delta^2}\\,t}{2}\\right)$，说明两种方法给出同一公式。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "指出 $|\\delta|$ 增大既压低了跃迁最大概率，又提高了有效拉比振荡频率 $\\Omega_{\\text{eff}}$。"
+        weight: 1
+        required: true
+    exemplar: "由 $U_I|1\\rangle$ 取 $|0\\rangle$ 振幅模方，与《量子光学》求解 $\\ddot{C}_e - i\\delta\\dot{C}_e + \\frac{\\Omega^2}{4}C_e = 0$ 一致，均给出 $P(t) = \\frac{\\Omega^2}{\\Omega^2+\\delta^2}\\sin^2\\left(\\frac{\\sqrt{\\Omega^2+\\delta^2}\\,t}{2}\\right)$。失谐 $|\\delta|$ 越大会让跃迁最大峰值越低，但振荡有效频率 $\\sqrt{\\Omega^2+\\delta^2}$ 反而越快。"
+
+  - id: rabi-recall-prob-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: rabi-probability-and-ode-duality
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "从下能级 $|1\\rangle$ 出发经 $U_I$ 演化后，下面哪个选项是修正括号错误后的严格表达式？"
+    options:
+      - id: a
+        text: "$|\\psi\\rangle = (\\cos\\frac{\\theta}{2} + i\\sin\\frac{\\theta}{2}\\, n_z)|1\\rangle + (-i\\sin\\frac{\\theta}{2})(n_x - i n_y)|0\\rangle$"
+        correct: true
+        feedback: "正确。单位算符 $\\mathbb{1}$ 不乘 $n_z$，因此 $n_z$ 只附在 $\\sin(\\theta/2)$ 之后。"
+      - id: b
+        text: "$|\\psi\\rangle = (\\cos\\frac{\\theta}{2} + i\\sin\\frac{\\theta}{2})n_z|1\\rangle + (-i\\sin\\frac{\\theta}{2})(n_x - i n_y)|0\\rangle$"
+        correct: false
+        feedback: "这是讲义排版误括后的错式，会在共振 $n_z = 0$ 时错误丢掉 $|1\\rangle$ 分量。"
+      - id: c
+        text: "$|\\psi\\rangle = \\cos\\frac{\\theta}{2}|1\\rangle - i\\sin\\frac{\\theta}{2}\\,n_z|0\\rangle$"
+        correct: false
+        feedback: "$\\sigma_z|1\\rangle = -|1\\rangle$ 留在 $|1\\rangle$ 态上，而翻到 $|0\\rangle$ 的是横向分量 $n_x - i n_y$。"
+      - id: d
+        text: "$|\\psi\\rangle = \\cos\\theta|1\\rangle - i\\sin\\theta(n_x + i n_y)|0\\rangle$"
+        correct: false
+        feedback: "自旋 $1/2$ 的演化角是半角 $\\theta/2$，且丢失了 $|1\\rangle$ 中的纵向相位因子与对角 $n_z$。"
+    solution: "因 $\\mathbb{1}|1\\rangle = |1\\rangle$ 且 $(\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}})|1\\rangle = -n_z|1\\rangle + (n_x - i n_y)|0\\rangle$，正确末态为 $(\\cos\\frac{\\theta}{2} + i\\sin\\frac{\\theta}{2}\\, n_z)|1\\rangle + (-i\\sin\\frac{\\theta}{2})(n_x - i n_y)|0\\rangle$。"
+
+  - id: rabi-recall-prob-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: rabi-probability-and-ode-duality
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "写出给定半驱动幅值 $\\Omega$ 与偏共振 $\\delta$ 时，二能级系统从下态激发至上态的最高可能概率 $P_{\\max}$（用 `Om` 表示 $\\Omega$，`d` 表示 $\\delta$）。"
+    answer: "(Om^2) / (Om^2 + d^2)"
+    variables:
+      Om: [1, 20]
+      d: [-15, 15]
+    solution: "令 $\\sin^2(\\Omega_{\\text{eff}}t/2) = 1$，最大跃迁概率为 $P_{\\max} = \\frac{\\Omega^2}{\\Omega^2 + \\delta^2}$。"
+
+  # ==========================================================================
+  # Step 3: inversion-pulses-and-jc-quantized-rabi (5 题课堂 + 3 题 recall)
+  # ==========================================================================
+  - id: rabi-pulse-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "在共振（$\\delta = 0$）条件下从基态 $|1\\rangle$（即 $|g\\rangle$）出发，分别施加 $\\pi$ 脉冲和 $\\pi/2$ 脉冲后，粒子数反转 $W = P_e - P_g$ 与布居态分别是什么？"
+    options:
+      - id: a
+        text: "$\\pi$ 脉冲使 $W = +1$（完全翻转至上态 $|0\\rangle$）；$\\pi/2$ 脉冲使 $W = 0$（上下两态各占 $50\\%$ 布居的等权相干叠加态）。"
+        correct: true
+        feedback: "完全准确！$W(t) = -\\cos(\\Omega t)$：在 $\\Omega t = \\pi$ 得 $+1$，在 $\\Omega t = \\pi/2$ 得 $0$。"
+      - id: b
+        text: "$\\pi$ 脉冲使 $W = 0$；$\\pi/2$ 脉冲使 $W = +1$。"
+        correct: false
+        feedback: "搞反了两个脉冲的布居效果：$\\Omega t = \\pi$ 对应 $P_e = 1$（完全反转，$W=+1$），$\\Omega t = \\pi/2$ 才是半翻转叠加（$P_e=0.5, W=0$）。"
+      - id: c
+        text: "两者都会使 $W = -1$，因为脉冲结束后态自动回到基态 $|1\\rangle$。"
+        correct: false
+        feedback: "$W = -1$ 是初始未驱动态或完整周期 $2\\pi$ 脉冲后的结果，不是 $\\pi$ 或 $\\pi/2$ 脉冲。"
+      - id: d
+        text: "$\\pi/2$ 脉冲给出与外部随机噪音一样的 $50\\%$ 非相干混合态，没有确定的相对相位。"
+        correct: false
+        feedback: "幺正演化给出的是拥有严格固定相对相位的纯量子叠加态 $\\frac{1}{\\sqrt{2}}(|1\\rangle - i e^{-i\\varphi}|0\\rangle)$，这是后续做 Ramsey 干涉的基础。"
+    solution: "由 $W(t) = 2P_e(t) - 1 = -\\cos(\\Omega t)$，取 $\\Omega t = \\pi$（$\\pi$ 脉冲）得 $W = +1$（彻底反转）；取 $\\Omega t = \\pi/2$（$\\pi/2$ 脉冲）得 $W = 0$（生成上下等权纯叠加态）。"
+
+  - id: rabi-pulse-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "在刚才高 $Q$ 光腔的 JC 模型例题里，为什么光腔里一颗光子也没有（零光子真空态 $|n=0\\rangle$）时，量子化拉比频率 $\\Omega(0) = 2\\lambda$ 依然不为零；而在 $n = 8$ 光子态时振荡速度刚好变成 $3$ 倍？"
+    options:
+      - id: a
+        text: "因为原子从上态释放光子跃迁到 $|g\\rangle|n+1\\rangle$ 时，产生算符作用规律 $a^\\dagger|n\\rangle = \\sqrt{n+1}|n+1\\rangle$ 在 $n=0$ 时给出系数 $\\sqrt{0+1}=1 \\ne 0$，触发真空拉比振荡；而在 $n=8$ 时 $\\sqrt{8+1}=3$，耦合直接放大 $3$ 倍。"
+        correct: true
+        feedback: "透彻！半经典理论需要经典场振幅非零才能驱动跃迁，而全量子产生算符自带的 $\\sqrt{n+1}$ 在 $n=0$ 时就天然保留 $1$ 倍真空涨落耦合。"
+      - id: b
+        text: "因为实验者在 $n=0$ 时额外开启了一个辅助微波线圈维持 $\\Omega(0) = 2\\lambda$。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "全量子 JC 哈密顿量没有任何额外外加经典驱动场，纯粹靠原子与单模真空场的真空涨落耦合实现自发发射再重吸收。"
+      - id: c
+        text: "因为真空中拉比频率永远与光子数无关，只是 $n=8$ 时把常数 $\\lambda$ 人为乘了 $3$。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "JC 耦合矩阵元严格正比于玻色子跃迁矩阵元 $\\sqrt{n+1}$，因此对 $n=8$ 自然就是 $\\sqrt{9} = 3$ 倍而非人为规定。"
+      - id: d
+        text: "因为粒子数算符 $a^\\dagger a$ 的本征值在真空态时等于 $+1$ 而不是 $0$。"
+        correct: false
+        category: math_error
+        feedback: "$a^\\dagger a|n=0\\rangle = 0$，真正让矩阵元在 $n=0$ 非零的是在释放光子时使光子数升到 $|n=1\\rangle$ 的 $a^\\dagger|n=0\\rangle = \\sqrt{1}|n=1\\rangle$。"
+    solution: "在 JC 模型耦合 $|e\\rangle|n\\rangle \\leftrightarrow |g\\rangle|n+1\\rangle$ 中，跃迁耦合正比于 $\\langle n+1|a^\\dagger|n\\rangle = \\sqrt{n+1}$；所以 $n=0$ 时系数 $\\sqrt{1}=1$ 产生真空拉比振荡，而 $n=8$ 时系数 $\\sqrt{9}=3$ 使速率扩大为 $3$ 倍。"
+
+  - id: rabi-pulse-duration-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    params:
+      Om_mhz:
+        min: 5
+        max: 25
+        step: 5
+    prompt: "在电子自旋磁共振实验中，将驱动频率精确调谐至共振（$\\delta = 0$），且单分量驱动幅度为 $\\Omega/(2\\pi) = {{=Om_mhz}}\\text{ MHz}$。若要实现一个 $\\pi/2$ 脉冲（使反转度达到 $W = 0$），需要的最短脉冲时长 $t_{\\pi/2}$ 是多少 $\\text{ns}$？"
+    answer_expr: "250 / Om_mhz"
+    tolerance:
+      abs: 0.1
+    common_wrong:
+      - answer_expr: "500 / Om_mhz"
+        category: misapplied_technique
+        feedback: "这是 $\\pi$ 脉冲时长 $t_\\pi = 1/(2\\cdot \\Omega/(2\\pi))$，题干要实现的不是 $\\pi$ 脉冲而是半长时长的 $\\pi/2$ 脉冲！"
+      - answer_expr: "1000 / Om_mhz"
+        category: math_error
+        feedback: "那是转整整一圈 $2\\pi$ 所需周期 $1/(\\Omega/(2\\pi))$，$\\pi/2$ 脉冲只有全周期的四分之一。"
+    hints:
+      - "共振角频率 $\\Omega = 2\\pi\\times (\\Omega/2\\pi)$；满足 $\\Omega t_{\\pi/2} = \\pi/2$。"
+      - "利用换算：当 $\\Omega/(2\\pi)$ 单位为 $\\text{MHz}$ 时，$t_{\\pi/2}(\\text{ns}) = \\frac{1000}{4\\times (\\Omega/2\\pi)} = \\frac{250}{{{=Om_mhz}}}$。"
+    solution: "由 $\\Omega t_{\\pi/2} = \\pi/2$ 得 $t_{\\pi/2} = \\frac{1}{4(\\Omega/2\\pi)} = \\frac{1}{4\\times {{=Om_mhz}}\\text{ MHz}} = \\frac{250}{{{=Om_mhz}}}\\text{ ns} = {{=250/Om_mhz}}\\text{ ns}$。"
+
+  - id: rabi-pulse-spot-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "设系统从激发上态 $|e\\rangle$ 出发，半经典共振粒子数反转为 $W(t) = \\cos(\\Omega t)$。某同学在推导全量子 JC 模型的单光子数态跃迁时写下：『从半经典式 $W(t) = \\cos(\\Omega t)$ 出发，把 $\\Omega$ 直接替换成 JC 耦合矩阵元 $\\lambda\\sqrt{n+1}$，所以量子化拉比振荡频率为 $\\Omega(n) = \\lambda\\sqrt{n+1}$』。哪里少算了一个因子？"
+    options:
+      - id: a
+        text: "少了因子 $2$：因为在旋转坐标系（$\\delta=0,\\varphi=0$）中半经典有效哈密顿量是 $H_I = \\Omega S_x = \\frac{\\Omega}{2}(S^+ + S^-)$（$\\Omega$ 乘在 $S_x$ 而非 $2S_x$ 上），升降耦合矩阵元实际上为 $\\Omega/2$；所以 $\\lambda\\sqrt{n+1}$ 对应 $\\Omega(n)/2$，真正的 $\\Omega(n) = 2\\lambda\\sqrt{n+1}$。"
+        correct: true
+        feedback: "关键的因子 $2$ 把握得极其精准！这也解释了为什么 $P(t) = \\sin^2(\\lambda t\\sqrt{n+1}) = \\sin^2(\\Omega(n)t/2)$ 里 $W(t) = \\cos(2\\lambda t\\sqrt{n+1})$。"
+      - id: b
+        text: "反而多了一个 $\\sqrt{n+1}$ 因子，正确应该是 $\\Omega(n) = \\lambda n$，并在 $n=0$ 时等于零。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "耦合 $|e\\rangle|n\\rangle \\leftrightarrow |g\\rangle|n+1\\rangle$ 的矩阵元来自 $a^\\dagger|n\\rangle = \\sqrt{n+1}|n+1\\rangle$，绝不是 $n$，真空 $n=0$ 确实非零。"
+      - id: c
+        text: "粒子数反转 $W(t)$ 定义中的系数错了，正确式子不含余弦而是 $W(t) = \\sin(\\lambda t)$。"
+        correct: false
+        category: math_error
+        feedback: "因为上、下态概率分别为 $\\cos^2(\\lambda t\\sqrt{n+1})$ 和 $\\sin^2(\\lambda t\\sqrt{n+1})$，作差正是由二倍角公式得出 $\\cos(2\\lambda t\\sqrt{n+1})$。"
+      - id: d
+        text: "式子完全正确，半经典和全量子里耦合系数前都恰好只相差 $1$ 倍。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "代回 $n=0$ 从上态演化得 $P_f = \\sin^2(\\lambda t)$，对照半经典 $P = \\sin^2(\\Omega t/2)$ 显然必须有 $\\Omega(0) = 2\\lambda$。"
+    solution: "在 JC 模型中有 $P_f(t) = \\sin^2(\\lambda t\\sqrt{n+1})$，令其与半经典共振跃迁式 $\\sin^2(\\Omega t/2)$ 一致，立刻可读出 $\\Omega(n)/2 = \\lambda\\sqrt{n+1}$，即 $\\Omega(n) = 2\\lambda\\sqrt{n+1}$。"
+
+  - id: rabi-jc-vacuum-transfer
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "（Gerry & Knight §4.5 深度迁移）在实验上，若我们不是向高 $Q$ 光腔注入确定的光子数态 $|n\\rangle$，而是注入近似经典激光的相干态（光子分布服从泊松分布、均值 $\\bar{n} > 0$），则粒子数反转是各个 $|n\\rangle$ 成分 $\\cos(2\\lambda t\\sqrt{n+1})$ 按泊松权重的加权和。与单一定态 $|n\\rangle$ 或半经典驱动相比，这会导致什么独特现象？"
+    options:
+      - id: a
+        text: "因为不同光子数 $n$ 对应的拉比频率 $2\\lambda\\sqrt{n+1}$ 彼此不等，各分量的余弦先是因相位散开而出现表观消逝（塌缩 collapse），经过一段静默后由于离散平方根分量重新局部同相而再现复苏（revival），彻底揭示了光的量子离散性。"
+        correct: true
+        feedback: "漂亮的跨源深度迁移！这正是 Gerry & Knight §4.5 说明半经典常幅激光无法解释、只有光量子化的离散 $\\sqrt{n+1}$ 频谱才能产生的量子塌缩与复苏（collapse and revival）。"
+      - id: b
+        text: "因为相干态是最接近经典场的量子态，所以它的反转度与半经典公式 $W(t)=\\cos(\\Omega t)$ 一样永远保持等幅纯正弦振荡，绝不会衰减或复苏。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "这正是 Gerry & Knight 在 95–96 页专门驳斥的常见直觉误区：即便最经典的量子相干态，因为光子数离散分布也会出现半经典模型完全没有的塌缩与复苏。"
+      - id: c
+        text: "只要注入相干态，粒子数反转就会在所有时刻恒定等于 $W(t) = +1$ 不发生振荡。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "相干态是各种 $n$ 的叠加，每个 $n$ 成分都会拉比振荡，叠加后才体现出波形的调制、塌缩与复苏。"
+      - id: d
+        text: "相干态因为粒子数 $\\bar{n}$ 不稳定，会使真空态 $n=0$ 分量失去耦合而不参与演化。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "任何包含 $n=0$ 权重的成分照样按 $\\cos(2\\lambda t\\sqrt{1})$ 独立参与叠加。"
+    solution: "在全量子 JC 模型下，相干态下反转度是各非谐频率 $\\Omega(n) = 2\\lambda\\sqrt{n+1}$ 的离散权重叠加：初期不同频率相干消散导致拉比振荡“塌缩（collapse）”，长时后离散相位重聚导致“复苏（revival）”，这是光场离散量子化的直接证据。"
+
+  - id: rabi-recall-pulse-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: inversion-pulses-and-jc-quantized-rabi
+    difficulty: 1
+    est_minutes: 1
+    prompt: "用一两句话说明：什么是粒子数反转 $W(t)$、共振下 $\\pi$ 与 $\\pi/2$ 脉冲分别实现什么效果，以及为什么全量子 JC 模型在 $n=0$ 时仍有拉比振荡？"
+    rubric:
+      - id: r1
+        criterion: "写出 $W(t) = P_e(t) - P_g(t) = 2P(t) - 1$，指出共振下 $\\pi$ 脉冲（$\\Omega t=\\pi$）使 $W=+1$ 完全反转，$\\pi/2$ 脉冲（$\\Omega t=\\pi/2$）使 $W=0$ 形成等权叠加态。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "说明全量子 JC 模型中耦合频率为 $\\Omega(n) = 2\\lambda\\sqrt{n+1}$，因产生算符因子 $\\sqrt{n+1}$ 在 $n=0$ 时非零而引发纯量子的真空拉比振荡。"
+        weight: 1
+        required: true
+    exemplar: "粒子数反转 $W(t)=P_e-P_g=2P-1$，在共振（$\\delta=0$）时 $\\pi$ 脉冲（$t=\\pi/\\Omega$）实现 $W=+1$ 的完全布居反转，$\\pi/2$ 脉冲（$t=\\pi/(2\\Omega)$）实现 $W=0$ 的等权相干叠加。而在全量子 JC 模型中，耦合强弱由 $\\Omega(n) = 2\\lambda\\sqrt{n+1}$ 决定，故即便在 $n=0$ 真空态也存在 $\\Omega(0)=2\\lambda$ 的真空拉比振荡。"
+
+  - id: rabi-recall-pulse-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: inversion-pulses-and-jc-quantized-rabi
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "假设共振驱动下的电子自旋原本全部处于基态 $|1\\rangle$，若施加一个精确的 $\\pi/2$ 脉冲，紧接测得它的粒子数反转 $W$ 等于多少？"
+    options:
+      - id: a
+        text: "$0$（上下能级布居概率同为 $0.5$）"
+        correct: true
+        feedback: "正确。$W = P_e - P_g = 0.5 - 0.5 = 0$，这也是构造等权相干叠加态的标志脉冲。"
+      - id: b
+        text: "$+1$（全部被激发到了上态 $|0\\rangle$）"
+        correct: false
+        feedback: "$W = +1$ 是 $\\pi$ 脉冲的结果，需要 $\\pi/2$ 脉冲两倍的时间。"
+      - id: c
+        text: "$-1$（仍然全部留在基态 $|1\\rangle$）"
+        correct: false
+        feedback: "$W = -1$ 对应未演化（$t=0$）或整周期回到下态的 $2\\pi$ 脉冲。"
+      - id: d
+        text: "$+0.5$（因为旋转角度 $\\theta=\\pi/2$ 刚好是一半的反转）"
+        correct: false
+        feedback: "当 $P_e = 0.5$ 时，$P_g = 1 - 0.5 = 0.5$，因此相减 $W = 0.5 - 0.5 = 0$ 而非 $0.5$。"
+    solution: "对初态 $|1\\rangle$ 施加共振 $\\pi/2$ 脉冲（$\\Omega t = \\pi/2$）得 $P_e = \\sin^2(\\pi/4) = 0.5$，故 $W = 2(0.5) - 1 = 0$。"
+
+  - id: rabi-recall-pulse-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: inversion-pulses-and-jc-quantized-rabi
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "写出全量子 Jaynes–Cummings 模型中原子处于激发态 $|e\\rangle$、腔内初始有 $n$ 个光子（耦合通道 $|e\\rangle|n\\rangle \\leftrightarrow |g\\rangle|n+1\\rangle$，共振 $\\delta = 0$）时的量子化拉比频率 $\\Omega(n)$ 公式（用 `lam` 表示耦合常数 $\\lambda$，`n` 表示光子数，平方根写成 `sqrt(...)`）。"
+    answer: "2 * lam * sqrt(n + 1)"
+    variables:
+      lam: [1, 10]
+      n: [0, 20]
+    solution: "由耦合矩阵元 $\\lambda\\sqrt{n+1}$ 与共振跃迁概率 $\\sin^2(\\Omega(n)t/2) = \\sin^2(\\lambda t\\sqrt{n+1})$ 对比，得 $\\Omega(n) = 2\\lambda\\sqrt{n+1}$。"
+
+  # ==========================================================================
+  # Lesson Final: Explain it 自评总结题
+  # ==========================================================================
+  - id: rabi-final-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "请用自己的话系统回答三个核心问题：（1）如何把常系数 $H_I$ 写成有效转轴并利用 $\\vec{\\boldsymbol{\\sigma}}=2\\vec{\\boldsymbol{S}}$ 得到 $SU(2)$ 演化算符 $U_I$？（2）《磁共振基础》的演化算符法与《量子光学》的耦合概率幅方程如何共同导出拉比跃迁概率公式，失谐 $\\delta$ 对曲线有哪些影响？（3）什么是粒子数反转 $W(t)$、共振 $\\pi$ / $(\\pi/2)$ 脉冲，以及它怎样过渡到全量子 JC 模型的量子化拉比频率？"
+    rubric:
+      - id: r1
+        criterion: "说明定义 $\\delta=\\omega_0-\\omega$ 与 $\\Omega_{\\text{eff}}=\\sqrt{\\Omega^2+\\delta^2}$ 将 $H_I$ 化为 $\\Omega_{\\text{eff}}\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}$，并用 $\\vec{\\boldsymbol{\\sigma}}=2\\vec{\\boldsymbol{S}}$ 与 $\\theta=\\Omega_{\\text{eff}}t$ 得出 $U_I=\\cos(\\theta/2)\\mathbb{1}-i\\sin(\\theta/2)\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}$。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "指出从 $U_I|1\\rangle$（括号在 $\\sin(\\theta/2)\\,n_z$ 内）与二阶概率幅方程均可得到 $P(t)=\\frac{\\Omega^2}{\\Omega^2+\\delta^2}\\sin^2(\\frac{\\Omega_{\\text{eff}}t}{2})$，并说明 $|\\delta|$ 增大会压低激发峰值同时加快有效振荡频率。"
+        weight: 1
+        required: true
+      - id: r3
+        criterion: "说明粒子数反转 $W(t)=P_e-P_g=2P-1$，共振时 $\\pi$ 脉冲完成全反转（$W=+1$）、$\\pi/2$ 脉冲制备等权叠加态（$W=0$），且在全量子 JC 模型中拉比频率量子化为 $\\Omega(n)=2\\lambda\\sqrt{n+1}$，带来 $n=0$ 真空拉比振荡。"
+        weight: 1
+        required: true
+      - id: r4
+        criterion: "补充指出相干态由于各离散 $n$ 分量拥有不同的 $\\sqrt{n+1}$ 频率而产生“塌缩与复苏”现象。"
+        weight: 1
+        required: false
+    exemplar: "首先定义失谐 $\\delta = \\omega_0 - \\omega$ 与有效拉比频率 $\\Omega_{\\text{eff}} = \\sqrt{\\Omega^2+\\delta^2}$，把旋转系哈密顿量合成为 $H_I = \\Omega_{\\text{eff}}\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}$；利用泡利矢量 $\\vec{\\boldsymbol{\\sigma}} = 2\\vec{\\boldsymbol{S}}$ 与转角 $\\theta = \\Omega_{\\text{eff}}t$ 展开矩阵指数，得 $U_I = \\cos(\\theta/2)\\mathbb{1} - i\\sin(\\theta/2)\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}$。从 $U_I|1\\rangle$ 的 $|0\\rangle$ 分量模方出发（注意 $n_z$ 仅乘于 $\\sin(\\theta/2)$ 项），与《量子光学》对耦合概率幅方程 $\\ddot{C}_e - i\\delta\\dot{C}_e + \\frac{\\Omega^2}{4}C_e=0$ 求解完全等价，都得到 $P(t) = \\frac{\\Omega^2}{\\Omega^2+\\delta^2}\\sin^2(\\frac{\\Omega_{\\text{eff}}t}{2})$：偏共振 $|\\delta|$ 越大则最大跃迁幅度越低而有效振荡越快。最后，粒子数反转 $W(t)=2P-1$ 在共振 $\\pi$ 脉冲处达 $+1$ 完成全反转、$\\pi/2$ 脉冲处等于 $0$ 制备相干叠加；而在全量子 Jaynes–Cummings 模型中耦合变为 $\\Omega(n) = 2\\lambda\\sqrt{n+1}$，不仅在 $n=0$ 产生纯量子的真空拉比振荡，在相干光下还会表现出塌缩与复苏。"

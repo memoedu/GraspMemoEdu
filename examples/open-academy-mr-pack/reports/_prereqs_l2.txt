@@ -1,0 +1,45 @@
+# What a learner starting 旋波近似与相互作用图像 (rotating-wave-and-frame) has been taught
+
+## Required topics (hard prerequisites, direct or through a chain), prerequisites first
+
+### 量子力学与数学预备基础 (qm-spin-and-operators-foundation)
+默认前置的大学物理与数学基础：复数（$i^2 = -1$）与欧拉公式、偏导数与二阶常系数线性微分方程 $\ddot{y}+a\dot{y}+by=0$、偶极势能 $H=-\vec{\boldsymbol{\mu}}\cdot\boldsymbol{B}$ 与 $-\hat{\boldsymbol{d}}\cdot\boldsymbol{E}$；狄拉克左右矢（$|\psi\rangle$、$\langle\phi|$）、正交归一基（$|m_S = \pm 1/2\rangle$）与线性叠加原理；本征态与本征值（$S_z |m_S = \pm 1/2\rangle = \pm\frac{1}{2}|m_S = \pm 1/2\rangle$）；厄米共轭、幺正算符（$U^\dagger U = \mathbb{1}$）、对易子 $[A,B] = AB - BA$ 与泡利矩阵指数公式 $e^{-i(\theta/2)\vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{\sigma}}} = \cos(\theta/2)\mathbb{1} - i\sin(\theta/2)\vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{\sigma}}$（由 $(\vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{\sigma}})^2=\mathbb{1}$ 展开）；自然单位（$\hbar = 1$）与国际单位下的薛定谔方程；以及绕 $+z$ 轴逆时针（右旋）与顺时针（左旋）旋转的圆偏振光子分别携带角动量 $+1$ 与 $-1$ 的物理事实。
+(no lesson yet; prereq contract from concept definition & objectives)
+- [math] 运用幺正变换、对易子、泡利矩阵指数展开 $(\vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{\sigma}})^2=\mathbb{1}$、二阶线性常微分方程与自旋 $1/2$ 本征方程推导量子演化恒等式
+- [conceptual] 从经典磁偶极与电偶极相互作用以及含时薛定谔方程出发理解二能级耦合与圆偏振光子角动量 $+1/-1$
+
+### 自旋磁矩与驱动哈密顿量 (spin-zeeman-and-drive)
+介绍自旋磁矩与角动量的关系 $\vec{\boldsymbol{\mu}} = \gamma\vec{\boldsymbol{S}}$、电子自旋（自由电子 $\gamma_e \approx -2\pi\times 2.8025\text{ MHz/G}$，金刚石 NV 色心 $\gamma_e \approx -2\pi\times 2.8033\text{ MHz/G}$）与核自旋（如自由质子 $\gamma_n = 2\pi\times 4.2577\text{ kHz/G}$）的旋磁比差异，导出在静磁场与横向余弦驱动场作用下的无量纲磁共振哈密顿量 $H = \omega_0 S_z + 2\Omega\cos(\omega t+\varphi)S_x$（对电子自旋 $2\Omega = -\gamma_e B_x$），并建立与《量子光学》二能级原子电偶极相互作用 $-\hat{\boldsymbol{d}}\cdot\boldsymbol{E}(t)$（$|g\rangle/|e\rangle$、$\hat{\sigma}_3$、$\hat{\sigma}_\pm$）的同构字典。
+- Step: 用旋磁比确定塞曼分裂与能级顺序
+- 自旋磁矩满足 $\vec{\boldsymbol{\mu}} = \gamma\vec{\boldsymbol{S}}$，静磁场中相互作用为 $H_0 = -\gamma B_0 S_z$（$\hbar = 1$）。
+- 电子旋磁比 $\gamma_e < 0$（约 $-2\pi\times 2.8\text{ MHz/G}$），使 $|m_S = -1/2\rangle$ 成为下能级、$|m_S = +1/2\rangle$ 成为上能级。
+- 质子等核自旋 $\gamma_n > 0$（$\text{kHz/G}$ 量级，比电子小约 $10^3$ 倍），能级上下顺序恰好反转。
+- Step: 推导横向交变驱动的标准哈密顿量
+- 实验室总磁场由静磁场 $B_0\vec{\boldsymbol{e}}_z$ 与含时驱动场 $(B_x\vec{\boldsymbol{e}}_x + B_z\vec{\boldsymbol{e}}_z)\cos(\omega t+\varphi)$ 构成。
+- 线圈与 $z$ 轴垂直（$\theta_B = 90^\circ$）时纵向驱动 $B_z = 0$，只留横向项 $B_x\cos(\omega t+\varphi)S_x$。
+- 对电子自旋令 $2\Omega = -\gamma_e B_x$（注意是磁场幅值 $B_x$ 而非算符 $S_x$），得到 $H = \omega_0 S_z + 2\Omega\cos(\omega t+\varphi)S_x$。
+- Step: 将磁共振哈密顿量映射至量子光学二能级原子
+- 激光场满足电偶极近似 $k\cdot r \ll 1$ 后，相互作用简化为 $H_{\text{int}} = -\hat{\boldsymbol{d}}\cdot\boldsymbol{E}(t)$。
+- 二能级原子引入跃迁算符 $\hat{\sigma}_+ = |e\rangle\langle g|$、$\hat{\sigma}_- = |g\rangle\langle e|$ 与反转算符 $\hat{\sigma}_3 = |e\rangle\langle e| - |g\rangle\langle g|$。
+- 两套模型严格对应：$2S_z \leftrightarrow \hat{\sigma}_3$、$2S_x \leftrightarrow \hat{\sigma}_+ + \hat{\sigma}_-$、磁驱动参数 $\Omega \leftrightarrow V/\hbar$。
+- **静态塞曼能级与旋磁比**：由 $H_0 = -\gamma B_0 S_z$，电子因 $\gamma_e < 0$（约 $-2\pi\times 2.8\text{ MHz/G}$）使 $|m_S = -1/2\rangle$ 成为下能级且 $\omega_0 = -\gamma_e B_0 > 0$；质子等核自旋 $\gamma_n > 0$（$\text{kHz/G}$ 量级），上下能级颠倒且分裂小约 $10^3$ 倍。
+- **标准横向驱动哈密顿量**：当驱动场垂直静磁场（$\theta_B = 90^\circ$，$B_z = 0$）时，令 $2\Omega = -\gamma_e B_x$ 即得 $H = \omega_0 S_z + 2\Omega\cos(\omega t+\varphi)S_x$。
+- **量子光学电偶极同构**：在 $\{|g\rangle\leftrightarrow|m_S=-1/2\rangle,\; |e\rangle\leftrightarrow|m_S=+1/2\rangle\}$ 对应下，$\frac{1}{2}\hat{\sigma}_3\leftrightarrow S_z$、$\hat{\sigma}_+ + \hat{\sigma}_-\leftrightarrow 2S_x$，电偶极矩阵元给出 $\Omega \leftrightarrow V/\hbar$。
+**Next:** 下一课「旋波近似与相互作用图像」将把带有时间 $t$ 的横向余弦项 $2\Omega\cos(\omega t+\varphi)S_x$ 拆解为旋转分量，并在旋转参考系下把时间依赖彻底消去。
+
+## Notation and ideas already taught
+- 旋磁比 γ / γ_e / γ_n (introduced by spin-zeeman-and-drive)
+- 无量纲自旋算符 S_x, S_y, S_z (introduced by spin-zeeman-and-drive)
+- 共振频率 ω_0 与驱动幅值 Ω (introduced by spin-zeeman-and-drive)
+
+## Soft links (helpful background, NOT guaranteed; anything only taught here counts as untaught)
+
+## Not yet taught at this point
+- 偏共振 δ 与有效拉比频率 Ω_eff (introduced by su2-evolution-and-rabi-prob)
+- 泡利矩阵矢量 σ (σ = 2S) (introduced by su2-evolution-and-rabi-prob)
+- Bloch-Siegert 平移 Δ_BS (introduced by bloch-siegert-shift)
+- 贝塞尔函数边带强度 J_n(χ) (introduced by longitudinal-sideband-excitation)
+- 密度矩阵 ρ 与迹 Tr(ρσ) (introduced by bloch-sphere-representation)
+- 退相干时间 T_2^*、半高全宽 FWHM 与磁涨落 σ_b (introduced by rabi-and-ramsey-spectroscopy)
+- 回波相干时间 T_2、关联时间 τ_c 与噪声函数 η(t) (introduced by spin-echo-and-noise-correlation)
+- 门保真度 F_{XY4} / F_{CPMG} (introduced by dynamical-decoupling-and-xy4)

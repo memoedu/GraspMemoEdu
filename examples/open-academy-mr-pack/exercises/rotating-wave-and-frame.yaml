@@ -634,7 +634,7 @@ exercises:
     knowledge_point: rwa-ladder-operators
     difficulty: 1
     est_minutes: 0.5
-    prompt: "写出上升算符 $S^+$ 在相互作用图像 $U_i = e^{-i\\omega t S_z}$ 下化简后的结果：请填写 $U_i^\\dagger S^+ U_i = \\text{___}$ 的右端完整表达式（以 `w` 表示 $\\omega$、`S^+` 表示上升算符，指数可用 `e^(...)` 或 `exp(...)` 表示）。"
+    prompt: "写出上升算符 $S^+$ 在相互作用图像 $U_i = e^{-i\\omega t S_z}$ 下化简后的结果：请填写 $U_i^\\dagger S^+ U_i = \\text{___}$ 的右端完整表达式（以 `w` 表示 $\\omega$、`S^+` 表示上升算符，指数写在 `S^+` 之前、乘法用 `*` 连接，例如 `e^(...)*S^+` 或 `exp(...)*S^+`）。"
     accept:
       - "e^{i\\omega t}S^+"
       - "e^{iwt} S^+"

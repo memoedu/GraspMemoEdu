@@ -1,11 +1,15 @@
 concept: rotating-wave-and-frame
-version: 3
+version: 4
 sources:
   - source: ch1-magnetic-resonance
     section: "1.1 节, pp. 2–3, 式 (1.5)–(1.12)"
+  - source: introductory-quantum-optics
+    section: "Chapter 4, §4.4–§4.5, pp. 88, 91–93, Eqs. (4.73)–(4.74), (4.98)–(4.102)"
 objective: |
-  **Goal:** 能够把横向余弦驱动场分解为正反两个圆偏振分量并用角动量守恒解释旋波近似，再通过相互作用图像变换（旋转公式法与升降算符法）把含时磁共振哈密顿量化为不含时形式。
-# 注：前置概念 spin-zeeman-and-drive 当前为 stub（尚未编写正课），按 Open Academy validate.ts 规则暂省略 recap 字段，改为在开篇和第 1 步首段自包含复述起点哈密顿量。
+  **Goal:** 能够把横向余弦驱动场分解为正反两个圆偏振分量并用角动量守恒解释旋波近似，再通过相互作用图像变换（旋转公式法与升降算符法）把含时磁共振哈密顿量化为不含时形式，并与 Jaynes–Cummings 模型的旋波近似建立连接。
+recap:
+  - concept: spin-zeeman-and-drive
+    text: "在静磁场与垂直横向驱动下，除以 $\\hbar$ 得 $H = \\omega_0 S_z + 2\\Omega\\cos(\\omega t+\\varphi)S_x$（$\\omega_0=-\\gamma_e B_0$，$2\\Omega=-\\gamma_e B_x$），与电偶极原子模型 $2S_z\\leftrightarrow\\hat{\\sigma}_3$、$2S_x\\leftrightarrow\\hat{\\sigma}_+ + \\hat{\\sigma}_-$ 同构。"
 where_this_fits: |
   ### 什么是旋波近似与相互作用图像？
 
@@ -22,7 +26,7 @@ knowledge_points:
     explain: |
       ### 从静态能级与线偏振场出发
 
-      对于自旋 $1/2$ 的电子（如金刚石 NV 色心），无量纲算符 $S_z$ 的两个本征态用磁量子数 $m_S = \pm 1/2$ 记作 $|m_S = \pm 1/2\rangle$，满足 $S_z|m_S = \pm 1/2\rangle = \pm\frac{1}{2}|m_S = \pm 1/2\rangle$。电子旋磁比 $\gamma_e < 0$，在外加静磁场 $B_0 > 0$ 下 $\omega_0 = -\gamma_e B_0 > 0$，因此 $H_0 = \omega_0 S_z$ 给下能级 $|m_S = -1/2\rangle$ 与上能级 $|m_S = +1/2\rangle$ 赋予能量 $-\omega_0/2$ 和 $+\omega_0/2$，两能级之间的能量差（能隙）为 $\omega_0$。
+      对于自旋 $1/2$ 的电子（如金刚石 NV 色心），无量纲算符 $S_z$ 的本征态 $|m_S = \pm 1/2\rangle$ 满足 $S_z|m_S = \pm 1/2\rangle = \pm\frac{1}{2}|m_S = \pm 1/2\rangle$。在 $B_0 > 0$ 且 $\gamma_e < 0$ 下，静态项 $H_0 = \omega_0 S_z$（$\omega_0 = -\gamma_e B_0 > 0$）给两能级赋予 $-\omega_0/2$ 与 $+\omega_0/2$ 的能量，能隙为 $\omega_0$。
 
       再叠加沿 $x$ 轴来回振荡的横向交变驱动场（幅值参数 $2\Omega = -\gamma_e B_x$，普通频率 $\omega/(2\pi)$，初相位 $\varphi$），除以 $\hbar$ 后得
       $$H = \omega_0 S_z + 2\Omega\cos(\omega t + \varphi) S_x$$
@@ -86,7 +90,7 @@ knowledge_points:
 
       ### 用角动量守恒舍去反向项
 
-      电子自旋从 $|m_S = -1/2\rangle$ 向上吸收跃迁到 $|m_S = +1/2\rangle$ 时 $\Delta m_S = +1$，必须吸收 $+1$ 光子（向下发射跃迁 $\Delta m_S = -1$ 时则放出一个 $+1$ 光子，同样配对同一逆时针模式）。项①不仅对应角动量 $-1$ 不守恒，还沿相反方向高速旋转。于是在**旋波近似（Rotating-Wave Approximation，简称 RWA）**下舍去项①：
+      电子自旋向上跃迁 $|m_S = -1/2\rangle \to |m_S = +1/2\rangle$ 时 $\Delta m_S = +1$，须吸收 $+1$ 光子（向下跃迁 $\Delta m_S = -1$ 则放出 $+1$ 光子）。相对静态项 $H_0 = \omega_0 S_z$ 对应绕 $+z$ 轴的本征进动频率 $\omega_0$，同向项仅以 $|\omega_0-\omega|$ 缓变，而项①不仅角动量 $-1$ 不守恒，还沿反方向以和频 $(\omega_0 + \omega)$ 极快振荡（即量子光学中的反旋项）。在**旋波近似（Rotating-Wave Approximation，RWA）**下舍去项①：
       $$H \approx \omega_0 S_z + \Omega\left[\cos(\omega t + \varphi)S_x + \sin(\omega t + \varphi)S_y\right]$$
 
       两项幅值同为 $\Omega$，舍去项①并不是因为它更小，而是角动量不守恒且方向反向。
@@ -205,9 +209,9 @@ knowledge_points:
     explain: |
       ### 为什么要学升降算符
 
-      前面用三维旋转公式虽然直接，但日后遇到更复杂的驱动场或其他量子系统时，未必总好套用空间旋转。这里再学一种只靠算符代数就能消去时间的方法。
+      下面再学一种只靠算符代数即可消去时间的方法，便于推广到复杂驱动与光场系统。
 
-      我们利用 $S_x, S_y$ 定义一对**自旋升降算符**：上升算符 $S^+ = S_x + i S_y$ 和下降算符 $S^- = S_x - i S_y$，反解可得 $S_x = \frac{1}{2}(S^+ + S^-)$ 与 $S_y = \frac{1}{2}(-i S^+ + i S^-)$。因为 $S_x, S_y$ 都是厄米算符，即 $S_x^\dagger = S_x$、$S_y^\dagger = S_y$，所以对 $S^+$ 取厄米共轭恰好得到下降算符：$(S^+)^\dagger = S^-$。按自旋角动量算符的乘法规则，它们作用在 $|m_S = \pm 1/2\rangle$ 上时，上升算符把下态升到上态、下降算符把上态降到下态，越出边界则为零：
+      由 $S_x, S_y$ 定义**自旋升降算符**：$S^+ = S_x + i S_y$ 与 $S^- = S_x - i S_y$（厄米共轭 $(S^+)^\dagger = S^-$），反解得 $S_x = \frac{1}{2}(S^+ + S^-)$、$S_y = \frac{1}{2}(-i S^+ + i S^-)$。作用在 $|m_S = \pm 1/2\rangle$ 上时，它们将磁量子数升降 $1$ 步（越界归零）：
       $$
       \begin{aligned}
       S^+|m_S = -1/2\rangle &= |m_S = +1/2\rangle, & S^+|m_S = +1/2\rangle &= 0 \\
@@ -227,8 +231,10 @@ knowledge_points:
       $$
       根据算符函数的通用作用规则：若某算符满足 $S_z|m_S\rangle = m_S|m_S\rangle$，则函数 $f(S_z)$ 作用在该本征态上只需把 $S_z$ 换成数值 $m_S$，即 $f(S_z)|m_S\rangle = f(m_S)|m_S\rangle$。由于 $S^+$ 把 $m_S$ 抬高 $+1$，这让我们得到恒等式 $U_i^\dagger S^+ U_i = e^{i\omega t} S^+$（下方例题给出逐态证明）。代回上式，指数中的 $-i\omega t$ 与 $+i\omega t$ 立刻相消：
       $$\text{②} = \frac{1}{2}\left(e^{-i\varphi} S^+ + e^{i\varphi} S^-\right) = \cos(\varphi)S_x + \sin(\varphi)S_y$$
-      这与三维旋转公式所得完全一致。因为上述代数推导只用到 $S^+$ 将磁量子数抬高 $+1$ 这一性质，它对任意自旋量子数 $S > 1/2$ 的高自旋系统同样成立。此外，这一关系还能直接推广到谐振子或光场这类**玻色子**系统：那里粒子数态 $|n\rangle$ 满足 $a^\dagger a|n\rangle = n|n\rangle$，**产生算符** $a^\dagger$ 将 $|n\rangle$ 变为 $\sqrt{n+1}|n+1\rangle$，**湮灭算符** $a$ 将粒子数降一级。由于 $a^\dagger$ 每次把量子数 $n$ 抬高 $+1$，且数值标量 $e^{i\omega t}$ 可以越过算符交换顺序，同样有
-      $$e^{i\omega t\, a^\dagger a} a^\dagger e^{-i\omega t\, a^\dagger a} = a^\dagger e^{i\omega t}.$$
+      该推导仅利用“$S^+$ 将 $m_S$ 抬高 $+1$”，故对高自旋（$S > 1/2$）与单模光场**玻色子**同样成立：粒子数态满足 $a^\dagger a|n\rangle = n|n\rangle$，**产生算符** $a^\dagger|n\rangle = \sqrt{n+1}|n+1\rangle$ 仅比 $|n\rangle$ 多出可越过指数交换的标量系数 $\sqrt{n+1}$，而**湮灭算符** $a$ 降一光子，故有 $e^{i\omega t\, a^\dagger a} a^\dagger e^{-i\omega t\, a^\dagger a} = a^\dagger e^{i\omega t}$ 及其共轭 $a e^{-i\omega t}$。
+
+      由此可直接理解**全量子 Jaynes–Cummings（JC）模型**：把经典光场换成频率为 $\omega$ 的单模量子光场（能量项 $\omega a^\dagger a$），与原子通过耦合常数 $\lambda$ 写成 $\lambda(\hat{\sigma}_+ + \hat{\sigma}_-)(a + a^\dagger)$（对应 $2S_x\leftrightarrow\hat{\sigma}_+ + \hat{\sigma}_-$）。不同于前文停留在驱动旋转系 $U_i$ 中直接读出常系数失谐 $(\omega_0-\omega)S_z$，若改以自由演化 $\hat{H}_0/\hbar = \frac{1}{2}\omega_0\hat{\sigma}_3 + \omega a^\dagger a$ 作相互作用图像，同理可得 $\hat{\sigma}_+ \to \hat{\sigma}_+ e^{i\omega_0 t}$，于是 $\hat{\sigma}_+ a$ 随 $(\omega_0-\omega)$ 缓变而保留，反旋项 $\hat{\sigma}_+ a^\dagger$ 随 $(\omega_0+\omega)$ 快变而舍去，得到标准 JC 哈密顿量：
+      $$\hat{H}_{\text{JC}}/\hbar = \frac{1}{2}\omega_0\hat{\sigma}_3 + \omega a^\dagger a + \lambda(\hat{\sigma}_+ a + \hat{\sigma}_- a^\dagger).$$
     worked: |
       我们来逐步证明算符恒等式 $U_i^\dagger S^+ U_i = e^{i\omega t} S^+$，并代回 $\varphi = \pi/2$ 核对结果。因为任意自旋 $1/2$ 量子态都能写成两个本征基矢 $\{|m_S=+1/2\rangle, |m_S=-1/2\rangle\}$ 的线性叠加 $|\psi\rangle = c_+|m_S=+1/2\rangle + c_-|m_S=-1/2\rangle$，只要在两个本征基矢上分别验证等式两边相等，就由算符线性严格证明了算符恒等式对所有态都成立。
 

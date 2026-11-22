@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="实验室外磁场几何分解图：z 轴方向施加静磁场 B_0，倾斜角为 theta_B 的交变线圈驱动场 B_dri(t) 可分解为沿 x 轴的横向驱动分量 B_x（正比于 sin theta_B，产生横向耦合 S_x）与沿 z 轴的纵向分量 B_z（仅当 theta_B 等于 90 度时为零）；右侧展示由 -mu 点乘 B 除以 hbar 化为无量纲自旋算符哈密顿量的对应步骤。">
+<defs>
+<marker id="l1d-dark" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#171717"/></marker>
+<marker id="l1d-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
+<marker id="l1d-red" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#ef4444"/></marker>
+<marker id="l1d-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker>
+</defs>
+<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#171717">
+<text x="165" y="28" text-anchor="middle" font-size="14" font-weight="600">实验室静磁场与交变驱动场分解</text>
+<line x1="120.0" y1="200.0" x2="315.0" y2="200.0" stroke="#d4d4d4" stroke-width="1.5" marker-end="url(#l1d-dark)"/>
+<line x1="165.0" y1="235.0" x2="165.0" y2="50.0" stroke="#171717" stroke-width="2.5" marker-end="url(#l1d-dark)"/>
+<text x="321.0" y="204.0">x</text>
+<text x="153.0" y="56.0" font-weight="600">z (B₀ 方向)</text>
+<line x1="283.73" y1="125.81" x2="283.73" y2="200.0" stroke="#d4d4d4" stroke-width="1.3" stroke-dasharray="3 3"/>
+<line x1="283.73" y1="125.81" x2="165.0" y2="125.81" stroke="#d4d4d4" stroke-width="1.3" stroke-dasharray="3 3"/>
+<line x1="165.0" y1="200.0" x2="283.73" y2="200.0" stroke="#3b82f6" stroke-width="3" marker-end="url(#l1d-blue)"/>
+<line x1="165.0" y1="200.0" x2="165.0" y2="125.81" stroke="#ef4444" stroke-width="2.5" marker-end="url(#l1d-red)"/>
+<line x1="165.0" y1="200.0" x2="283.73" y2="125.81" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#l1d-amber)"/>
+<path d="M195.53 180.92 A36 36 0 0 0 165.0 164.0" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="1.5"/>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="180" y="156" fill="#737373">θ_B</text>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="291.73" y="119.81" fill="#f59e0b" font-weight="600">B_dri(t) cos(ωt+φ)</text>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="195" y="220" fill="#3b82f6" font-weight="600">横向 B_x cos(ωt+φ)</text>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="42" y="129.81" fill="#ef4444">纵向 B_z</text>
+<text x="165" y="260" text-anchor="middle" font-size="12" fill="#737373">垂直布置 θ_B = 90° 时 B_z = 0（θ_B ≠ 90° 时另作边带处理）</text>
+<rect x="355" y="48" width="265" height="218" rx="8" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.4"/>
+<text x="372" y="76" font-weight="600" fill="#171717">除以 ℏ 后的标准驱动形式</text>
+<text x="372" y="102" fill="#737373">1. 磁共振：H = -γ B₀ S_z - γ B_x S_x cos(ωt+φ)</text>
+<text x="372" y="128" fill="#3b82f6" font-weight="600">2. 令 ω₀ = -γ_e B₀，2Ω = -γ_e B_x</text>
+<text x="372" y="152" fill="#171717">   得 H = ω₀ S_z + 2Ω cos(ωt+φ) S_x</text>
+<line x1="372" y1="168" x2="602" y2="168" stroke="#d4d4d4" stroke-width="1"/>
+<text x="372" y="194" font-weight="600" fill="#171717">3. 量子光学电偶极同构 (§4.4–§4.5)</text>
+<text x="372" y="218" fill="#737373">   H/ℏ = ½ω₀ σ_3 + (V/ℏ) cos(ωt) (σ_+ + σ_-)</text>
+<text x="372" y="242" fill="#3b82f6" font-weight="600">   对应：2S_z ↔ σ_3，2S_x ↔ σ_+ + σ_-，Ω ↔ V/ℏ</text>
+</g>
+</svg>

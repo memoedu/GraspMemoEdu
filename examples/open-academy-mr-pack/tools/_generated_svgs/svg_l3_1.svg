@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="旋转坐标系有效场示意图：有效磁场矢量 Omega_eff n⃗ 由横向驱动分量 Omega（蓝色，沿方位角 phi 指向 x-y 平面内）与纵向失谐分量 delta（绿色，沿 z 轴）合成，与 z 轴夹角为 theta'（满足 cos theta' 等于 delta 除以 Omega_eff，sin theta' 等于 Omega 除以 Omega_eff），演化算符 U_I 让量子态绕 n⃗ 旋转角度 theta 等于 Omega_eff t；当共振 delta 等于零时，有效转轴倒向赤道 x-y 平面。">
+<defs>
+<marker id="l3f-dark" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#171717"/></marker>
+<marker id="l3f-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
+<marker id="l3f-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker>
+<marker id="l3f-red" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#ef4444"/></marker>
+<marker id="l3f-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker>
+</defs>
+<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#171717">
+<text x="175" y="28" text-anchor="middle" font-size="14" font-weight="600">有效拉比场矢量与旋转轴 n⃗</text>
+<line x1="165.0" y1="235.0" x2="165.0" y2="48" stroke="#d4d4d4" stroke-width="1.5" marker-end="url(#l3f-dark)"/>
+<line x1="145.0" y1="210.0" x2="320" y2="210.0" stroke="#d4d4d4" stroke-width="1.5" marker-end="url(#l3f-dark)"/>
+<line x1="180.0" y1="198.0" x2="88" y2="270" stroke="#d4d4d4" stroke-width="1.5" marker-end="url(#l3f-dark)"/>
+<text x="153.0" y="52">z</text>
+<text x="325" y="214.0">y</text>
+<text x="74" y="276">x</text>
+<line x1="165.0" y1="108.0" x2="262.0" y2="130.0" stroke="#d4d4d4" stroke-width="1.3" stroke-dasharray="3 3"/>
+<line x1="262.0" y1="232.0" x2="262.0" y2="130.0" stroke="#d4d4d4" stroke-width="1.3" stroke-dasharray="3 3"/>
+<line x1="165.0" y1="210.0" x2="165.0" y2="108.0" stroke="#10b981" stroke-width="2.5" marker-end="url(#l3f-green)"/>
+<line x1="165.0" y1="210.0" x2="262.0" y2="232.0" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#l3f-blue)"/>
+<line x1="165.0" y1="210.0" x2="262.0" y2="130.0" stroke="#ef4444" stroke-width="3" marker-end="url(#l3f-red)"/>
+<path d="M165 158 A52 52 0 0 1 206 177" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="1.5"/>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="184" y="152" fill="#737373">θ'</text>
+<path d="M198 210 A33 33 0 0 1 196 218" fill="#ffffff" fill-opacity="0" stroke="#3b82f6" stroke-width="1.5"/>
+<path d="M236 122 A24 14 -25 0 1 268 158" fill="#ffffff" fill-opacity="0" stroke="#f59e0b" stroke-width="2" marker-end="url(#l3f-amber)"/>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="122" y="152" fill="#10b981" font-weight="600">δ = ω₀ - ω</text>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="220" y="254" fill="#3b82f6" font-weight="600">Ω (方位角 φ)</text>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="268" y="122" fill="#ef4444" font-weight="600">Ω_eff n⃗</text>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="262" y="176" fill="#f59e0b" font-size="12">转角 θ = Ω_eff t</text>
+<rect x="358" y="48" width="262" height="218" rx="8" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.4"/>
+<text x="374" y="76" font-weight="600" fill="#171717">SU(2) 演化算符与关键参数</text>
+<text x="374" y="106" fill="#737373">H_I = Ω_eff n⃗·S⃗，Ω_eff = √(Ω² + δ²)</text>
+<text x="374" y="134" fill="#737373">n⃗ = (sinθ' cosφ, sinθ' sinφ, cosθ')</text>
+<text x="374" y="162" fill="#737373">cosθ' = δ / Ω_eff，sinθ' = Ω / Ω_eff</text>
+<line x1="374" y1="180" x2="604" y2="180" stroke="#d4d4d4" stroke-width="1"/>
+<text x="374" y="206" fill="#ef4444" font-weight="600">U_I = cos(θ/2)𝟙 - i sin(θ/2) n⃗·σ⃗</text>
+<text x="374" y="232" fill="#737373">其中 θ = Ω_eff t，泡利矢量 σ⃗ = 2 S⃗</text>
+<text x="374" y="254" fill="#3b82f6">共振 δ = 0 时 θ' = 90°，n⃗ 落在赤道面</text>
+</g>
+</svg>
