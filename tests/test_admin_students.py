@@ -119,7 +119,7 @@ class AdminStudentsTests(unittest.TestCase):
         self.assertFalse(result.json()['is_student'])
         for headers in (self.admin_headers, self.other_headers):
             self.assertFalse(self.detail(headers=headers).json()['student']['is_student'])
-        self.assertEqual(self.client.get('/api/student-report', headers=self.headers).status_code, 403)
+        self.assertFalse(self.client.get('/api/student-report', headers=self.headers).json()['student']['is_student'])
         promoted = self.client.post(route, headers=self.admin_headers, json={'is_advanced_learner': True}).json()
         self.assertTrue(promoted['is_advanced_learner'])
         self.assertFalse(promoted['is_student'])

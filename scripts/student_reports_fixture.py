@@ -15,6 +15,7 @@ import uvicorn
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 from graspmemoedu.config import Settings
+from graspmemoedu.training import TrainingService
 from tests.test_student_reports import StudentReportsTests
 
 parser = argparse.ArgumentParser(description=__doc__)
@@ -35,6 +36,7 @@ with patch('tests.test_admin_students.Settings', local_settings):
     case.setUp(start_client=False)
 case.time = datetime.now(timezone.utc) - timedelta(days=5)
 training = case.training()
+case.answer(TrainingService(case.app.state.training_catalog, case.root, case.normal, clock=lambda: case.time), answer='0')
 case.answer(training, answer='0')
 case.time += timedelta(days=1)
 case.answer(training, answer='0', elapsed=55000)
@@ -68,7 +70,9 @@ while beginner_lesson._step(state)['kind'] != 'practice':
     else:
         state = beginner_lesson.advance(case.action(state))
 # Match an established profile before checking that report browsing is read-only.
-case.app.state.dashboard_store.update_profile(case.store.resolve(case.headers['X-Learning-Identity']), {'timezone': 'Asia/Shanghai'})
+for headers in (case.headers, case.normal_headers):
+    access = case.store.resolve(headers['X-Learning-Identity'])
+    case.app.state.dashboard_store.update_profile(access, {'timezone': 'Asia/Shanghai'})
 with case.store._transaction() as con:
     con.execute('UPDATE access_principals SET admin_name=?,display_name=? WHERE learner_id=?',
                 ('Private roster name', 'Learner nickname', case.student))
@@ -85,7 +89,8 @@ def snapshot(request):
             columns = [r[1] for r in con.execute('PRAGMA table_info("' + name + '")')]
             field = 'learner' if 'learner' in columns else 'learner_id' if 'learner_id' in columns else None
             if field:
-                data[name] = con.execute('SELECT * FROM "' + name + '" WHERE "' + field + '" IN (?,?) ORDER BY rowid', (case.student, case.second)).fetchall()
+                data[name] = con.execute('SELECT * FROM "' + name + '" WHERE "' + field + '" IN (?,?,?) ORDER BY rowid',
+                                         (case.student, case.second, case.normal)).fetchall()
         cutoff = (datetime.now(timezone.utc) - timedelta(seconds=45)).isoformat()
         presence_active = con.execute('SELECT COUNT(*) FROM presence_sessions WHERE learner=? AND active=1 AND last_at>=?', (case.student, cutoff)).fetchone()[0]
     return JSONResponse({'hash': hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest(), 'presence_active': presence_active})

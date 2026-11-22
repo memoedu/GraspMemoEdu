@@ -1,4 +1,4 @@
-"""Administrator-only projections over persisted student progress and schedules.
+"""Shared read-only projections over persisted learning progress and schedules.
 
 No learner services are created and no scheduler or progress migration is run.
 Atomic card variants project their points' shared schedules, not separate cards.
@@ -52,10 +52,10 @@ class AdminStudents:
 
     @staticmethod
     def target(con, access, learner_id, own=False):
-        where = "p.is_student=1" if own else management_scope('p.learner_id')
+        scope = " AND p.enabled=1" if own else ' AND ' + management_scope('p.learner_id')
         args = (learner_id,) if own else (learner_id, access['learner_id'])
         row = con.execute("""SELECT p.* FROM access_principals p
-            WHERE p.learner_id=? AND p.role='account' AND p.is_admin=0 AND """ + where, args).fetchone()
+            WHERE p.learner_id=? AND p.role='account' AND p.is_admin=0""" + scope, args).fetchone()
         if not row:
             raise DomainError('student_not_found', '未找到该账号。', 404)
         return row
@@ -81,9 +81,9 @@ class AdminStudents:
     def require_viewer(self, access, learner_id, own=False):
         if not own:
             self.require_admin(access)
-        elif (access.get('role') != 'account' or not access.get('is_student') or access.get('is_admin')
+        elif (access.get('role') != 'account' or access.get('is_admin')
               or learner_id != access.get('learner_id')):
-            raise DomainError('feature_forbidden', '个人学习情况仅供学员查看本人记录。', 403)
+            raise DomainError('feature_forbidden', '请登录学习账号查看本人的学习情况。', 403)
 
     @staticmethod
     def started(state):
@@ -242,16 +242,8 @@ class AdminStudents:
                         'blockers': blocked[:], 'bundle': len(point_dates) > 1})
             training_learned, training_reviews = self.training_records(con, student, tables, current, access)
             reviews.extend(training_reviews)
-            analytics = StudentReport(self, con, access, student, rows, tables, current, own).build(reviews, days, timezone)
+            analytics = StudentReport(self, con, access, student, rows, tables, current).build(reviews, days, timezone)
             presence = today_presence(con, learner_id, current, access, self.context, self.access.test_materials)
-            if own:
-                for item in learned:
-                    for point in item['points']:
-                        if not point['mastered']: point['text'] = point['id']
-                for item in reviews:
-                    if item['kind'] == 'atomic_point' and not item['mastered']: item['title'] = item['id']
-                for item in cards:
-                    if not all(point['mastered'] for point in item['points']): item['title'] = item['id']
         reviews.sort(key=lambda r: (r['due_at'] or '', r['kind'], r['id']))
         learned.sort(key=lambda r: (r['started_at'] or '', r['topic_id']), reverse=True)
         return {'student': self.student(row, own), 'generated_at': current.isoformat(), 'learned': learned,
@@ -268,7 +260,7 @@ class AdminStudents:
                     if self.access.test_materials.topic_visible(r['topic'], access)
                     and r['topic'] not in self.training.topic_redirects}
             report = StudentReport(self, con, access, self.access._public(row), rows,
-                                   self.dashboard.dependency_policy.tables(con), self.clock(), own)
+                                   self.dashboard.dependency_policy.tables(con), self.clock())
             kind, container = options['kind'], options.get('container')
             if container and not report.visible('training' if kind == 'notebook' else kind, container):
                 raise DomainError('unknown_material', '未找到此内容。', 404)

@@ -2,7 +2,7 @@
 
 本表从当前界面词库自动生成。修改以词库为准，随后重新生成并检查本表。术语约定见 [界面语言规范](ui-language.md)。
 
-共 1030 条界面文案映射（包括不同位置重复使用的文案）。花括号表示运行时填入的名称、数量或时间，不是页面上的固定文字。
+共 1049 条界面文案映射（包括不同位置重复使用的文案）。花括号表示运行时填入的名称、数量或时间，不是页面上的固定文字。
 
 不包括作者课程正文、题目、答案、解析或用户输入。首页的学科双语副标题按约定保留。
 
@@ -292,6 +292,21 @@
 | {label}: {title} | {label}：{title} |
 | Mastery {score} out of 4 | 熟练度 {score}，满分 4 |
 | Completed {completed} practice questions, with {errors} incorrect. | 已完成 {completed} 道练习，其中 {errors} 道有误。 |
+| This answer was incorrect. One question was added to the queue. | 本题答错，队列中已添加一道题。 |
+| This answer was incorrect. Two questions were added to the queue. | 本题答错，队列中已添加两道题。 |
+| This answer was incorrect. {count} questions were added to the queue. | 本题答错，队列中已添加 {count} 道题。 |
+| This round now requires {count} more. | 本轮练习增加 {count} 道题。 |
+| This round reached its error limit. Learning has been paused. | 本轮错误次数已达上限，学习已暂停。 |
+| You answered the example correctly and completed this module. | 例题答对，本模块已完成。 |
+| This module is skipped. You can return once an administrator unlocks it. | 这个模块已跳过，管理员解锁后可以回来补学。 |
+| There are no cards available right now. This page will continue when one is ready. | 暂时没有可推送的卡片，页面会在有卡片可练时自动继续。 |
+| You mastered a new memory point. Its first review has been scheduled. | 已掌握新的记忆点，系统已安排首次复习。 |
+| The next review time was updated based on this answer. | 系统已根据本次表现更新记忆点的复习时间。 |
+| Automatic review has stopped for these memory points. | 这些记忆点已停止自动复习。 |
+| This question was added to your error notebook. You can see its review schedule there. | 本题已加入错题本，可以从错题本查看复习安排。 |
+| The next review for this question was scheduled based on this answer. | 系统已根据本次表现安排这道题的下次复习。 |
+| Automatic review has stopped for this question. | 本题已停止自动复习。 |
+| After submission, each question is graded and the results appear in this review. | 交卷后系统会逐题判定，结果汇总在这份复习中。 |
 
 ## 课程、任务与设置
 
@@ -311,7 +326,10 @@
 | No recorded Topic visits today. | 今日暂无已记录的 Topic 访问。 |
 | First visit: {first} · Latest visit: {last} | 首次访问：{first} · 最近访问：{last} |
 | Student learning overview | 学员学习情况 |
-| View students’ course progress, banks, error notebooks, submitted answers and review schedules. This page is read-only. | 查看全站学员的课程进度、题库、错题本、作答记录与复习排程。此页面只读取记录。 |
+| Review learning records and manage qualifications for the accounts you manage. | 查看负责账号的学习记录，并调整高阶和学员资格。 |
+| Account qualifications | 账号资格 |
+| Save qualifications | 保存资格 |
+| Account qualifications saved. | 账号资格已保存。 |
 | Student report sections | 学员数据分类 |
 | Overview | 概览 |
 | All Topics | 全部 Topic |
@@ -388,10 +406,10 @@
 | Uses the student’s existing notebook enrollment, including manually added, untrained and delivery-stopped questions. Filter previously incorrect or due questions. | 沿用学员现有错题本的收录规则，包含手动加入、待首次训练和已停止推送的记录。可筛选曾答错或已到期的题目。 |
 | This page is for administrators only. | 此页面仅供管理员使用。 |
 | Search students | 搜索学员 |
-| Search by student name | 按学员名称搜索 |
-| {count} students | 共 {count} 位学员 |
+| Search by account name | 按账号名称搜索 |
+| {count} accounts | 共 {count} 个账号 |
 | {started} Topics started · {completed} Topics completed | 已开始 {started} 个 Topic · 已完成 {completed} 个 Topic |
-| No matching students. | 暂无符合条件的学员。 |
+| No matching accounts. | 暂无符合条件的账号。 |
 | View learning and reviews | 查看学习与复习 |
 | Back to students | 返回学员列表 |
 | Data retrieved at {time} | 数据读取于 {time} |
@@ -456,6 +474,8 @@
 | This pause belongs to an older content version. Contact the maintainer. | 此暂停对应旧版内容，请联系维护者处理。 |
 | Low mastery review marker | 低熟练度复习标记 |
 | Group pending lessons by course hierarchy | 按课程层级展开待学习内容 |
+| Beginner mode | 入门模式 |
+| Show brief tips about how lessons, practice and reviews work. | 在学习、练习和复习中短暂显示机制提示。 |
 | Reviews stay first. Groups include every unfinished Topic, including paused and prerequisite-blocked lessons. | 复习任务保留在前列；层级中显示所有未完成的 Topic，包括暂停和前置受阻的内容。 |
 | Administrator | 管理员 |
 | Advanced learner | 高阶学习者 |
@@ -770,8 +790,7 @@
 | Fit width | 适应宽度 |
 | My learning progress | 个人学习情况 |
 | View your course progress, question banks, notebook, answer history and review schedule. | 查看自己的课程进度、题库、错题本、作答记录与复习排程。 |
-| Students can view their own learning records here. | 个人学习情况仅供学员查看本人记录。 |
-| This atomic card remains locked until mastered. | 未掌握的原子卡片暂不可查看，掌握后可展开内容。 |
+| Sign in to your learner account to see your progress. | 请登录学习账号查看本人的学习情况。 |
 | Main conversation | 主对话 |
 | Choose a student | 选择学员 |
 | Paste or drop images. Markdown and LaTeX: $inline$ and $$display$$. Tab indents; Shift+Tab unindents. Press Esc then Tab to leave the editor. | 支持粘贴或拖入图片，以及 Markdown 与 LaTeX：$公式$、$$独立公式$$。Tab 缩进，Shift+Tab 取消缩进；Esc 后按 Tab 可移出编辑器。 |

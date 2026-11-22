@@ -138,8 +138,19 @@ try {
   pass('Disabled/unstarted student, ordinary-user denial, zero browser errors and unchanged learner database');
 
   const ownBefore = await snapshot();
-  const student = active = await pageFor('student');
   const personalUrl = (publicBase || base + '/') + '#/progress';
+  active = ordinary;
+  await ordinary.locator('#userMenuButton').click();
+  await ordinary.getByRole('link', {name: '个人学习情况', exact: true}).click();
+  await ordinary.locator('.studentDashboard').waitFor();
+  assert.equal(await ordinary.getByRole('tab').count(), 5);
+  await ordinary.getByRole('tab', {name: '错题本', exact: true}).click();
+  const ordinaryNotebook = ordinary.getByRole('tabpanel', {name: '错题本', exact: true});
+  await ordinaryNotebook.locator('.studentAnswerHistory > summary').first().click();
+  await ordinaryNotebook.locator('.studentAnswerCard .studentQuestion').first().waitFor();
+  pass('Non-student learner opens the shared report from the account menu and reads a recorded answer');
+
+  const student = active = await pageFor('student');
   await student.goto(personalUrl); await student.locator('.studentDashboard').waitFor();
   await student.getByRole('heading', {name: 'Learner nickname', exact: true}).waitFor();
   assert.equal(await student.getByRole('tab').count(), 5);
@@ -158,6 +169,11 @@ try {
   assert.equal(await page.getByRole('tabpanel', {name: '全部 Topic', exact: true}).locator('[data-unit-id="math"]').count(), 0);
   assert.equal(await page.getByRole('tabpanel', {name: '全部 Topic', exact: true}).locator('[data-unit-id="chapter"]').count(), 1);
   await student.screenshot({path: path.join(out, 'personal-topic-tree.png'), fullPage: true});
+  const atomicTopic = student.locator('.studentTopic[data-topic-id=atoms]');
+  await atomicTopic.locator(':scope > summary').click();
+  await atomicTopic.locator('summary').filter({hasText: '题目与作答记录'}).click();
+  await atomicTopic.locator('.studentAnswerHistory > summary').first().click();
+  await atomicTopic.locator('.studentAnswerCard .studentQuestion').first().waitFor();
   await student.getByRole('tab', {name: '题库', exact: true}).click();
   await student.locator('.studentBank > summary').click();
   assert.match(await student.locator('.studentBank').innerText(), /3\s*\/\s*6/);
