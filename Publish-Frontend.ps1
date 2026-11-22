@@ -27,6 +27,7 @@ $expected += @('student-dashboard.js','presence.js')
 $expected += @('composite-input.js')
 $expected += @('restore.html','migration-source.html','origin-transfer.js')
 $expected += @('response-cache.js')
+$expected += @('calculator.js','calculator-panel.js','calculator-inputs.js','calculator-policy.js','calculator-engine.js','calculator-worker.js','calculator.css')
 $expected += @('point-assessment.js','context-library.js','context-library.css','context-library-messages.js','training-audio.js')
 $expected += @('download.html','install.css','pwa.css','pwa.js','sw.js','manifest.webmanifest','icon-180.png','icon-192.png','icon-512.png','icon-maskable-512.png')
 $vendor = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'scripts/topic-presentation-assets.json') -Raw | ConvertFrom-Json -AsHashtable
@@ -50,6 +51,13 @@ foreach ($name in $bookFont.files.Keys) {
     if ($actual -ne $bookFont.files[$name]) { throw ('Book font differs from pinned source: ' + $name) }
 }
 $expected += @($bookFont.files.Keys)
+$calculator = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'scripts/calculator-assets.json') -Raw | ConvertFrom-Json -AsHashtable
+foreach ($name in $calculator.files.Keys) {
+    if ($name -notmatch '^vendor/calculator/((core|advanced|symbolic|applied)\.mjs(\.LEGAL\.txt)?|LICENSES\.txt)$') { throw 'Invalid calculator asset path.' }
+    $actual = (Get-FileHash -LiteralPath (Join-Path $PSScriptRoot ('web/' + $name)) -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($actual -ne $calculator.files[$name]) { throw ('Calculator source differs from pinned build: ' + $name) }
+}
+$expected += @($calculator.files.Keys)
 $relativeFiles = @($files | ForEach-Object { [IO.Path]::GetRelativePath($ExportDirectory, $_.FullName).Replace('\','/') })
 if (@(Compare-Object ($expected | Sort-Object) ($relativeFiles | Sort-Object)).Count -ne 0) { throw 'Unexpected files in static publication directory.' }
 foreach ($name in $expected | Where-Object { $_ -notin @('.nojekyll', 'deployment.json') }) {
@@ -104,7 +112,7 @@ $commit = Invoke-Api GET ('repos/' + $Repository + '/git/commits/' + $parent)
 $priorTree = Invoke-Api GET ('repos/' + $Repository + '/git/trees/' + $commit.tree.sha + '?recursive=1')
 $publicationDocs = @('README.md','AGENTS.md','CONTRIBUTING.md')
 $allowedPrior = if ($created) { @('README.md') } else { $expected + $publicationDocs }
-if ($priorTree.truncated -or @($priorTree.tree | Where-Object { ($_.type -eq 'blob' -and $_.path -notin $allowedPrior) -or ($_.type -eq 'tree' -and $_.path -notin @('vendor','vendor/mermaid','vendor/chat','vendor/chat/fonts','vendor/book-font')) -or $_.type -notin @('blob','tree') }).Count) {
+if ($priorTree.truncated -or @($priorTree.tree | Where-Object { ($_.type -eq 'blob' -and $_.path -notin $allowedPrior) -or ($_.type -eq 'tree' -and $_.path -notin @('vendor','vendor/mermaid','vendor/chat','vendor/chat/fonts','vendor/book-font','vendor/calculator')) -or $_.type -notin @('blob','tree') }).Count) {
     throw 'Existing repository contains files outside the frontend allowlist. Publication stopped.'
 }
 $priorBlobs = @{}

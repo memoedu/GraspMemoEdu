@@ -10,6 +10,7 @@ import hashlib
 import json
 import re
 import sys
+from . import calculator
 
 
 VERSION = 2
@@ -28,8 +29,9 @@ CALLOUTS = {'hint': 'hint', 'aside': '题外话', 'requirement': '要求', 'sour
 CALLOUT_ALIASES = {**{k: k for k in CALLOUTS}, **{v: k for k, v in CALLOUTS.items()}}
 SOURCE_FIELDS = ('name', 'year', 'edition', 'volume', 'page', 'item', 'location', 'adaptation')
 NODE_FIELDS = {'id', 'text', 'children', 'source_rem_id', 'source_tags', 'callout', 'source', 'body_layout', 'presentation',
-               'kind', 'reference', 'section_id', 'example', 'footnotes'}
-ROOT_FIELDS = {'topic_format_version', 'id', 'title', 'topic_kind', 'source_rem_id', 'nodes', 'sections', 'reading_lineage'}
+               'kind', 'reference', 'section_id', 'example', 'footnotes', 'calculate'}
+ROOT_FIELDS = {'topic_format_version', 'id', 'title', 'topic_kind', 'source_rem_id', 'nodes', 'sections', 'reading_lineage',
+               'calculate'}
 
 
 def require(condition, message):
@@ -165,6 +167,7 @@ def _markdown_document(source):
 def normalize_document(value, *, markdown=False):
     require(isinstance(value, dict) and not set(value) - ROOT_FIELDS, 'Unknown or invalid Topic author fields')
     require(value.get('topic_format_version') == VERSION, 'Unsupported Topic format version')
+    calculator.validate(value)
     identifier(value.get('id'), 'Topic ID')
     require(isinstance(value.get('title'), str) and value['title'].strip() and len(value['title']) <= 200 and '\n' not in value['title'],
             'Topic needs a nonempty one-line title')
@@ -191,6 +194,10 @@ def normalize_document(value, *, markdown=False):
         text = node.get('text', '')
         require(isinstance(text, str) and len(text) <= 1000000 and '\r' not in text, 'Invalid node text; use LF newlines')
         text = text.rstrip()
+        if 'calculate' in node:
+            require((depth == 1 and EXAMPLE.fullmatch(text)) or (depth == 2 and PRACTICE.fullmatch(text)),
+                    'calculate belongs to a Topic, Example or Practice')
+            calculator.validate(node)
         result = {k: copy.deepcopy(v) for k, v in node.items() if k not in {'children', '_line'}}
         result['text'] = text
         if 'section_id' in node:
@@ -441,11 +448,12 @@ def semantic_payload(document, assets=()):
         for field in ('example', 'footnotes'):
             if field in node:
                 result[field] = [node_payload(child) for child in node[field]]
-        for key in ('kind', 'reference', 'section_id'):
+        for key in ('kind', 'reference', 'section_id', 'calculate'):
             if key in node:
                 result[key] = node[key]
         return result
     return {**({'sections': document['sections']} if 'sections' in document else {}),
+            **({'calculate': document['calculate']} if 'calculate' in document else {}),
             'topic_kind': document['topic_kind'], 'title': document['title'],
             'nodes': [node_payload(node) for node in document['nodes']]}
 

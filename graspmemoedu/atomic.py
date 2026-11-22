@@ -115,8 +115,10 @@ class AtomicLearningService(LearningService):
         state['card_uses'][card['id']] = state['card_uses'].get(card['id'], 0) + 1
 
     def _question(self, active, *, feedback=False):
+        from .calculator import presentation as calculator_presentation
         card = active.get('snapshot') or self.questions[active['card_id']]
-        result = {'id': active['id'], 'card_id': card['id'], 'title': card['title'], 'html': card['html'],
+        result = {'id': active['id'], 'card_id': card['id'], 'title': card['title'],
+                  **calculator_presentation(self.course, card),
                   'point_ids': card['point_ids'], 'phase': active['phase'], 'shown_at': active['shown_at'],
                   'interaction': public_interaction(card)}
         if active.get('snapshot_version'):

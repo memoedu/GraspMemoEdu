@@ -123,9 +123,11 @@ class LearningService:
         return self.learner_id, self.topic_id
 
     def _validate_course(self):
+        from . import calculator
         from .topic_runtime import validate_runtime, is_v2, is_introduction
         try:
             validate_runtime(self.course)
+            calculator.validate(self.course)
         except (ValueError, TypeError, KeyError, AttributeError) as exc:
             raise DomainError('invalid_course', 'Topic 章节、正文身份或引用结构无效。', 422) from exc
         from .topic_structure import has_atomic
@@ -158,6 +160,7 @@ class LearningService:
                     raise DomainError('invalid_course', '题目缺少独立标准答案、题型、约束或解析。', 422)
                 self.questions[question['id']] = present_question(question)
                 try:
+                    calculator.validate(question)
                     validate_interaction(question.get('interaction'), question['question'])
                 except (ValueError, TypeError, KeyError, TimeoutError) as exc:
                     raise DomainError('invalid_course', '题型配置或标准答案无效。', 422) from exc
@@ -317,6 +320,7 @@ class LearningService:
             return self._public(self._load(con))
 
     def _public(self, state):
+        from .calculator import presentation as calculator_presentation
         from .lesson_display import LessonDisplay
         display = LessonDisplay(self.data_dir, self.course)
         attempt = self._attempt(state)
@@ -340,7 +344,8 @@ class LearningService:
             question = self.question_for_step(saved) if saved['question_id'] else None
             if question:
                 question = display.question(question)
-                step.update(title=question['title'], html=question['html'], explanation_html=None)
+                step.update(title=question['title'], explanation_html=None,
+                            **calculator_presentation(self.course, question))
                 from .topic_composition import section_for
                 module = next((m for m in self.course['modules'] if m['id'] == saved['module_id']), {})
                 if section := section_for(self.course, module):

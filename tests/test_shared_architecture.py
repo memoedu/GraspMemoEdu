@@ -238,6 +238,15 @@ class SharedArchitectureBoundaryTests(unittest.TestCase):
             parents = {child: parent for parent in ast.walk(tree) for child in ast.iter_child_nodes(parent)}
             for node in ast.walk(tree):
                 if isinstance(node, (ast.Set, ast.List, ast.Tuple)):
+                    if path.name == 'calculator.py':
+                        call = parents.get(node)
+                        assignment = parents.get(call)
+                        if isinstance(assignment, ast.Assign) and any(
+                            isinstance(target, ast.Name) and target.id == 'MODULES'
+                            for target in assignment.targets
+                        ):
+                            # A calculator tool ID can match a subject ID across all subjects.
+                            continue
                     ids = {v.value for v in node.elts if isinstance(v, ast.Constant) and isinstance(v.value, str)}
                     if len(ids & SUBJECT_IDS) > 1:
                         failures.append(f'{path.name}:{node.lineno}: duplicate subject registry')

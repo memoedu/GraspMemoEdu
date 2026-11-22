@@ -17,7 +17,7 @@ from .content_timing import active_limit, limit_state, update_activity
 from .review_hierarchy import source_trees, public_source
 from .self_assessment import enabled as self_rating_enabled, presentation, reveal as reveal_question
 from .reference_answers import reference_fields
-from . import multi_step
+from . import calculator, multi_step
 
 
 class PaperService:
@@ -325,12 +325,21 @@ class PaperService:
             answer_question = (multi_step.step_question(question, len(item.get('multi_step_progress', [])))
                                if question.get('multi_step') and not shown else question)
             source = item['source']
+            owner = {}
+            if source['kind'] == 'training':
+                bank = self.training.catalog.banks.get(source['container'], {})
+                if bank.get('version') == source['version']:
+                    owner = next((group for group in bank['groups'] if group['id'] == source['group_id']), {})
+            elif source['kind'] == 'atomic':
+                topic = self.catalog.topic(source['container'])
+                if topic['version'] == source['version']:
+                    owner = topic
             context = ({'topic_id': permission_id(source['container']), 'bank_id': source['container'],
                         'group_id': source['group_id'], 'question_id': source['local_points'][0]}
                        if source['kind'] == 'training' else
                        {'topic_id': source['container'], 'question_id': source['local_card']} if source['kind'] == 'atomic' else None)
             items.append({'index': index, 'point_ids': item['point_ids'], 'title': question.get('title', ''),
-                          'source_title': item['source_title'], 'html': question['html'],
+                          'source_title': item['source_title'], **calculator.presentation(owner, question),
                           'content_context': context,
                           'content_version': item['id'] if item['id'].startswith('variant-') else source['version'],
                           'source_kind': source['kind'],

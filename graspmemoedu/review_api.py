@@ -67,11 +67,12 @@ def register_review_routes(app, identity, admission_lock, limits, schedule, outs
                 (state['session_id'], learner.learner_id, learner.topic_id))}
         questions = {answer['question_id']: display.question(learner.review_backend.question_for_session(state, answer['question_id']))
                      for answer in state['answers']}
+        from .calculator import presentation as calculator_presentation
         state['answers'] = [{**answer, 'title': questions[answer['question_id']]['title'],
                              'interaction': public_interaction(questions[answer['question_id']]),
                              'content_version': state.get('question_bank_revision') or state['course_version'],
                              'answer_display': display_answer(questions[answer['question_id']], answer['answer']),
-                             'html': questions[answer['question_id']]['html'],
+                             **calculator_presentation(learner.course, questions[answer['question_id']]),
                              'explanation_html': questions[answer['question_id']]['explanation_html'],
                              **reference_fields(questions[answer['question_id']], True),
                              'feedback': {'correct': answer['correct'], 'reason': reasons.get(answer['question_id'])}}

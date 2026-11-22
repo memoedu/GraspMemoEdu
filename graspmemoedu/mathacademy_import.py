@@ -19,6 +19,7 @@ from urllib.parse import urlsplit
 import zipfile
 
 from .topic_install import encoded, digest, import_lock
+from . import calculator
 
 ADAPTER_VERSION = 'mathacademy-json-1'
 DEFAULT_COURSES = (82, 74, 66, 72, 140)
@@ -402,6 +403,7 @@ def adapt(source, assets):
              'topic_kind': 'lesson', 'source_adapter': 'mathacademy', 'training_mode': 'paradigm',
              'introductions': [], 'modules': [], 'content_order': [], 'unassigned_questions': [],
              'version': source_fingerprint(source), 'content_version': source_fingerprint(source)}
+    topic.update(calculation_metadata(lesson, lesson['topic']))
     modules, questions, step_numbers = {}, [], []
     for position, step in enumerate(lesson.get('steps', [])):
         if type(step.get('number')) is not int:
@@ -418,7 +420,7 @@ def adapt(source, assets):
             topic['content_order'].append({'kind': 'introduction', 'id': ident})
         elif kind == 'example':
             ident = f'ma-example-{payload["id"]}'
-            q = question_model(payload, assets, gaps, example=True)
+            q = question_model(payload, assets, gaps, example=True, step=step)
             q['_source'] = private
             module = {'id': ident, 'title': payload.get('title') or ident, 'example': q, 'practices': [],
                       '_source': private, 'key_prerequisites': payload.get('keyPrerequisites', [])}
@@ -427,7 +429,7 @@ def adapt(source, assets):
             modules[payload['id']] = module; topic['modules'].append(module)
             topic['content_order'].append({'kind': 'example', 'id': ident})
         else:
-            q = question_model(payload, assets, gaps); q['_source'] = private
+            q = question_model(payload, assets, gaps, step=step); q['_source'] = private
             questions.append((payload.get('exampleId'), q))
     if step_numbers != sorted(step_numbers) or len(set(step_numbers)) != len(step_numbers):
         raise ValueError('Source step order is inconsistent')
@@ -447,7 +449,15 @@ def adapt(source, assets):
     return topic
 
 
-def question_model(q, assets, gaps, example=False):
+def calculation_metadata(*sources):
+    for source in sources:
+        for key in ('calculate', 'calculator'):
+            if key in source:
+                return {'calculate': calculator.from_mathacademy(source[key])}
+    return {}
+
+
+def question_model(q, assets, gaps, example=False, *, step=None):
     qid = q['id']; text = q.get('question' if example else 'text') or ''
     explanation = q.get('explanation') or ''
     if not text.strip():
@@ -455,11 +465,10 @@ def question_model(q, assets, gaps, example=False):
     gaps.append({'code': 'answer_missing', 'question': qid})
     if not explanation.strip():
         gaps.append({'code': 'explanation_missing', 'question': qid})
-    constraints = q.get('calculator') if example else (q.get('example') or {}).get('calculator')
-    requirement = ('<aside class="inline-document-callout callout" data-callout="requirement"><strong>要求</strong><p>Calculator: '
-                   + html.escape(str(constraints)) + '</p></aside>') if constraints is not None else ''
+    inherited = (q.get('example') or {}) if not example else {}
+    constraints = q.get('calculator', inherited.get('calculator'))
     source_html = q.get('questionHtml') or ''
-    render_text = text + requirement
+    render_text = text
     # Captured Practice stems can say "the graph above" while the diagram is a
     # separate q-<id> attachment. Choices have their own q-<id>-a-<n> identities.
     if not example and q.get('graphic') and not re.search(
@@ -469,13 +478,12 @@ def question_model(q, assets, gaps, example=False):
         render_text = image + '\n\n' + render_text
         if source_html:
             source_html = re.sub(r'<body\b[^>]*>', lambda m: m[0] + image, source_html, count=1, flags=re.I) if re.search(r'<body\b', source_html, re.I) else image + source_html
-    if source_html and requirement:
-        source_html = re.sub(r'</body>', lambda m: requirement + m[0], source_html, count=1, flags=re.I) if re.search(r'</body>', source_html, re.I) else source_html + requirement
     result = {'id': f'ma-{"example" if example else "question"}-{qid}', 'title': q.get('title') or f'Practice {q.get("number", qid)}',
               'question': text, 'html': assets.render(render_text, source_html, gaps),
               'explanation_html': assets.render(explanation, q.get('explanationHtml'), gaps),
               'reference_answer': '', 'answer_type': 'source', 'constraints': str(constraints or ''),
               'source_format': 'example' if example else q.get('format'), 'difficulty': q.get('difficulty')}
+    result.update(calculation_metadata(q, step or {}, inherited))
     if not example:
         interaction = controls(q, assets, gaps)
         if interaction:
@@ -547,8 +555,9 @@ def prepare(index, scope, cache, output, *, fail_at=None):
     # Code changes invalidate derived caches, never private input snapshots.
     root = Path(__file__).resolve().parents[1]
     conversion = '\n'.join(inspect.getsource(value) for value in (
-        teaching, source_fingerprint, Assets, controls, answer_sections, captured_sections, template_segments, adapt, question_model))
-    config_hash = digest((repr((ADAPTER_VERSION, sorted(SOURCE_FIELDS), GAP_LABELS)) + conversion).encode()
+        teaching, source_fingerprint, Assets, controls, answer_sections, captured_sections, template_segments, adapt,
+        question_model, calculation_metadata, calculator.from_mathacademy, calculator.normalize))
+    config_hash = digest((repr((ADAPTER_VERSION, sorted(SOURCE_FIELDS), GAP_LABELS, calculator.MA_LEVELS)) + conversion).encode()
                          + (root / 'scripts/render_mathacademy.mjs').read_bytes())
     renderer = Renderer(); reused = 0
     topics_dir, raw_dir = output / 'topics', output / 'mathacademy-sources/topics'
