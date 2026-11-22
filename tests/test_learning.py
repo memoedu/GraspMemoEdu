@@ -112,8 +112,11 @@ class LearningAcceptanceTests(unittest.TestCase):
         with self.assertRaises(DomainError):
             self.service.submit(self.payload(answer="correct"))
         self.choose("mastered")
+        self.assertIsNone(self.active()["explanation_html"])
         result = self.answer("correct")
         self.assertEqual(result["status"], "judged")
+        self.assertEqual(self.active(result["state"])["explanation_html"],
+                         self.course["modules"][0]["example"]["explanation_html"])
         self.assertEqual(self.module()["mastery"], 4)
         self.assertEqual(self.module()["practice_answered_count"], 0)
         self.assertFalse(self.service.state()["introduction_read"])
@@ -161,6 +164,7 @@ class LearningAcceptanceTests(unittest.TestCase):
         self.answer("wrong")
         self.assertEqual(self.active()["phase"], "feedback")
         self.assertEqual(self.active()["kind"], "example")
+        self.assertIsNone(self.active()["explanation_html"])
         self.assertEqual(self.module()["practice_error_count"], 1)
         self.assertEqual(self.module()["practice_answered_count"], 1)
         self.assertEqual(self.module()["practice_target_count"], 4)

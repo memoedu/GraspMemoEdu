@@ -353,7 +353,8 @@ class LearningService:
                 from .self_assessment import presentation
                 show_explanation = saved['phase'] == 'reading' or (
                     saved['phase'] == 'feedback' and (
-                        saved['kind'] == 'practice' or saved['attempt_id'] in guided_attempts))
+                        saved['kind'] == 'practice' or saved['attempt_id'] in guided_attempts
+                        or saved['kind'] == 'example' and (saved.get('feedback') or {}).get('correct')))
                 step.update(presentation(question, saved, visible=show_explanation))
                 step['content_version'] = saved.get('question_bank_revision') or self.course['version']
                 if question.get('interaction'):
