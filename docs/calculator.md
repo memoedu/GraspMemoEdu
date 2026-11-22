@@ -26,7 +26,9 @@ Topic v2 JSON 的根和 Example、Practice 节点都可写 `calculate`。Markdow
 
 模块 ID 和运算 ID 见 [站内工具目录](../web/calculator-policy.js)。例如 `matrix` 是模块，`matrix_inverse` 是其中一个操作，`sin` 是科学键。禁用项会同时作用于工具入口和计算引擎。手输及粘贴表达式会检查允许的运算、别名、符号和常数。切题会清空该次计算会话。
 
-MA 新导入读取 `calculate` 或旧名 `calculator`，按题保存结构化配置。历史的 `None`、`Standard`、`Scientific`、`Graphing` 分别对应关闭、基础、科学、科学加独立函数绘图。已安装的历史题优先读取旧字段，缺少档位时从自动生成的计算器提示恢复。页面应用权限后移除该提示。MA 的题目和原有学习记录无需重导。
+MA 材料至少开放科学计算器。网站对已安装和今后导入的材料使用同一条规则。来源的 `None` 和 `Standard` 档位不参与计算器定档，`Scientific` 继续开放科学计算，`Graphing` 继续开放科学计算和独立函数绘图。更高档位及原有模块、按键限制继续有效。来源字段缺失或移除时同样适用。系统仍读取历史提示以识别档位，题面会隐藏自动生成的计算器提示。
+
+站内明确指定例外时，可在 MA 材料的 Topic 或单题上使用 `"calculate": {"level": "none", "override_ma_minimum": true}`，也可将档位设为 `basic`。Topic 例外覆盖 MA 原题的档位，单题带同一标记可覆盖 Topic 例外。MA 来源字段不能写入该标记。
 
 ## 计算范围
 
