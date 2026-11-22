@@ -176,8 +176,9 @@ class PersistentPracticeQueue:
             raise _error('practice_not_presented', '题目尚未推送，不能记录答题结果。')
         first_group_miss = group_index is not None and group_index not in state['expanded_groups']
         if correct or (additions is None and not first_group_miss):
-            return
+            return 0
         pending = state['pending']
+        previous_size = len(pending)
         unavailable = {*exclude, question_id, *pending}
         siblings = []
         if first_group_miss:
@@ -195,3 +196,4 @@ class PersistentPracticeQueue:
                 eligible.remove(item)
             pending.extend(chosen)
         self._save(con, module, state)
+        return len(pending) - previous_size

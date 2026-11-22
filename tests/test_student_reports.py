@@ -111,7 +111,8 @@ class StudentReportsTests(unittest.TestCase):
                 self.assertEqual(self.client.get(base, headers=headers).status_code, 403)
             self.assertEqual(self.client.get(base, headers={'Origin': 'https://site.test'}).status_code, 401)
             self.assertEqual(self.client.post(base, headers=self.admin_headers, json={}).status_code, 405)
-            self.assertEqual(self.client.get('/api/admin/students/' + self.second + path, headers=self.admin_headers).json()['total'], 6 if path.startswith('/questions') else 0)
+            self.assertEqual(self.client.get('/api/admin/students/' + self.second + path,
+                                             headers=self.admin_headers).status_code, 404)
         self.assertEqual(self.client.get('/api/admin/students/missing/history?kind=training&container=x', headers=self.admin_headers).status_code, 404)
         self.assertEqual(self.get('/questions', kind='invalid').status_code, 422)
         self.assertEqual(self.get('/history', kind='training', container='isolated-bank', limit=31).status_code, 422)

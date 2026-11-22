@@ -10,18 +10,26 @@ import re
 from typing import Literal
 
 from fastapi import Query, Request
+from pydantic import BaseModel, ConfigDict, StrictBool
 
 from .atomic_content import GAP_SECONDS
 from .topic_structure import has_atomic, atomic_state, sectioned_training
 from .service import DomainError
 from .training_content import permission_id
 from .student_reports import StudentReport, time_zone
-from .access import admin_display_name
+from .access import admin_display_name, timestamp
+from .managed_accounts import scope as management_scope
 from .presence import today_presence
 
 
 def public_route(path):
-    return bool(re.fullmatch(r'/api/(?:admin/students(?:/[A-Za-z0-9_-]{1,128}(?:/(?:questions|history))?)?|student-report(?:/(?:questions|history))?)', path))
+    return bool(re.fullmatch(r'/api/(?:admin/students(?:/[A-Za-z0-9_-]{1,128}(?:/(?:questions|history|qualifications))?)?|student-report(?:/(?:questions|history))?)', path))
+
+
+class Qualifications(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    is_advanced_learner: StrictBool = False
+    is_student: StrictBool = False
 
 
 class AdminStudents:
@@ -39,7 +47,36 @@ class AdminStudents:
     def student(row, own=False):
         return {key: row[key] for key in ('learner_id', 'purpose')} | {
             'display_name': row['display_name'] if own else admin_display_name(row),
-            'enabled': bool(row['enabled']), 'is_advanced_learner': bool(row['is_advanced_learner'])}
+            'enabled': bool(row['enabled']), 'is_advanced_learner': bool(row['is_advanced_learner']),
+            'is_student': bool(row['is_student'])}
+
+    @staticmethod
+    def target(con, access, learner_id, own=False):
+        where = "p.is_student=1" if own else management_scope('p.learner_id')
+        args = (learner_id,) if own else (learner_id, access['learner_id'])
+        row = con.execute("""SELECT p.* FROM access_principals p
+            WHERE p.learner_id=? AND p.role='account' AND p.is_admin=0 AND """ + where, args).fetchone()
+        if not row:
+            raise DomainError('student_not_found', '未找到该账号。', 404)
+        return row
+
+    def update_qualifications(self, access, learner_id, values):
+        self.require_admin(access)
+        if not values:
+            raise DomainError('invalid_qualifications', '请提供要修改的账号资格。', 422)
+        with self.access._transaction() as con:
+            actor = self.access._account(con, access['learner_id'])
+            if not actor['enabled'] or not actor['is_admin']:
+                raise DomainError('feature_forbidden', '此页面仅供管理员使用。', 403)
+            row = self.target(con, access, learner_id)
+            advanced = values.get('is_advanced_learner', bool(row['is_advanced_learner']))
+            student = values.get('is_student', bool(row['is_student']))
+            if (advanced, student) != (row['is_advanced_learner'], row['is_student']):
+                con.execute("""UPDATE access_principals
+                    SET is_advanced_learner=?,is_student=?,updated_at=? WHERE learner_id=?""",
+                    (advanced, student, timestamp(), learner_id))
+                row = self.target(con, access, learner_id)
+            return self.student(row)
 
     def require_viewer(self, access, learner_id, own=False):
         if not own:
@@ -60,12 +97,12 @@ class AdminStudents:
             con.execute('PRAGMA query_only=ON')
             con.execute('BEGIN')
             # Search is literal: LIKE metacharacters in a name do not broaden it.
-            where = "role='account' AND is_student=1 AND is_admin=0"
-            args = []
+            where = "p.role='account' AND p.is_admin=0 AND " + management_scope('p.learner_id')
+            args = [access['learner_id']]
             if query:
                 where += " AND instr(lower(COALESCE(NULLIF(admin_name,''),display_name)),lower(?))>0"; args.append(query)
-            total = con.execute('SELECT COUNT(*) FROM access_principals WHERE ' + where, args).fetchone()[0]
-            rows = con.execute('SELECT * FROM access_principals WHERE ' + where +
+            total = con.execute('SELECT COUNT(*) FROM access_principals p WHERE ' + where, args).fetchone()[0]
+            rows = con.execute('SELECT * FROM access_principals p WHERE ' + where +
                                " ORDER BY COALESCE(NULLIF(admin_name,''),display_name),learner_id LIMIT ? OFFSET ?", (*args, limit, offset)).fetchall()
             items = []
             for row in rows:
@@ -143,9 +180,7 @@ class AdminStudents:
         with closing(self.access._connect()) as con:
             con.execute('PRAGMA query_only=ON')
             con.execute('BEGIN')
-            row = con.execute("SELECT * FROM access_principals WHERE learner_id=? AND role='account' AND is_student=1 AND is_admin=0", (learner_id,)).fetchone()
-            if not row:
-                raise DomainError('student_not_found', '未找到该学员。', 404)
+            row = self.target(con, access, learner_id, own)
             student = self.access._public(row)
             tables = self.dashboard.dependency_policy.tables(con)
             rows = {r['topic']: r for r in con.execute('SELECT topic,version,body FROM topics WHERE learner=?', (learner_id,))
@@ -228,9 +263,7 @@ class AdminStudents:
         with closing(self.access._connect()) as con:
             con.execute('PRAGMA query_only=ON')
             con.execute('BEGIN')
-            row = con.execute("SELECT * FROM access_principals WHERE learner_id=? AND role='account' AND is_student=1 AND is_admin=0", (learner_id,)).fetchone()
-            if not row:
-                raise DomainError('student_not_found', '未找到该学员。', 404)
+            row = self.target(con, access, learner_id, own)
             rows = {r['topic']: r for r in con.execute('SELECT topic,version,body FROM topics WHERE learner=?', (learner_id,))
                     if self.access.test_materials.topic_visible(r['topic'], access)
                     and r['topic'] not in self.training.topic_redirects}
@@ -339,6 +372,11 @@ def register_admin_student_routes(app, catalog, access_store, subjects, dashboar
                   limit: int = Query(default=30, ge=1, le=100)):
         return store.report(access_store.resolve(request.headers.get('x-learning-identity')), learner_id, 'questions',
                             kind=kind, container=container, group=group, state=state, q=q, offset=offset, limit=limit)
+
+    @app.post('/api/admin/students/{learner_id}/qualifications')
+    def qualifications(learner_id: str, payload: Qualifications, request: Request):
+        return store.update_qualifications(access_store.resolve(request.headers.get('x-learning-identity')),
+                                           learner_id, payload.model_dump(exclude_unset=True))
 
     @app.get('/api/admin/students/{learner_id}/history')
     def history(learner_id: str, request: Request, kind: Literal['topic', 'training'],

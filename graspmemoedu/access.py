@@ -12,6 +12,7 @@ import sqlite3
 import uuid
 
 from .service import DomainError
+from .managed_accounts import migrate as migrate_management
 
 
 FEATURE_REQUIREMENTS = {'learn': {}, 'submit_answer': {}, 'review_history': {}, 'pause_topic': {},
@@ -106,6 +107,8 @@ class AccessStore:
                 con.execute('ALTER TABLE access_principals ADD COLUMN is_advanced_learner INTEGER NOT NULL DEFAULT 0 CHECK(is_advanced_learner IN (0,1))')
             if 'is_student' not in columns:
                 con.execute('ALTER TABLE access_principals ADD COLUMN is_student INTEGER NOT NULL DEFAULT 0 CHECK(is_student IN (0,1))')
+            if 'beginner_mode_enabled' not in columns:
+                con.execute('ALTER TABLE access_principals ADD COLUMN beginner_mode_enabled INTEGER NOT NULL DEFAULT 1 CHECK(beginner_mode_enabled IN (0,1))')
             if 'admin_name' not in columns:
                 con.execute("ALTER TABLE access_principals ADD COLUMN admin_name TEXT NOT NULL DEFAULT ''")
                 con.execute("UPDATE access_principals SET admin_name=display_name WHERE role='account'")
@@ -131,6 +134,7 @@ class AccessStore:
                     con.execute('UPDATE access_identities SET expires_at=? WHERE token_digest=?',
                                 (expires.isoformat(), row['token_digest']))
             con.execute('CREATE INDEX IF NOT EXISTS access_principal_batch ON access_principals(batch_id)')
+            migrate_management(con)
 
     def _connect(self):
         con = sqlite3.connect(self.db_path, timeout=30, isolation_level=None)
@@ -164,6 +168,7 @@ class AccessStore:
             'display_name': row['display_name'],
             'is_advanced_learner': not guest and bool(row['is_advanced_learner']),
             'is_student': not guest and bool(row['is_student']),
+            'beginner_mode_enabled': bool(row['beginner_mode_enabled']),
             'features': [],
             'topics': [],
         }

@@ -20,12 +20,14 @@ class PublicExportTests(unittest.TestCase):
             result, output = self.export(Path(temporary), 'https://example.trycloudflare.com')
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertTrue({'training.js', 'training.css', 'training-messages.js', 'learning-ui.js'} <= {p.name for p in output.iterdir()})
+            self.assertTrue((output / 'beginner-hints.js').is_file())
             self.assertTrue({'review-papers.js', 'review-paper-messages.js'} <= {p.name for p in output.iterdir()})
             self.assertTrue({'review-directory.js', 'task-tree.js', 'catalog-outline.js', 'content-timer.js'} <= {p.name for p in output.iterdir()})
             self.assertTrue((output / 'catalog-workspace.js').is_file())
             pwa_files = {'download.html', 'install.css', 'pwa.css', 'pwa.js', 'sw.js', 'manifest.webmanifest',
                          'icon-180.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png'}
             pwa_files.update({'restore.html', 'migration-source.html', 'origin-transfer.js'})
+            pwa_files.add('beginner-hints.js')
             pwa_files.update({'calculator.js', 'calculator-panel.js', 'calculator-inputs.js', 'calculator-policy.js',
                               'calculator-engine.js', 'calculator-worker.js', 'calculator.css'})
             self.assertTrue(pwa_files <= {p.name for p in output.iterdir()})

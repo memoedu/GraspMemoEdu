@@ -380,6 +380,22 @@ class HelpRequestTests(unittest.TestCase):
         self.assertTrue(all(row['admin_id'] == self.admin and row['uses_default'] for row in assignments['items']))
         self.assertEqual(self.send({**self.payload(), 'admin_id': other_admin}).status_code, 422)
 
+    def test_shared_managers_read_same_request_without_duplicate_counts(self):
+        other, other_headers = self.identity(is_admin=True)
+        _, unrelated_headers = self.identity(is_admin=True)
+        report = self.send().json()['id']
+        store = self.app.state.help_requests
+        store.assign_admins(self.student, [self.admin, other])
+        for headers in (self.admin_headers, other_headers):
+            inbox = self.client.get('/api/help-requests', headers=headers).json()
+            self.assertEqual([item['id'] for item in inbox['items']], [report])
+            self.assertEqual(inbox['total'], 1)
+            detail = self.client.get('/api/help-center', headers=headers, params={'report_id': report})
+            self.assertEqual(detail.status_code, 200, detail.text)
+        self.assertEqual(self.client.get('/api/help-requests', headers=unrelated_headers).json()['total'], 0)
+        self.app.state.access_store.set_enabled(self.admin, False)
+        self.assertEqual(self.send().status_code, 200)
+
     def test_assignment_filters_records_counts_and_pagination_and_moves_existing_requests(self):
         other_admin, other_headers = self.identity(is_admin=True)
         other_student, other_student_headers = self.identity(is_student=True)
@@ -421,7 +437,8 @@ class HelpRequestTests(unittest.TestCase):
         for admin in (self.student, ordinary, 'missing'):
             with self.assertRaises(DomainError): helper.set_default_admin(admin)
             with self.assertRaises(DomainError): helper.assign_admin(self.student, admin)
-        with self.assertRaises(DomainError): helper.assign_admin(ordinary, self.admin)
+        with self.assertRaises(DomainError): helper.assign_admin(self.admin, self.admin)
+        self.assertEqual(helper.assign_admin(ordinary, self.admin)['admin_ids'], [self.admin])
         self.assertEqual(helper.assignments()['default_admin_id'], self.admin)
         other_admin, _ = self.identity(is_admin=True)
         def invoke(*args):
@@ -433,11 +450,13 @@ class HelpRequestTests(unittest.TestCase):
         self.assertEqual(invoke('help-assign', '--learner', self.student, '--admin', other_admin)['admin_id'], other_admin)
         listing = invoke('help-assignments')
         self.assertNotIn('invitation', json.dumps(listing)); self.assertNotIn('identity_token', json.dumps(listing))
-        self.assertEqual(listing['items'][0]['admin_id'], other_admin)
+        self.assertEqual(next(item for item in listing['items'] if item['learner_id'] == self.student)['admin_id'], other_admin)
         restored = invoke('help-assign', '--learner', self.student, '--default-admin')
         self.assertEqual(restored['admin_id'], self.admin); self.assertTrue(restored['uses_default'])
-        helper.assign_admin(self.student, other_admin)
+        shared = invoke('help-assign', '--learner', self.student, '--admin', other_admin, '--admin', self.admin)
+        self.assertEqual(set(shared['admin_ids']), {self.admin, other_admin})
         archive = self.root / 'assigned.zip'; backup_site(self.settings, archive)
         restored_root = self.root / 'assigned-restored'; restore_site(archive, restored_root)
         with closing(sqlite3.connect(restored_root / 'learning.sqlite3')) as con:
-            self.assertEqual(con.execute('SELECT admin_id FROM help_admin_assignments WHERE learner_id=?', (self.student,)).fetchone()[0], other_admin)
+            rows = con.execute('SELECT admin_id FROM help_admin_assignments WHERE learner_id=?', (self.student,))
+            self.assertEqual({row[0] for row in rows}, {self.admin, other_admin})

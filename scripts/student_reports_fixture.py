@@ -32,7 +32,7 @@ def local_settings(**kwargs):
 
 case = StudentReportsTests()
 with patch('tests.test_admin_students.Settings', local_settings):
-    case.setUp()
+    case.setUp(start_client=False)
 case.time = datetime.now(timezone.utc) - timedelta(days=5)
 training = case.training()
 case.answer(training, answer='0')
@@ -59,6 +59,14 @@ state = atoms.advance(case.action(state))
 submission = atoms.submit(case.action(state, answer='错误', elapsed_ms=12000))
 atoms.process_submission(submission['submission_id'])
 case.store.set_enabled(case.second, False)
+case.app.state.help_requests.assign_admins(case.second, [case.admin, case.other])
+beginner_lesson = case.app.state.admin_pauses.service_for(case.normal, case.course['id'])
+state = beginner_lesson.choose(case.action(beginner_lesson.state(), choice='unmastered'))
+while beginner_lesson._step(state)['kind'] != 'practice':
+    if beginner_lesson._step(state)['phase'] == 'guided_choice':
+        state = beginner_lesson.choose(case.action(state, choice='view_solution'))
+    else:
+        state = beginner_lesson.advance(case.action(state))
 # Match an established profile before checking that report browsing is read-only.
 case.app.state.dashboard_store.update_profile(case.store.resolve(case.headers['X-Learning-Identity']), {'timezone': 'Asia/Shanghai'})
 with case.store._transaction() as con:
@@ -102,6 +110,5 @@ if args.presence:
     identities['report_id'] = saved['id']
 (args.output / 'auth.private.json').write_text(json.dumps(identities), encoding='utf-8')
 (args.output / 'fixture.json').write_text(json.dumps({'data_dir': str(case.root), 'port': args.port}), encoding='utf-8')
-case.client.__exit__(None, None, None)
 print('Synthetic student dashboard fixture ready.', flush=True)
 uvicorn.run(case.app, host='127.0.0.1', port=args.port, log_level='warning')

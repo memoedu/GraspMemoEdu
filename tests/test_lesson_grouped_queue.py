@@ -215,6 +215,8 @@ class GroupedLessonTests(unittest.TestCase):
         before_verdict = self.queue()
         state = self.answer(False)
         self.assertEqual(self.queue(), before_verdict)
+        self.assertEqual(self.active(state)['feedback']['learning_effect'],
+                         {'queue_added': 0, 'target_added': 0, 'paused': True})
         self.assertEqual(state['modules'][0]['practice_target_count'], 8)
         self.assertIsNone(state['modules'][0]['mastery'])
         self.assertEqual(state['status'], 'paused')
@@ -244,6 +246,10 @@ class GroupedLessonTests(unittest.TestCase):
             state = self.answer(correct)
             errors = answers[:index + 1].count(False)
             self.assertEqual(state['modules'][0]['practice_target_count'], (3, 4, 6, 8)[errors])
+            if not correct:
+                added = 1 if errors == 1 else 2
+                self.assertEqual(self.active(state)['feedback']['learning_effect'],
+                                 {'queue_added': added, 'target_added': added, 'paused': False})
         self.assertEqual(delivered[3], 'module-1-practice-2')
         self.assertEqual(len(delivered), len(set(delivered)))
         self.assertEqual(state['modules'][0]['mastery'], 1)
