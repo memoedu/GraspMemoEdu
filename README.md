@@ -215,7 +215,7 @@ node scripts/inspect_page.mjs
 
 公开页面仅含 HTML、JS、CSS、图标、`.nojekyll` 和只含 `api_origin` 的 `deployment.json`。连接配置由发布时写入，网页没有配置入口。服务不可用时只显示提示和重试。游客身份在切换后端网址时会先到新后端验证，成功后迁移；连接错误不会清除旧身份或悄悄创建替代身份。
 
-题目提供[答题转换](docs/answer-conversion.md)，将文字、语音或计算结果填入原有答题控件。题目上的录音与计算器共用一栏。[语音输入](docs/voice-input.md)也支持在文本和计算器输入中原位插入转写，复现类答题可先提交再等待自动判题。
+题目提供[答题转换](docs/answer-conversion.md)。默认可通过计算器和录音填入原有答题控件；如需键入命令，在头像菜单的「设置」中勾选「显示文字答题框」并保存。题目上的录音与计算器共用一栏。[语音输入](docs/voice-input.md)也支持在文本和计算器输入中原位插入转写，复现类答题可先提交再等待自动判题。
 
 前端发布仓库为 `memoedu/GraspMemoEdu-Pages`，与业务源码仓库独立。正式服务只允许已配置网页来源及自身公开来源。`settings.json` 的 `public_api_origin` 指定精确公开 HTTPS 地址；nginx 保留公开 Host，后端据此识别公开请求。云端后端只监听 `127.0.0.1:18768`，由 nginx 提供公网 HTTPS。
 

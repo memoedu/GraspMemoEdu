@@ -93,6 +93,7 @@ class ProfileUpdate(BaseModel):
     timezone: str | None = Field(default=None, min_length=1, max_length=100)
     course_hierarchy_enabled: bool = Field(default=True, strict=True)
     beginner_mode_enabled: bool = Field(default=True, strict=True)
+    answer_command_input_enabled: bool = Field(default=False, strict=True)
 
 
 class CorrectionQuote(BaseModel):

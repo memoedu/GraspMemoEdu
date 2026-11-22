@@ -25,6 +25,8 @@ await page.route('**/api/voice-input/transcribe?*', route => {
 const phrase = page.locator('.answerConversion textarea:visible');
 const answer = page.locator('#answerInput');
 const mic = page.getByRole('button', {name: '录音输入'});
+const setting = page.getByRole('checkbox', {name: '显示文字答题框'});
+const topicUrl = base + '/#/subjects/math/topic/calculator-fixture';
 const nextLesson = page.locator('#stepCard .continueRow .primaryButton:not(#submitButton):enabled');
 const mastered = page.locator('#stepCard .choiceActions .primaryButton:enabled', {hasText: '已掌握'});
 const submit = page.locator('#submitButton');
@@ -45,8 +47,14 @@ try {
   await page.locator('#identitySubmitButton').click();
   await page.locator('#identitySubmitButton').waitFor({state: 'hidden'});
   assert.equal(await mic.count(), 0);
-  await page.goto(base + '/#/subjects/math/topic/calculator-fixture');
+  await page.goto(topicUrl);
   await openCurrentAnswer();
+  assert.equal(await page.locator('.answerConversion textarea').count(), 0);
+  await recordMiddlePair();
+  assert.equal(JSON.parse(await answer.inputValue())[1].right, 'r2');
+  assert.equal(submitted(), 0);
+  await setCommandInput(true);
+  await page.goto(topicUrl);
   await mic.waitFor();
   await convert('左边第一个连右边第三个，左边第二个连右边第二个，左边第三个连右边第一个');
   const complete = JSON.parse(await answer.inputValue());
@@ -58,12 +66,7 @@ try {
   const middle = page.locator('.matchingSlot[data-side=right][data-row="1"]');
   await middle.click();
   assert.equal(JSON.parse(await answer.inputValue())[1].right, null);
-  await mic.click();
-  const stop = page.getByRole('button', {name: '结束录音', exact: true});
-  await stop.waitFor();
-  await new Promise(resolve => setTimeout(resolve, 300));
-  await stop.click();
-  await page.locator('.matchingSlot[data-side=right][data-row="1"]', {hasText: 'R2'}).waitFor();
+  await recordMiddlePair();
   assert.equal(submitted(), 0);
 
   await convert('左一配右三，左三配右一');
@@ -102,7 +105,11 @@ try {
 
   const launch = page.locator('[data-question-tool=expression]:visible');
   const calculator = page.locator('.questionCalculator');
-  await page.goto(base + '/#/subjects/math/banks/isolated-bank/group-a?question=one-value');
+  const choiceUrl = base + '/#/subjects/math/banks/isolated-bank/group-a?question=one-value';
+  await setCommandInput(false);
+  await page.goto(choiceUrl);
+  await page.locator('.choiceOption input[value=b]').check();
+  assert.equal(await page.locator('.answerConversion textarea').count(), 0);
   await launch.click();
   const expression = calculator.getByRole('textbox', {name: '表达式'});
   await expression.fill('1+2');
@@ -113,6 +120,8 @@ try {
   assert.equal(await page.locator('.choiceOption input:checked').inputValue(), 'a');
   assert.equal(submitted(), 1);
 
+  await setCommandInput(true);
+  await page.goto(choiceUrl);
   await page.route('**/api/answer-conversion?*', async route => {
     await new Promise(resolve => { respond = resolve; });
     await route.fulfill({json: {commands: [1]}}).catch(() => {});
@@ -137,6 +146,7 @@ try {
   await writeFile(path.join(output, 'browser.json'), JSON.stringify({
     matching: true, partialMatching: true, fiveBlanks: true, numericChoice: true,
     assignmentApi: true, syntheticMicrophone: true, calculator: true,
+    commandInputDefaultOff: true, preferenceSurvivesReload: true, microphoneAndCalculatorWithBoxOff: true,
     widths: [320, 375, 414, 768], protectedDrafts: true, deliberateSubmissions: submitted(), errors,
   }, null, 2));
 } catch (error) {
@@ -152,12 +162,40 @@ async function expectRequest() {
 }
 
 async function openCurrentAnswer() {
-  const editorOrChoice = phrase.or(mastered);
+  const editorOrChoice = submit.or(mastered);
   await editorOrChoice.or(nextLesson).first().waitFor();
   if (!(await editorOrChoice.count())) {
     await nextLesson.click();
     await editorOrChoice.first().waitFor();
   }
-  if (!(await phrase.count())) await mastered.click();
-  await phrase.waitFor();
+  if (!(await submit.isVisible())) await mastered.click();
+  await submit.waitFor();
+}
+
+async function setCommandInput(enabled) {
+  await page.goto(base + '/#/settings');
+  await setting.waitFor();
+  assert.equal(await setting.isChecked(), !enabled);
+  for (const width of [320, 375, 414, 768]) {
+    await page.setViewportSize({width, height: 844});
+    assert.ok(await setting.evaluate(el => {
+      const bounds = el.closest('label').getBoundingClientRect();
+      return bounds.left >= 0 && bounds.right <= innerWidth && el.getBoundingClientRect().width > 0;
+    }), 'Settings label fits at ' + width);
+  }
+  await setting.setChecked(enabled);
+  await page.locator('.profileForm button[type=submit]').click();
+  await page.locator('.profileStatus').getByText('设置已保存。').waitFor();
+  await page.reload();
+  await setting.waitFor();
+  assert.equal(await setting.isChecked(), enabled);
+}
+
+async function recordMiddlePair() {
+  await mic.click();
+  const stop = page.getByRole('button', {name: '结束录音', exact: true});
+  await stop.waitFor();
+  await new Promise(resolve => setTimeout(resolve, 300));
+  await stop.click();
+  await page.locator('.matchingSlot[data-side=right][data-row="1"]', {hasText: 'R2'}).waitFor();
 }
