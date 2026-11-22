@@ -71,12 +71,14 @@ class ReviewAPITests(unittest.TestCase):
         return result['state'], result['submission_id']
 
     def test_scores_and_automatic_pause(self):
-        for sequence, rating in (([True], 4), ([False, True, True], 2),
-                                 ([False, False, True, True, True], 1), ([False, False, False], None)):
+        for sequence, rating in (([True], 4), ([False, True], 2),
+                                 ([False, False, True, True], 1), ([False, False, False], None)):
             with self.subTest(sequence=sequence):
                 state = self.enroll()
                 for index, correct in enumerate(sequence):
                     state, _ = self.answer(state, correct)
+                    errors = sequence[:index + 1].count(False)
+                    self.assertEqual(state['practice_target_count'], (1, 2, 4)[min(errors, 2)])
                     if index < len(sequence) - 1:
                         state = self.call('POST', '/api/review/sessions/' + state['session_id'] + '/continue', self.payload(state))
                 self.assertEqual(state['mastery'], rating)
