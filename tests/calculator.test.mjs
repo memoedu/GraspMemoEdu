@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {calculate} from '../web/calculator-engine.js';
-import {calculatorWorksheets, permitsModule, tools} from '../web/calculator-policy.js';
+import {calculatorWorksheets, expressionCompletions, permitsModule, tools} from '../web/calculator-policy.js';
 
 const modules = tools.map(([id]) => id);
 const cas = {level: 'cas', enable_modules: modules};
@@ -70,6 +70,28 @@ test('four tiers, graphing legacy allowance and a positive grant for specialist 
   assert.deepEqual(graph.plot[240], [0, 0]);
   await assert.rejects(run('symbolic', 'solve', {expression: 'x^2=2'}, {level: 'advanced'}), {code: 'restricted'});
   await assert.rejects(run('modular', 'modular_power', {}, {level: 'cas'}), {code: 'restricted'});
+});
+
+test('base subscripts, existing logarithms and answer aliases share calculator permissions', async () => {
+  for (const expression of ['log_2(8)', 'log₂(8)', 'log(8, 2)', 'log_{1+1}(8)', 'log_2(log_2(256))']) {
+    assert.equal((await evaluate(expression)).numeric, 3);
+    await assert.rejects(evaluate(expression, {...basic, disable_keys: ['log_base']}), {code: 'restricted'});
+  }
+  assert.equal((await evaluate('log_0.5(0.125)')).numeric, 3);
+  approx((await evaluate('log(8)+ln(8)')).numeric, 2 * Math.log(8));
+  for (const expression of ['log_1(8)', 'log_0(8)', 'log_{-2}(8)'])
+    await assert.rejects(evaluate(expression), {code: 'domain'});
+  await assert.rejects(evaluate('log₂(8)', {...basic, disable_keys: ['digit_2']}), {code: 'restricted'});
+  assert.equal((await evaluate('log_2(8)', {...basic, disable_keys: ['comma']})).numeric, 3);
+  assert.equal((await evaluate('answer+ans', basic, {answer: 4})).numeric, 8);
+  await assert.rejects(evaluate('answer', {...basic, disable_keys: ['ans']}, {answer: 4}), {code: 'restricted'});
+  const integral = await run('integral', 'definite_integral', {expression: 'log_2(8)', lower: '0', upper: '1'});
+  assert.equal(integral.text, '3');
+  assert.equal((await run('symbolic', 'simplify', {expression: 'log_2(8)'})).text, '3');
+  const completions = expressionCompletions({...cas, disable_keys: ['sin', 'log_base', 'power']});
+  assert.ok(completions.some(item => item.value === 'floor('));
+  for (const disabled of ['sin(', 'log_', '^'])
+    assert.ok(completions.every(item => item.value !== disabled));
 });
 
 test('disabled operations are blocked for typed and pasted input, aliases and tool calls', async () => {

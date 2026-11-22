@@ -34,6 +34,10 @@ MA 新导入读取 `calculate` 或旧名 `calculator`，按题保存结构化配
 
 表达式框可直接键入，也可用同一面板按键编辑。矩阵、数列和线性规划模型提供结构化编辑和文本输入，两个视图共用当前值。常数、单位、日期、进制和运算类型可用选择控件输入。每道题的计算历史只保留在该题的临时面板中。
 
+点击 `logₐ` 插入 `log_`，再输入底数和括号中的真数。例如 `log_2(8)` 得到 3。键盘也接受 `log₂(8)`、`log(8, 2)` 和以花括号包住底数表达式的写法，如 `log_{1+2}(27)`。`ln(8)` 和 `log(8)` 为自然对数，`log10(8)` 为常用对数。按题禁用任意底数对数可使用 `disable_keys: ["log_base"]`。
+
+从首个匹配字符开始显示候选。例如输入 `f` 即可看到 `floor`。按 Tab 补全当前候选，或用 ↑、↓ 选择后按 Enter。直接按 Enter 仍会执行原输入框的动作。计算器候选遵循当前档位与按键权限。学习、复习、题库回答及答疑、反馈等文本框也可插入计算用词。设置中的「自动补全」提供「计算器」「回答」「其他」三个独立开关，默认全开并保存在当前浏览器。
+
 科学档及以上可以输入含字母的表达式。输入 `2x + y` 后点击「赋值」，原式下方会列出 `x =` 和 `y =`。选中任一输入框即可用实体键盘或同一组屏幕按键填写数值或数值表达式。多个字母相乘可写成 `x*y`，`xy` 视为一个变量名。常数和函数名保留原义。此功能可用 `disable_keys: ["assign_variables"]` 关闭。
 
 - 精确模幂支持整数表达式中的括号、加减乘和非负整数乘方。模数为正整数。结果落在 `0` 到 `m−1`，过程用大整数逐步求余。嵌套指数受计算预算限制。
@@ -43,6 +47,8 @@ MA 新导入读取 `calculate` 或旧名 `calculator`，按题保存结构化配
 ## 构建和发布
 
 浏览器数值库、符号库和领域工具按需载入。锁定依赖和入口位于 [calculator-dependencies](../scripts/calculator-dependencies)。更新时将 `package.json` 和 `package-lock.json` 放入独立依赖缓存，使用 `npm ci`，再运行 `node scripts/calculator-dependencies/build.mjs <依赖缓存绝对路径>`。生成资产与许可证在 `web/vendor/calculator`，发布脚本先验证哈希。按现有流程更新网页版本签名、导出静态资源，并同步后端的计算器字段投影。
+
+文本补全复用 [Textcomplete](https://github.com/yuku/textcomplete) 和原生输入框。全站由 `installAutocomplete` 统一接入，新输入框自动获得默认候选，可通过 `setInputCompletions` 指定自己的候选来源。自定义输入区域可用 `data-autocomplete` 声明场景或显式关闭补全。
 
 表达式插入、题内历史和屏幕及按键样式复用自 MIT 授权的 Calc，针对站内题目权限、双语和触屏做了适配。 [Calc 源码](https://github.com/Develifture/scientific-calculator)
 
