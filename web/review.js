@@ -1,11 +1,11 @@
-import { t, translateMessage, learningTitle } from './i18n.js?v=3147a71a6845dcf1';
-import {setQuestionTools} from './question-tools.js?v=3147a71a6845dcf1';
-import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=3147a71a6845dcf1';
-import {selfAssessment, referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=3147a71a6845dcf1';
-import {reportableContent} from './content-report.js?v=3147a71a6845dcf1';
-import {createLearningCache} from './learning-cache.js?v=3147a71a6845dcf1';
-import {enhanceTopicContent} from './topic-content.js?v=3147a71a6845dcf1';
-import {practiceHint} from './beginner-hints.js?v=3147a71a6845dcf1';
+import { t, translateMessage, learningTitle } from './i18n.js?v=b444eb62f25ea46d';
+import {setQuestionTools} from './question-tools.js?v=b444eb62f25ea46d';
+import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=b444eb62f25ea46d';
+import {selfAssessment, referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=b444eb62f25ea46d';
+import {reportableContent} from './content-report.js?v=b444eb62f25ea46d';
+import {createLearningCache} from './learning-cache.js?v=b444eb62f25ea46d';
+import {enhanceTopicContent} from './topic-content.js?v=b444eb62f25ea46d';
+import {practiceHint} from './beginner-hints.js?v=b444eb62f25ea46d';
 
 const node = (tag, cls = '', text) => {
   const item = document.createElement(tag); item.className = cls;

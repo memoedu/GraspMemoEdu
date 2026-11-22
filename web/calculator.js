@@ -1,4 +1,4 @@
-import {calculatorWorksheets} from './calculator-policy.js?v=3147a71a6845dcf1';
+import {calculatorWorksheets} from './calculator-policy.js?v=b444eb62f25ea46d';
 
 const icons = {
   expression: 'M5 3h14v18H5zM8 7h8M8 11h1m3 0h1m3 0h1m-9 4h1m3 0h1m3 0h1m-9 3h1m3 0h1m3 0h1',
@@ -9,7 +9,7 @@ const icons = {
   statistics: 'M4 20h17M7 16v-5m5 5V5m5 11V8',
   modular: 'M5 8a8 8 0 0 1 14-1l2 3m-1-5 1 5-5-1M19 16a8 8 0 0 1-14 1l-2-3m1 5-1-5 5 1',
   symbolic: 'M4 8h7m-7 4h7m4-4 5 6m0-6-5 6M6 17h12',
-  machine_learning: 'M6 6h.1M6 18h.1M18 6h.1M18 18h.1M12 12h.1M7 7l4 4m2 2 4 4M7 17l4-4m2-2 4-4',
+  machine_learning: 'M4 7a2 2 0 1 0 4 0 2 2 0 1 0-4 0Zm0 10a2 2 0 1 0 4 0 2 2 0 1 0-4 0Zm12-5a2 2 0 1 0 4 0 2 2 0 1 0-4 0ZM8 8l8 3m-8 5 8-3',
   physics: 'M13 3 5 14h6l-1 7 9-12h-6z',
   chemistry: 'M9 3h6m-5 0v7l-6 9a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2l-6-9V3M8 15h8',
   signal: 'M3 13h3l2-6 4 12 4-14 2 8h3',
@@ -26,7 +26,7 @@ export function calculatorTools(config, english) {
   return calculatorWorksheets(config).map(worksheet => {
     const [id, zh, en] = worksheet;
     return {id, label: english ? en : zh, icon: icons[id] || icons.expression, async open(launcher) {
-      const {openCalculator} = await import('./calculator-panel.js?v=3147a71a6845dcf1');
+      const {openCalculator} = await import('./calculator-panel.js?v=b444eb62f25ea46d');
       if (launcher.isConnected) openCalculator(launcher, config, worksheet, english, session);
     }};
   });

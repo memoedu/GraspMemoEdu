@@ -1,17 +1,17 @@
-import {t, translateMessage} from './i18n.js?v=3147a71a6845dcf1';
-import {setQuestionTools} from './question-tools.js?v=3147a71a6845dcf1';
-import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=3147a71a6845dcf1';
-import {selfAssessment, referenceAnswer, prepareAnswerContent, ratingChoices} from './self-assessment.js?v=3147a71a6845dcf1';
-import {reportableContent} from './content-report.js?v=3147a71a6845dcf1';
-import {createLearningCache} from './learning-cache.js?v=3147a71a6845dcf1';
-import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=3147a71a6845dcf1';
-import {enhanceSourceContent} from './topic-content.js?v=3147a71a6845dcf1';
-import {memoryChunk, chunkPeek, sourceAttributions} from './memory-chunk.js?v=3147a71a6845dcf1';
-import {topicProgress, topicHistory, readingFields, readingSectionHeading} from './learning-ui.js?v=3147a71a6845dcf1';
-import {pointAssessment} from './point-assessment.js?v=3147a71a6845dcf1';
-import {trainingAudio} from './training-audio.js?v=3147a71a6845dcf1';
-import {ideaSetupHash, ideaSetupLink} from './idea-setup.js?v=3147a71a6845dcf1';
-import {learningHint} from './beginner-hints.js?v=3147a71a6845dcf1';
+import {t, translateMessage} from './i18n.js?v=b444eb62f25ea46d';
+import {setQuestionTools} from './question-tools.js?v=b444eb62f25ea46d';
+import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=b444eb62f25ea46d';
+import {selfAssessment, referenceAnswer, prepareAnswerContent, ratingChoices} from './self-assessment.js?v=b444eb62f25ea46d';
+import {reportableContent} from './content-report.js?v=b444eb62f25ea46d';
+import {createLearningCache} from './learning-cache.js?v=b444eb62f25ea46d';
+import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=b444eb62f25ea46d';
+import {enhanceSourceContent} from './topic-content.js?v=b444eb62f25ea46d';
+import {memoryChunk, chunkPeek, sourceAttributions} from './memory-chunk.js?v=b444eb62f25ea46d';
+import {topicProgress, topicHistory, readingFields, readingSectionHeading} from './learning-ui.js?v=b444eb62f25ea46d';
+import {pointAssessment} from './point-assessment.js?v=b444eb62f25ea46d';
+import {trainingAudio} from './training-audio.js?v=b444eb62f25ea46d';
+import {ideaSetupHash, ideaSetupLink} from './idea-setup.js?v=b444eb62f25ea46d';
+import {learningHint} from './beginner-hints.js?v=b444eb62f25ea46d';
 
 const node = (tag, cls = '', text) => {
   const el = document.createElement(tag); el.className = cls;
