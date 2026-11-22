@@ -1,6 +1,6 @@
-import {getLanguage} from './i18n.js?v=bcced3e2444278fb';
-import {microphoneIcon, recordMicrophone, recordingMime} from './microphone-recorder.js?v=bcced3e2444278fb';
-import {answerTarget, answerConversionChange} from './answer-conversion.js?v=bcced3e2444278fb';
+import {getLanguage} from './i18n.js?v=a84a3c1c58c18aee';
+import {microphoneIcon, recordMicrophone, recordingMime} from './microphone-recorder.js?v=a84a3c1c58c18aee';
+import {answerTarget, answerConversionChange} from './answer-conversion.js?v=a84a3c1c58c18aee';
 
 const answerForms = new WeakSet();
 const textTypes = ['text', 'search', 'tel', 'url', 'email', 'number'];
@@ -182,9 +182,24 @@ export function installVoiceInput({canUse, getIdentity, request}) {
   document.addEventListener(changed, () => {
     for (const form of document.querySelectorAll('[data-voice-answer]')) form.dispatchEvent(new Event(changed));
   });
-  const voice = voiceControls();
+  // The toolbar occupies space on pages and in dialogs. Keep its footprint
+  // until a pressed control has received its click.
+  let pointerActive = false;
+  const voice = voiceControls(() => pointerActive);
+  document.addEventListener('pointerdown', event => {
+    if (event.isPrimary) pointerActive = !voice.hidden;
+  }, true);
+  const finishPointer = () => {
+    if (!pointerActive) return;
+    pointerActive = false;
+    paint();
+  };
+  for (const name of ['pointerup', 'pointercancel']) addEventListener(name, event => {
+    if (event.isPrimary) setTimeout(finishPointer, 0);
+  }, true);
+  addEventListener('blur', finishPointer);
   new MutationObserver(() => {
-    if (voice.hidden === canRecord()) paint();
+    if (!pointerActive && voice.hidden === canRecord()) paint();
   }).observe(document.body, {childList: true, subtree: true, attributes: true, attributeFilter: ['open', 'hidden']});
   addEventListener('pagehide', resetVoiceInput);
   addEventListener('hashchange', () => {
@@ -199,7 +214,7 @@ export function refreshVoiceInput() {
   else paint();
 }
 
-function voiceControls() {
+function voiceControls(holdLayout) {
   const root = document.createElement('div');
   root.className = 'voiceTool';
   root.addEventListener('pointerdown', event => {
@@ -249,7 +264,7 @@ function voiceControls() {
     const phase = current?.phase;
     const recording = phase === 'recording' || phase === 'paused';
     const hidden = !canRecord();
-    if (root.hidden !== hidden) root.hidden = hidden;
+    if (root.hidden !== hidden && !(hidden && holdLayout())) root.hidden = hidden;
     mic.disabled = phase === 'opening';
     mic.setAttribute('aria-pressed', String(Boolean(recording)));
     const label = strings('录音输入', 'Voice input'); mic.title = label; mic.setAttribute('aria-label', label);

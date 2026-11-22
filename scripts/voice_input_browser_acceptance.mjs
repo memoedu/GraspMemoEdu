@@ -132,6 +132,7 @@ try {
   release({body: {text: '反馈草稿'}});
   await wait(async () => await feedback.locator('#feedbackMessage').inputValue() === '反馈草稿');
   await feedback.locator('.dialogHeading button').click();
+  await feedback.waitFor({state: 'hidden'});
   await displayName.focus();
   await page.locator('#pageTools').getByRole('toolbar').getByRole('button', {name: '录音输入'}).waitFor();
   assert.equal(await page.locator('.voiceTool').count(), 1);

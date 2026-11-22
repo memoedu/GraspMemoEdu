@@ -1,7 +1,7 @@
-import {basedLogKey, constants, expressionCompletions, keypad, levels, permitsBasedLog, permitsConstant, permitsKey, permitsModule} from './calculator-policy.js?v=bcced3e2444278fb';
-import {toolInputs} from './calculator-inputs.js?v=bcced3e2444278fb';
-import {setInputCompletions} from './autocomplete.js?v=bcced3e2444278fb';
-import {answerTarget, answerConversionChange} from './answer-conversion.js?v=bcced3e2444278fb';
+import {basedLogKey, constants, expressionCompletions, keypad, levels, permitsBasedLog, permitsConstant, permitsKey, permitsModule} from './calculator-policy.js?v=a84a3c1c58c18aee';
+import {toolInputs} from './calculator-inputs.js?v=a84a3c1c58c18aee';
+import {setInputCompletions} from './autocomplete.js?v=a84a3c1c58c18aee';
+import {answerTarget, answerConversionChange} from './answer-conversion.js?v=a84a3c1c58c18aee';
 
 let active = null;
 let preferredLayout = 'side';
@@ -231,7 +231,7 @@ export function openCalculator(launch, config, [module, zh, en, operations], eng
     output.dataset.state = 'busy'; output.textContent = local('计算中…', 'Calculating…');
     const finish = () => { clearTimeout(timer); working = false; control.disabled = false; };
     try {
-      worker ||= new Worker(new URL('./calculator-worker.js?v=bcced3e2444278fb', import.meta.url), {type: 'module'});
+      worker ||= new Worker(new URL('./calculator-worker.js?v=a84a3c1c58c18aee', import.meta.url), {type: 'module'});
       worker.onmessage = ({data}) => {
         finish();
         if (!launch.isConnected || closed) return;

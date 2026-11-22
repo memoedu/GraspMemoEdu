@@ -1,6 +1,6 @@
-import {questionInput,answerReady,choiceTypeField} from './question-input.js?v=bcced3e2444278fb';
-import {enhanceSourceContent} from './topic-content.js?v=bcced3e2444278fb';
-import {mountAnswerConversion} from './answer-conversion.js?v=bcced3e2444278fb';
+import {questionInput,answerReady,choiceTypeField} from './question-input.js?v=a84a3c1c58c18aee';
+import {enhanceSourceContent} from './topic-content.js?v=a84a3c1c58c18aee';
+import {mountAnswerConversion} from './answer-conversion.js?v=a84a3c1c58c18aee';
 
 export async function localHyperskill(action,body,{timeout=120000}={}) {
   let response;

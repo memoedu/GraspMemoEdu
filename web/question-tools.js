@@ -1,5 +1,5 @@
-import {getLanguage} from './i18n.js?v=bcced3e2444278fb';
-import {calculatorToolGroups} from './calculator.js?v=bcced3e2444278fb';
+import {getLanguage} from './i18n.js?v=a84a3c1c58c18aee';
+import {calculatorToolGroups} from './calculator.js?v=a84a3c1c58c18aee';
 
 const toolbars = new WeakMap();
 const svgNamespace = 'http://www.w3.org/2000/svg';
