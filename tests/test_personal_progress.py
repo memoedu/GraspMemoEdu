@@ -9,6 +9,7 @@ from graspmemoedu.admin_names import roster_names, sync_admin_names
 from graspmemoedu.access import credential_digest
 from graspmemoedu.course_hierarchy import pending_hierarchy, project_hierarchy
 from graspmemoedu.service import DomainError
+from graspmemoedu.training import TrainingService
 
 
 class PersonalProgressTests(unittest.TestCase):
@@ -44,10 +45,29 @@ class PersonalProgressTests(unittest.TestCase):
             self.assertEqual(a.status_code, 200); self.assertEqual(a.json(), b.json())
         self.assertEqual(self.snapshot(), before)
 
-    def test_self_routes_do_not_grant_admin_or_nonstudent_access(self):
+    def test_nonstudent_sees_the_same_report_as_managing_admin(self):
+        service = TrainingService(self.app.state.training_catalog, self.root, self.normal, clock=lambda: self.time)
+        self.answer(service, answer='0')
+        before = self.snapshot()
+        for suffix, params in [('', {}), ('/questions', {'kind': 'notebook'}),
+                               ('/history', {'kind': 'training', 'container': 'isolated-bank'})]:
+            own = self.client.get('/api/student-report' + suffix, headers=self.normal_headers,
+                                  params={**params, 'learner_id': self.student})
+            managed = self.client.get('/api/admin/students/' + self.normal + suffix, headers=self.admin_headers, params=params)
+            self.assertEqual(own.status_code, 200, own.text)
+            self.assertEqual(own.json(), managed.json())
+            if suffix:
+                self.assertEqual(own.json()['total'], 1)
+            else:
+                self.assertEqual(own.json()['student']['learner_id'], self.normal)
+                self.assertEqual(own.json()['analytics']['lifetime']['attempts'], 1)
+        self.assertEqual(self.snapshot(), before)
+
+    def test_self_routes_require_an_authenticated_learner(self):
+        guest_headers = {'Origin': 'https://site.test', 'X-Learning-Identity': self.store.create_guest()['identity_token']}
         for suffix in ['', '/questions?kind=notebook', '/history?kind=topic&container=atoms']:
-            self.assertEqual(self.client.get('/api/student-report' + suffix, headers=self.normal_headers).status_code, 403)
             self.assertEqual(self.client.get('/api/student-report' + suffix, headers=self.admin_headers).status_code, 403)
+            self.assertEqual(self.client.get('/api/student-report' + suffix, headers=guest_headers).status_code, 403)
             self.assertEqual(self.client.get('/api/student-report' + suffix, headers={'Origin': 'https://site.test'}).status_code, 401)
         self.assertEqual(self.client.get('/api/admin/students/' + self.second, headers=self.headers).status_code, 403)
         self.assertEqual(self.client.get('/api/student-report/' + self.second, headers=self.headers).status_code, 403)
@@ -100,7 +120,7 @@ class PersonalProgressTests(unittest.TestCase):
                 self.assertTrue(any(t['topic_id'] == topic for t in data['topics']))
                 if projected: self.assertIsNone(projected[0]['parent_id'])
 
-    def test_atomic_unmastered_history_keeps_existing_learner_lock(self):
+    def test_completed_atomic_attempts_and_schedule_match_the_managed_report(self):
         service = self.learner('atoms')
         state = service.choose(self.action(service.state(), choice='learn'))
         state = service.advance(self.action(state))
@@ -109,15 +129,18 @@ class PersonalProgressTests(unittest.TestCase):
         params = {'kind': 'topic', 'container': 'atoms'}
         own = self.client.get('/api/student-report/history', headers=self.headers, params=params).json()['items'][0]
         admin = self.client.get('/api/admin/students/' + self.student + '/history', headers=self.admin_headers, params=params).json()['items'][0]
-        self.assertTrue(own['locked']); self.assertFalse(own['content_available'])
-        self.assertEqual(own['title'], own['question'])
-        self.assertIsNone(own['answer']); self.assertNotIn('html', own); self.assertNotIn('explanation_html', own)
-        self.assertTrue(admin['content_available']); self.assertEqual(admin['answer'], 'Wrong')
+        self.assertEqual(own, admin)
+        self.assertTrue(own['content_available'])
+        self.assertEqual(own['answer'], 'Wrong')
+        self.assertTrue(own['html'])
+        self.assertTrue(own['explanation_html'])
         detail = self.client.get('/api/student-report', headers=self.headers).json()
-        for item in detail['reviews']:
-            if item['kind'] == 'atomic_point' and not item['mastered']:
-                self.assertEqual(item['title'], item['id'])
-        for item in detail['atomic_cards']:
-            if not all(point['mastered'] for point in item['points']): self.assertEqual(item['title'], item['id'])
-        questions = self.client.get('/api/student-report/questions', headers=self.headers, params=params).json()['items']
-        self.assertTrue(all(item['title'] == item['question'] for item in questions))
+        managed = self.client.get('/api/admin/students/' + self.student, headers=self.admin_headers).json()
+        self.assertEqual(detail, managed)
+        self.assertTrue(any(item['kind'] == 'atomic_point' and not item['mastered'] for item in detail['reviews']))
+        questions = self.client.get('/api/student-report/questions', headers=self.headers, params=params).json()
+        managed_questions = self.client.get('/api/admin/students/' + self.student + '/questions',
+                                            headers=self.admin_headers, params=params).json()
+        self.assertEqual(questions, managed_questions)
+        self.store.test_materials.permission_ids.add('atoms')
+        self.assertEqual(self.client.get('/api/student-report/history', headers=self.headers, params=params).status_code, 404)
