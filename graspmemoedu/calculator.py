@@ -4,6 +4,8 @@ import re
 
 LEVELS = ('none', 'basic', 'scientific', 'advanced', 'cas')
 MA_LEVELS = {'None': 'none', 'Standard': 'basic', 'Scientific': 'scientific', 'Graphing': 'scientific'}
+MA_CALLOUT_LABELS = {**{name.casefold(): name for name in MA_LEVELS}, '无': 'None', '标准': 'Standard',
+                     '科学': 'Scientific', '图形': 'Graphing', '绘图': 'Graphing'}
 MODULES = frozenset(('expression', 'constants', 'graph', 'integral', 'matrix', 'probability',
                      'statistics', 'modular', 'symbolic', 'machine_learning', 'physics', 'chemistry',
                      'signal', 'programmer', 'astronomy', 'geography', 'finance', 'optimization', 'ecology'))
@@ -13,7 +15,7 @@ LEGACY_CALLOUT = re.compile(
     r'<aside\b(?=[^>]*\bclass="inline-document-callout callout")'
     r'(?=[^>]*\bdata-callout="requirement")[^>]*>\s*<strong>[^<]*</strong>\s*'
     r'<p>\s*(?:Calculator|计算器)\s*[:：]\s*'
-    r'(?:None|Standard|Scientific|Graphing|无|标准|科学|图形|绘图)(?:计算器)?\s*</p>\s*</aside>', re.I)
+    r'(?P<mode>None|Standard|Scientific|Graphing|无|标准|科学|图形|绘图)(?:计算器)?\s*</p>\s*</aside>', re.I)
 
 
 def normalize(value):
@@ -52,12 +54,22 @@ def from_mathacademy(value):
     return {'level': level, **({'enable_modules': ['graph']} if value == 'Graphing' else {})}
 
 
+def legacy_mathacademy_mode(question):
+    constraints = question.get('constraints')
+    if isinstance(constraints, str) and constraints in MA_LEVELS:
+        return constraints
+    html = question.get('html', '')
+    if isinstance(html, str) and (match := LEGACY_CALLOUT.search(html)):
+        return MA_CALLOUT_LABELS.get(match.group('mode').casefold())
+    return None
+
+
 def policy(parent, question, *, mathacademy=False):
     inherited = normalize(parent['calculate']) if 'calculate' in parent else {}
     if 'calculate' in question:
         local = normalize(question['calculate'])
-    elif mathacademy and question.get('constraints') in MA_LEVELS:
-        local = from_mathacademy(question['constraints'])
+    elif mathacademy and (mode := legacy_mathacademy_mode(question)) is not None:
+        local = from_mathacademy(mode)
     else:
         local = {}
     level = local.get('level', inherited.get('level', 'none'))

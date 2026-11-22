@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from graspmemoedu.calculator import from_mathacademy, normalize, policy
+from graspmemoedu.calculator import from_mathacademy, normalize, policy, presentation
 from graspmemoedu.author_import import prepare_topic
 from graspmemoedu.mathacademy_import import question_model
 from graspmemoedu.service import LearningService
@@ -59,6 +59,23 @@ class CalculatorSchemaTests(unittest.TestCase):
         self.assertEqual(blocks[0]['html'], 'Test' + authored)
         self.assertEqual(blocks[0]['calculate'], from_mathacademy('Graphing'))
         self.assertIsNone(policy({}, {'constraints': 'Graphing'}))
+
+    def test_legacy_calculator_callout_recovers_missing_permission(self):
+        topic = {'source_adapter': 'mathacademy', 'calculate': {'level': 'cas', 'disable_keys': ['cos']}}
+        template = ('<aside class="inline-document-callout callout" data-callout="requirement">'
+                    '<strong>要求</strong><p>{}</p></aside>')
+        for label, mode in [('Calculator: standard', 'Standard'), ('计算器：科学计算器', 'Scientific'),
+                            ('Calculator: Graphing', 'Graphing'), ('计算器：无', 'None')]:
+            with self.subTest(label=label):
+                item = {'html': '<p>Test</p>' + template.format(label), 'constraints': '按题意作答。'}
+                expected = from_mathacademy(mode)
+                effective = presentation(topic, item)
+                self.assertEqual(effective['html'], '<p>Test</p>')
+                self.assertEqual(effective.get('calculate'),
+                                 {**expected, 'disable_keys': ['cos']} if mode != 'None' else None)
+                self.assertIsNone(presentation(topic, {**item, 'calculate': None}).get('calculate'))
+                self.assertEqual(presentation(topic, {**item, 'constraints': 'Standard'})['calculate']['level'], 'basic')
+                self.assertEqual(presentation({}, item), {'html': item['html']})
 
     def test_topic_author_format_keeps_metadata_only_on_questions(self):
         original = {'topic_format_version': 2, 'title': 'Calculator', 'id': 'calculator-fixture',
