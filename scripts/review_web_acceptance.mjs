@@ -58,6 +58,10 @@ try {
      if(autocompleteOnly){
        const complete = async selector => {
          const input=d.page.locator(selector);
+         await input.fill('');
+         await input.pressSequentially('3/8');
+         await input.locator('..').locator('.answerFormulaPreview:visible .katex .mfrac').waitFor();
+         assert.equal(await input.inputValue(),'3/8');
          await input.fill('f');
          await d.page.getByRole('option',{name:'f',exact:true}).locator('.katex').waitFor();
          await input.press('Tab');

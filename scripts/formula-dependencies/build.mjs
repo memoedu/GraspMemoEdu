@@ -3,7 +3,8 @@ import {createRequire} from 'node:module';
 import {mkdir, readFile, readdir, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {formulaTemplates} from '../../web/formula-catalog.js';
+import {formulaTemplates, nativeFormulaSample} from '../../web/formula-catalog.js';
+import {expressionCompletions} from '../../web/calculator-policy.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '../..');
@@ -56,7 +57,10 @@ for (const dir of [...packages].sort()) {
 await publish('LICENSES.txt', [...licenses].map(([body, names]) => names.join('\n') + '\n\n' + body)
   .join('\n\n---------------------------\n\n').trimEnd() + '\n');
 
-const previews = Object.fromEntries(formulaTemplates.map(({sample}) => [sample, katex.renderToString(sample, {
+const samples = new Set([...formulaTemplates.map(item => item.sample),
+  ...expressionCompletions({level: 'cas'}, {equation: true}).map(item => nativeFormulaSample(item.value)),
+  ...'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789']);
+const previews = Object.fromEntries([...samples].filter(Boolean).map(sample => [sample, katex.renderToString(sample, {
   trust: false, throwOnError: true, maxExpand: 100, maxSize: 10, strict: 'ignore', output: 'html',
 })]));
 await publish('previews.mjs', 'export default ' + JSON.stringify(previews) + ';\n');
