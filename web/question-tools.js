@@ -1,5 +1,5 @@
-import {getLanguage} from './i18n.js?v=7bace6d21408de36';
-import {calculatorTools} from './calculator.js?v=7bace6d21408de36';
+import {getLanguage} from './i18n.js?v=5650d14da25fc7af';
+import {calculatorTools} from './calculator.js?v=5650d14da25fc7af';
 
 const providers = [({calculate}, english) => calculatorTools(calculate, english)];
 const toolbars = new WeakMap();

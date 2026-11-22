@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 import json
 import sqlite3
 import unittest
+from unittest.mock import patch
 import uuid
 
 from tests import test_admin_students as admin_tests
@@ -45,6 +46,20 @@ class StudentReportsTests(unittest.TestCase):
         self.assertEqual(self.get('/questions', kind='topic', container=self.course['id']).json()['total'], 32)
         self.assertEqual(self.get('/questions', kind='notebook').json()['total'], 0)
         self.assertEqual(self.snapshot(), before); self.assertEqual(list(self.app.state.learning_services), services)
+
+    def test_report_reuses_the_prerequisite_graph_and_topic_readiness(self):
+        learner = self.learner()
+        learner.review_backend.record_module_result(module_id='module-1', mastery=4,
+            result_id='report-readiness-test', completed_at=self.time)
+        policy = self.app.state.dashboard_store.dependency_policy
+        with patch.object(policy, 'dependencies', wraps=policy.dependencies) as graph, \
+                patch.object(policy, 'ready', wraps=policy.ready) as ready:
+            response = self.get()
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(graph.call_count, 1)
+        topics = [call.args[2] for call in ready.call_args_list]
+        self.assertEqual(set(topics), {self.course['id'], self.atoms['id']})
+        self.assertEqual(len(topics), len(set(topics)))
 
     def test_training_metrics_notebook_enrollment_and_full_history(self):
         service = self.training()

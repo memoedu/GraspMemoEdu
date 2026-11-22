@@ -234,7 +234,7 @@ class StudentReport:
                                  r['container_title'], r['group_title'], r['title'], r['version']))
         return rows
 
-    def topic_rows(self):
+    def topic_rows(self, ready):
         result = []
         for tid in dict.fromkeys([*self.owner.catalog.topics, *self.rows]):
             if not self.visible('topic', tid):
@@ -285,11 +285,11 @@ class StudentReport:
                 'status': status,
                 'started_at': state.get('started_at'), 'completed_at': state.get('completed_at'),
                 'modules': modules, 'points': points, 'guidance': guidance,
-                'blockers': self.owner.blockers(self.con, self.student, tid, state, version, self.tables, self.current),
+                'blockers': self.owner.blockers(self.con, self.student, tid, state, version, self.tables, ready),
                 'stats': metrics(self.by_container.get(('topic', tid), []))})
         return result
 
-    def build(self, reviews, days=30, timezone='UTC'):
+    def build(self, reviews, days, timezone, ready):
         zone = time_zone(timezone)
         today = self.current.astimezone(zone).date()
         start = today - timedelta(days=days - 1)
@@ -299,16 +299,21 @@ class StudentReport:
             if start <= date <= today:
                 daily[date.isoformat()].append(event)
         period = [e for rows in daily.values() for e in rows]
-        questions = self.question_rows()
-        topics = self.topic_rows()
+        by_bank, by_group = defaultdict(list), defaultdict(list)
+        for question in self.question_rows(kind='training'):
+            if question['version_current']:
+                by_bank[question['container']].append(question)
+                by_group[question['container'], question['group_id']].append(question)
+        topics = self.topic_rows(ready)
+        allowed = {t['id'] for t in self.student['topics']}
         banks = []
         for bid, bank in self.owner.training.banks.items():
             if not self.visible('training', bid):
                 continue
-            rows = [q for q in questions if q['kind'] == 'training' and q['container'] == bid and q['version_current']]
+            rows = by_bank[bid]
             groups = []
             for group in bank['groups']:
-                own = [q for q in rows if q['group_id'] == group['id']]
+                own = by_group[bid, group['id']]
                 groups.append({'id': group['id'], 'title': group['title'], 'parent_id': group.get('parent_id'),
                     'total': len(own), 'answered': sum(q['stats']['attempts'] > 0 for q in own),
                     'due': sum(q['due'] for q in own)})
@@ -316,7 +321,7 @@ class StudentReport:
             banks.append({'id': bid, 'title': bank['title'], 'subject_id': bank['subject_id'], 'groups': groups,
                 'total': len(rows), 'answered': sum(q['stats']['attempts'] > 0 for q in rows),
                 'due': sum(q['due'] for q in rows), 'notebook': sum(q['in_notebook'] for q in rows),
-                'stats': metrics(events), 'allowed': permission_id(bid) in {t['id'] for t in self.student['topics']}})
+                'stats': metrics(events), 'allowed': permission_id(bid) in allowed})
         errors = defaultdict(list)
         for event in self.events:
             failed = event['self_rating'] == 1 if event['self_rating'] is not None else event['correct'] is False
@@ -351,7 +356,7 @@ class StudentReport:
             'weak_points': weak[:20], 'notebook': {'total': len(notebook), 'due': sum(q['due'] for q in notebook),
                 'stopped': sum(q['stopped'] for q in notebook), 'unanswered': sum(not q['stats']['attempts'] for q in notebook)},
             'permissions': {'features': self.student['features'], 'defaults': self.student.get('permission_defaults', {}),
-                            'topic_count': sum(t['topic_id'] in {a['id'] for a in self.student['topics']} for t in topics)}}
+                            'topic_count': sum(t['topic_id'] in allowed for t in topics)}}
 
     def course_units(self, course, topics):
         visible = {t['topic_id'] for t in topics}
