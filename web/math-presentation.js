@@ -1,4 +1,4 @@
-import {escapedAt, mathSpans} from './math-syntax.js?v=5407b96232dd6afb';
+import {escapedAt, mathSpans} from './math-syntax.js?v=5590602bb2f05484';
 
 const namespace = 'http://www.w3.org/1998/Math/MathML';
 const greek = /[Α-Ωα-ω]/;
@@ -79,7 +79,7 @@ const mountedSvg = new WeakSet();
 let fragmentNumber = 0, renderer;
 
 function loadRenderer() {
-  renderer ||= import('./vendor/formula/editor.mjs?v=5407b96232dd6afb').catch(error => { renderer = null; throw error; });
+  renderer ||= import('./vendor/formula/editor.mjs?v=5590602bb2f05484').catch(error => { renderer = null; throw error; });
   return renderer;
 }
 
@@ -203,6 +203,8 @@ function joinSplitMath(root) {
 
 export function prepareMathContent(root, {literal = false} = {}) {
   scopeGlyphs(root);
+  const source = root.textContent;
+  if (!/[$\\]/.test(source) && (!literal || !/[Α-Ωα-ω_^=<>≤≥≠+−*\/×·±-]/.test(source))) return root;
   joinSplitMath(root);
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT), plain = [];
   while (walker.nextNode()) {

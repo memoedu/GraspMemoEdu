@@ -1,4 +1,4 @@
-import {Editor, Textcomplete, caretCoordinates} from './vendor/calculator/completion.mjs?v=5407b96232dd6afb';
+import {Editor, Textcomplete, caretCoordinates} from './vendor/calculator/completion.mjs?v=5590602bb2f05484';
 
 export const autocompleteGroups = ['calculator', 'answer', 'other'];
 const preferenceKey = 'graspmemoedu:autocomplete';
