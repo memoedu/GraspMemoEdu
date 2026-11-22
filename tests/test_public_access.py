@@ -12,6 +12,7 @@ import sqlite3
 import threading
 import time
 import unittest
+from unittest.mock import patch
 import uuid
 
 from fastapi.testclient import TestClient
@@ -109,6 +110,43 @@ class PublicAccessAcceptanceTests(unittest.TestCase):
         self.assertEqual(result["learner_id"], result["access"]["learner_id"])
         self.assertNotIn("REFERENCE_ONLY", response.text)
         return result
+
+    def test_answer_conversion_matches_numeric_shorthand_without_grading(self):
+        token, _ = self._guest()
+        before = self._state(token)['revision']
+        path = '/api/answer-conversion'
+        with patch('graspmemoedu.answer_conversion.complete') as provider:
+            for text, options, commands in (
+                ('3', ['X1 = 3', 'X1 = -3'], [1]),
+                ('3，5', ['X1 = 5, X2 = 3', 'X1 = 3，X2 = 5'], [2]),
+                ('3', ['X1 = 3', 'X1 = 3.0'], []),
+            ):
+                response = self.client.post(path, headers=self._headers(token),
+                    json={'text': text, 'controls': {'type': 'choice', 'options': options}})
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(response.json(), {'commands': commands})
+            provider.assert_not_called()
+        self.assertEqual(self._state(token)['revision'], before)
+        self.assertEqual(self.judge.calls, [])
+
+    def test_answer_conversion_provider_is_authenticated_bounded_and_does_not_load_keys(self):
+        token, _ = self._guest()
+        path = '/api/answer-conversion'
+        payload = {'text': '把蓝色那项选上', 'controls': {'type': 'choice', 'options': ['蓝色', '红色']}}
+        with patch('graspmemoedu.answer_conversion.complete', side_effect=['[1]', '[NaN]']) as provider:
+            denied = self.client.post(path, headers=self._headers(), json=payload)
+            self.assertEqual(denied.status_code, 401)
+            provider.assert_not_called()
+            response = self.client.post(path, headers=self._headers(token), json=payload)
+            self.assertEqual(response.json(), {'commands': [1]})
+            self.assertEqual(response.headers['Access-Control-Allow-Origin'], self.github_origin)
+            self.assertEqual(provider.call_args.args[1], payload)
+            invalid = self.client.post(path, headers=self._headers(token), json=payload)
+            self.assertEqual(invalid.status_code, 502)
+            self.app.state.public_limits.submissions_per_minute = 2
+            limited = self.client.post(path, headers=self._headers(token), json=payload)
+            self.assertEqual(limited.status_code, 429)
+            self.assertEqual(provider.call_count, 2)
 
     @staticmethod
     def _active(state):

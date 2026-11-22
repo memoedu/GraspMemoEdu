@@ -22,7 +22,7 @@ const toolbar = page.getByRole('toolbar', {name: '题目工具'});
 const tool = value => toolbar.locator(`[data-question-tool="${value}"]`);
 const launch = tool('expression');
 const dialog = page.locator('.questionCalculator');
-const outputBox = dialog.getByRole('status');
+const outputBox = dialog.locator('.calculatorResult');
 const next = page.getByRole('button', {name: '下一页', exact: true}).last();
 async function select(value) {
   if (await dialog.isVisible() && await dialog.getAttribute('data-layout') === 'center')
@@ -310,7 +310,7 @@ try {
   assert.deepEqual(await sidebarOrientation('#trainingstepCard'), {
     rightOfCard: true, leftHistory: true, direction: 'row', fits: true,
   });
-  const bankAnswer = page.locator('form.answerForm textarea:visible');
+  const bankAnswer = page.locator('form.answerForm textarea[name=answer]:visible');
   await bankAnswer.fill('f');
   await option('floor').waitFor();
   await bankAnswer.press('Tab');

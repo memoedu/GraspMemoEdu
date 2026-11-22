@@ -47,6 +47,7 @@ from .self_assessment import enabled as self_rating_enabled, protect as protect_
 from .response_content import compact_response
 from .context_library_api import register_context_library_routes, PUBLIC_PATHS as CONTEXT_PATHS
 from .voice_input import VOICE_PATH, VOICE_BODY_LIMIT
+from .answer_conversion import ANSWER_CONVERSION_PATH, register_answer_conversion
 
 
 class Action(BaseModel):
@@ -422,7 +423,8 @@ def create_app(settings: Settings | None = None, service: LearningService | None
     app = FastAPI(title='GraspMemoEdu', lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     # The subsequently registered boundary middleware wraps this body limiter.
     body_limits = {'/api/help-requests': 65536, '/api/help-images': 3 * 1024 * 1024,
-                   '/api/training-audio/transcribe': 6 * 1024 * 1024, VOICE_PATH: VOICE_BODY_LIMIT}
+                   '/api/training-audio/transcribe': 6 * 1024 * 1024, VOICE_PATH: VOICE_BODY_LIMIT,
+                   ANSWER_CONVERSION_PATH: 65536}
     app.add_middleware(BodyLimitMiddleware, maximum=16384, path_limits=body_limits)
     app.state.service = service
     app.state.settings = settings
@@ -506,6 +508,7 @@ def create_app(settings: Settings | None = None, service: LearningService | None
         public_paths.update(PAPER_PATHS)
         public_paths.update(ADMIN_PAUSE_PATHS)
         public_paths.update(CONTEXT_PATHS)
+        public_paths.add(ANSWER_CONVERSION_PATH)
         student_path = admin_student_route(path)
         task_answers_path = path.startswith('/api/tasks/') and path.endswith('/answers') and path.count('/') == 4
         review_feature = review_route_feature(path, request.method)
@@ -905,6 +908,7 @@ def create_app(settings: Settings | None = None, service: LearningService | None
         return {**result, 'learning_url': f"#/subjects/{topic['subject_id']}/topic/{topic['id']}"}
 
     from .context_dictionary import lookup_word
+    register_answer_conversion(app, access_store)
     register_context_library_routes(app, catalog, access_store, subjects,
         activate_points=activate_reading_points,
         dictionary=lambda word: lookup_word(word, data_dir=settings.data_dir / 'context-dictionary'),
