@@ -55,22 +55,22 @@ try {
    if(name==='easy')pass('Chinese homepage labels due task 复习');
    let state=await begin(d);const questions=[];
    if(name==='easy'){
-     const answer=d.page.locator('#reviewAnswerInput');
-     await answer.fill('f');
-     await d.page.getByRole('option',{name:'floor',exact:true}).waitFor();
-     await answer.press('Tab');
-     assert.equal(await answer.inputValue(),'floor(');
-     await answer.fill('');
-     pass('Review answer completes from its first letter using Tab');
      if(autocompleteOnly){
+       const complete = async selector => {
+         const input=d.page.locator(selector);
+         await input.fill('f');
+         await d.page.getByRole('option',{name:'f',exact:true}).locator('.katex').waitFor();
+         await input.press('Tab');
+         await d.page.locator('.formulaInput:visible math-field').waitFor();
+         await d.page.keyboard.press('x');
+         await d.page.waitForFunction(id => /f.*x/.test(document.querySelector(id).value), selector);
+       };
+       await complete('#reviewAnswerInput');
+       pass('Review answer completes into an editable formula from its first letter');
        await d.page.goto(base+`/#/subjects/math/topic/${topic}`);
        await d.page.getByRole('button',{name:'已掌握，试着作答',exact:true}).click();
-       const lesson=d.page.locator('#answerInput');
-       await lesson.fill('f');
-       await d.page.getByRole('option',{name:'floor',exact:true}).waitFor();
-       await lesson.press('Tab');
-       assert.equal(await lesson.inputValue(),'floor(');
-       pass('Lesson answer completes from its first letter using Tab');
+       await complete('#answerInput');
+       pass('Lesson answer completes into an editable formula from its first letter');
        await d.context.close();break;
      }
      await d.page.locator('#reviewPauseButton').click();

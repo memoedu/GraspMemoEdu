@@ -194,6 +194,8 @@ npm install --prefix 'D:\Caches\GraspMemoEdu\node-runtime' --cache 'D:\Caches\np
 
 ## 验证
 
+公式编辑、补全候选和前端依赖构建见 [公式编辑与自动补全](docs/formula-editing.md)。
+
 ```powershell
 & 'D:\AppData\GraspMemoEdu\venv\Scripts\python.exe' -m unittest discover -s tests -v
 node scripts/inspect_page.mjs

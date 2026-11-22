@@ -310,12 +310,16 @@ try {
   assert.deepEqual(await sidebarOrientation('#trainingstepCard'), {
     rightOfCard: true, leftHistory: true, direction: 'row', fits: true,
   });
-  const bankAnswer = page.locator('form.answerForm textarea[name=answer]:visible');
+  const bankAnswer = page.locator('form.answerForm textarea[name=answer]');
   await bankAnswer.fill('f');
   await option('floor').waitFor();
   await bankAnswer.press('Tab');
-  assert.equal(await bankAnswer.inputValue(), 'floor(');
-  await bankAnswer.fill('');
+  await page.locator('form.answerForm .formulaInput math-field').waitFor();
+  await page.keyboard.press('x');
+  await page.waitForFunction(() => /f.*x/.test(document.querySelector('form.answerForm textarea[name=answer]').value));
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Backspace');
+  assert.equal(await bankAnswer.inputValue(), '');
   await select('graph');
   await page.getByRole('button', {name: '隔离习题 exact', exact: true}).click();
   await page.getByRole('heading', {name: '习题 2', exact: true}).waitFor();
@@ -341,8 +345,10 @@ try {
   const feedback = page.locator('#feedbackMessage');
   await feedback.fill('sq');
   await option('sqrt').click();
-  assert.equal(await feedback.inputValue(), 'sqrt(');
-  await feedback.press('Escape');
+  await page.locator('dialog[open] .formulaInput math-field').waitFor();
+  await page.keyboard.press('2');
+  await page.waitForFunction(() => /\\sqrt\s*(?:\{2\}|2)/.test(document.querySelector('#feedbackMessage').value));
+  await page.locator('dialog[open]').getByRole('button', {name: '取消', exact: true}).click();
   await page.goto(`${base}/#/subjects/math/banks/isolated-bank/group-a?question=essay`);
   await bankAnswer.fill('f');
   await completions.waitFor({state: 'hidden'});

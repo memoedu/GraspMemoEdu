@@ -2,3 +2,4 @@
 /web/vendor/** -text
 # Preserve whitespace embedded in minified upstream calculator strings.
 /web/vendor/calculator/*.mjs -whitespace
+/web/vendor/formula/editor.mjs -whitespace
