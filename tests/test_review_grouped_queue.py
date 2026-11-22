@@ -98,14 +98,15 @@ class GroupedReviewTests(unittest.TestCase):
         self.assertEqual(self.queue()['sequence'], 5)
         self.assertEqual(self.queue()['pending'], before['pending'][1:])
 
-    def test_wrong_group_siblings_are_appended_after_initial_five(self):
+    def test_first_wrong_appends_one_group_sibling_after_initial_five(self):
         state = self.begin()
         questions = [state['practice']['id']]
         state = self.answer(state, 'wrong')
-        for _ in range(2):
-            state = self.advance(state)
-            questions.append(state['practice']['id'])
-            state = self.answer(state)
+        self.assertEqual(state['practice_target_count'], 2)
+        self.assertEqual(len(self.queue()['pending']), 5)
+        state = self.advance(state)
+        questions.append(state['practice']['id'])
+        state = self.answer(state)
         self.assertEqual(state['mastery'], 2)
         for _ in range(4):
             state = self.begin()
@@ -113,7 +114,7 @@ class GroupedReviewTests(unittest.TestCase):
             self.answer(state)
         self.assertEqual(len({self.group(q) for q in questions[:5]}), 5)
         self.assertTrue(all(self.group(q) == self.group(questions[0]) for q in questions[5:]))
-        self.assertEqual(len(set(questions)), 7)
+        self.assertEqual(len(set(questions)), 6)
 
     def test_all_unseen_are_delivered_before_oldest_practices_repeat(self):
         questions = []
@@ -155,26 +156,26 @@ class GroupedReviewTests(unittest.TestCase):
         self.assertIsNone(state['mastery'])
         pending = self.queue()
         self.assertEqual(len(pending['expanded_groups']), 3)
-        self.assertEqual(len(pending['pending']), 8)
+        self.assertEqual(len(pending['pending']), 7)
         self.backend.unlock_topic(pause_event_id=state['pause_event_id'])
         self.restart()
         self.assertEqual(self.queue(), pending)
         state = self.begin()
         self.assertEqual(state['practice']['id'], pending['pending'][0])
 
-    def test_second_error_in_same_group_does_not_expand_again(self):
+    def test_previously_expanded_group_still_adds_a_question_on_the_first_error_of_a_new_round(self):
         state = self.begin()
         state = self.answer(state, 'wrong')
         state = self.answer(self.advance(state))
-        self.answer(self.advance(state))
-        for _ in range(2):
+        for _ in range(3):
             self.answer(self.begin())
         state = self.begin()
         before = self.queue()
         self.assertIn(self.group(state['practice']['id']) + 1, before['expanded_groups'])
         state = self.answer(state, 'wrong')
-        self.assertEqual(self.queue(), before)
-        self.assertEqual(state['practice_target_count'], 3)
+        self.assertEqual(self.queue()['expanded_groups'], before['expanded_groups'])
+        self.assertEqual(len(self.queue()['pending']), len(before['pending']) + 1)
+        self.assertEqual(state['practice_target_count'], 2)
 
     def test_late_judgement_after_pause_cannot_expand_queue(self):
         state = self.begin()

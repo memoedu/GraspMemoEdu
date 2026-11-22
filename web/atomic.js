@@ -1,16 +1,16 @@
-import {t, translateMessage} from './i18n.js?v=6756ebbe29d053ca';
-import {calculatorButton} from './calculator.js?v=6756ebbe29d053ca';
-import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=6756ebbe29d053ca';
-import {selfAssessment, referenceAnswer, prepareAnswerContent, ratingChoices} from './self-assessment.js?v=6756ebbe29d053ca';
-import {reportableContent} from './content-report.js?v=6756ebbe29d053ca';
-import {createLearningCache} from './learning-cache.js?v=6756ebbe29d053ca';
-import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=6756ebbe29d053ca';
-import {enhanceSourceContent} from './topic-content.js?v=6756ebbe29d053ca';
-import {memoryChunk, chunkPeek, sourceAttributions} from './memory-chunk.js?v=6756ebbe29d053ca';
-import {topicProgress, topicHistory, readingFields, readingSectionHeading} from './learning-ui.js?v=6756ebbe29d053ca';
-import {pointAssessment} from './point-assessment.js?v=6756ebbe29d053ca';
-import {trainingAudio} from './training-audio.js?v=6756ebbe29d053ca';
-import {ideaSetupHash, ideaSetupLink} from './idea-setup.js?v=6756ebbe29d053ca';
+import {t, translateMessage} from './i18n.js?v=ad5665f8f97afbd9';
+import {calculatorButton} from './calculator.js?v=ad5665f8f97afbd9';
+import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=ad5665f8f97afbd9';
+import {selfAssessment, referenceAnswer, prepareAnswerContent, ratingChoices} from './self-assessment.js?v=ad5665f8f97afbd9';
+import {reportableContent} from './content-report.js?v=ad5665f8f97afbd9';
+import {createLearningCache} from './learning-cache.js?v=ad5665f8f97afbd9';
+import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=ad5665f8f97afbd9';
+import {enhanceSourceContent} from './topic-content.js?v=ad5665f8f97afbd9';
+import {memoryChunk, chunkPeek, sourceAttributions} from './memory-chunk.js?v=ad5665f8f97afbd9';
+import {topicProgress, topicHistory, readingFields, readingSectionHeading} from './learning-ui.js?v=ad5665f8f97afbd9';
+import {pointAssessment} from './point-assessment.js?v=ad5665f8f97afbd9';
+import {trainingAudio} from './training-audio.js?v=ad5665f8f97afbd9';
+import {ideaSetupHash, ideaSetupLink} from './idea-setup.js?v=ad5665f8f97afbd9';
 
 const node = (tag, cls = '', text) => {
   const el = document.createElement(tag); el.className = cls;

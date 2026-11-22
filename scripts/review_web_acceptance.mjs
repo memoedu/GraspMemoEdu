@@ -48,7 +48,7 @@ try {
    assert.doesNotMatch(text,/EXAMPLE_SENTINEL|INTRODUCTION_SENTINEL|Example/);
    return state;
  }
- for(const [name,sequence,mastery] of [['easy',[true],4],['hard',[false,true,true],2],['again',[false,false,true,true,true],1],['paused',[false,false,false],null]]){
+ for(const [name,sequence,mastery] of [['easy',[true],4],['hard',[false,true],2],['again',[false,false,true,true],1],['paused',[false,false,false],null]]){
    const d=await device();await seed(d);await d.page.reload({waitUntil:'networkidle'});
    await d.page.locator('#dashboardTasks .portalTask').filter({hasText:'复习'}).first().waitFor();
    if(name==='easy')pass('Chinese homepage labels due task 复习');

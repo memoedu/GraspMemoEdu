@@ -1,19 +1,19 @@
-import {t, translateMessage} from './i18n.js?v=6756ebbe29d053ca';
-import {calculatorButton} from './calculator.js?v=6756ebbe29d053ca';
-import {answerEditor, readerFrame, renderReviewReader, renderMultiStep, staticStepBlanks} from './learning-ui.js?v=6756ebbe29d053ca';
-import {answerReady, questionInput, choiceTypeField} from './question-input.js?v=6756ebbe29d053ca';
-import {createLearningCache} from './learning-cache.js?v=6756ebbe29d053ca';
-import {helpableContent, reportableContent} from './content-report.js?v=6756ebbe29d053ca';
+import {t, translateMessage} from './i18n.js?v=ad5665f8f97afbd9';
+import {calculatorButton} from './calculator.js?v=ad5665f8f97afbd9';
+import {answerEditor, readerFrame, renderReviewReader, renderMultiStep, staticStepBlanks} from './learning-ui.js?v=ad5665f8f97afbd9';
+import {answerReady, questionInput, choiceTypeField} from './question-input.js?v=ad5665f8f97afbd9';
+import {createLearningCache} from './learning-cache.js?v=ad5665f8f97afbd9';
+import {helpableContent, reportableContent} from './content-report.js?v=ad5665f8f97afbd9';
 
 const node = (tag, cls = '', text) => { const x = document.createElement(tag); x.className = cls; if (text !== undefined) x.textContent = text; return x; };
 const button = (label, cls, action) => { const x = node('button', cls, label); x.type = 'button'; x.addEventListener('click', action); return x; };
 const html = content => { const x = node('div', 'courseContent'); x.innerHTML = content || ''; return x; };
-import {createContentTimer} from './content-timer.js?v=6756ebbe29d053ca';
-import {renderReviewDirectory, paperNumber} from './review-directory.js?v=6756ebbe29d053ca';
-import {selfAssessment, referenceAnswer, prepareAnswerContent} from './self-assessment.js?v=6756ebbe29d053ca';
-import {chunkPeek} from './memory-chunk.js?v=6756ebbe29d053ca';
-import {pointAssessment} from './point-assessment.js?v=6756ebbe29d053ca';
-import {trainingAudio} from './training-audio.js?v=6756ebbe29d053ca';
+import {createContentTimer} from './content-timer.js?v=ad5665f8f97afbd9';
+import {renderReviewDirectory, paperNumber} from './review-directory.js?v=ad5665f8f97afbd9';
+import {selfAssessment, referenceAnswer, prepareAnswerContent} from './self-assessment.js?v=ad5665f8f97afbd9';
+import {chunkPeek} from './memory-chunk.js?v=ad5665f8f97afbd9';
+import {pointAssessment} from './point-assessment.js?v=ad5665f8f97afbd9';
+import {trainingAudio} from './training-audio.js?v=ad5665f8f97afbd9';
 
 export function createPaperView({root, request, href, getAccess, formatDate, progressChanged, courseSidebar, taskTree}) {
   const template = document.getElementById('appLayout').cloneNode(true);

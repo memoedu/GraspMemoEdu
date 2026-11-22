@@ -627,14 +627,16 @@ class ReviewBackend:
             if applies:
                 state['pending_submission_id'] = None
                 if correct is not None:
+                    policy = PracticePolicy.from_dict(state['policy'])
+                    must_pause, mastery = apply_practice_result(state, correct, policy)
                     if state.get('practice_queue_version') == PRACTICE_QUEUE_VERSION:
                         self.learning.practice_queue.record_result(
-                            con, self._module(state['module_id']), item['question'], correct)
+                            con, self._module(state['module_id']), item['question'], correct,
+                            additions=policy.queue_additions(state['practice_error_count']),
+                            exclude=state['order'] if policy.adaptive_queue else ())
                     state.update(phase='feedback', feedback={'correct': correct, 'reason': reason, 'submission_id': submission_id})
                     state['answers'].append({'question_id': item['question'], 'answer': item['answer'],
                                              'correct': correct, 'elapsed_ms': item['elapsed_ms']})
-                    policy = PracticePolicy.from_dict(state['policy'])
-                    must_pause, mastery = apply_practice_result(state, correct, policy)
                     if mastery is not None:
                         completed_at = self._now().isoformat()
                         durations = [answer['elapsed_ms'] for answer in state['answers']]

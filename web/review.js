@@ -1,10 +1,10 @@
-import { t, translateMessage, learningTitle } from './i18n.js?v=6756ebbe29d053ca';
-import {calculatorButton} from './calculator.js?v=6756ebbe29d053ca';
-import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=6756ebbe29d053ca';
-import {selfAssessment, referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=6756ebbe29d053ca';
-import {reportableContent} from './content-report.js?v=6756ebbe29d053ca';
-import {createLearningCache} from './learning-cache.js?v=6756ebbe29d053ca';
-import {enhanceTopicContent} from './topic-content.js?v=6756ebbe29d053ca';
+import { t, translateMessage, learningTitle } from './i18n.js?v=ad5665f8f97afbd9';
+import {calculatorButton} from './calculator.js?v=ad5665f8f97afbd9';
+import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=ad5665f8f97afbd9';
+import {selfAssessment, referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=ad5665f8f97afbd9';
+import {reportableContent} from './content-report.js?v=ad5665f8f97afbd9';
+import {createLearningCache} from './learning-cache.js?v=ad5665f8f97afbd9';
+import {enhanceTopicContent} from './topic-content.js?v=ad5665f8f97afbd9';
 
 const node = (tag, cls = '', text) => {
   const item = document.createElement(tag); item.className = cls;
