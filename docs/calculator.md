@@ -56,6 +56,6 @@ MA 材料至少开放科学计算器。网站对已安装和今后导入的材�
 
 表达式插入、题内历史和屏幕及按键样式复用自 MIT 授权的 Calc，针对站内题目权限、双语和触屏做了适配。 [Calc 源码](https://github.com/Develifture/scientific-calculator)
 
-面板固定在左侧，窄屏贴左下方，右上角的题目工具栏仍可操作。面板随题目页面加载，点击后即可输入。浏览器只在提交运算或解析待赋值变量时启动计算 Worker。点选计算器输入位置后，可使用工具栏中的麦克风插入算式。详见[语音输入](voice-input.md)。
+面板固定在右侧，窄屏贴右下方，右上角的题目工具栏仍可操作。面板随题目页面加载，点击后即可输入。浏览器只在提交运算或解析待赋值变量时启动计算 Worker。点选计算器输入位置后，可使用工具栏中的麦克风插入算式。详见[语音输入](voice-input.md)。
 
 验收使用 `node --test tests/calculator.test.mjs`、Python 的 `test_calculator.py`，以及 `scripts/calculator_browser_fixture.py` 与 `scripts/calculator_browser_acceptance.mjs` 提供的隔离浏览器样例。

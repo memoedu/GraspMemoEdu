@@ -125,8 +125,11 @@ try {
   assert.equal(workerStarts, 0);
   assert.deepEqual(workerRequests, []);
   assert.equal(await dialog.locator('.calculatorHeader button').count(), 1);
-  assert.equal(await dialog.evaluate(panel => panel.getBoundingClientRect().right
-    < document.querySelector('#stepCard').getBoundingClientRect().left), true);
+  assert.equal(await dialog.evaluate(panel => {
+    const {left, right} = panel.getBoundingClientRect();
+    return left >= document.querySelector('.questionToolRail').getBoundingClientRect().right
+      && getComputedStyle(panel).right === '12px' && right <= innerWidth;
+  }), true);
   assert.equal(await page.getByText('Calculator: Graphing', {exact: true}).count(), 0);
   assert.equal(await dialog.locator('.calculatorNavigation').count(), 0);
   assert.equal(await dialog.locator('[data-calculator-key="sin"]').isDisabled(), true);
@@ -270,16 +273,16 @@ try {
     await page.waitForFunction(() => {
       const panel = document.querySelector('.questionCalculator[open]').getBoundingClientRect();
       const tools = document.querySelector('.questionToolRow[data-calculator-open]').getBoundingClientRect();
-      return panel.right <= tools.left || panel.top >= tools.bottom;
+      return panel.top >= tools.bottom;
     });
     const fit = await dialog.evaluate(element => ({
       body: document.documentElement.scrollWidth <= innerWidth,
       panel: element.scrollWidth <= element.clientWidth + 1,
-      left: Math.abs(element.getBoundingClientRect().left - 8) < 1,
+      right: getComputedStyle(element).right === '8px' && element.getBoundingClientRect().right <= innerWidth,
       keys: [...element.querySelectorAll('.calculatorKey')].filter(key => key.getClientRects().length)
         .every(key => key.getBoundingClientRect().height >= 44 && key.getBoundingClientRect().width >= 44),
     }));
-    assert.deepEqual(fit, {body: true, panel: true, left: true, keys: true}, String(width));
+    assert.deepEqual(fit, {body: true, panel: true, right: true, keys: true}, String(width));
     const primaryActionsVisible = await dialog.evaluate(element => {
       const bottom = element.getBoundingClientRect().bottom;
       return ['digit_7', 'evaluate'].every(id =>
@@ -290,7 +293,7 @@ try {
       const bounds = button.getBoundingClientRect();
       return bounds.left >= 0 && bounds.right <= innerWidth && bounds.width >= 44 && bounds.height >= 44;
     })), true, String(width));
-    if (width === 375) await page.screenshot({path: path.join(output, 'mobile-left.png')});
+    if (width === 375) await page.screenshot({path: path.join(output, 'mobile-right.png')});
     await expressionInput.fill('f');
     await option('floor').waitFor();
     assert.equal(await completions.evaluate(menu => {
@@ -300,7 +303,7 @@ try {
     }), true, String(width));
     if (width === 375) await page.screenshot({path: path.join(output, 'mobile-completions.png')});
     await expressionInput.press('Escape');
-    checks.push(`${width}px left calculator fits and keypad targets are at least 44px by 44px.`);
+    checks.push(`${width}px right calculator fits and keypad targets are at least 44px by 44px.`);
   }
   await page.setViewportSize({width: 375, height: 840});
   await launch.press('End');
