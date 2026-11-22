@@ -1,0 +1,6 @@
+sources:
+  - id: ch1-magnetic-resonance
+    title: "第1章 磁共振基础"
+    file: ch1-magnetic-resonance.pdf
+    kind: notes
+    added: "2026-11-22"

@@ -1,0 +1,181 @@
+domain: magnetic-resonance
+concepts:
+  - id: qm-spin-and-operators-foundation
+    title: "量子力学与数学预备基础"
+    description: "默认前置的大学物理与数学基础：复数（$i^2 = -1$）与欧拉公式、微积分（偏导数 $\\frac{\\partial}{\\partial t}$ 与乘积法则）与三角恒等式；狄拉克左右矢（$|\\psi\\rangle$、$\\langle\\phi|$）、正交归一基（$|m_S = \\pm 1/2\\rangle$）与线性叠加原理；本征态与本征值（$S_z |m_S = \\pm 1/2\\rangle = \\pm\\frac{1}{2}|m_S = \\pm 1/2\\rangle$）；厄米共轭、幺正算符（$U^\\dagger U = \\mathbb{1}$）、对易子 $[A,B] = AB - BA$ 与算符指数运算规则；自然单位（$\\hbar = 1$）下的薛定谔方程 $i\\frac{\\partial}{\\partial t}|\\psi\\rangle = H|\\psi\\rangle$；以及绕 $+z$ 轴逆时针（右旋）与顺时针（左旋）旋转的圆偏振光子分别携带角动量 $+1$ 与 $-1$ 的物理事实。"
+    difficulty: 1
+    est_minutes: 30
+    goal_weight: 1
+    dimensions: [conceptual, math]
+    prereqs: []
+    objectives:
+      - text: "运用幺正变换、对易子、态矢量叠加与自旋 $1/2$ 本征方程 $S_z |m_S = \\pm 1/2\\rangle = \\pm\\frac{1}{2}|m_S = \\pm 1/2\\rangle$ 推导量子力学算符恒等式"
+        dimension: math
+      - text: "在 $\\hbar = 1$ 单位下从含时薛定谔方程 $i\\frac{\\partial}{\\partial t}|\\psi\\rangle = H|\\psi\\rangle$ 出发处理含时态演化与分别携带角动量 $+1/-1$ 的右旋/左旋圆偏振光子"
+        dimension: conceptual
+    status: stub
+
+  - id: spin-zeeman-and-drive
+    title: "自旋磁矩与驱动哈密顿量"
+    description: "介绍自旋磁矩与角动量的关系 $\\vec{\\boldsymbol{\\mu}} = \\gamma\\vec{\\boldsymbol{S}}$、电子自旋（自由电子 $\\gamma_e \\approx -2\\pi\\times 2.8025\\text{ MHz/G}$，金刚石 NV 色心 $\\gamma_e \\approx -2\\pi\\times 2.8033\\text{ MHz/G}$）与核自旋（如自由质子 $\\gamma_n = 2\\pi\\times 4.2577\\text{ kHz/G}$）的旋磁比差异，以及在静磁场 $B_0\\vec{\\boldsymbol{e}}_z$ 和横向余弦驱动场 $B_x\\cos(\\omega t+\\varphi)\\vec{\\boldsymbol{e}}_x$ 作用下、除以 $\\hbar$ 后以无量纲自旋算符 $\\vec{\\boldsymbol{S}}$ 表达的磁共振哈密顿量 $H = -\\gamma B_0 S_z - \\gamma B_x S_x \\cos(\\omega t+\\varphi) = \\omega_0 S_z + 2\\Omega\\cos(\\omega t+\\varphi)S_x$（对电子自旋 $\\omega_0 = -\\gamma_e B_0$，$2\\Omega = -\\gamma_e B_x$）。"
+    difficulty: 1
+    est_minutes: 15
+    goal_weight: 3
+    dimensions: [conceptual, math]
+    prereqs:
+      - id: qm-spin-and-operators-foundation
+        strength: hard
+    objectives:
+      - text: "写出自旋磁矩与外磁场的相互作用哈密顿量 $H = -\\vec{\\boldsymbol{\\mu}}\\cdot\\boldsymbol{B}$ 与旋磁比关系 $\\vec{\\boldsymbol{\\mu}} = \\gamma\\vec{\\boldsymbol{S}}$"
+        dimension: conceptual
+      - text: "区分电子自旋与核自旋旋磁比的符号和数量级，并由 $B_0, B_x, \\gamma_e$ 计算无量纲哈密顿量参数 $\\omega_0 = -\\gamma_e B_0$ 与 $2\\Omega = -\\gamma_e B_x$"
+        dimension: math
+    status: stub
+
+  - id: rotating-wave-and-frame
+    title: "旋波近似与相互作用图像"
+    description: "把横向线偏振驱动场拆分为逆时针（右旋圆偏振）与顺时针（左旋圆偏振）两个旋转分量，利用角动量守恒解释旋波近似（RWA）为何忽略反向旋转项，再分别用三维旋转公式与升降算符两种方法在相互作用图像 $U_i = e^{-i\\omega t S_z}$ 下消去时间依赖，得到不含时有效哈密顿量 $H_I = (\\omega_0 - \\omega)S_z + \\Omega[\\cos(\\varphi)S_x + \\sin(\\varphi)S_y]$。"
+    difficulty: 2
+    est_minutes: 20
+    goal_weight: 3
+    dimensions: [conceptual, math, transfer]
+    prereqs:
+      - id: spin-zeeman-and-drive
+    objectives:
+      - text: "将横向余弦驱动分解为正反圆偏振分量，并用角动量守恒说明旋波近似的物理含义及强驱动下的失效边界"
+        dimension: conceptual
+      - text: "使用相互作用图像变换 $U_i = e^{-i\\omega t S_z}$ 结合旋转公式和升降算符法推导出不含时哈密顿量 $H_I$"
+        dimension: math
+      - text: "将旋波近似与相互作用图像推广到核自旋（$\\gamma_n > 0$）和玻色子产生湮灭算符场景"
+        dimension: transfer
+    status: authored
+
+  - id: su2-evolution-and-rabi-prob
+    title: "有效场演化与拉比跃迁概率"
+    description: "引入偏共振 $\\delta = \\omega_0 - \\omega$ 与有效拉比频率 $\\Omega_{\\text{eff}} = \\sqrt{\\Omega^2 + \\delta^2}$，将不含时哈密顿量写成 $H_I = \\Omega_{\\text{eff}}\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}$，导出任意单比特 $SU(2)$ 演化算符 $U_I = \\cos(\\theta/2)\\mathbb{1} - i\\sin(\\theta/2)\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}$（$\\vec{\\boldsymbol{\\sigma}}=2\\vec{\\boldsymbol{S}}$）及由 $|1\\rangle$ 态跃迁到 $|0\\rangle$ 态的拉比概率公式。"
+    difficulty: 2
+    est_minutes: 15
+    goal_weight: 3
+    dimensions: [conceptual, math]
+    prereqs:
+      - id: rotating-wave-and-frame
+    objectives:
+      - text: "由 $\\Omega, \\delta, \\varphi$ 写出有效转轴 $\\vec{\\boldsymbol{n}}$ 与 $SU(2)$ 演化算符 $U_I$"
+        dimension: math
+      - text: "计算自旋从 $|1\\rangle$ 演化至 $|0\\rangle$ 的概率 $P = (\\Omega^2/\\Omega_{\\text{eff}}^2)\\sin^2(\\Omega_{\\text{eff}} t/2)$"
+        dimension: math
+    status: stub
+
+  - id: single-qubit-gates
+    title: "磁共振实现单比特量子门"
+    description: "通过调节驱动场幅值 $\\Omega$、失谐 $\\delta$、相位 $\\beta$ 与脉冲时长 $t$，在磁共振系统中实现 $(\\pi/2)_\\beta$、$(\\pi)_\\beta$、Pauli-X/Y/Z、T、S 以及 Hadamard 等单比特量子门。"
+    difficulty: 2
+    est_minutes: 15
+    goal_weight: 2
+    dimensions: [conceptual, math]
+    prereqs:
+      - id: su2-evolution-and-rabi-prob
+    objectives:
+      - text: "根据目标单比特门反推所需的 $(\\Omega, \\delta, \\beta, t)$ 脉冲参数并写出对应的 $SU(2)$ 矩阵"
+        dimension: math
+    status: stub
+
+  - id: bloch-sphere-representation
+    title: "态与门的 Bloch 球表示"
+    description: "把任意单比特纯态与混态密度矩阵表示为 $\\rho = (\\mathbb{1} + \\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}})/2$（$|\\vec{\\boldsymbol{n}}| \\le 1$），并证明幺正门 $U = e^{-i\\theta\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}}$ 等价于 Bloch 矢量的三维旋转 $R_{\\vec{\\boldsymbol{n}}\\cdot\\theta}$。"
+    difficulty: 2
+    est_minutes: 15
+    goal_weight: 3
+    dimensions: [conceptual, math]
+    prereqs:
+      - id: su2-evolution-and-rabi-prob
+      - id: single-qubit-gates
+        strength: soft
+    objectives:
+      - text: "由密度矩阵计算 Bloch 矢量 $\\vec{\\boldsymbol{n}} = \\operatorname{Tr}(\\rho\\vec{\\boldsymbol{\\sigma}})$ 并区分纯态与混态"
+        dimension: math
+      - text: "用 Bloch 球三维旋转直观追踪单比特门对量子态的作用"
+        dimension: conceptual
+    status: stub
+
+  - id: bloch-siegert-shift
+    title: "横向非共振项与 Bloch-Siegert 平移"
+    description: "通过二次相互作用图像变换与自旋轴旋转，定量分析一般横向非共振驱动（含旋波近似忽略的反向旋转项）对能级造成的二阶频移 $\\Delta_{\\text{BS}} = \\Omega'^2/[2(\\omega_0 - \\omega')]$，从而定量界定旋波近似的成立条件。"
+    difficulty: 3
+    est_minutes: 20
+    goal_weight: 2
+    dimensions: [conceptual, math]
+    prereqs:
+      - id: rotating-wave-and-frame
+    confused_with:
+      - longitudinal-sideband-excitation
+    objectives:
+      - text: "推导并估算 Bloch-Siegert 平移 $\\Delta_{\\text{BS}}$ 的大小，判断何时可以采用旋波近似"
+        dimension: math
+    status: stub
+
+  - id: longitudinal-sideband-excitation
+    title: "纵向驱动与边带及倍频激发"
+    description: "分析沿静磁场方向的含时纵向驱动 $H_z = \\Omega_z\\cos(\\omega_z t + \\varphi_z)S_z$，经含时相互作用图像与傅里叶级数展开导出贝塞尔函数调制的边带拉比频率 $J_n(\\chi)\\Omega$，以及用于突破功放带宽的倍频激发条件 $\\omega = \\frac{1}{1-n}\\omega_0$。"
+    difficulty: 3
+    est_minutes: 20
+    goal_weight: 2
+    dimensions: [conceptual, math, transfer]
+    prereqs:
+      - id: rotating-wave-and-frame
+      - id: bloch-siegert-shift
+        strength: soft
+    objectives:
+      - text: "解释纵向含时扰动如何产生第 $n$ 阶边带并计算有效驱动强度 $J_n(\\chi)\\Omega$ 与倍频激发频率"
+        dimension: math
+    status: stub
+
+  - id: rabi-and-ramsey-spectroscopy
+    title: "频率测量：Rabi 与 Ramsey 序列"
+    description: "比较 Rabi 连续驱动扫频（最优 $t=\\pi/\\Omega$ 时 $\\text{FWHM}=1.60\\Omega$）与 Ramsey 分离振荡场序列（理想脉冲下 $\\text{FWHM}=\\pi/t$ 窄 1.60 倍，有限脉宽等效延长 $2/\\Omega$），并在准静态高斯磁噪声下由 Ramsey 衰减提取退相干时间 $T_2^* = \\sqrt{2}/(\\gamma_e\\sigma_b)$。"
+    difficulty: 3
+    est_minutes: 20
+    goal_weight: 3
+    dimensions: [conceptual, math, transfer]
+    prereqs:
+      - id: su2-evolution-and-rabi-prob
+      - id: single-qubit-gates
+    confused_with:
+      - spin-echo-and-noise-correlation
+    objectives:
+      - text: "解释 Ramsey 序列在无驱动自由演化期间仍能积累相对相位的机制，并比较 Rabi 与 Ramsey 的频率分辨率"
+        dimension: conceptual
+      - text: "由 Ramsey 衰减曲线特征时间 $T_2^*$ 反推环境磁涨落标准差 $\\sigma_b$"
+        dimension: math
+    status: stub
+
+  - id: spin-echo-and-noise-correlation
+    title: "回波序列与噪声关联时间"
+    description: "用 Bloch 球几何与幺正演化双重证明 Hahn 回波如何抵消准静态磁噪声与静态偏共振，并引入噪声自相关函数 $\\langle\\eta(t)\\eta(t')\\rangle = \\eta^2 f(|t-t'|)$，分析慢噪声（$\\eta\\tau_c \\gg 1$，$p=3$）与快噪声（$\\eta\\tau_c \\ll 1$，$p=1$）下的退相干时间 $T_2$。"
+    difficulty: 3
+    est_minutes: 20
+    goal_weight: 3
+    dimensions: [conceptual, math]
+    prereqs:
+      - id: bloch-sphere-representation
+      - id: rabi-and-ramsey-spectroscopy
+    objectives:
+      - text: "用 Bloch 球和幺正算符证明回波序列抵消准静态相位并说明其不能测静态频率的原因"
+        dimension: conceptual
+      - text: "根据 $\\eta\\tau_c$ 量级区分慢噪声与快噪声极限下回波序列的相干衰减行为"
+        dimension: math
+    status: stub
+
+  - id: dynamical-decoupling-and-xy4
+    title: "动力学去耦与 XY4 抗脉冲误差分析"
+    description: "介绍周期动力学去耦（PDD）与多 $\\pi$ 脉冲相位组合（CPMG、XY4、XY8、XY16、KDD），并用单比特误差参数化 $(p, \\alpha)$ 与保真度 $F = \\frac{1}{2}|\\operatorname{Tr}(U_0^\\dagger U)|$ 对比证明 $F_{XY4} = 1 - 2(1-p)^2\\cos^2(2\\alpha)$ 显著优于 $F_{\\text{CPMG}} \\approx 1 - 8(1-p)$。"
+    difficulty: 4
+    est_minutes: 20
+    goal_weight: 2
+    dimensions: [conceptual, math]
+    prereqs:
+      - id: spin-echo-and-noise-correlation
+    objectives:
+      - text: "解释多 $\\pi$ 脉冲相位交替如何抵消准静态脉冲幅值与失谐误差，并比较 XY4 与 CPMG 的保真度误差阶数"
+        dimension: math
+    status: stub

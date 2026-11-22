@@ -1,0 +1,1236 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>旋波近似与相互作用图像 — Open Academy 互动测试与 FSRS 复习预测预览</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+    onload="window.__renderAllMath && window.__renderAllMath();"></script>
+  <style>
+    :root { --bg:#f8fafc; --card:#ffffff; --text:#0f172a; --muted:#64748b; --border:#e2e8f0; --accent:#2563eb; --ok:#16a34a; --warn:#d97706; --bad:#dc2626; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family:ui-sans-serif,system-ui,-apple-system,sans-serif; line-height:1.75; }
+    main { max-width:900px; margin:24px auto; padding:0 18px 90px; }
+    .meta { color:var(--muted); font-size:13px; margin-bottom:8px; }
+    h1 { font-size:28px; margin:4px 0 12px; }
+    .scorebar { position:sticky; top:0; z-index:30; background:rgba(255,255,255,.96); backdrop-filter:blur(8px); border:1px solid var(--border); border-radius:10px; padding:10px 14px; margin-bottom:14px; display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; align-items:center; font-size:13px; box-shadow:0 2px 8px rgba(15,23,42,.05); }
+    .score-stats { display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:22px 24px; margin:18px 0; }
+    .dash-panel { border:1px solid #bfdbfe; background:#f8fbff; border-radius:12px; padding:16px 18px; margin:12px 0 20px; }
+    .dash-panel summary { cursor:pointer; font-weight:700; font-size:15px; color:#1e3a8a; }
+    .dash-controls { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:12px 0; }
+    .clock-pill { background:#e0e7ff; color:#1e3a8a; padding:4px 10px; border-radius:99px; font-size:12px; font-weight:600; }
+    .forecast-strip { display:grid; grid-template-columns:repeat(8, minmax(0, 1fr)); gap:6px; margin:10px 0 14px; }
+    .fc-cell { background:#fff; border:1px solid var(--border); border-radius:8px; padding:6px 4px; text-align:center; font-size:12px; }
+    .fc-cell.due { border-color:#f59e0b; background:#fffbeb; }
+    .fc-cell .fc-cnt { font-size:16px; font-weight:700; color:var(--accent); }
+    .fsrs-table { width:100%; border-collapse:collapse; font-size:12px; background:#fff; border-radius:8px; overflow:hidden; margin-top:8px; }
+    .fsrs-table th, .fsrs-table td { border:1px solid var(--border); padding:7px 8px; text-align:left; vertical-align:middle; }
+    .fsrs-table th { background:#f1f5f9; color:#334155; font-weight:600; }
+    .pill { display:inline-block; padding:1px 7px; border-radius:99px; font-size:11px; font-weight:600; }
+    .pill-new { background:#f1f5f9; color:#475569; }
+    .pill-ok { background:#dcfce7; color:#166534; }
+    .pill-hard { background:#fef3c7; color:#92400e; }
+    .pill-due { background:#fee2e2; color:#991b1b; }
+    .step-num { font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--accent); }
+    .tldr { background:#eff6ff; border-left:3px solid var(--accent); padding:10px 14px; border-radius:6px; margin:12px 0 18px; font-size:14px; }
+    .worked { background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:14px 18px; margin-top:16px; }
+    .svg-wrap { margin:16px 0; text-align:center; overflow-x:auto; }
+    .svg-wrap svg { max-width:100%; height:auto; border:1px solid #f0f0f0; border-radius:8px; background:#fff; }
+    .problems-box { margin-top:14px; border:1px solid var(--border); border-radius:8px; padding:10px 14px; background:#fcfcfd; }
+    .problems-box summary { cursor:pointer; font-weight:600; font-size:14px; padding:2px 0; }
+    .prob { border-top:1px solid var(--border); padding:14px 0; font-size:14px; }
+    .prob-head { display:flex; flex-wrap:wrap; gap:6px; justify-content:space-between; align-items:center; color:var(--muted); font-size:12px; font-family:ui-monospace,monospace; margin-bottom:6px; }
+    .prob-meta-right { display:flex; flex-wrap:wrap; gap:5px; align-items:center; }
+    .timer-pill { background:#f1f5f9; color:#334155; padding:1px 7px; border-radius:99px; font-family:sans-serif; font-size:11px; }
+    .rating-pill { background:#f1f5f9; color:#475569; padding:1px 7px; border-radius:99px; font-family:sans-serif; font-size:11px; font-weight:600; }
+    .rating-pill.good { background:#dcfce7; color:#166534; }
+    .rating-pill.hard { background:#fef3c7; color:#92400e; }
+    .rating-pill.again { background:#fee2e2; color:#991b1b; }
+    .tag { background:#eef2ff; padding:2px 8px; border-radius:99px; color:#3730a3; font-family:sans-serif; font-size:11px; }
+    .opts-grid { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+    .opt-btn { text-align:left; background:#fff; border:1px solid var(--border); border-radius:8px; padding:9px 12px; cursor:pointer; font-size:14px; line-height:1.5; transition:border-color .15s,background .15s; }
+    .opt-btn:hover { border-color:var(--accent); background:#f8fafc; }
+    .opt-btn.picked-ok { border-color:var(--ok); background:#f0fdf4; }
+    .opt-btn.picked-bad { border-color:var(--bad); background:#fef2f2; }
+    .input-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:8px; }
+    .txt-in { padding:7px 10px; border:1px solid #cbd5e1; border-radius:7px; font-size:14px; min-width:200px; }
+    .btn { padding:6px 11px; border:1px solid var(--border); border-radius:7px; background:#fff; cursor:pointer; font-size:12px; }
+    .btn-primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .btn-danger { border-color:#fecaca; color:#b91c1c; background:#fff; }
+    .btn:hover { opacity:.9; }
+    .fb { margin-top:10px; padding:9px 12px; border-radius:7px; font-size:13px; display:none; }
+    .fb.ok { display:block; background:#f0fdf4; border:1px solid #bbf7d0; color:#14532d; }
+    .fb.bad { display:block; background:#fef2f2; border:1px solid #fecaca; color:#7f1d1d; }
+    .fb.info { display:block; background:#f1f5f9; border:1px solid #cbd5e1; color:#1e293b; }
+    .hint-box { margin-top:8px; font-size:13px; color:#475569; background:#f8fafc; border-left:3px solid #94a3b8; padding:6px 10px; display:none; }
+    textarea.explain-in { width:100%; box-sizing:border-box; min-height:64px; padding:8px 10px; border:1px solid #cbd5e1; border-radius:7px; font-size:13px; font-family:inherit; margin-top:6px; }
+    .rubric-list { list-style:none; padding-left:4px; margin:8px 0; }
+    .rubric-list li { margin:4px 0; }
+    .recall-batch-bar { margin-top:12px; padding-top:10px; border-top:1px dashed var(--border); display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+    .recall-batch-status { font-size:12px; color:#334155; }
+    .step-math { margin:6px 0 10px 16px; }
+    .katex-display { overflow-x:auto; overflow-y:hidden; padding:4px 0; }
+    @media (max-width: 720px) { .forecast-strip { grid-template-columns:repeat(4, minmax(0, 1fr)); } .fsrs-table { display:block; overflow-x:auto; } }
+  </style>
+</head>
+<body>
+<main>
+  <div class="scorebar">
+    <div><strong>Open Academy 互动预览 · v3</strong> · 已启用 <code>localStorage</code> 自动存档</div>
+    <div class="score-stats">
+      <span id="score-readout">自动判题 0 / 21 · 自评 0 / 4</span>
+      <span id="time-readout">累计作答 0s</span>
+      <span id="due-readout">今日到期卡片：0</span>
+    </div>
+  </div>
+
+  <details class="dash-panel" open>
+    <summary>学习进度与 FSRS 复习时间预测面板（目标保持率 90% · 最长间隔 60 天）</summary>
+    <div class="dash-controls">
+      <span class="clock-pill" id="sim-clock-readout">当前参考时间：真实时间</span>
+      <button type="button" class="btn" data-shift-days="1">时间快进 +1 天</button>
+      <button type="button" class="btn" data-shift-days="3">+3 天</button>
+      <button type="button" class="btn" data-shift-days="7">+7 天</button>
+      <button type="button" class="btn" data-shift-days="14">+14 天</button>
+      <button type="button" class="btn" id="btn-clock-reset">回到真实时间</button>
+      <button type="button" class="btn" id="btn-export-json">导出进度 JSON</button>
+      <button type="button" class="btn" id="btn-import-json">导入进度 JSON</button>
+      <input type="file" id="import-file-input" accept="application/json" style="display:none" />
+      <button type="button" class="btn btn-danger" id="btn-reset-all">重置全部进度</button>
+    </div>
+    <div class="meta">说明：做完某步全部 5 题自动为该知识点建卡；后续可通过该步的 3 题 Recall 批量提交推进 FSRS 排程（若用提示、重试或超时 <code>durationMs &gt; targetSeconds</code>，即使答对也会从 Good 降级为 Hard）。使用上方「时间快进」可在不等待真实天数的情况下测试记忆衰减与多轮区间增长。</div>
+    <div class="forecast-strip" id="forecast-strip"></div>
+    <table class="fsrs-table">
+      <thead>
+        <tr>
+          <th>记忆卡片（知识点 / 维度）</th>
+          <th>状态</th>
+          <th>稳定度 S / 难度 D</th>
+          <th>当前保持率 R(t)</th>
+          <th>预测下次复习时间</th>
+          <th>下一轮三档预测（Again / Hard / Good）</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="fsrs-tbody"></tbody>
+    </table>
+  </details>
+
+  <div class="meta">课程：磁共振基础（mr-fundamentals） · 来源：ch1-magnetic-resonance（1.1 节, pp. 2–3, 式 (1.5)–(1.12)） · 预计 20 分钟</div>
+  <h1>旋波近似与相互作用图像</h1>
+  <section class="card">
+    <div class="meta">硬前置链路：量子力学与数学预备基础（qm-spin-and-operators-foundation） → 自旋磁矩与驱动哈密顿量（spin-zeeman-and-drive）</div>
+    <h4>什么是旋波近似与相互作用图像？</h4>
+<p><strong>旋波近似</strong>是把沿固定方向来回振荡的驱动场拆成顺、逆时针两个旋转分量后，舍去不能激发跃迁的反向分量；<strong>相互作用图像</strong>则是切换到随驱动场一起旋转的参考系，把依然随时间变化的哈密顿量写成常系数形式。</p>
+<p>为什么要做这两步？在静磁场和横向交变磁场下，哈密顿量带着随时间 $t$ 振荡的余弦项，很难直接看出自旋会怎样演化。先简化驱动场、再换到旋转坐标系，就能把时间 $t$ 彻底消去，为下一步求解演化铺平道路。</p>
+  </section>
+
+            <section class="card step" id="step-1">
+              <div class="step-num">Step 1 · rwa-split-field</div>
+              <h2>拆开驱动场并舍去反向项</h2>
+              <div class="tldr"><strong>本步要点 (TL;DR)</strong><ul>
+<li>线偏振场可拆成正反两个等幅度旋转场。</li>
+<li>电子自旋跃迁匹配逆时针 $+1$ 光子分量，反向分量在弱驱动下可舍去。</li>
+<li>若驱动太强使 $\Omega$ 可比拟能隙 $\omega_0$，旋波近似不再适用，反向项引起共振频移。</li>
+</ul></div>
+              <div class="explain"><h4>从静态能级与线偏振场出发</h4>
+<p>对于自旋 $1/2$ 的电子（如金刚石 NV 色心），无量纲算符 $S_z$ 的两个本征态用磁量子数 $m_S = \pm 1/2$ 记作 $|m_S = \pm 1/2\rangle$，满足 $S_z|m_S = \pm 1/2\rangle = \pm\frac{1}{2}|m_S = \pm 1/2\rangle$。电子旋磁比 $\gamma_e &lt; 0$，在外加静磁场 $B_0 &gt; 0$ 下 $\omega_0 = -\gamma_e B_0 &gt; 0$，因此 $H_0 = \omega_0 S_z$ 给下能级 $|m_S = -1/2\rangle$ 与上能级 $|m_S = +1/2\rangle$ 赋予能量 $-\omega_0/2$ 和 $+\omega_0/2$，两能级之间的能量差（能隙）为 $\omega_0$。</p>
+<p>再叠加沿 $x$ 轴来回振荡的横向交变驱动场（幅值参数 $2\Omega = -\gamma_e B_x$，普通频率 $\omega/(2\pi)$，初相位 $\varphi$），除以 $\hbar$ 后得</p>
+<p>$$H = \omega_0 S_z + 2\Omega\cos(\omega t + \varphi) S_x$$</p>
+<h4>把余弦场拆成两个旋转分量</h4>
+<p>只沿 $x$ 轴来回振荡的场叫<strong>线偏振</strong>场，在 $x\text{-}y$ 平面内绕圆圈转动的场叫<strong>圆偏振</strong>场。在右端一加一减同一个 $y$ 方向自旋分量 $S_y$ 项（$S_y$ 抵消、$S_x$ 相加还原），就把线偏振拆成一正一反两个等幅度的圆偏振分量：</p>
+<p>$$
+\begin{aligned}
+H &amp;= \omega_0 S_z + 2\Omega\cos(\omega t + \varphi) S_x \\
+  &amp;= \omega_0 S_z + \Omega\left[\cos(\omega t + \varphi)S_x + \sin(\omega t + \varphi)S_y\right] + \underbrace{\Omega\left[\cos(\omega t + \varphi)S_x - \sin(\omega t + \varphi)S_y\right]}_{\text{①}}
+\end{aligned}
+$$</p>
+<p>下图左侧是两能级图，右侧是从 $+z$ 轴俯视的 $x\text{-}y$ 平面分解图：</p>
+<div class="svg-wrap"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="左图为自旋二分之一的两能级示意图，下能级 m_S 等于负二分之一与上能级 m_S 等于正二分之一之间的能级差为 omega_0，向上跃迁角动量变化为 +1；右图为 x-y 平面驱动场分解图，沿 x 轴的线偏振驱动场拆成幅度均为 Omega 的逆时针蓝色分量（角动量 +1，保留）与顺时针红色分量①（角动量 -1，被旋波近似舍去）。">
+<defs>
+<marker id="rwa1-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
+<marker id="rwa1-red" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#ef4444"/></marker>
+<marker id="rwa1-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker>
+<marker id="rwa1-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker>
+<marker id="rwa1-dark" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#171717"/></marker>
+</defs>
+<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#171717">
+<line x1="278" y1="22" x2="278" y2="278" stroke="#d4d4d4" stroke-width="1"/>
+<text x="145" y="28" text-anchor="middle" font-size="14" font-weight="600">静态能级 (H₀ = ω₀ S_z)</text>
+<line x1="115" y1="78" x2="225" y2="78" stroke="#171717" stroke-width="2.5"/>
+<line x1="115" y1="222" x2="225" y2="222" stroke="#171717" stroke-width="2.5"/>
+<text x="106" y="83" text-anchor="end">|m_S = +1/2⟩</text>
+<text x="106" y="227" text-anchor="end">|m_S = -1/2⟩</text>
+<line x1="168" y1="216" x2="168" y2="85" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#rwa1-amber)"/>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="176" y="143" fill="#f59e0b">Δm_S = +1</text>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="176" y="162" fill="#f59e0b">能隙 ω₀</text>
+<text x="455" y="28" text-anchor="middle" font-size="14" font-weight="600">x-y 平面圆偏振分解 (+z 朝外)</text>
+<circle cx="425.0" cy="165.0" r="82.0" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5" stroke-dasharray="4 4"/>
+<line x1="323.0" y1="165.0" x2="592.23" y2="165.0" stroke="#d4d4d4" stroke-width="1.5" marker-end="url(#rwa1-dark)"/>
+<line x1="425.0" y1="271.0" x2="425.0" y2="55.0" stroke="#d4d4d4" stroke-width="1.5" marker-end="url(#rwa1-dark)"/>
+<text x="598.23" y="169.0">x</text>
+<text x="432.0" y="59.0">y</text>
+<line x1="489.62" y1="114.52" x2="489.62" y2="215.48" stroke="#d4d4d4" stroke-width="1.2" stroke-dasharray="3 3"/>
+<line x1="489.62" y1="114.52" x2="554.23" y2="165.0" stroke="#d4d4d4" stroke-width="1.2" stroke-dasharray="3 3"/>
+<line x1="489.62" y1="215.48" x2="554.23" y2="165.0" stroke="#d4d4d4" stroke-width="1.2" stroke-dasharray="3 3"/>
+<line x1="425.0" y1="165.0" x2="554.23" y2="165.0" stroke="#10b981" stroke-width="2.5" marker-end="url(#rwa1-green)"/>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="550.23" y="185.0" text-anchor="middle" fill="#10b981">合矢量 2Ω cos(ωt+φ)</text>
+<line x1="425.0" y1="165.0" x2="489.62" y2="114.52" stroke="#3b82f6" stroke-width="3" marker-end="url(#rwa1-blue)"/>
+<line x1="425.0" y1="165.0" x2="489.62" y2="215.48" stroke="#ef4444" stroke-width="3" marker-end="url(#rwa1-red)"/>
+<path d="M510.65 119.46 A97.0 97.0 0 0 0 454.97 72.75" fill="#ffffff" fill-opacity="0" stroke="#3b82f6" stroke-width="2" marker-end="url(#rwa1-blue)"/>
+<path d="M510.65 210.54 A97.0 97.0 0 0 1 454.97 257.25" fill="#ffffff" fill-opacity="0" stroke="#ef4444" stroke-width="2" marker-end="url(#rwa1-red)"/>
+<path d="M453.0 165.0 A28 28 0 0 0 447.06 147.76" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="1.5"/>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="476.71" y="155.33" fill="#737373">ωt+φ</text>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="497.62" y="100.52" fill="#3b82f6">逆时针 (+1 保留)</text>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="497.62" y="116.52" fill="#3b82f6">幅值 Ω</text>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="497.62" y="229.48" fill="#ef4444">顺时针 (-1 忽略①)</text>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="497.62" y="245.48" fill="#ef4444">幅值 Ω</text>
+</g>
+</svg>
+</div>
+<p>交变电磁场携带量子化的能量份，叫做<strong>光子</strong>。右图中蓝色矢量绕 $+z$ 轴逆时针旋转，称作右旋圆偏振，对应角动量 $+1$ 的光子；红色矢量项①顺时针旋转，称作左旋圆偏振，对应角动量 $-1$ 的光子。</p>
+<h4>用角动量守恒舍去反向项</h4>
+<p>电子自旋从 $|m_S = -1/2\rangle$ 向上吸收跃迁到 $|m_S = +1/2\rangle$ 时 $\Delta m_S = +1$，必须吸收 $+1$ 光子（向下发射跃迁 $\Delta m_S = -1$ 时则放出一个 $+1$ 光子，同样配对同一逆时针模式）。项①不仅对应角动量 $-1$ 不守恒，还沿相反方向高速旋转。于是在<strong>旋波近似（Rotating-Wave Approximation，简称 RWA）</strong>下舍去项①：</p>
+<p>$$H \approx \omega_0 S_z + \Omega\left[\cos(\omega t + \varphi)S_x + \sin(\omega t + \varphi)S_y\right]$$</p>
+<p>两项幅值同为 $\Omega$，舍去项①并不是因为它更小，而是角动量不守恒且方向反向。</p>
+<h4>判断旋波近似何时在强驱动下失效</h4>
+<p>旋波近似仅在驱动远弱于能隙（$\Omega \ll \omega_0$，称作<strong>弱驱动</strong>条件）且驱动频率接近共振（$\omega$ 靠近能隙 $\omega_0$）时足够准确，此时反向项迅速平均抵消。若驱动强到 $\Omega$ 可比拟 $\omega_0$，项①来不及抵消并引起共振频率偏移，就必须保留反向项再做修正。</p></div>
+              <div class="worked"><h3>Worked Example</h3><p>我们来对一个典型的金刚石 NV 色心电子自旋实验做一次旋波近似分解。设共振普通频率（即能隙对应频率）$\omega_0 / (2\pi) = 10\text{ GHz}$，横向交变驱动场的普通频率 $\omega / (2\pi) = 9.99\text{ GHz}$、总幅值参数 $2\Omega / (2\pi) = 20\text{ MHz}$，初相位 $\varphi = 0$。</p>
+<ol>
+<li><strong>计算单个圆偏振分量的驱动幅值。</strong> 从线性项 $2\Omega\cos(\omega t) S_x$ 拆成两个圆偏振分量后，每个分量的幅值减半：</li>
+<div class="step-math">$$\Omega / (2\pi) = \frac{20\text{ MHz}}{2} = 10\text{ MHz}.$$</div>
+</ol>
+<ol>
+<li><strong>写出完整拆解式与被舍去的反向项①。</strong> 按逆时针和顺时针分量展开后，用下括号标出顺时针项①：</li>
+<div class="step-math">$$H = \omega_0 S_z + \Omega\left[\cos(\omega t)S_x + \sin(\omega t)S_y\right] + \underbrace{\Omega\left[\cos(\omega t)S_x - \sin(\omega t)S_y\right]}_{\text{①}}.$$</div>
+</ol>
+<ol>
+<li><strong>结合角动量守恒与弱驱动条件舍去项①。</strong> 向上跃迁需要 $\Delta m_S = +1$，只匹配角动量 $+1$ 的逆时针分量；同时驱动 $\Omega / (2\pi) = 10\text{ MHz} \ll \omega_0 / (2\pi) = 10\text{ GHz}$ 且 $\omega$ 接近 $\omega_0$，旋波近似足够准确：</li>
+<div class="step-math">$$H \approx \omega_0 S_z + \Omega\left[\cos(\omega t)S_x + \sin(\omega t)S_y\right].$$</div>
+</ol>
+<p>这样就把沿 $x$ 轴振荡的驱动场化简成了单一逆时针旋转驱动场。</p></div>
+              <details class="problems-box" open id="problems-rwa-split-field">
+                <summary>随堂与测验题库（5 题 · 自动计时与存档）</summary>
+                <div class="prob" data-ex-id="rwa-split-basics"><div class="prob-head"><span>rwa-split-basics · mc</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 60s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">conceptual</span> <span class="tag">概念基础</span></span></div><div class="prob-body"></div></div><div class="prob" data-ex-id="rwa-split-self-explain"><div class="prob-head"><span>rwa-split-self-explain · mc</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 120s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">conceptual</span> <span class="tag">例题自解释</span></span></div><div class="prob-body"></div></div><div class="prob" data-ex-id="rwa-split-drive-amp-template"><div class="prob-head"><span>rwa-split-drive-amp-template · numeric</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 180s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">math</span> <span class="tag">难度 2</span></span></div><div class="prob-body"></div></div><div class="prob" data-ex-id="rwa-split-spot-mistake"><div class="prob-head"><span>rwa-split-spot-mistake · mc</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 120s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">conceptual</span> <span class="tag">难度 2</span></span></div><div class="prob-body"></div></div><div class="prob" data-ex-id="rwa-split-nuclear-transfer"><div class="prob-head"><span>rwa-split-nuclear-transfer · mc</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 180s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">transfer</span> <span class="tag">难度 3</span></span></div><div class="prob-body"></div></div>
+              </details>
+              <details class="problems-box" id="recalls-rwa-split-field">
+                <summary>FSRS 间隔复习 Recall 题（3 题 · 完成后可更新复习时间）</summary>
+                <div class="prob recall" data-ex-id="rwa-recall-split-say"><div class="prob-head"><span>rwa-recall-split-say · explain</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 60s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">conceptual</span> <span class="tag">FSRS Recall</span></span></div><div class="prob-body"></div></div><div class="prob recall" data-ex-id="rwa-recall-split-contrast"><div class="prob-head"><span>rwa-recall-split-contrast · mc</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 30s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">conceptual</span> <span class="tag">FSRS Recall</span></span></div><div class="prob-body"></div></div><div class="prob recall" data-ex-id="rwa-recall-split-formula"><div class="prob-head"><span>rwa-recall-split-formula · text</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 30s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">math</span> <span class="tag">FSRS Recall</span></span></div><div class="prob-body"></div></div>
+                <div class="recall-batch-bar">
+                  <button type="button" class="btn btn-primary btn-commit-recall" data-kp="rwa-split-field">提交本步 3 题 Recall 复习并更新下次复习时间</button>
+                  <span class="recall-batch-status" data-kp-recall-status="rwa-split-field"></span>
+                </div>
+              </details>
+            </section>
+
+            <section class="card step" id="step-2">
+              <div class="step-num">Step 2 · rwa-rotating-frame</div>
+              <h2>跳进旋转坐标系消去时间</h2>
+              <div class="tldr"><strong>本步要点 (TL;DR)</strong><ul>
+<li>相互作用图像变换相当于坐上与驱动场同频逆时针旋转的转盘去观察系统。</li>
+<li>在转盘上看，旋转的驱动矢量变成只由初相位决定的固定矢量，不再随时间变化。</li>
+<li>变换后整个哈密顿量成为常系数形式，由频率差与固定初相位共同决定。</li>
+</ul></div>
+              <div class="explain"><h4>切换到相互作用图像</h4>
+<p>经旋波近似后，驱动矢量仍以角频率 $\omega$ 绕 $z$ 轴逆时针旋转。如果我们坐上同频逆时针旋转的参考系去观察，转动的矢量就会静止下来。</p>
+<p>量子力学中实现这一参考系切换的算符叫<strong>相互作用图像变换</strong>，定义为 $U_i = e^{-i\omega t S_z}$，其中 $i$ 是虚数单位（$i^2 = -1$）。$U_i$ 是<strong>幺正算符</strong>，即它的厄米共轭 $U_i^\dagger$（把数值取复共轭、算符共轭转置并倒换乘积次序）恰好等于它的逆算符，满足 $U_i^\dagger U_i = \mathbb{1}$（单位算符）。由于 $S_z$ 自身厄米（$S_z^\dagger = S_z$），取共轭后指数变号，即 $U_i^\dagger = e^{+i\omega t S_z}$。</p>
+<p>设实验室系态矢量为 $|\psi\rangle$，旋转系里的态矢量记为 $|\psi_I\rangle = U_i^\dagger|\psi\rangle$，即 $|\psi\rangle = U_i|\psi_I\rangle$。将其代入含时薛定谔方程 $i\frac{\partial}{\partial t}|\psi\rangle = H|\psi\rangle$，左侧由偏导乘积法则展开得到 $i\left(\frac{\partial}{\partial t}U_i\right)|\psi_I\rangle + U_i\, i\frac{\partial}{\partial t}|\psi_I\rangle = H U_i|\psi_I\rangle$。两边左乘 $U_i^\dagger$ 并整理出等效方程 $i\frac{\partial}{\partial t}|\psi_I\rangle = H_I|\psi_I\rangle$，其中有效哈密顿量为</p>
+<p>$$
+\begin{aligned}
+H_I &amp;= U_i^\dagger H U_i - U_i^\dagger i \frac{\partial}{\partial t} U_i \\
+    &amp;= (\omega_0 - \omega)S_z + \Omega \underbrace{U_i^\dagger \left[\cos(\omega t + \varphi)S_x + \sin(\omega t + \varphi)S_y\right] U_i}_{\text{②}}
+\end{aligned}
+$$</p>
+<p>上式第一项由两部分相加得到。一方面，$S_z$ 与仅含 $S_z$ 的 $U_i$ <strong>对易</strong>（相乘可交换顺序），所以 $U_i^\dagger(\omega_0 S_z)U_i = \omega_0 S_z U_i^\dagger U_i = \omega_0 S_z$。另一方面，$\frac{\partial}{\partial t}U_i = -i\omega S_z U_i$，代回 $-U_i^\dagger i\frac{\partial}{\partial t}U_i$ 并用 $i^2=-1$ 得出 $-\omega S_z$，相加即得 $(\omega_0 - \omega)S_z$。</p>
+<h4>用三维旋转公式化解时间依赖</h4>
+<p>令括号里旋转矢量的坐标为 $\vec{\boldsymbol{r}} = (\cos(\omega t + \varphi), \sin(\omega t + \varphi), 0)$，就可把夹在 $U_i^\dagger$ 与 $U_i$ 中间的部分写成 $\vec{\boldsymbol{r}}\cdot\vec{\boldsymbol{S}}$，整块记为项②。借助对任意自旋量子数都成立的<strong>三维旋转公式</strong>：</p>
+<p>$$e^{-i\theta \vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{S}}}\left(\vec{\boldsymbol{r}}\cdot\vec{\boldsymbol{S}}\right)e^{i\theta \vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{S}}} = R_{\vec{\boldsymbol{n}}\cdot\theta}(\vec{\boldsymbol{r}})\cdot\vec{\boldsymbol{S}}$$</p>
+<p>这里 $\vec{\boldsymbol{n}}$ 是<strong>单位</strong>方向矢量，而记号 $R_{\vec{\boldsymbol{n}}\cdot\theta}(\vec{\boldsymbol{r}})$ 里的中间点只用来分隔转轴和转角、不代表点乘，意思是把三维矢量 $\vec{\boldsymbol{r}}$ 按右手定则绕单位轴 $\vec{\boldsymbol{n}}$ 转过角度 $\theta$（右手大拇指指向 $\vec{\boldsymbol{n}}$，四指弯曲为正转角方向）。把项②左右两边同时写成 $U_i^\dagger = e^{+i\omega t S_z} = e^{-i(\omega t)(-S_z)}$ 与 $U_i = e^{-i\omega t S_z} = e^{+i(\omega t)(-S_z)}$，与公式左边两端一一比对，立刻读出 $\vec{\boldsymbol{n}} = (0, 0, -1)$ 且 $\theta = \omega t$。</p>
+<div class="svg-wrap"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="x-y 平面内三维旋转公式示意图：实验室坐标系中随时间转到角度 omega t 加 phi 的黑色矢量 r，沿橙色箭头绕 z 轴负方向（即顺时针）转动角度 omega t 后，回到固定角度 phi 的蓝色矢量 r'，坐标为 (cos phi, sin phi, 0)，从而消除时间变量 t。">
+<defs>
+<marker id="rwa2-dark" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#171717"/></marker>
+<marker id="rwa2-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
+<marker id="rwa2-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker>
+</defs>
+<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#171717">
+<path d="M360.0 240.0 A165.0 165.0 0 0 0 200.76 75.1" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5" stroke-dasharray="4 4"/>
+<line x1="170.0" y1="240.0" x2="408.0" y2="240.0" stroke="#d4d4d4" stroke-width="1.5" marker-end="url(#rwa2-dark)"/>
+<line x1="195.0" y1="265.0" x2="195.0" y2="47.0" stroke="#d4d4d4" stroke-width="1.5" marker-end="url(#rwa2-dark)"/>
+<text x="414.0" y="244.0">x</text>
+<text x="203.0" y="51.0">y</text>
+<text x="181.0" y="256.0" fill="#737373">O</text>
+<path d="M247.0 240.0 A52 52 0 0 0 242.13 218.02" fill="#ffffff" fill-opacity="0" stroke="#10b981" stroke-width="2"/>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="261.39" y="229.28" fill="#10b981">φ</text>
+<path d="M238.76 136.9 A112 112 0 0 1 296.51 192.67" fill="#ffffff" fill-opacity="0" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#rwa2-amber)"/>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="283.92" y="151.92" fill="#f59e0b">顺时针转 ωt</text>
+<line x1="195.0" y1="240.0" x2="259.47" y2="88.12" stroke="#171717" stroke-width="3" marker-end="url(#rwa2-dark)"/>
+<line x1="195.0" y1="240.0" x2="344.54" y2="170.27" stroke="#3b82f6" stroke-width="3" marker-end="url(#rwa2-blue)"/>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="267.47" y="82.12" font-weight="600">r⃗ = (cos(ωt+φ), sin(ωt+φ), 0)</text>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="354.54" y="174.27" fill="#3b82f6" font-weight="600">r⃗' = (cos φ, sin φ, 0)</text>
+<rect x="405" y="205" width="222" height="74" rx="6" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.2"/>
+<text x="417" y="227" fill="#171717" font-weight="600">变换 U_i = exp(-i ω t S_z)</text>
+<text x="417" y="248" fill="#737373">转轴 n⃗ = (0, 0, -1)，转角 θ = ωt</text>
+<text x="417" y="268" fill="#3b82f6">转动后与时间 t 无关</text>
+</g>
+</svg>
+</div>
+<p>绕 $(0, 0, -1)$ 转动 $\omega t$ 就是沿着橙色箭头顺时针转回 $\omega t$ 角度，黑色矢量 $\vec{\boldsymbol{r}}$ 回到只含初相位的蓝色固定矢量 $\vec{\boldsymbol{r}}&#x27; = (\cos\varphi, \sin\varphi, 0)$，从而把整个哈密顿量变成与时间无关的常系数形式：</p>
+<p>$$H_I = (\omega_0 - \omega)S_z + \Omega\left[\cos(\varphi)S_x + \sin(\varphi)S_y\right]$$</p>
+<p>在这个式子里，驱动初相位 $\varphi$ 决定了有效驱动轴在 $x\text{-}y$ 平面中的指向：例如 $\varphi = 0$ 时给出 $+\Omega S_x$，$\varphi = \pi/2$ 时给出 $+\Omega S_y$，$\varphi = \pi$ 时则给出 $-\Omega S_x$。</p></div>
+              <div class="worked"><h3>Worked Example</h3><p>我们来计算一套具体参数下的旋转坐标系有效哈密顿量 $H_I$。设电子自旋共振普通频率 $\omega_0/(2\pi) = 10\text{ GHz}$，交变驱动场频率 $\omega/(2\pi) = 9.99\text{ GHz}$，单分量驱动幅值 $\Omega/(2\pi) = 10\text{ MHz}$，初相位 $\varphi = \pi/2$。</p>
+<ol>
+<li><strong>求出静态项与求导修正合并后的 $S_z$ 系数。</strong> 将 $\omega_0/(2\pi)$ 与 $\omega/(2\pi)$ 代入变换后的 $(\omega_0 - \omega)S_z$，算出 $S_z$ 项的频率系数：</li>
+<div class="step-math">$$(\omega_0 - \omega)/(2\pi) = 10\text{ GHz} - 9.99\text{ GHz} = 10\text{ MHz}.$$</div>
+</ol>
+<ol>
+<li><strong>确定三维旋转公式参数并转回固定矢量。</strong> 这里 $\vec{\boldsymbol{n}}=(0,0,-1)$、$\theta = \omega t$，把 $\vec{\boldsymbol{r}} = (\cos(\omega t + \pi/2), \sin(\omega t + \pi/2), 0)$ 顺时针转回 $\omega t$，得到 $\vec{\boldsymbol{r}}&#x27; = (0, 1, 0)$：</li>
+<div class="step-math">$$\Omega\left[\cos(\pi/2)S_x + \sin(\pi/2)S_y\right] = \Omega S_y.$$</div>
+</ol>
+<ol>
+<li><strong>合成最终的不含时哈密顿量 $H_I$。</strong> 将上述两项合并，并除以 $2\pi$ 以普通频率单位写出结果：</li>
+<div class="step-math">$$H_I / (2\pi) = 10\text{ MHz}\cdot S_z + 10\text{ MHz}\cdot S_y.$$</div>
+</ol>
+<p>所有含 $\cos(\omega t)$ 和 $\sin(\omega t)$ 的振荡项都已彻底消去，原本含时的哈密顿量变成了一个常系数算符。</p></div>
+              <details class="problems-box" open id="problems-rwa-rotating-frame">
+                <summary>随堂与测验题库（5 题 · 自动计时与存档）</summary>
+                <div class="prob" data-ex-id="rwa-frame-basics"><div class="prob-head"><span>rwa-frame-basics · mc</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 60s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">conceptual</span> <span class="tag">概念基础</span></span></div><div class="prob-body"></div></div><div class="prob" data-ex-id="rwa-frame-self-explain"><div class="prob-head"><span>rwa-frame-self-explain · mc</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 120s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">conceptual</span> <span class="tag">例题自解释</span></span></div><div class="prob-body"></div></div><div class="prob" data-ex-id="rwa-frame-detuning-template"><div class="prob-head"><span>rwa-frame-detuning-template · numeric</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 180s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">math</span> <span class="tag">难度 2</span></span></div><div class="prob-body"></div></div><div class="prob" data-ex-id="rwa-frame-phase-axis"><div class="prob-head"><span>rwa-frame-phase-axis · mc</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 120s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">conceptual</span> <span class="tag">难度 2</span></span></div><div class="prob-body"></div></div><div class="prob" data-ex-id="rwa-frame-spot-mistake"><div class="prob-head"><span>rwa-frame-spot-mistake · mc</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 180s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">math</span> <span class="tag">难度 3</span></span></div><div class="prob-body"></div></div>
+              </details>
+              <details class="problems-box" id="recalls-rwa-rotating-frame">
+                <summary>FSRS 间隔复习 Recall 题（3 题 · 完成后可更新复习时间）</summary>
+                <div class="prob recall" data-ex-id="rwa-recall-frame-say"><div class="prob-head"><span>rwa-recall-frame-say · explain</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 60s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">conceptual</span> <span class="tag">FSRS Recall</span></span></div><div class="prob-body"></div></div><div class="prob recall" data-ex-id="rwa-recall-frame-contrast"><div class="prob-head"><span>rwa-recall-frame-contrast · mc</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 30s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">conceptual</span> <span class="tag">FSRS Recall</span></span></div><div class="prob-body"></div></div><div class="prob recall" data-ex-id="rwa-recall-frame-formula"><div class="prob-head"><span>rwa-recall-frame-formula · expression</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 30s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">math</span> <span class="tag">FSRS Recall</span></span></div><div class="prob-body"></div></div>
+                <div class="recall-batch-bar">
+                  <button type="button" class="btn btn-primary btn-commit-recall" data-kp="rwa-rotating-frame">提交本步 3 题 Recall 复习并更新下次复习时间</button>
+                  <span class="recall-batch-status" data-kp-recall-status="rwa-rotating-frame"></span>
+                </div>
+              </details>
+            </section>
+
+            <section class="card step" id="step-3">
+              <div class="step-num">Step 3 · rwa-ladder-operators</div>
+              <h2>用算符代数消去时间</h2>
+              <div class="tldr"><strong>本步要点 (TL;DR)</strong><ul>
+<li>把横向自旋算符改写成专门负责升高和降低能级的两个升降算符。</li>
+<li>在相互作用图像下，上升算符乘出一个与驱动相位恰好相消的时间因子。</li>
+<li>这套纯代数推导不仅适用于高自旋，还能直接推广到光场玻色子系统。</li>
+</ul></div>
+              <div class="explain"><h4>为什么要学升降算符</h4>
+<p>前面用三维旋转公式虽然直接，但日后遇到更复杂的驱动场或其他量子系统时，未必总好套用空间旋转。这里再学一种只靠算符代数就能消去时间的方法。</p>
+<p>我们利用 $S_x, S_y$ 定义一对<strong>自旋升降算符</strong>：上升算符 $S^+ = S_x + i S_y$ 和下降算符 $S^- = S_x - i S_y$，反解可得 $S_x = \frac{1}{2}(S^+ + S^-)$ 与 $S_y = \frac{1}{2}(-i S^+ + i S^-)$。因为 $S_x, S_y$ 都是厄米算符，即 $S_x^\dagger = S_x$、$S_y^\dagger = S_y$，所以对 $S^+$ 取厄米共轭恰好得到下降算符：$(S^+)^\dagger = S^-$。按自旋角动量算符的乘法规则，它们作用在 $|m_S = \pm 1/2\rangle$ 上时，上升算符把下态升到上态、下降算符把上态降到下态，越出边界则为零：</p>
+<p>$$
+\begin{aligned}
+S^+|m_S = -1/2\rangle &amp;= |m_S = +1/2\rangle, &amp; S^+|m_S = +1/2\rangle &amp;= 0 \\
+S^-|m_S = +1/2\rangle &amp;= |m_S = -1/2\rangle, &amp; S^-|m_S = -1/2\rangle &amp;= 0
+\end{aligned}
+$$</p>
+<h4>用算符共轭消去时间</h4>
+<p>把 $S_x, S_y$ 代入项②，并用欧拉公式 $\cos\alpha \pm i\sin\alpha = e^{\pm i\alpha}$ 合并指数。利用共轭倒序法则 $(A B)^\dagger = B^\dagger A^\dagger$ 与数乘法则 $(c A)^\dagger = c^* A^\dagger$，可得 $(e^{-i(\omega t+\varphi)} U_i^\dagger S^+ U_i)^\dagger = e^{i(\omega t+\varphi)} U_i^\dagger S^- U_i$。于是括号里含 $S^-$ 的第二项恰好是第一项的厄米共轭，简记为 $h.c.$：</p>
+<p>$$
+\begin{aligned}
+\text{②} &amp;= U_i^\dagger \left[\cos(\omega t + \varphi)S_x + \sin(\omega t + \varphi)S_y\right] U_i \\
+         &amp;= \frac{1}{2} U_i^\dagger \left[e^{-i(\omega t + \varphi)}S^+ + e^{i(\omega t + \varphi)}S^-\right] U_i \\
+         &amp;= \frac{1}{2}\left[e^{-i(\omega t + \varphi)} U_i^\dagger S^+ U_i + h.c.\right]
+\end{aligned}
+$$</p>
+<p>根据算符函数的通用作用规则：若某算符满足 $S_z|m_S\rangle = m_S|m_S\rangle$，则函数 $f(S_z)$ 作用在该本征态上只需把 $S_z$ 换成数值 $m_S$，即 $f(S_z)|m_S\rangle = f(m_S)|m_S\rangle$。由于 $S^+$ 把 $m_S$ 抬高 $+1$，这让我们得到恒等式 $U_i^\dagger S^+ U_i = e^{i\omega t} S^+$（下方例题给出逐态证明）。代回上式，指数中的 $-i\omega t$ 与 $+i\omega t$ 立刻相消：</p>
+<p>$$\text{②} = \frac{1}{2}\left(e^{-i\varphi} S^+ + e^{i\varphi} S^-\right) = \cos(\varphi)S_x + \sin(\varphi)S_y$$</p>
+<p>这与三维旋转公式所得完全一致。因为上述代数推导只用到 $S^+$ 将磁量子数抬高 $+1$ 这一性质，它对任意自旋量子数 $S &gt; 1/2$ 的高自旋系统同样成立。此外，这一关系还能直接推广到谐振子或光场这类<strong>玻色子</strong>系统：那里粒子数态 $|n\rangle$ 满足 $a^\dagger a|n\rangle = n|n\rangle$，<strong>产生算符</strong> $a^\dagger$ 将 $|n\rangle$ 变为 $\sqrt{n+1}|n+1\rangle$，<strong>湮灭算符</strong> $a$ 将粒子数降一级。由于 $a^\dagger$ 每次把量子数 $n$ 抬高 $+1$，且数值标量 $e^{i\omega t}$ 可以越过算符交换顺序，同样有</p>
+<p>$$e^{i\omega t\, a^\dagger a} a^\dagger e^{-i\omega t\, a^\dagger a} = a^\dagger e^{i\omega t}.$$</p></div>
+              <div class="worked"><h3>Worked Example</h3><p>我们来逐步证明算符恒等式 $U_i^\dagger S^+ U_i = e^{i\omega t} S^+$，并代回 $\varphi = \pi/2$ 核对结果。因为任意自旋 $1/2$ 量子态都能写成两个本征基矢 $\{|m_S=+1/2\rangle, |m_S=-1/2\rangle\}$ 的线性叠加 $|\psi\rangle = c_+|m_S=+1/2\rangle + c_-|m_S=-1/2\rangle$，只要在两个本征基矢上分别验证等式两边相等，就由算符线性严格证明了算符恒等式对所有态都成立。</p>
+<ol>
+<li><strong>检验作用在下能级本征基矢 $|m_S = -1/2\rangle$ 上。</strong> 由规则 $f(S_z)|m_S\rangle = f(m_S)|m_S\rangle$，右侧 $U_i = e^{-i\omega t S_z}$ 作用在 $|m_S=-1/2\rangle$ 上给出 $e^{+i\omega t/2}$；被 $S^+$ 升到上态 $|m_S=+1/2\rangle$ 后，左侧 $U_i^\dagger = e^{+i\omega t S_z}$ 再给出同号因子 $e^{+i\omega t/2}$，与右端 $e^{i\omega t}S^+|m_S=-1/2\rangle$ 完全相同：</li>
+<div class="step-math">$$U_i^\dagger S^+ U_i |m_S = -1/2\rangle = e^{i\omega t/2} U_i^\dagger S^+ |m_S = -1/2\rangle = e^{i\omega t/2} U_i^\dagger |m_S = +1/2\rangle = e^{i\omega t} |m_S = +1/2\rangle.$$</div>
+</ol>
+<ol>
+<li><strong>检验另一本征基矢 $|m_S = +1/2\rangle$。</strong> 因为 $U_i|m_S = +1/2\rangle = e^{-i\omega t/2}|m_S = +1/2\rangle$，且 $S^+|m_S = +1/2\rangle = 0$，所以左端结果为 $0$，与右端 $e^{i\omega t}S^+|m_S=+1/2\rangle = 0$ 一致，恒等式 $U_i^\dagger S^+ U_i = e^{i\omega t} S^+$ 证毕。</li>
+</ol>
+<ol>
+<li><strong>代回项②并核对具体参数。</strong> 将 $\varphi = \pi/2$、$(\omega_0 - \omega)/(2\pi) = 10\text{ MHz}$、$\Omega/(2\pi) = 10\text{ MHz}$ 代入无时间依赖的项②：</li>
+<div class="step-math">$$\text{②} = \frac{1}{2}\left(e^{-i\pi/2} S^+ + e^{i\pi/2} S^-\right) = \frac{1}{2}\left(-i S^+ + i S^-\right) = S_y.$$</div>
+</ol>
+<p>于是 $H_I/(2\pi) = 10\text{ MHz}\cdot S_z + 10\text{ MHz}\cdot S_y$，升降算符法与三维旋转公式法所得的常系数哈密顿量完全吻合。</p></div>
+              <details class="problems-box" open id="problems-rwa-ladder-operators">
+                <summary>随堂与测验题库（5 题 · 自动计时与存档）</summary>
+                <div class="prob" data-ex-id="rwa-ladder-basics"><div class="prob-head"><span>rwa-ladder-basics · mc</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 60s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">conceptual</span> <span class="tag">概念基础</span></span></div><div class="prob-body"></div></div><div class="prob" data-ex-id="rwa-ladder-self-explain"><div class="prob-head"><span>rwa-ladder-self-explain · mc</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 120s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">conceptual</span> <span class="tag">例题自解释</span></span></div><div class="prob-body"></div></div><div class="prob" data-ex-id="rwa-ladder-phase-template"><div class="prob-head"><span>rwa-ladder-phase-template · numeric</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 180s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">math</span> <span class="tag">难度 2</span></span></div><div class="prob-body"></div></div><div class="prob" data-ex-id="rwa-ladder-spot-mistake"><div class="prob-head"><span>rwa-ladder-spot-mistake · mc</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 120s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">math</span> <span class="tag">难度 2</span></span></div><div class="prob-body"></div></div><div class="prob" data-ex-id="rwa-ladder-limit-transfer"><div class="prob-head"><span>rwa-ladder-limit-transfer · mc</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 180s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">transfer</span> <span class="tag">难度 3</span></span></div><div class="prob-body"></div></div>
+              </details>
+              <details class="problems-box" id="recalls-rwa-ladder-operators">
+                <summary>FSRS 间隔复习 Recall 题（3 题 · 完成后可更新复习时间）</summary>
+                <div class="prob recall" data-ex-id="rwa-recall-ladder-say"><div class="prob-head"><span>rwa-recall-ladder-say · explain</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 60s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">conceptual</span> <span class="tag">FSRS Recall</span></span></div><div class="prob-body"></div></div><div class="prob recall" data-ex-id="rwa-recall-ladder-contrast"><div class="prob-head"><span>rwa-recall-ladder-contrast · mc</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 30s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">conceptual</span> <span class="tag">FSRS Recall</span></span></div><div class="prob-body"></div></div><div class="prob recall" data-ex-id="rwa-recall-ladder-formula"><div class="prob-head"><span>rwa-recall-ladder-formula · text</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 30s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">math</span> <span class="tag">FSRS Recall</span></span></div><div class="prob-body"></div></div>
+                <div class="recall-batch-bar">
+                  <button type="button" class="btn btn-primary btn-commit-recall" data-kp="rwa-ladder-operators">提交本步 3 题 Recall 复习并更新下次复习时间</button>
+                  <span class="recall-batch-status" data-kp-recall-status="rwa-ladder-operators"></span>
+                </div>
+              </details>
+            </section>
+
+  <section class="card">
+    <h3>Explain it（课末自评总结题）</h3>
+    <div class="prob" data-ex-id="rwa-final-explain"><div class="prob-head"><span>rwa-final-explain · explain</span><span class="prob-meta-right"><span class="timer-pill" data-timer>计时 0s / 目标 240s</span> <span class="rating-pill" data-rating>未作答</span> <span class="tag">conceptual</span> <span class="tag">难度 2</span></span></div><div class="prob-body"></div></div>
+  </section>
+  <section class="card">
+    <h3>本节总结</h3>
+    <ul>
+<li><strong>旋波近似（RWA）与适用界限</strong>：把沿 $x$ 轴的线性驱动拆成幅值同为 $\Omega$ 的正反两个圆偏振分量后，由于电子自旋向上跃迁要求 $\Delta m_S = +1$，舍去角动量不守恒且方向反向的分量，保留 $H \approx \omega_0 S_z + \Omega[\cos(\omega t+\varphi)S_x + \sin(\omega t+\varphi)S_y]$；当强驱动使 $\Omega$ 可比拟能隙 $\omega_0$ 时近似失效，反向项会引起共振频率偏移。</li>
+<li><strong>相互作用图像</strong>：作幺正变换 $U_i = e^{-i\omega t S_z}$，无论是用三维旋转公式 $e^{-i\theta \vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{S}}}(\vec{\boldsymbol{r}}\cdot\vec{\boldsymbol{S}})e^{i\theta \vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{S}}} = R_{\vec{\boldsymbol{n}}\cdot\theta}(\vec{\boldsymbol{r}})\cdot\vec{\boldsymbol{S}}$，还是用升降算符恒等式 $U_i^\dagger S^+ U_i = e^{i\omega t} S^+$（可推广至高自旋与玻色子产生湮灭算符 $a^\dagger, a$），都能消去时间 $t$。</li>
+<li><strong>不含时有效哈密顿量</strong>：变换后得到常系数哈密顿量 $H_I = (\omega_0 - \omega)S_z + \Omega[\cos(\varphi)S_x + \sin(\varphi)S_y]$。</li>
+</ul>
+<p><strong>Next:</strong> 下一节「有效场演化与拉比跃迁概率」将对刚求出的常系数哈密顿量 $H_I$ 直接作演化计算，导出自旋二能级系统的跃迁概率公式。</p>
+  </section>
+</main>
+<script>
+const EX_MAP = {"rwa-split-basics": {"id": "rwa-split-basics", "dimension": "conceptual", "type": "mc", "role": "basics", "difficulty": 1, "est_minutes": 1, "prompt": "在旋波近似中，为什么我们把线性交变驱动项 $2\\Omega\\cos(\\omega t+\\varphi)S_x$ 拆开后，会舍去其中顺时针旋转的分量？", "options": [{"id": "a", "text": "顺时针旋转分量的驱动幅值接近零，在哈密顿量中几乎不起作用。", "correct": false, "feedback": "两个旋转分量的幅值完全相同，都是 $\\Omega$；舍去反向分量是因为角动量不守恒且方向反向。"}, {"id": "b", "text": "顺时针分量对应角动量为 $-1$ 的光子，与电子自旋向上跃迁所需的 $\\Delta m_S=+1$ 不守恒，且旋转方向相反。", "correct": true, "feedback": "完全正确。电子自旋从 $|m_S=-1/2\\rangle$ 跃迁到 $|m_S=+1/2\\rangle$ 时 $\\Delta m_S=+1$，只匹配逆时针（$+1$）圆偏振光子；顺时针（$-1$）分量角动量不守恒且反向快速振荡，在弱驱动下可忽略。"}, {"id": "c", "text": "顺时针分量的角频率恰好为零，属于静态磁场，因此被合并进了 $\\omega_0 S_z$。", "correct": false, "feedback": "顺时针分量以角频率 $\\omega$ 在 $x\\text{-}y$ 平面内顺时针旋转，并不是静磁场。"}, {"id": "d", "text": "只有在驱动初相位 $\\varphi=0$ 的特殊情形下顺时针分量才消失，其他相位下必须保留。", "correct": false, "feedback": "无论初相位 $\\varphi$ 取何值，两个旋转分量的幅值始终都是 $\\Omega$，旋转方向也都不受 $\\varphi$ 改变。"}], "solution": "拆出的两个圆偏振分量幅值都是 $\\Omega$；电子自旋向上跃迁要求 $\\Delta m_S=+1$，只匹配逆时针（角动量 $+1$）分量，顺时针（角动量 $-1$）分量违背角动量守恒且方向相反，在弱驱动下可以忽略。"}, "rwa-split-self-explain": {"id": "rwa-split-self-explain", "lesson_only": true, "dimension": "conceptual", "type": "mc", "role": "practice", "difficulty": 1, "est_minutes": 2, "prompt": "在刚才金刚石 NV 色心的例题里，已知 $2\\Omega/(2\\pi) = 20\\text{ MHz}$，为什么拆解后写出的每个圆偏振分量前面的系数变成了 $10\\text{ MHz}$ 而不是 $20\\text{ MHz}$？", "options": [{"id": "a", "text": "因为把单个线偏振场一分为二写成逆时针与顺时针两个旋转场之和，每份各分担一半幅值 $\\Omega$。", "correct": true, "feedback": "没错。把两个分量相加时，$S_y$ 项一正一负抵消，而 $S_x$ 项 $\\Omega+\\Omega$ 恰好还原回 $2\\Omega\\cos(\\omega t)S_x$。"}, {"id": "b", "text": "因为在旋波近似里直接丢掉了反向分量，剩下的保留项角频率自然折半，导致系数变为原来的一半。", "correct": false, "category": "incorrect_reasoning", "feedback": "系数的 $1/2$ 出现在数学恒等拆解那一步，而不是忽略反向项造成的。"}, {"id": "c", "text": "因为电子自旋的量子数是 $1/2$，计算所有横向频率系数时都要额外乘以 $1/2$。", "correct": false, "category": "misunderstood_definition", "feedback": "无量纲算符 $S_x$ 本身已经对应自旋 $1/2$，这里的减半纯属两个圆偏振矢量合成为线偏振矢量时的几何关系。"}, {"id": "d", "text": "因为驱动初相位 $\\varphi=0$ 时 $\\sin(\\omega t)$ 项在 $t=0$ 为零，使总驱动幅度减半。", "correct": false, "category": "incorrect_reasoning", "feedback": "$\\sin(\\omega t)$ 只在特定时刻为零，不会把整条式子的系数变成一半；这里对所有时刻 $t$ 和所有相位 $\\varphi$ 都成立。"}], "solution": "正、反两个圆偏振分量相加时，$y$ 方向分量相消、$x$ 方向分量相加为 $2\\Omega\\cos(\\omega t+\\varphi)S_x$，所以单个分量的幅值是 $2\\Omega$ 的一半，即 $10\\text{ MHz}$。"}, "rwa-split-drive-amp-template": {"id": "rwa-split-drive-amp-template", "dimension": "math", "type": "numeric", "role": "practice", "difficulty": 2, "est_minutes": 3, "params": {"Bx": {"min": 2, "max": 10, "step": 2}}, "prompt": "在横向线性交变驱动场 $B_x\\cos(\\omega t+\\varphi)\\vec{\\boldsymbol{e}}_x$ 作用下，电子自旋旋磁比满足 $|\\gamma_e|/(2\\pi) = 2.8\\text{ MHz/G}$。若驱动磁场振幅 $B_x = {{=Bx}}\\text{ G}$，做旋波近似后保留下来的单一圆偏振分量的驱动幅值 $\\Omega/(2\\pi)$ 是多少 $\\text{MHz}$？", "answer_expr": "2.8 * Bx / 2", "tolerance": {"abs": 0.01}, "common_wrong": [{"answer_expr": "2.8 * Bx", "category": "misapplied_technique", "feedback": "由 $2\\Omega = -\\gamma_e B_x$ 算出的是线性驱动总系数 $2\\Omega/(2\\pi)$，拆成正反两个圆偏振分量后单分量幅值只有一半，需要再除以 $2$。"}, {"answer_expr": "2.8 * Bx / 4", "category": "math_error", "feedback": "线性项中是 $2\\Omega$ 而不是 $4\\Omega$，只需把 $|\\gamma_e| B_x / (2\\pi)$ 除以 $2$ 即可。"}], "hints": ["先由前序关系 $|2\\Omega| = |\\gamma_e| B_x$ 算出线性哈密顿量中的系数 $2\\Omega/(2\\pi)$。", "再把线偏振拆成一正一反两个圆偏振分量，取单分量幅值 $\\Omega/(2\\pi)$。"], "solution": "由 $2\\Omega/(2\\pi) = |\\gamma_e| B_x/(2\\pi) = 2.8 \\times {{=Bx}} = {{=2.8*Bx}}\\text{ MHz}$，拆分为两个圆偏振分量后单个分量的幅值为 $\\Omega/(2\\pi) = {{=2.8*Bx}}/2 = {{=2.8*Bx/2}}\\text{ MHz}$。"}, "rwa-split-spot-mistake": {"id": "rwa-split-spot-mistake", "dimension": "conceptual", "type": "mc", "role": "practice", "difficulty": 2, "est_minutes": 2, "prompt": "一位同学在笔记中写道：「旋波近似能够忽略反向旋转项 $\\Omega[\\cos(\\omega t+\\varphi)S_x - \\sin(\\omega t+\\varphi)S_y]$，是因为在分出正反两项时反向分量的幅值几乎比正向分量小一个数量级。」这段说法哪里出错了？", "options": [{"id": "a", "text": "正反两项幅值同为 $\\Omega$ 完全相等；反向项被忽略是因为它对应角动量 $-1$ 不满足跃迁守恒，且反向快速旋转。", "correct": true, "feedback": "判断精准。在数学拆分中两项幅值对称相等，导致两者作用悬殊的是角动量匹配与旋转方向。"}, {"id": "b", "text": "反向项的幅值其实比正向项大两倍，但因为旋转方向为顺时针，所以它自身已经相互抵消为零。", "correct": false, "category": "misunderstood_definition", "feedback": "两项的幅值严格相等都是 $\\Omega$，旋转方向相反并不会让算符自身瞬间变成零。"}, {"id": "c", "text": "原因在于 $S_y$ 前面的负号使反向项对任意态 $|m_S = \\pm 1/2\\rangle$ 的作用结果恒等于零。", "correct": false, "category": "incorrect_reasoning", "feedback": "$S_y$ 前面的负号只改变圆偏振的旋转方向（逆时针变顺时针），并不改变横向幅值，也不会让算符作用恒为零。"}, {"id": "d", "text": "只有在静态磁场 $B_0=0$ 时两项幅值才相等；外加静磁场会把反向分量的磁场幅值压低。", "correct": false, "category": "missing_prerequisite", "feedback": "静磁场 $B_0$ 只进入 $\\omega_0 S_z$ 确定能级分裂，不会改变外加驱动线圈产生的横向驱动场振幅 $B_x$。"}], "solution": "线性余弦场拆分出的顺、逆时针两项幅值都是 $\\Omega$，大小完全一样。忽略顺时针项的物理原因是它对应 $-1$ 光子角动量、与 $\\Delta m_S=+1$ 跃迁不守恒，并且方向相反会在弱驱动下平均抵消。"}, "rwa-split-nuclear-transfer": {"id": "rwa-split-nuclear-transfer", "dimension": "transfer", "type": "mc", "role": "practice", "difficulty": 3, "est_minutes": 3, "prompt": "考虑一个全新的对象：氢核（质子，同样是具有本征态 $|m_S = \\pm 1/2\\rangle$ 的自旋 $1/2$ 系统）在静磁场 $B_0 > 0$ 中，其旋磁比 $\\gamma_n > 0$（与电子 $\\gamma_e < 0$ 符号相反），因此静磁场哈密顿量为 $H_0 = -\\gamma_n B_0 S_z$。当自旋从能量更低的下能级吸收光子向上能级跃迁时，应当保留哪个旋转方向的圆偏振驱动分量？", "options": [{"id": "a", "text": "下能级仍是 $|m_S = -1/2\\rangle$，向上跃迁 $\\Delta m_S = +1$，仍保留逆时针（$+1$）分量。", "correct": false, "category": "misapplied_technique", "feedback": "由 $S_z|m_S=\\pm 1/2\\rangle = \\pm\\frac{1}{2}|m_S=\\pm 1/2\\rangle$，当 $\\gamma_n > 0$ 时 $-\\gamma_n B_0 < 0$，于是 $|m_S = +1/2\\rangle$ 能量为负更低，下能级和上能级与电子自旋恰好颠倒。"}, {"id": "b", "text": "下能级变为 $|m_S = +1/2\\rangle$，向上跃迁需要 $\\Delta m_S = -1$，因此应当保留顺时针（$-1$）圆偏振分量。", "correct": true, "feedback": "迁移非常准确！因为 $\\gamma_n > 0$，$H_0 = -\\gamma_n B_0 S_z$ 让 $|m_S = +1/2\\rangle$ 成为低能级，向上跃迁到 $|m_S = -1/2\\rangle$ 时角动量变化为 $\\Delta m_S = -1$，正好吸收角动量为 $-1$ 的顺时针（左旋）圆偏振光子。"}, {"id": "c", "text": "由于旋磁比变正，两个圆偏振分量都会满足跃迁条件，旋波近似不再能忽略任何一项。", "correct": false, "category": "incorrect_reasoning", "feedback": "跃迁只对应唯一的角动量变化 $\\Delta m_S = -1$，相反方向的 $+1$ 分量此时变成不守恒与反向项，照样被忽略。"}, {"id": "d", "text": "质子自旋无法与 $x\\text{-}y$ 平面内的圆偏振磁场耦合，只能靠纵向 $z$ 方向驱动产生跃迁。", "correct": false, "category": "incorrect_reasoning", "feedback": "横向圆偏振分量依然提供翻转自旋的耦合，改变的只是发生共振的旋转方向。"}], "solution": "由 $S_z|m_S=\\pm 1/2\\rangle = \\pm\\frac{1}{2}|m_S=\\pm 1/2\\rangle$ 可知，当 $\\gamma_n > 0$ 且 $B_0 > 0$ 时，$H_0 = -\\gamma_n B_0 S_z$ 使得 $|m_S=+1/2\\rangle$ 能量更低、$|m_S=-1/2\\rangle$ 能量更高。从下能级向上跃迁时 $\\Delta m_S = -1$，由角动量守恒应保留顺时针（角动量 $-1$）旋转分量。"}, "rwa-recall-split-say": {"id": "rwa-recall-split-say", "dimension": "conceptual", "type": "explain", "role": "recall", "knowledge_point": "rwa-split-field", "difficulty": 1, "est_minutes": 1, "prompt": "用一两句话说明：旋波近似是如何处理线性交变驱动项的，为什么只保留其中一项？", "rubric": [{"id": "r1", "criterion": "说明将线性驱动拆成逆时针和顺时针两个等幅度的圆偏振分量，并忽略反向旋转项。", "weight": 1, "required": true}, {"id": "r2", "criterion": "说明保留项的光子角动量与电子自旋向上跃迁的角动量变化（$\\Delta m_S = +1$）守恒，而反向项角动量不守恒且方向相反。", "weight": 1, "required": true}, {"id": "r3", "criterion": "补充指出这一近似要求驱动强度远小于能隙（弱驱动条件 $\\Omega \\ll \\omega_0$），否则反向项会引起共振频率偏移。", "weight": 1, "required": false}], "exemplar": "旋波近似把沿固定方向振荡的线偏振驱动拆成幅值均为 $\\Omega$ 的逆时针与顺时针两个圆偏振分量，并舍去顺时针分量。因为电子自旋向上跃迁需要 $\\Delta m_S = +1$，只能吸收逆时针的 $+1$ 角动量光子，而反向分量角动量不守恒且方向相反，仅在弱驱动 $\\Omega \\ll \\omega_0$ 下可忽略，强驱动下会引起共振频率偏移。"}, "rwa-recall-split-contrast": {"id": "rwa-recall-split-contrast", "dimension": "conceptual", "type": "mc", "role": "recall", "knowledge_point": "rwa-split-field", "difficulty": 1, "est_minutes": 0.5, "prompt": "下面哪一项描述的是经旋波近似简化后、被**舍去**的那个横向驱动项（项①）？", "options": [{"id": "a", "text": "$\\Omega[\\cos(\\omega t+\\varphi)S_x - \\sin(\\omega t+\\varphi)S_y]$，在 $x\\text{-}y$ 平面内顺时针旋转。", "correct": true, "feedback": "正确。$S_y$ 前取负号对应顺时针旋转、角动量为 $-1$ 的反向分量，正是旋波近似忽略的项①。"}, {"id": "b", "text": "$\\Omega[\\cos(\\omega t+\\varphi)S_x + \\sin(\\omega t+\\varphi)S_y]$，在 $x\\text{-}y$ 平面内逆时针旋转。", "correct": false, "feedback": "这是与自旋跃迁角动量守恒匹配、在旋波近似中被保留下来的同向旋转驱动项。"}, {"id": "c", "text": "$\\omega_0 S_z$，确定系统 $|m_S = \\pm 1/2\\rangle$ 两能级分裂的静态部分。", "correct": false, "feedback": "这是由静态外磁场 $B_0$ 决定的不含时能级项，不属于交变驱动项。"}, {"id": "d", "text": "$(\\omega_0 - \\omega)S_z + \\Omega[\\cos(\\varphi)S_x + \\sin(\\varphi)S_y]$，已消除时间的哈密顿量。", "correct": false, "feedback": "这是作完相互作用图像变换 $U_i$ 之后得到的不含时有效哈密顿量 $H_I$。"}], "solution": "线偏振驱动拆成正、反两项，其中 $S_y$ 前带负号的 $\\Omega[\\cos(\\omega t+\\varphi)S_x - \\sin(\\omega t+\\varphi)S_y]$ 顺时针旋转（角动量 $-1$），在旋波近似中被舍去。"}, "rwa-recall-split-formula": {"id": "rwa-recall-split-formula", "dimension": "math", "type": "text", "role": "recall", "knowledge_point": "rwa-split-field", "difficulty": 1, "est_minutes": 0.5, "prompt": "补全电子自旋作旋波近似后的哈密顿量空缺部分（只需填写方括号中加号后面的完整项；用 `w` 表示 $\\omega$、`phi` 表示 $\\varphi$、`S_y` 表示纵轴自旋算符，乘法用 `*` 连接）：$H \\approx \\omega_0 S_z + \\Omega[\\cos(\\omega t+\\varphi)S_x + \\text{___}]$。", "accept": ["sin(w*t+phi)*S_y", "sin(wt+phi)S_y", "sin(wt+phi)*S_y", "sin(w*t+phi)S_y", "\\sin(\\omega t+\\varphi)S_y", "sin(ωt+φ)S_y"], "regex": "^\\\\?sin\\s*\\(\\s*(?:w|\\\\omega|ω)\\s*\\*?\\s*t\\s*\\+\\s*(?:phi|\\\\varphi|φ)\\s*\\)\\s*\\*?\\s*S_?y$", "solution": "保留下来的逆时针圆偏振分量为 $\\Omega[\\cos(\\omega t+\\varphi)S_x + \\sin(\\omega t+\\varphi)S_y]$，因此空缺处为 $\\sin(\\omega t+\\varphi)S_y$。"}, "rwa-frame-basics": {"id": "rwa-frame-basics", "dimension": "conceptual", "type": "mc", "role": "basics", "difficulty": 1, "est_minutes": 1, "prompt": "在旋波近似之后，为什么还要再做一次相互作用图像变换 $U_i = e^{-i\\omega t S_z}$？", "options": [{"id": "a", "text": "切换到以频率 $\\omega$ 逆时针旋转的参考系，把驱动场中的时间依赖 $t$ 完全消去，得到常系数哈密顿量。", "correct": true, "feedback": "准确。在随着驱动场同步旋转的坐标系里看，横向矢量不再转动，于是 $H_I$ 变得与时间 $t$ 无关。"}, {"id": "b", "text": "把之前忽略的顺时针反向旋转项重新加回来，用来修正强驱动引起的能级移动。", "correct": false, "feedback": "$U_i = e^{-i\\omega t S_z}$ 处理的是保留下来的同向驱动项，并不会恢复已被旋波近似丢弃的反向项。"}, {"id": "c", "text": "让系统能级间隔从 $\\omega_0$ 放大为 $\\omega_0 + \\omega$，从而提高跃迁的概率。", "correct": false, "feedback": "变换中的求导修正项 $-U_i^\\dagger i \\frac{\\partial}{\\partial t} U_i$ 给出的是 $-\\omega S_z$，使有效 $S_z$ 系数变为 $\\omega_0 - \\omega$ 而不是相加。"}, {"id": "d", "text": "把原本沿 $z$ 轴的静态磁场消除为零，无论驱动频率 $\\omega$ 取什么值都能消除 $S_z$ 项。", "correct": false, "feedback": "只有当 $\\omega = \\omega_0$ 时 $(\\omega_0 - \\omega)S_z$ 才为零；一般情形下还保留着 $(\\omega_0 - \\omega)S_z$。"}], "solution": "变换 $U_i = e^{-i\\omega t S_z}$ 对应坐进以角频率 $\\omega$ 逆时针转动的参考系，既消去了驱动场里的 $\\omega t$，又把静态项变为 $(\\omega_0 - \\omega)S_z$，得到不含时的 $H_I$。"}, "rwa-frame-self-explain": {"id": "rwa-frame-self-explain", "lesson_only": true, "dimension": "conceptual", "type": "mc", "role": "practice", "difficulty": 1, "est_minutes": 2, "prompt": "在刚才 $\\varphi = \\pi/2$ 的例题第 2 步中，用三维旋转公式化简 $U_i^\\dagger[\\cos(\\omega t+\\varphi)S_x + \\sin(\\omega t+\\varphi)S_y]U_i$ 时，为什么对应旋转轴必须取 $\\vec{\\boldsymbol{n}} = (0, 0, -1)$ 而不是 $(0, 0, +1)$？", "options": [{"id": "a", "text": "因为待化简式把 $U_i^\\dagger = e^{+i\\omega t S_z}$ 放在左边、$U_i = e^{-i\\omega t S_z}$ 放在右边，与标准公式 $e^{-i\\theta\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}}(\\cdots)e^{i\\theta\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}}$ 的符号正好相反，故转轴取负 $z$ 轴。", "correct": true, "feedback": "抓住了关键！$e^{+i\\omega t S_z} = e^{-i(\\omega t)(-S_z)}$，所以 $\\vec{\\boldsymbol{n}} = (0,0,-1)$、$\\theta = \\omega t$，几何上顺时针转回 $\\omega t$ 恰好抵消矢量里自带的 $+\\omega t$。"}, {"id": "b", "text": "因为只有当 $\\varphi = \\pi/2$ 时旋转轴才指向 $-z$ 方向；若 $\\varphi = 0$，旋转轴就会变为 $+z$ 方向。", "correct": false, "category": "incorrect_reasoning", "feedback": "转轴 $\\vec{\\boldsymbol{n}}=(0,0,-1)$ 完全由 $U_i = e^{-i\\omega t S_z}$ 的指数形式决定，与初相位 $\\varphi$ 无关。"}, {"id": "c", "text": "因为对电子自旋 $\\gamma_e < 0$，所以所有空间坐标轴在代入公式前都必须先取负号。", "correct": false, "category": "missing_prerequisite", "feedback": "旋磁比符号影响的是能级顺序与 $\\omega_0$，不会改变算符共轭旋转公式里的几何转轴约定。"}, {"id": "d", "text": "因为旋转公式 $R_{\\vec{\\boldsymbol{n}}\\cdot\\theta}$ 的下标规定，凡是含三角函数的矢量旋转都只能绕负坐标轴定义。", "correct": false, "category": "misunderstood_definition", "feedback": "三维旋转公式的 $\\vec{\\boldsymbol{n}}$ 可以指向任意单位方向，取 $(0,0,-1)$ 纯粹是为了匹配左边 $e^{+i\\omega t S_z}$ 与右边 $e^{-i\\omega t S_z}$ 的指数符号。"}], "solution": "旋转公式左端为 $e^{-i\\theta \\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}}$、右端为 $e^{+i\\theta \\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}}$；对比 $U_i^\\dagger(\\cdots)U_i = e^{+i\\omega t S_z}(\\cdots)e^{-i\\omega t S_z}$，必须把 $+\\omega t S_z$ 写成 $-(\\omega t)(-S_z)$，即 $\\vec{\\boldsymbol{n}} = (0,0,-1)$。"}, "rwa-frame-detuning-template": {"id": "rwa-frame-detuning-template", "dimension": "math", "type": "numeric", "role": "practice", "difficulty": 2, "est_minutes": 3, "params": {"B0": {"min": 100, "max": 300, "step": 50}, "f_drive": {"min": 250, "max": 800, "step": 50}}, "constraints": ["2.8 * B0 != f_drive"], "prompt": "某电子自旋处于静磁场 $B_0 = {{=B0}}\\text{ G}$ 中，旋磁比满足 $\\gamma_e/(2\\pi) = -2.8\\text{ MHz/G}$。外加频率为 $\\omega/(2\\pi) = {{=f_drive}}\\text{ MHz}$ 的横向交变驱动场，并作相互作用图像变换 $U_i = e^{-i\\omega t S_z}$。在旋转坐标系有效哈密顿量 $H_I/(2\\pi)$ 中，$S_z$ 前面的系数（即 $(\\omega_0 - \\omega)/(2\\pi)$）是多少 $\\text{MHz}$？", "answer_expr": "2.8 * B0 - f_drive", "tolerance": {"abs": 0.01}, "common_wrong": [{"answer_expr": "f_drive - 2.8 * B0", "category": "math_error", "feedback": "符号弄反了：$H_I$ 中 $S_z$ 项是 $(\\omega_0 - \\omega)S_z$，不是 $(\\omega - \\omega_0)S_z$。"}, {"answer_expr": "2.8 * B0", "category": "misapplied_technique", "feedback": "这是实验室坐标系下的共振频率 $\\omega_0/(2\\pi)$，还没减去变换导数项 $-U_i^\\dagger i\\frac{\\partial}{\\partial t} U_i$ 带来的 $-\\omega S_z$。"}, {"answer_expr": "2.8 * B0 + f_drive", "category": "math_error", "feedback": "求导修正项带来的是减 $\\omega$ 而不是加 $\\omega$。"}], "hints": ["先利用 $\\omega_0 = -\\gamma_e B_0$ 算出自旋的静态共振频率 $\\omega_0/(2\\pi)$（注意两个负号相消为正）。", "再代入 $H_I = (\\omega_0 - \\omega)S_z + \\cdots$ 求出 $(\\omega_0 - \\omega)/(2\\pi)$。"], "solution": "自旋共振频率为 $\\omega_0/(2\\pi) = -(-2.8)\\times {{=B0}} = {{=2.8*B0}}\\text{ MHz}$。经 $U_i = e^{-i\\omega t S_z}$ 变换后，$S_z$ 项的频率系数为 $(\\omega_0 - \\omega)/(2\\pi) = {{=2.8*B0}} - {{=f_drive}} = {{=2.8*B0 - f_drive}}\\text{ MHz}$。"}, "rwa-frame-phase-axis": {"id": "rwa-frame-phase-axis", "dimension": "conceptual", "type": "mc", "role": "practice", "difficulty": 2, "est_minutes": 2, "prompt": "经过旋波近似与相互作用图像变换 $U_i = e^{-i\\omega t S_z}$ 后，若实验中想让旋转坐标系里的驱动场单独指向 $-x$ 方向（即驱动项化为 $-\\Omega S_x$），应当把驱动场的初相位 $\\varphi$ 设为多少？", "options": [{"id": "a", "text": "$\\varphi = 0$", "correct": false, "category": "incorrect_reasoning", "feedback": "当 $\\varphi = 0$ 时，$\\cos(0)=1, \\sin(0)=0$，驱动项指向 $+x$ 方向（$+\\Omega S_x$）。"}, {"id": "b", "text": "$\\varphi = \\pi / 2$", "correct": false, "category": "incorrect_reasoning", "feedback": "当 $\\varphi = \\pi/2$ 时，$\\cos(\\pi/2)=0, \\sin(\\pi/2)=1$，驱动项沿 $+y$ 方向（$+\\Omega S_y$）。"}, {"id": "c", "text": "$\\varphi = \\pi$", "correct": true, "feedback": "正确！代入 $\\varphi = \\pi$ 得 $\\cos\\pi = -1, \\sin\\pi = 0$，有效驱动项恰好成为 $-\\Omega S_x$。"}, {"id": "d", "text": "$\\varphi = 3\\pi / 2$", "correct": false, "category": "incorrect_reasoning", "feedback": "当 $\\varphi = 3\\pi/2$ 时，驱动项为 $-\\Omega S_y$，指向 $-y$ 方向。"}], "solution": "在 $H_I = (\\omega_0 - \\omega)S_z + \\Omega[\\cos(\\varphi)S_x + \\sin(\\varphi)S_y]$ 中，令 $\\cos\\varphi = -1$ 且 $\\sin\\varphi = 0$，即取初相位 $\\varphi = \\pi$。"}, "rwa-frame-spot-mistake": {"id": "rwa-frame-spot-mistake", "dimension": "math", "type": "mc", "role": "practice", "difficulty": 3, "est_minutes": 3, "prompt": "某学习者做相互作用图像变换时，误把变换算符符号写反，选用了 $V_i = e^{+i\\omega t S_z}$ 而不是 $U_i = e^{-i\\omega t S_z}$。如果把 $V_i$ 代入 $H_{\\text{new}} = V_i^\\dagger H V_i - V_i^\\dagger i\\frac{\\partial}{\\partial t} V_i$ 来化简 $H = \\omega_0 S_z + \\Omega[\\cos(\\omega t+\\varphi)S_x + \\sin(\\omega t+\\varphi)S_y]$，会发生什么？", "options": [{"id": "a", "text": "旋转方向加倍而非抵消，驱动项反而变成以 $2\\omega t + \\varphi$ 高速旋转，无法消去时间 $t$。", "correct": true, "feedback": "完全正确！$V_i^\\dagger(\\cdots)V_i = e^{-i\\omega t S_z}(\\cdots)e^{i\\omega t S_z}$ 对应 $\\vec{\\boldsymbol{n}}=(0,0,+1)$、$\\theta=\\omega t$，会把矢量再逆时针转 $\\omega t$，角度变成 $2\\omega t + \\varphi$，时间不仅没消掉还翻倍了。"}, {"id": "b", "text": "依然能完全消去时间 $t$，只是结果里的初相位 $\\varphi$ 会变成 $-\\varphi$。", "correct": false, "category": "math_error", "feedback": "只有反向转回 $\\omega t$ 才能抵消 $+\\omega t$；同向再转 $\\omega t$ 会让角度叠加为 $2\\omega t + \\varphi$。"}, {"id": "c", "text": "只改变 $S_z$ 项的符号使它变成 $(\\omega_0 + \\omega)S_z$，而横向驱动项照常变成 $\\Omega[\\cos\\varphi S_x + \\sin\\varphi S_y]$。", "correct": false, "category": "misapplied_technique", "feedback": "除了静态项确实变成 $(\\omega_0 + \\omega)S_z$，横向矢量也会同向叠加转动而保留 $2\\omega t$，不会变成常数。"}, {"id": "d", "text": "正负号取反会让时间求导项把 $\\omega_0 S_z$ 完全抵消，导致不论 $\\omega$ 取何值都不再出现 $S_z$ 项。", "correct": false, "category": "incorrect_reasoning", "feedback": "用 $V_i = e^{+i\\omega t S_z}$ 求偏导时，$i^2=-1$ 使导数项变成 $+\\omega S_z$，它和 $\\omega_0 S_z$ 同号相加成 $(\\omega_0+\\omega)S_z$，不会抵消为零。"}], "solution": "由于 $S_z^\\dagger = S_z$，$V_i^\\dagger = e^{-i\\omega t S_z}$；对 $V_i$ 求偏导给出 $+\\omega S_z$ 使静态项变为 $(\\omega_0+\\omega)S_z$。同时套用三维旋转公式得 $\\vec{\\boldsymbol{n}}=(0,0,+1)$、转角 $+\\omega t$，将矢量从 $\\omega t+\\varphi$ 逆时针继续转到 $2\\omega t+\\varphi$，时间无法消去。"}, "rwa-recall-frame-say": {"id": "rwa-recall-frame-say", "dimension": "conceptual", "type": "explain", "role": "recall", "knowledge_point": "rwa-rotating-frame", "difficulty": 1, "est_minutes": 1, "prompt": "用一两句话说明：相互作用图像变换 $U_i = e^{-i\\omega t S_z}$ 做了什么，它如何同时改写静磁场项和横向驱动项？", "rubric": [{"id": "r1", "criterion": "说明 $U_i = e^{-i\\omega t S_z}$ 切换到随驱动场以频率 $\\omega$ 同步旋转的参考系。", "weight": 1, "required": true}, {"id": "r2", "criterion": "说明由于时间求导修正，静磁场项变成 $(\\omega_0 - \\omega)S_z$，而横向旋转驱动项转回固定初相位 $\\varphi$ 从而消去时间 $t$。", "weight": 1, "required": true}, {"id": "r3", "criterion": "补充指出转换后的旋转坐标系有效哈密顿量 $H_I$ 是一个与时间无关的常系数形式。", "weight": 1, "required": false}], "exemplar": "变换 $U_i = e^{-i\\omega t S_z}$ 把参考系切换到以角频率 $\\omega$ 逆时针同步旋转的坐标系中。通过时间求导项把静态项变为 $(\\omega_0 - \\omega)S_z$，同时把旋转驱动矢量顺时针转回固定初相位 $\\varphi$，从而消去时间 $t$ 并得到常系数哈密顿量 $H_I$。"}, "rwa-recall-frame-contrast": {"id": "rwa-recall-frame-contrast", "dimension": "conceptual", "type": "mc", "role": "recall", "knowledge_point": "rwa-rotating-frame", "difficulty": 1, "est_minutes": 0.5, "prompt": "在由 $H_I = U_i^\\dagger H U_i - U_i^\\dagger i\\frac{\\partial}{\\partial t}U_i$ 推导旋转坐标系哈密顿量时，$-U_i^\\dagger i\\frac{\\partial}{\\partial t}U_i$ 这一项直接贡献了最终式中的哪一部分？", "options": [{"id": "a", "text": "给出了有效 $S_z$ 系数中的 $-\\omega S_z$，与 $\\omega_0 S_z$ 合并为 $(\\omega_0 - \\omega)S_z$。", "correct": true, "feedback": "正确。对 $U_i = e^{-i\\omega t S_z}$ 求时间偏导产生 $-i\\omega S_z U_i$，消去前后幺正算符并带负号即 $-\\omega S_z$。"}, {"id": "b", "text": "给出了驱动项中的固定初相位分量 $\\Omega\\sin(\\varphi)S_y$。", "correct": false, "feedback": "固定初相位 $\\varphi$ 是由 $U_i^\\dagger [\\cos(\\omega t+\\varphi)S_x + \\sin(\\omega t+\\varphi)S_y] U_i$ 经旋转公式化简出来的。"}, {"id": "c", "text": "提供了旋波近似中被舍弃的顺时针反向旋转项 $\\Omega[\\cos(\\omega t+\\varphi)S_x - \\sin(\\omega t+\\varphi)S_y]$。", "correct": false, "feedback": "反向项在实验室系拆分时就已经产生，与变换导数项无关。"}, {"id": "d", "text": "把 $S_x$ 改写成了升降算符的组合 $(S^+ + S^-)/2$。", "correct": false, "feedback": "这是升降算符自身的定义恒等式，不是变换的时间求导项产生的。"}], "solution": "由于 $U_i = e^{-i\\omega t S_z}$ 含时间 $t$，参考系变换公式里的导数修正 $-U_i^\\dagger i \\frac{\\partial}{\\partial t} U_i$ 等于 $-\\omega S_z$，与静态项 $\\omega_0 S_z$ 合并成 $(\\omega_0 - \\omega)S_z$。"}, "rwa-recall-frame-formula": {"id": "rwa-recall-frame-formula", "dimension": "math", "type": "expression", "role": "recall", "knowledge_point": "rwa-rotating-frame", "difficulty": 1, "est_minutes": 0.5, "prompt": "在旋波近似下作变换 $U_i = e^{-i\\omega t S_z}$ 后，有效哈密顿量 $H_I$ 中 $S_z$ 前面的系数是多少？请直接键入以 `w0` 表示 $\\omega_0$、以 `w` 表示 $\\omega$ 的标量表达式。", "answer": "w0 - w", "variables": {"w0": [5, 25], "w": [1, 20]}, "solution": "静态项 $\\omega_0 S_z$ 与求导修正项 $-\\omega S_z$ 相加，因此 $S_z$ 前的系数为 $\\omega_0 - \\omega$。"}, "rwa-ladder-basics": {"id": "rwa-ladder-basics", "dimension": "conceptual", "type": "mc", "role": "basics", "difficulty": 1, "est_minutes": 1, "prompt": "对于自旋 $1/2$ 的上下两能级 $|m_S = \\pm 1/2\\rangle$，上升算符 $S^+$ 的作用是什么？", "options": [{"id": "a", "text": "把 $|m_S = -1/2\\rangle$ 变成 $|m_S = +1/2\\rangle$，而作用在 $|m_S = +1/2\\rangle$ 上结果为 $0$。", "correct": true, "feedback": "完全正确。$S^+$ 将磁量子数提高 $1$；已是最高态 $|m_S = +1/2\\rangle$ 时无法继续升高，故变为零。"}, {"id": "b", "text": "把 $|m_S = +1/2\\rangle$ 变成 $|m_S = -1/2\\rangle$，而作用在 $|m_S = -1/2\\rangle$ 上结果为 $0$。", "correct": false, "feedback": "那是下降算符 $S^-$ 的作用，正好与上升算符 $S^+$ 相反。"}, {"id": "c", "text": "让 $|m_S = -1/2\\rangle$ 与 $|m_S = +1/2\\rangle$ 互相交换，两个基态都不会变为 $0$。", "correct": false, "feedback": "互相交换的是 $2S_x = S^+ + S^-$；单独的 $S^+$ 只能单向升高并会归零最高态。"}, {"id": "d", "text": "保持 $|m_S = \\pm 1/2\\rangle$ 不变，只分别乘上 $+1/2$ 和 $-1/2$ 的本征值。", "correct": false, "feedback": "那是沿 $z$ 轴的自旋算符 $S_z$ 的作用规则。"}], "solution": "上升算符满足 $S^+|m_S=-1/2\\rangle = |m_S=+1/2\\rangle$ 与 $S^+|m_S=+1/2\\rangle = 0$，负责单向升高磁量子数。"}, "rwa-ladder-self-explain": {"id": "rwa-ladder-self-explain", "lesson_only": true, "dimension": "conceptual", "type": "mc", "role": "practice", "difficulty": 1, "est_minutes": 2, "prompt": "在刚才证明 $U_i^\\dagger S^+ U_i = e^{i\\omega t} S^+$ 的第 1 步推导里，为什么 $U_i^\\dagger$ 和 $U_i$ 作用在 $S^+$ 两边后没有抵消掉，反而合出了相位 $e^{i\\omega t}$？", "options": [{"id": "a", "text": "因为 $U_i$ 作用在跃迁前的初态 $|m_S=-1/2\\rangle$ 上给出 $e^{+i\\omega t/2}$，经过 $S^+$ 跃迁到 $|m_S=+1/2\\rangle$ 后再受 $U_i^\\dagger$ 作用又给出同号的 $e^{+i\\omega t/2}$，两个指数因子 $e^{+i\\omega t/2}$ 相乘、指数相加得到 $e^{i\\omega t}$。", "correct": true, "feedback": "理解非常透彻！两边分别抓住了 $m_S$ 相反的两个态，$U_i$ 与 $U_i^\\dagger$ 的共轭负号和 $m_S$ 的正负号正好负负得正，使相位叠加而非抵消。"}, {"id": "b", "text": "因为 $U_i^\\dagger$ 本身等于 $U_i$ 而非它的逆算符，所以两者相乘使相位翻倍。", "correct": false, "category": "misunderstood_definition", "feedback": "$U_i$ 是幺正算符，$U_i^\\dagger$ 正是它的逆（$U_i^\\dagger U_i = \\mathbb{1}$）；不抵消是因为中间夹着的 $S^+$ 改变了量子态的 $m_S$。"}, {"id": "c", "text": "因为上升算符 $S^+$ 必须满足非线性的指数规则，会把左右两侧指数频率各自翻倍。", "correct": false, "category": "incorrect_reasoning", "feedback": "$S^+$ 是常规线性算符，相位变成 $\\omega t$ 源于上下能级之差 $\\Delta m_S = (+1/2) - (-1/2) = 1$。"}, {"id": "d", "text": "因为我们只计算了 $t=0$ 时刻的值，所以不能把指数合并成 $1$。", "correct": false, "category": "incorrect_reasoning", "feedback": "推导对任意时刻 $t$ 都严格成立，与是否取 $t=0$ 无关。"}], "solution": "$U_i = e^{-i\\omega t S_z}$ 作用在 $|m_S=-1/2\\rangle$ 上产生 $e^{+i\\omega t/2}$；$S^+$ 将其升至 $|m_S=+1/2\\rangle$ 后，$U_i^\\dagger = e^{+i\\omega t S_z}$ 再次给出同号因子 $e^{+i\\omega t/2}$，两者相乘刚好为 $e^{i\\omega t}$。"}, "rwa-ladder-phase-template": {"id": "rwa-ladder-phase-template", "dimension": "math", "type": "numeric", "role": "practice", "difficulty": 2, "est_minutes": 3, "params": {"B0": {"min": 50, "max": 200, "step": 50}, "t_ns": {"min": 1, "max": 4, "step": 1}}, "prompt": "电子自旋（$|\\gamma_e|/(2\\pi) = 2.8\\text{ MHz/G}$）处在静磁场 $B_0 = {{=B0}}\\text{ G}$ 中，且横向驱动频率 $\\omega$ 恰好调至与自旋共振（$\\omega = \\omega_0$）。在变换 $U_i = e^{-i\\omega t S_z}$ 下有 $U_i^\\dagger S^+ U_i = e^{i\\omega t}S^+$。当演化时间 $t = {{=t_ns}}\\text{ ns}$ 时，指数相位角 $\\omega t$ 等于多少度（用角度制 $360^\\circ$ 对应 $2\\pi$ 弧度计算）？", "answer_expr": "360 * (2.8 * B0 * 0.001) * t_ns", "tolerance": {"abs": 0.1}, "common_wrong": [{"answer_expr": "180 * (2.8 * B0 * 0.001) * t_ns", "category": "math_error", "feedback": "这里只算出了半个相位 $\\omega t/2$（即单侧 $U_i$ 的相位）；由于 $U_i^\\dagger S^+ U_i = e^{i\\omega t}S^+$，总相位角是整倍的 $\\omega t$。"}, {"answer_expr": "360 * B0 * 0.001 * t_ns", "category": "missing_prerequisite", "feedback": "忘记把磁场 $B_0$ 乘上旋磁比 $|\\gamma_e|/(2\\pi) = 2.8\\text{ MHz/G}$ 换算为共振频率 $\\omega_0/(2\\pi)$。"}], "hints": ["先用共振条件 $\\omega/(2\\pi) = \\omega_0/(2\\pi) = 2.8\\times B_0\\text{ MHz}$（注意 $1\\text{ MHz} = 10^{-3}\\text{ GHz}$，$1\\text{ ns} = 10^{-9}\\text{ s}$）。", "再由 $\\omega t$ 对应的周期数 $f\\cdot t$ 乘以 $360^\\circ$ 得到角度。"], "solution": "共振频率 $f = \\omega/(2\\pi) = 2.8\\times {{=B0}} = {{=2.8*B0}}\\text{ MHz} = {{=2.8*B0*0.001}}\\text{ GHz}$。在 $t = {{=t_ns}}\\text{ ns}$ 内积累的周期数为 $f t = {{=2.8*B0*0.001*t_ns}}$，因此角度为 $360^\\circ \\times {{=2.8*B0*0.001*t_ns}} = {{=360*2.8*B0*0.001*t_ns}}^\\circ$。"}, "rwa-ladder-spot-mistake": {"id": "rwa-ladder-spot-mistake", "dimension": "math", "type": "mc", "role": "practice", "difficulty": 2, "est_minutes": 2, "prompt": "一名学习者试图把 $\\Omega[\\cos(\\omega t+\\varphi)S_x + \\sin(\\omega t+\\varphi)S_y]$ 改写成升降算符形式，写出：$S_x = \\frac{1}{2}(S^+ + S^-)$，$S_y = \\frac{1}{2}(i S^+ - i S^-)$。如果按这个式子继续推导，结果会在哪里出错？", "options": [{"id": "a", "text": "$S_y$ 中的虚数符号写反了，正确应为 $S_y = (-i S^+ + i S^-)/2$；按错式推导会把 $S^+$ 前的复指数搞成 $e^{+i(\\omega t+\\varphi)}$，与 $U_i^\\dagger S^+ U_i = e^{+i\\omega t}S^+$ 叠加而不是抵消。", "correct": true, "feedback": "一针见血！因为 $S^+ = S_x + i S_y, S^- = S_x - i S_y$，所以 $S^+ - S^- = 2i S_y$，必须两边同除以 $2i$ 即乘 $-i/2$ 得到 $S_y = (-i S^+ + i S^-)/2$。"}, {"id": "b", "text": "符号都对，只是 $S_x$ 和 $S_y$ 前面都不应该除以 $2$，因为自旋算符已经无量纲化。", "correct": false, "category": "math_error", "feedback": "由 $S^\\pm = S_x \\pm i S_y$ 反解 $S_x, S_y$ 时，系数 $1/2$ 是二元方程相加减的必然结果。"}, {"id": "c", "text": "会导致 $S^+$ 和 $S^-$ 不再互为厄米共轭，不过对计算 $\\varphi=0$ 时的 $H_I$ 没有影响。", "correct": false, "category": "incorrect_reasoning", "feedback": "由于 $S_x, S_y$ 为厄米算符，$(S^+)^\\dagger = S^-$ 是定义决定的；改写错的是 $S_y$ 的反解公式，即便 $\\varphi=0$ 展开时间演化也依然会把旋转方向算反。"}, {"id": "d", "text": "错误只发生在 $S_x$ 应当写成 $(S^+ - S^-)/2$，而 $S_y$ 的表达式是完全正确的。", "correct": false, "category": "math_error", "feedback": "$S^+ + S^- = (S_x+iS_y)+(S_x-iS_y) = 2S_x$，所以 $S_x = (S^+ + S^-)/2$ 是正确的，错在 $S_y$。"}], "solution": "由 $S^\\pm = S_x \\pm i S_y$ 可得 $S_y = (S^+ - S^-)/(2i) = (-i S^+ + i S^-)/2$。符号写反等同于把顺时针当成逆时针，从而无法与 $U_i^\\dagger S^+ U_i = e^{i\\omega t}S^+$ 抵消时间变量。"}, "rwa-ladder-limit-transfer": {"id": "rwa-ladder-limit-transfer", "dimension": "transfer", "type": "mc", "role": "practice", "difficulty": 3, "est_minutes": 3, "prompt": "综合升降算符相互作用图像变换的推广以及旋波近似的适用条件，下面哪一项判断是正确的？", "options": [{"id": "a", "text": "在谐振子产生湮灭算符中，$e^{i\\omega t\\, a^\\dagger a} a^\\dagger e^{-i\\omega t\\, a^\\dagger a} = a^\\dagger e^{i\\omega t}$ 依然成立；但若驱动强到 $\\Omega$ 可比拟 $\\omega_0$，旋波近似失效，反向项会引起共振频率偏移。", "correct": true, "feedback": "全部准确！产生算符 $a^\\dagger$ 将粒子数 $n$ 升高 $1$，就像 $S^+$ 将 $m_S$ 升高 $1$；同时我们牢记 $\\Omega \\ll \\omega_0$ 才是旋波近似成立的前提。"}, {"id": "b", "text": "因为产生算符 $a^\\dagger$ 作用后会出现随 $n$ 增大的系数 $\\sqrt{n+1}$，所以它在 $e^{-i\\omega t\\, a^\\dagger a}$ 下的相位因子也取决于粒子数态 $|n\\rangle$ 的具体取值，不再统一等于 $e^{i\\omega t}$。", "correct": false, "category": "misapplied_technique", "feedback": "因子 $\\sqrt{n+1}$ 只是常数倍系数、与算符可交换，粒子数差值恒为 $(n+1)-n = +1$，因此相位因子始终是 $e^{i\\omega t}$，与 $n$ 无关。"}, {"id": "c", "text": "只要使用升降算符法而不是三维旋转公式法，即便 $\\Omega$ 大于 $\\omega_0$ 也能把所有反向项精确消除而不产生任何误差。", "correct": false, "category": "incorrect_reasoning", "feedback": "两种数学方法只是在旋波近似之后对同向项做等价化简，无法消除在近似这一步被人为丢弃的反向旋转项。"}, {"id": "d", "text": "旋波近似在 $\\Omega \\gg \\omega_0$（超强驱动）时反而最精确，因为此时驱动项占主导地位。", "correct": false, "category": "misunderstood_definition", "feedback": "恰好相反：$\\Omega$ 越大，忽略反向项带来的频率偏移就越明显；旋波近似依赖的是弱驱动条件 $\\Omega \\ll \\omega_0$。"}], "solution": "基于本征值差 $+1$ 的推导可直接推广到玻色子产生算符 $e^{i\\omega t\\, a^\\dagger a} a^\\dagger e^{-i\\omega t\\, a^\\dagger a} = a^\\dagger e^{i\\omega t}$；而旋波近似本身必须在弱驱动（$\\Omega \\ll \\omega_0$）下才准确，强驱动下反向项会导致共振频率偏移。"}, "rwa-recall-ladder-say": {"id": "rwa-recall-ladder-say", "dimension": "conceptual", "type": "explain", "role": "recall", "knowledge_point": "rwa-ladder-operators", "difficulty": 1, "est_minutes": 1, "prompt": "用一两句话说明：升降算符法如何通过变换 $U_i = e^{-i\\omega t S_z}$ 消去时间 $t$，以及它为何能直接推广到玻色子系统？", "rubric": [{"id": "r1", "criterion": "说明将驱动项改写为 $S^+$、$S^-$ 的形式后，利用 $U_i^\\dagger S^+ U_i = e^{i\\omega t}S^+$ 与驱动因子 $e^{-i\\omega t}$ 相互抵消，从而消除时间 $t$。", "weight": 1, "required": true}, {"id": "r2", "criterion": "说明该推导只依赖于算符将量子数抬高 $+1$ 的本征值差性质，因此同样适用于谐振子或光场的玻色子产生算符 $e^{i\\omega t\\, a^\\dagger a} a^\\dagger e^{-i\\omega t\\, a^\\dagger a} = a^\\dagger e^{i\\omega t}$。", "weight": 1, "required": true}, {"id": "r3", "criterion": "补充指出该算符恒等式对任意高自旋（$S > 1/2$）系统同样成立。", "weight": 1, "required": false}], "exemplar": "把横向驱动改写成升降算符 $S^+, S^-$ 后，上升算符在相互作用图像下满足 $U_i^\\dagger S^+ U_i = e^{i\\omega t}S^+$，其中的 $+i\\omega t$ 恰好与驱动项里的 $e^{-i(\\omega t+\\varphi)}$ 抵消时间依赖。由于推导只依赖于磁量子数改变 $+1$ 的性质，该方法对任意高自旋以及满足 $a^\\dagger|n\\rangle = \\sqrt{n+1}|n+1\\rangle$ 的玻色子产生算符（给出 $e^{i\\omega t\\,a^\\dagger a}a^\\dagger e^{-i\\omega t\\,a^\\dagger a} = a^\\dagger e^{i\\omega t}$）同样成立。"}, "rwa-recall-ladder-contrast": {"id": "rwa-recall-ladder-contrast", "dimension": "conceptual", "type": "mc", "role": "recall", "knowledge_point": "rwa-ladder-operators", "difficulty": 1, "est_minutes": 0.5, "prompt": "与三维旋转公式法相比，用升降算符法完成相互作用图像变换的独特优势是什么？", "options": [{"id": "a", "text": "完全利用态本征值升降差，不依赖旋转几何公式，且能直接推广到产生、湮灭算符 $a^\\dagger, a$。", "correct": true, "feedback": "正确。只要态差值为 $+1$ 就能得出相同的相位消除律，无需记忆三维旋转公式。"}, {"id": "b", "text": "不需要满足弱驱动条件 $\\Omega \\ll \\omega_0$，强驱动下也不用考虑反向旋转项效应。", "correct": false, "feedback": "两种方法得到的是完全同一个 $H_I$，旋波近似的强驱动限制对两者完全一样。"}, {"id": "c", "text": "可以同时消去静态项 $(\\omega_0 - \\omega)S_z$，让整个 $H_I$ 变成零。", "correct": false, "feedback": "不论采用哪种方法，非共振时的 $(\\omega_0 - \\omega)S_z$ 项都会保留在 $H_I$ 中。"}, {"id": "d", "text": "只适用于自旋 $1/2$ 系统，对高自旋系统必须退回三维旋转公式法。", "correct": false, "feedback": "只要是角动量升降算符 $S^+$ 把 $m_S$ 提升 $1$，升降算符法对高自旋系统照样成立。"}], "solution": "升降算符法和三维旋转公式法得到完全等价的不含时 $H_I$，其独到之处在于代数简洁，并且可直接推广到玻色子产生与湮灭算符 $a^\\dagger, a$。"}, "rwa-recall-ladder-formula": {"id": "rwa-recall-ladder-formula", "dimension": "math", "type": "text", "role": "recall", "knowledge_point": "rwa-ladder-operators", "difficulty": 1, "est_minutes": 0.5, "prompt": "写出上升算符 $S^+$ 在相互作用图像 $U_i = e^{-i\\omega t S_z}$ 下化简后的结果：请填写 $U_i^\\dagger S^+ U_i = \\text{___}$ 的右端完整表达式（以 `w` 表示 $\\omega$、`S^+` 表示上升算符，指数可用 `e^(...)` 或 `exp(...)` 表示）。", "accept": ["e^{i\\omega t}S^+", "e^{iwt} S^+", "e^{iwt}S^+", "exp(i*w*t)*S^+", "exp(i*w*t) * S^+", "e^(i*w*t)*S^+", "e^{i\\omega t} S^+"], "regex": "^(?:e\\s*\\^\\s*[({]?\\s*i\\s*\\*?\\s*(?:w|\\\\omega|ω)\\s*\\*?\\s*t\\s*[)}]?|exp\\s*\\(\\s*i\\s*\\*?\\s*(?:w|\\\\omega|ω)\\s*\\*?\\s*t\\s*\\))\\s*\\*?\\s*S\\s*\\^\\s*\\{?\\+\\}?$", "solution": "由于 $S^+$ 把磁量子数升高 $1$，因此 $U_i^\\dagger S^+ U_i = e^{i\\omega t} S^+$。"}, "rwa-final-explain": {"id": "rwa-final-explain", "dimension": "conceptual", "type": "explain", "role": "core", "difficulty": 2, "est_minutes": 4, "prompt": "请用自己的话系统回答三个问题：（1）旋波近似是如何分解线性驱动场并决定舍去哪一项的？（2）相互作用图像变换 $U_i = e^{-i\\omega t S_z}$ 如何消除时间变量 $t$？（3）在什么条件下旋波近似会失效？", "rubric": [{"id": "r1", "criterion": "说明将线偏振余弦场分解为等幅度的逆时针（$+1$ 角动量）与顺时针（$-1$ 角动量）两个圆偏振分量，并以电子自旋向上跃迁 $\\Delta m_S = +1$ 的角动量守恒与方向相反解释为何舍去顺时针项。", "weight": 1, "required": true}, {"id": "r2", "criterion": "说明 $U_i = e^{-i\\omega t S_z}$ 切换到随驱动同步旋转的参考系，通过导数修正把静态项变为 $(\\omega_0 - \\omega)S_z$，并利用三维旋转公式或 $U_i^\\dagger S^+ U_i = e^{i\\omega t}S^+$ 将旋转驱动转回只含初相位 $\\varphi$ 的常系数形式。", "weight": 1, "required": true}, {"id": "r3", "criterion": "说明当驱动场太强、$\\Omega$ 可比拟或不再远小于 $\\omega_0$ 时，旋波近似失效，被舍去的反向项会引起共振频率偏移。", "weight": 1, "required": true}, {"id": "r4", "criterion": "补充指出升降算符方法不仅对高自旋成立，还可直接推广到玻色子的产生与湮灭算符 $a^\\dagger, a$。", "weight": 1, "required": false}], "exemplar": "旋波近似先把沿 $x$ 轴振荡的余弦场 $2\\Omega\\cos(\\omega t+\\varphi)S_x$ 拆成幅值同为 $\\Omega$ 的逆时针与顺时针两个圆偏振分量；由于电子自旋向上跃迁需要吸收 $+1$ 角动量光子（$\\Delta m_S=+1$），顺时针（$-1$）分量角动量不守恒且方向相反，在弱驱动下被忽略。接着作相互作用图像变换 $U_i = e^{-i\\omega t S_z}$ 坐进同步旋转参考系：时间求导把静态能级项改写为 $(\\omega_0 - \\omega)S_z$，而通过三维旋转公式顺时针转回 $\\omega t$（或借助升降算符恒等式 $U_i^\\dagger S^+ U_i = e^{i\\omega t}S^+$），含时驱动化简为固定的 $\\Omega[\\cos(\\varphi)S_x + \\sin(\\varphi)S_y]$，升降算符法还可推广到产生湮灭算符。最后，当强驱动下 $\\Omega$ 不再远小于 $\\omega_0$ 时，反向项无法被平均掉而引发共振频率偏移，旋波近似随之失效。"}};
+const KP_META = [{"id": "rwa-split-field", "step": 1, "title": "拆开驱动场并舍去反向项", "problemIds": ["rwa-split-basics", "rwa-split-self-explain", "rwa-split-drive-amp-template", "rwa-split-spot-mistake", "rwa-split-nuclear-transfer"], "recallIds": ["rwa-recall-split-say", "rwa-recall-split-contrast", "rwa-recall-split-formula"]}, {"id": "rwa-rotating-frame", "step": 2, "title": "跳进旋转坐标系消去时间", "problemIds": ["rwa-frame-basics", "rwa-frame-self-explain", "rwa-frame-detuning-template", "rwa-frame-phase-axis", "rwa-frame-spot-mistake"], "recallIds": ["rwa-recall-frame-say", "rwa-recall-frame-contrast", "rwa-recall-frame-formula"]}, {"id": "rwa-ladder-operators", "step": 3, "title": "用算符代数消去时间", "problemIds": ["rwa-ladder-basics", "rwa-ladder-self-explain", "rwa-ladder-phase-template", "rwa-ladder-spot-mistake", "rwa-ladder-limit-transfer"], "recallIds": ["rwa-recall-ladder-say", "rwa-recall-ladder-contrast", "rwa-recall-ladder-formula"]}];
+const STORAGE_KEY = "open_academy_mr_progress_v1";
+
+// ============================================================================
+// FSRS-5 Core Engine matching apps/api/src/learning/fsrs.ts
+// request_retention: 0.9, maximum_interval: 60, enable_short_term: false
+// ============================================================================
+const FSRS_W = [
+  0.40255, 1.18385, 3.173, 15.69105, 7.1949,
+  0.5345, 1.4604, 0.0046, 1.54575, 0.1192,
+  1.01925, 1.9395, 0.11, 0.29605, 2.2698,
+  0.2315, 2.9898, 0.51655, 0.6621
+];
+const REQUEST_RETENTION = 0.9;
+const MAX_INTERVAL_DAYS = 60;
+const FSRS_FACTOR = 19 / 81;
+const FSRS_DECAY = -0.5;
+const MS_PER_DAY = 86400000;
+
+function clamp(v, lo, hi) {
+  return Math.min(hi, Math.max(lo, v));
+}
+
+function startOfLocalCalendarDayMs(tsMs) {
+  const d = new Date(tsMs);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0).getTime();
+}
+
+function startOfNextCalendarDayMs(tsMs) {
+  const d = new Date(tsMs);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 0, 0, 0, 0).getTime();
+}
+
+function ratingToNum(rating) {
+  if (rating === "again" || rating === 1) return 1;
+  if (rating === "hard" || rating === 2) return 2;
+  if (rating === "good" || rating === 3) return 3;
+  if (rating === "easy" || rating === 4) return 3;
+  return 1;
+}
+
+function createEmptyCard(nowMs) {
+  return {
+    state: "new",
+    dueMs: nowMs,
+    stability: 0,
+    difficulty: 0,
+    elapsedDays: 0,
+    scheduledDays: 0,
+    reps: 0,
+    lapses: 0,
+    lastReviewMs: null,
+    lastRating: null
+  };
+}
+
+function initDifficulty(g) {
+  return clamp(FSRS_W[4] - Math.exp(FSRS_W[5] * (g - 1)) + 1, 1, 10);
+}
+
+function initStability(g) {
+  return Math.max(0.1, FSRS_W[g - 1]);
+}
+
+function nextDifficulty(d, g) {
+  const delta = -FSRS_W[6] * (g - 3);
+  const damped = delta * (10 - d) / 9;
+  const meanTarget = initDifficulty(4);
+  return clamp(FSRS_W[7] * meanTarget + (1 - FSRS_W[7]) * (d + damped), 1, 10);
+}
+
+function forgettingCurve(elapsedDays, stability) {
+  if (!stability || stability <= 0) return 1;
+  const t = Math.max(0, elapsedDays);
+  return Math.pow(1 + FSRS_FACTOR * (t / stability), FSRS_DECAY);
+}
+
+function nextIntervalDays(stability) {
+  const raw = (stability / FSRS_FACTOR) * (Math.pow(REQUEST_RETENTION, -2) - 1);
+  return clamp(Math.round(raw), 1, MAX_INTERVAL_DAYS);
+}
+
+function nextRecallStability(d, s, r, g) {
+  const hardPenalty = g === 2 ? FSRS_W[15] : 1;
+  const factor = Math.exp(FSRS_W[8]) * (11 - d) * Math.pow(s, -FSRS_W[9]) * (Math.exp((1 - r) * FSRS_W[10]) - 1) * hardPenalty;
+  return Math.max(0.1, s * (1 + factor));
+}
+
+function nextForgetStability(d, s, r) {
+  const sMin = s / Math.exp(FSRS_W[17] * FSRS_W[18]);
+  const sNew = FSRS_W[11] * Math.pow(d, -FSRS_W[12]) * (Math.pow(s + 1, FSRS_W[13]) - 1) * Math.exp((1 - r) * FSRS_W[14]);
+  return clamp(Math.min(sNew, sMin), 0.1, MAX_INTERVAL_DAYS);
+}
+
+function scheduleReview(card, nowMs, rating) {
+  const g = ratingToNum(rating);
+  const prev = card || createEmptyCard(nowMs);
+  let newS, newD;
+  let lapses = prev.lapses || 0;
+  let elapsedDays = 0;
+
+  if (prev.state === "new" || !prev.lastReviewMs || prev.reps === 0) {
+    newD = initDifficulty(g);
+    newS = initStability(g);
+    if (g === 1) lapses += 1;
+  } else {
+    elapsedDays = Math.max(0, (nowMs - prev.lastReviewMs) / MS_PER_DAY);
+    const r = forgettingCurve(elapsedDays, prev.stability);
+    newD = nextDifficulty(prev.difficulty, g);
+    if (g === 1) {
+      newS = nextForgetStability(newD, prev.stability, r);
+      lapses += 1;
+    } else {
+      newS = nextRecallStability(newD, prev.stability, r, g);
+    }
+  }
+
+  const intervalDays = g === 1 ? 1 : nextIntervalDays(newS);
+  const rawDueMs = nowMs + intervalDays * MS_PER_DAY;
+  const earliestDueMs = startOfNextCalendarDayMs(nowMs);
+  const dueMs = Math.max(rawDueMs, earliestDueMs);
+
+  return {
+    card: {
+      state: g === 1 ? "relearning" : "review",
+      dueMs,
+      stability: Number(newS.toFixed(4)),
+      difficulty: Number(newD.toFixed(4)),
+      elapsedDays: Number(elapsedDays.toFixed(3)),
+      scheduledDays: intervalDays,
+      reps: (prev.reps || 0) + 1,
+      lapses,
+      lastReviewMs: nowMs,
+      lastRating: g === 1 ? "again" : (g === 2 ? "hard" : "good")
+    },
+    intervalDays
+  };
+}
+
+function cardRetrievability(card, nowMs) {
+  if (!card || card.state === "new" || !card.lastReviewMs || !card.stability) return 1;
+  const elapsedDays = Math.max(0, (nowMs - card.lastReviewMs) / MS_PER_DAY);
+  return forgettingCurve(elapsedDays, card.stability);
+}
+
+function isDueToday(card, nowMs) {
+  if (!card || card.state === "new" || card.reps === 0) return false;
+  return card.dueMs < startOfNextCalendarDayMs(nowMs);
+}
+
+function getTargetSeconds(ex) {
+  return Math.max(15, Math.round((ex.est_minutes || 1) * 60));
+}
+
+function mapReviewRating(input) {
+  if ((input.correct || 0) <= 0) return "again";
+  const slow = input.durationMs !== null && input.durationMs !== undefined && input.durationMs > input.targetSeconds * 1000;
+  if ((input.hintsUsed || 0) > 0 || (input.attemptNo || 1) > 1 || (input.correct || 0) < 1 || slow) {
+    return "hard";
+  }
+  return "good";
+}
+
+function reviewActivityRating(items) {
+  if (!items || items.length === 0) return "again";
+  const correctCount = items.filter(it => (it.correct || 0) >= 1).length;
+  const allClean = correctCount === items.length && items.every(it => (it.hintsUsed || 0) === 0 && (it.attemptNo || 1) <= 1 && !((it.durationMs || 0) > it.targetSeconds * 1000));
+  if (allClean) return "good";
+  return correctCount / items.length >= 2 / 3 ? "hard" : "again";
+}
+
+// ============================================================================
+// Persistent State Management (localStorage)
+// ============================================================================
+function makeDefaultState() {
+  return {
+    version: 1,
+    simOffsetMs: 0,
+    exercises: {},
+    cards: {}
+  };
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return makeDefaultState();
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return makeDefaultState();
+    return Object.assign(makeDefaultState(), parsed);
+  } catch (e) {
+    return makeDefaultState();
+  }
+}
+
+let STATE = loadState();
+const ACTIVE_TIMERS = {};
+
+function saveState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(STATE));
+  } catch (e) {}
+}
+
+function virtualNowMs() {
+  return Date.now() + (STATE.simOffsetMs || 0);
+}
+
+function getExState(id) {
+  if (!STATE.exercises[id]) {
+    STATE.exercises[id] = {
+      env: null,
+      pickedOpt: null,
+      textVal: "",
+      explainVal: "",
+      rubricChecked: [],
+      correct: null,
+      attemptNo: 0,
+      hintsUsed: 0,
+      durationMs: 0,
+      rating: null,
+      lastAnsweredAt: null
+    };
+  }
+  return STATE.exercises[id];
+}
+
+function cardSpecs() {
+  const specs = [];
+  for (const kp of KP_META) {
+    specs.push({ key: `kp:${kp.id}`, label: `Step ${kp.step} · ${kp.title}`, kind: "kp", kpId: kp.id });
+  }
+  const dimNames = { conceptual: "维度：概念理解 (conceptual)", math: "维度：数学推导 (math)", transfer: "维度：迁移应用 (transfer)" };
+  for (const dim of ["conceptual", "math", "transfer"]) {
+    specs.push({ key: `dim:${dim}`, label: dimNames[dim], kind: "dim", dim });
+  }
+  return specs;
+}
+
+function getOrCreateCard(key, nowMs) {
+  if (!STATE.cards[key]) {
+    STATE.cards[key] = createEmptyCard(nowMs);
+  }
+  return STATE.cards[key];
+}
+
+function maybeAutoUpdateCards(exId) {
+  const nowMs = virtualNowMs();
+  // 1. Auto-initialize KP card once all 5 step problems are attempted
+  for (const kp of KP_META) {
+    if (kp.problemIds.includes(exId)) {
+      const states = kp.problemIds.map(pid => getExState(pid));
+      if (states.every(st => st.correct !== null)) {
+        const key = `kp:${kp.id}`;
+        const card = getOrCreateCard(key, nowMs);
+        if (card.state === "new" || card.reps === 0) {
+          const items = kp.problemIds.map(pid => {
+            const s = getExState(pid);
+            return {
+              correct: s.correct ? 1 : 0,
+              hintsUsed: s.hintsUsed,
+              attemptNo: s.attemptNo,
+              durationMs: s.durationMs,
+              targetSeconds: getTargetSeconds(EX_MAP[pid])
+            };
+          });
+          const r = reviewActivityRating(items);
+          STATE.cards[key] = scheduleReview(card, nowMs, r).card;
+        }
+      }
+    }
+  }
+  // 2. Auto-initialize/update Dimension card when non-recall exercises of that dimension are all answered
+  const ex = EX_MAP[exId];
+  if (ex && ex.role !== "recall") {
+    const dimIds = Object.values(EX_MAP).filter(e => e.dimension === ex.dimension && e.role !== "recall").map(e => e.id);
+    if (dimIds.length && dimIds.every(id => getExState(id).correct !== null)) {
+      const key = `dim:${ex.dimension}`;
+      const card = getOrCreateCard(key, nowMs);
+      const items = dimIds.map(id => {
+        const s = getExState(id);
+        return {
+          correct: s.correct ? 1 : 0,
+          hintsUsed: s.hintsUsed,
+          attemptNo: s.attemptNo,
+          durationMs: s.durationMs,
+          targetSeconds: getTargetSeconds(EX_MAP[id])
+        };
+      });
+      const r = reviewActivityRating(items);
+      if (card.state === "new" || card.reps === 0) {
+        STATE.cards[key] = scheduleReview(card, nowMs, r).card;
+      }
+    }
+  }
+}
+
+// ============================================================================
+// UI Formatting & Dashboard Rendering
+// ============================================================================
+function fmtDateTime(ms) {
+  const d = new Date(ms);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${d.getFullYear()}-${mm}-${dd} ${hh}:${mi}`;
+}
+
+function fmtRelativeDue(dueMs, nowMs) {
+  const dayDiff = Math.round((startOfLocalCalendarDayMs(dueMs) - startOfLocalCalendarDayMs(nowMs)) / MS_PER_DAY);
+  if (dayDiff < 0) return `已逾期 ${-dayDiff} 天`;
+  if (dayDiff === 0) return "今天到期";
+  return `${dayDiff} 天后`;
+}
+
+function renderDashboard() {
+  const nowMs = virtualNowMs();
+  const autoAll = Object.values(EX_MAP).filter(e => e.type !== "explain");
+  const explainAll = Object.values(EX_MAP).filter(e => e.type === "explain");
+  const autoOk = autoAll.filter(e => getExState(e.id).correct === true).length;
+  const explainOk = explainAll.filter(e => getExState(e.id).correct !== null).length;
+  const totalSec = Math.round(Object.values(STATE.exercises).reduce((acc, s) => acc + (s.durationMs || 0), 0) / 1000);
+
+  document.getElementById("score-readout").textContent = `自动判题 ${autoOk} / ${autoAll.length} · 自评 ${explainOk} / ${explainAll.length}`;
+  document.getElementById("time-readout").textContent = `累计作答 ${totalSec}s`;
+
+  const offDays = Math.round((STATE.simOffsetMs || 0) / MS_PER_DAY);
+  document.getElementById("sim-clock-readout").textContent =
+    offDays === 0 ? `当前参考时间：真实时间（${fmtDateTime(nowMs)}）` : `虚拟快进 +${offDays} 天（${fmtDateTime(nowMs)}）`;
+
+  const specs = cardSpecs();
+  let dueTodayCount = 0;
+  const forecastBuckets = [0, 0, 0, 0, 0, 0, 0, 0];
+  const todayDayStart = startOfLocalCalendarDayMs(nowMs);
+
+  const rowsHtml = specs.map(sp => {
+    const card = STATE.cards[sp.key] || createEmptyCard(nowMs);
+    const isNew = card.state === "new" || card.reps === 0;
+    const due = !isNew && isDueToday(card, nowMs);
+    if (due) dueTodayCount += 1;
+
+    if (!isNew) {
+      const bucket = Math.floor((startOfLocalCalendarDayMs(card.dueMs) - todayDayStart) / MS_PER_DAY);
+      if (bucket <= 0) forecastBuckets[0] += 1;
+      else if (bucket >= 1 && bucket <= 7) forecastBuckets[bucket] += 1;
+    }
+
+    const statusBadge = isNew
+      ? `<span class="pill pill-new">未建卡</span>`
+      : (due ? `<span class="pill pill-due">到期待复习</span>` : (card.lastRating === "hard" ? `<span class="pill pill-hard">已排程 (Hard)</span>` : `<span class="pill pill-ok">已排程 (Good)</span>`));
+
+    const retPct = isNew ? "—" : `${(cardRetrievability(card, nowMs) * 100).toFixed(1)}%`;
+    const sdTxt = isNew ? "—" : `S=${card.stability.toFixed(2)}d · D=${card.difficulty.toFixed(2)}`;
+    const dueTxt = isNew ? "完成对应练习后建卡" : `${fmtDateTime(card.dueMs)}<br/><span class="meta">${fmtRelativeDue(card.dueMs, nowMs)} · 第 ${card.reps} 轮</span>`;
+
+    const pAgain = scheduleReview(card, nowMs, "again");
+    const pHard = scheduleReview(card, nowMs, "hard");
+    const pGood = scheduleReview(card, nowMs, "good");
+    const previewTxt = `Again ${pAgain.intervalDays}d / Hard ${pHard.intervalDays}d / Good ${pGood.intervalDays}d`;
+
+    const actionBtn = sp.kind === "kp"
+      ? `<button type="button" class="btn btn-open-recall" data-kp="${sp.kpId}">打开本步 Recall</button>`
+      : `<span class="meta">随做题自动追踪</span>`;
+
+    return `<tr><td><strong>${sp.label}</strong></td><td>${statusBadge}</td><td>${sdTxt}</td><td>${retPct}</td><td>${dueTxt}</td><td><code>${previewTxt}</code></td><td>${actionBtn}</td></tr>`;
+  }).join("");
+
+  document.getElementById("fsrs-tbody").innerHTML = rowsHtml;
+  document.getElementById("due-readout").textContent = `今日到期卡片：${dueTodayCount}`;
+
+  document.getElementById("forecast-strip").innerHTML = forecastBuckets.map((cnt, dIdx) => {
+    const dayLabel = dIdx === 0 ? "今天(含逾期)" : `+${dIdx} 天`;
+    const dateStr = fmtDateTime(nowMs + dIdx * MS_PER_DAY).slice(5, 10);
+    return `<div class="fc-cell ${cnt > 0 && dIdx === 0 ? "due" : ""}"><div>${dayLabel} (${dateStr})</div><div class="fc-cnt">${cnt}</div></div>`;
+  }).join("");
+
+  document.querySelectorAll(".btn-open-recall").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const box = document.getElementById(`recalls-${btn.dataset.kp}`);
+      if (box) {
+        box.open = true;
+        box.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+  });
+}
+
+// ============================================================================
+// Exercise Interaction, Timing & Persistence
+// ============================================================================
+function evalExpr(expr, env) {
+  const names = Object.keys(env);
+  const vals = names.map(k => env[k]);
+  const jsExpr = String(expr).replace(/\^/g, "**");
+  return Function(...names, "Math", `return (${jsExpr});`)(...vals, Math);
+}
+
+function pickParams(ex) {
+  if (!ex.params) return {};
+  const keys = Object.keys(ex.params);
+  for (let tries = 0; tries < 80; tries++) {
+    const env = {};
+    for (const k of keys) {
+      const s = ex.params[k];
+      const step = s.step || 1;
+      const count = Math.floor((s.max - s.min + 1e-9) / step) + 1;
+      const idx = Math.floor(Math.random() * count);
+      env[k] = Number((s.min + idx * step).toFixed(9));
+    }
+    const ok = (ex.constraints || []).every(c => Boolean(evalExpr(c, env)));
+    if (ok) return env;
+  }
+  return Object.fromEntries(keys.map(k => [k, ex.params[k].min]));
+}
+
+function fillTemplate(str, env) {
+  if (!str) return "";
+  return str.replace(/\{\{=([^}]+)\}\}/g, (_, inner) => {
+    const v = evalExpr(inner.trim(), env);
+    return Number.isInteger(v) ? String(v) : String(Number(v.toFixed(6)));
+  });
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+window.__renderAllMath = function(root) {
+  if (typeof renderMathInElement === "function") {
+    renderMathInElement(root || document.body, {
+      delimiters: [{left:"$$", right:"$$", display:true}, {left:"$", right:"$", display:false}]
+    });
+  }
+};
+
+function updateSlotHeader(slot, id) {
+  const ex = EX_MAP[id];
+  const st = getExState(id);
+  const targetSec = getTargetSeconds(ex);
+  let liveMs = st.durationMs || 0;
+  if (ACTIVE_TIMERS[id]) {
+    liveMs += (Date.now() - ACTIVE_TIMERS[id]);
+  }
+  const sec = Math.round(liveMs / 1000);
+  const tEl = slot.querySelector("[data-timer]");
+  const rEl = slot.querySelector("[data-rating]");
+  if (tEl) tEl.textContent = `计时 ${sec}s / 目标 ${targetSec}s`;
+  if (rEl) {
+    rEl.className = "rating-pill";
+    if (!st.rating) {
+      rEl.textContent = st.attemptNo > 0 ? `第 ${st.attemptNo} 次尝试` : "未作答";
+    } else if (st.rating === "good") {
+      rEl.classList.add("good");
+      rEl.textContent = "评级: Good";
+    } else if (st.rating === "hard") {
+      rEl.classList.add("hard");
+      rEl.textContent = "评级: Hard";
+    } else {
+      rEl.classList.add("again");
+      rEl.textContent = "评级: Again";
+    }
+  }
+}
+
+function startTimer(slot, id) {
+  const st = getExState(id);
+  if (st.correct === true) return;
+  if (!ACTIVE_TIMERS[id]) {
+    ACTIVE_TIMERS[id] = Date.now();
+  }
+  updateSlotHeader(slot, id);
+}
+
+function commitTimingAndGrade(slot, id, isCorrect) {
+  const ex = EX_MAP[id];
+  const st = getExState(id);
+  if (ACTIVE_TIMERS[id]) {
+    st.durationMs = (st.durationMs || 0) + Math.max(500, Date.now() - ACTIVE_TIMERS[id]);
+    delete ACTIVE_TIMERS[id];
+  } else if ((st.durationMs || 0) === 0) {
+    st.durationMs = 1000;
+  }
+  st.attemptNo = (st.attemptNo || 0) + 1;
+  st.correct = isCorrect;
+  st.lastAnsweredAt = virtualNowMs();
+  const targetSeconds = getTargetSeconds(ex);
+  st.rating = mapReviewRating({
+    correct: isCorrect ? 1 : 0,
+    hintsUsed: st.hintsUsed || 0,
+    attemptNo: st.attemptNo,
+    durationMs: st.durationMs,
+    targetSeconds
+  });
+  maybeAutoUpdateCards(id);
+  saveState();
+  updateSlotHeader(slot, id);
+  renderDashboard();
+  return {
+    targetSeconds,
+    slow: st.durationMs > targetSeconds * 1000,
+    rating: st.rating
+  };
+}
+
+function renderDowngradeNote(meta, st) {
+  if (!st.correct) return "";
+  const reasons = [];
+  if (st.hintsUsed > 0) reasons.push(`使用了提示 (${st.hintsUsed} 次)`);
+  if (st.attemptNo > 1) reasons.push(`非首次作答 (第 ${st.attemptNo} 次)`);
+  if (meta.slow) reasons.push(`作答超过目标耗时 (${Math.round(st.durationMs/1000)}s &gt; ${meta.targetSeconds}s)`);
+  if (reasons.length === 0) return ` · <span style="color:#166534;">[首遍独立快速通过 → Good]</span>`;
+  return ` · <span style="color:#92400e;">[因 ${reasons.join("、")} → 记为 Hard]</span>`;
+}
+
+function renderSlot(slot) {
+  const id = slot.dataset.exId;
+  const ex = EX_MAP[id];
+  const st = getExState(id);
+  const body = slot.querySelector(".prob-body");
+
+  if (ex.params && !st.env) {
+    st.env = pickParams(ex);
+    saveState();
+  }
+
+  slot.addEventListener("pointerenter", () => startTimer(slot, id));
+  slot.addEventListener("focusin", () => startTimer(slot, id));
+
+  function redraw() {
+    const env = st.env || {};
+    const promptTxt = fillTemplate(ex.prompt, env);
+    const solTxt = fillTemplate(ex.solution || "", env);
+    let html = `<p>${escHtml(promptTxt)}</p>`;
+
+    if (ex.type === "mc") {
+      html += `<div class="opts-grid">` + ex.options.map(o => {
+        let cls = "opt-btn";
+        if (st.pickedOpt === o.id) cls += o.correct ? " picked-ok" : " picked-bad";
+        return `<button type="button" class="${cls}" data-opt="${o.id}"><strong>${o.id.toUpperCase()}.</strong> ${escHtml(o.text)}</button>`;
+      }).join("") + `</div>`;
+      html += `<div class="input-row"><button type="button" class="btn btn-sol">查看解析</button></div>`;
+      html += `<div class="fb"></div>`;
+    } else if (ex.type === "numeric") {
+      html += `<div class="input-row">`;
+      html += `<input type="number" step="any" class="txt-in" value="${escHtml(st.textVal || "")}" placeholder="输入数值结果..." />`;
+      html += `<button type="button" class="btn btn-primary btn-check">提交检查</button>`;
+      if (ex.params) html += `<button type="button" class="btn btn-reroll">换一组参数</button>`;
+      if (ex.hints && ex.hints.length) html += `<button type="button" class="btn btn-hint">提示 (${st.hintsUsed}/${ex.hints.length})</button>`;
+      html += `<button type="button" class="btn btn-sol">查看解答</button>`;
+      html += `</div><div class="hint-box"></div><div class="fb"></div>`;
+    } else if (ex.type === "text" || ex.type === "expression") {
+      const ph = ex.type === "expression" ? "例如: w0 - w" : "键入表达式或公式...";
+      html += `<div class="input-row">`;
+      html += `<input type="text" class="txt-in" value="${escHtml(st.textVal || "")}" placeholder="${ph}" />`;
+      html += `<button type="button" class="btn btn-primary btn-check">提交检查</button>`;
+      html += `<button type="button" class="btn btn-sol">查看解答</button>`;
+      html += `</div><div class="fb"></div>`;
+    } else if (ex.type === "explain") {
+      html += `<textarea class="explain-in" placeholder="先试着用自己的话作答（会自动保存到 localStorage），再展开评分标准核对...">${escHtml(st.explainVal || "")}</textarea>`;
+      html += `<div class="input-row"><button type="button" class="btn btn-primary btn-sol">展开评分标准与参考范例</button></div>`;
+      html += `<div class="fb"></div>`;
+    }
+
+    body.innerHTML = html;
+    const fb = body.querySelector(".fb");
+
+    function showExplainRubric(autoNote) {
+      const rub = (ex.rubric || []).map((r, rIdx) => {
+        const checked = (st.rubricChecked || []).includes(rIdx) ? "checked" : "";
+        return `<li><label><input type="checkbox" class="rubric-chk" data-ridx="${rIdx}" ${checked} /> <strong>${r.required ? "[必答]" : "[加分]"}</strong> ${escHtml(r.criterion)}</label></li>`;
+      }).join("");
+      fb.className = "fb info";
+      fb.innerHTML = `<strong>自评要点清单：</strong><ul class="rubric-list">${rub}</ul>`
+        + `<div class="input-row" style="margin:6px 0 8px;">`
+        + `<button type="button" class="btn btn-primary btn-self-eval">按当前勾选提交自评</button>`
+        + `<span>${autoNote || ""}</span></div>`
+        + `<strong>参考范例：</strong>${escHtml(ex.exemplar || "")}`;
+      fb.querySelectorAll(".rubric-chk").forEach(chk => {
+        chk.addEventListener("change", () => {
+          const rIdx = Number(chk.dataset.ridx);
+          const set = new Set(st.rubricChecked || []);
+          if (chk.checked) set.add(rIdx); else set.delete(rIdx);
+          st.rubricChecked = Array.from(set);
+          saveState();
+        });
+      });
+      fb.querySelector(".btn-self-eval").addEventListener("click", () => {
+        startTimer(slot, id);
+        const reqIdxs = (ex.rubric || []).map((r, i) => (r.required ? i : -1)).filter(i => i >= 0);
+        const set = new Set(st.rubricChecked || []);
+        const passed = reqIdxs.every(i => set.has(i));
+        const meta = commitTimingAndGrade(slot, id, passed);
+        showExplainRubric(passed ? `已记为通过 (${meta.rating})` : `必答要点尚缺，已记为 Again 需再复习`);
+      });
+      window.__renderAllMath(fb);
+    }
+
+    if (ex.type === "mc") {
+      if (st.pickedOpt) {
+        const opt = ex.options.find(o => o.id === st.pickedOpt);
+        if (opt) {
+          fb.className = "fb " + (opt.correct ? "ok" : "bad");
+          fb.innerHTML = `<strong>${opt.correct ? "正确：" : "再想想："}</strong>${escHtml(opt.feedback || "")}`;
+        }
+      }
+      body.querySelectorAll(".opt-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          startTimer(slot, id);
+          const opt = ex.options.find(o => o.id === btn.dataset.opt);
+          st.pickedOpt = opt.id;
+          const meta = commitTimingAndGrade(slot, id, Boolean(opt.correct));
+          body.querySelectorAll(".opt-btn").forEach(b => b.classList.remove("picked-ok", "picked-bad"));
+          btn.classList.add(opt.correct ? "picked-ok" : "picked-bad");
+          fb.className = "fb " + (opt.correct ? "ok" : "bad");
+          fb.innerHTML = `<strong>${opt.correct ? "正确：" : "再想想："}</strong>${escHtml(opt.feedback || "")}${renderDowngradeNote(meta, st)}`;
+          window.__renderAllMath(fb);
+        });
+      });
+      body.querySelector(".btn-sol").addEventListener("click", () => {
+        fb.className = "fb info";
+        fb.innerHTML = `<strong>完整解答：</strong>${escHtml(solTxt)}`;
+        window.__renderAllMath(fb);
+      });
+    } else if (ex.type === "numeric") {
+      const txtIn = body.querySelector(".txt-in");
+      txtIn.addEventListener("input", () => { st.textVal = txtIn.value; saveState(); });
+      const hintBox = body.querySelector(".hint-box");
+      const btnHint = body.querySelector(".btn-hint");
+      if (st.hintsUsed > 0 && hintBox) {
+        hintBox.style.display = "block";
+        hintBox.innerHTML = ex.hints.slice(0, st.hintsUsed).map((h, i) => `提示 ${i+1}：${escHtml(fillTemplate(h, env))}`).join("<br/>");
+        window.__renderAllMath(hintBox);
+      }
+      if (st.correct !== null) {
+        const ans = evalExpr(ex.answer_expr, env);
+        fb.className = "fb " + (st.correct ? "ok" : "bad");
+        fb.innerHTML = st.correct ? `<strong>上次已答对：</strong>${escHtml(solTxt)}` : `<strong>上次答错：</strong>可修改后重提交或查看提示（参考值约 ${Number(ans.toFixed(4))}）。`;
+      }
+      if (btnHint) {
+        btnHint.addEventListener("click", () => {
+          startTimer(slot, id);
+          st.hintsUsed = Math.min(ex.hints.length, (st.hintsUsed || 0) + 1);
+          saveState();
+          btnHint.textContent = `提示 (${st.hintsUsed}/${ex.hints.length})`;
+          hintBox.style.display = "block";
+          hintBox.innerHTML = ex.hints.slice(0, st.hintsUsed).map((h, i) => `提示 ${i+1}：${escHtml(fillTemplate(h, env))}`).join("<br/>");
+          window.__renderAllMath(hintBox);
+        });
+      }
+      if (ex.params) {
+        body.querySelector(".btn-reroll").addEventListener("click", () => {
+          st.env = pickParams(ex);
+          st.textVal = "";
+          st.correct = null;
+          st.attemptNo = 0;
+          st.hintsUsed = 0;
+          st.durationMs = 0;
+          st.rating = null;
+          delete ACTIVE_TIMERS[id];
+          saveState();
+          redraw();
+          updateSlotHeader(slot, id);
+          renderDashboard();
+        });
+      }
+      body.querySelector(".btn-check").addEventListener("click", () => {
+        startTimer(slot, id);
+        st.textVal = txtIn.value;
+        const val = parseFloat(txtIn.value);
+        if (Number.isNaN(val)) {
+          fb.className = "fb bad";
+          fb.textContent = "请先输入一个有效数字。";
+          return;
+        }
+        const ans = evalExpr(ex.answer_expr, env);
+        const absTol = (ex.tolerance && ex.tolerance.abs) || 1e-6;
+        const ok = Math.abs(val - ans) <= absTol;
+        const meta = commitTimingAndGrade(slot, id, ok);
+        if (ok) {
+          fb.className = "fb ok";
+          fb.innerHTML = `<strong>正确！</strong> ${escHtml(solTxt)}${renderDowngradeNote(meta, st)}`;
+        } else {
+          const hitWrong = (ex.common_wrong || []).find(w => Math.abs(val - evalExpr(w.answer_expr, env)) <= ((w.tolerance && w.tolerance.abs) || absTol));
+          fb.className = "fb bad";
+          fb.innerHTML = hitWrong ? `<strong>常见误区：</strong>${escHtml(fillTemplate(hitWrong.feedback, env))}` : `<strong>结果不匹配：</strong>建议点「提示」再试一次（答案约 ${Number(ans.toFixed(4))}）。`;
+        }
+        window.__renderAllMath(fb);
+      });
+      body.querySelector(".btn-sol").addEventListener("click", () => {
+        fb.className = "fb info";
+        fb.innerHTML = `<strong>解析：</strong>${escHtml(solTxt)}`;
+        window.__renderAllMath(fb);
+      });
+    } else if (ex.type === "expression" || ex.type === "text") {
+      const txtIn = body.querySelector(".txt-in");
+      txtIn.addEventListener("input", () => { st.textVal = txtIn.value; saveState(); });
+      if (st.correct !== null) {
+        fb.className = "fb " + (st.correct ? "ok" : "bad");
+        fb.innerHTML = st.correct ? `<strong>上次已答对：</strong>${escHtml(solTxt)}` : `<strong>上次未匹配：</strong>请调整后重新提交。`;
+      }
+      body.querySelector(".btn-check").addEventListener("click", () => {
+        startTimer(slot, id);
+        const raw = txtIn.value.trim();
+        st.textVal = raw;
+        if (!raw) return;
+        let ok = false;
+        if (ex.type === "expression") {
+          ok = true;
+          const vnames = Object.keys(ex.variables || {});
+          for (let i = 0; i < 5; i++) {
+            const testEnv = {};
+            for (const vn of vnames) {
+              const [lo, hi] = ex.variables[vn];
+              testEnv[vn] = lo + Math.random() * (hi - lo);
+            }
+            try {
+              const uv = evalExpr(raw, testEnv);
+              const av = evalExpr(ex.answer, testEnv);
+              if (!Number.isFinite(uv) || Math.abs(uv - av) > 1e-6) { ok = false; break; }
+            } catch (e) { ok = false; break; }
+          }
+        } else {
+          const rx = ex.regex ? new RegExp(ex.regex) : null;
+          ok = (ex.accept || []).includes(raw) || (rx ? rx.test(raw) : false);
+        }
+        const meta = commitTimingAndGrade(slot, id, ok);
+        fb.className = "fb " + (ok ? "ok" : "bad");
+        fb.innerHTML = ok
+          ? `<strong>正确！</strong> ${escHtml(solTxt)}${renderDowngradeNote(meta, st)}`
+          : (ex.type === "expression" ? `<strong>未通过数值比对：</strong>请检查表达式变量与符号。` : `<strong>暂未匹配：</strong>可参考格式 <code>${escHtml((ex.accept || [""])[0])}</code>。`);
+        window.__renderAllMath(fb);
+      });
+      body.querySelector(".btn-sol").addEventListener("click", () => {
+        fb.className = "fb info";
+        const ansShow = ex.type === "expression" ? ex.answer : ((ex.accept || [""])[0]);
+        fb.innerHTML = `<strong>标准参考：</strong><code>${escHtml(ansShow)}</code> · ${escHtml(solTxt)}`;
+        window.__renderAllMath(fb);
+      });
+    } else if (ex.type === "explain") {
+      const ta = body.querySelector(".explain-in");
+      ta.addEventListener("input", () => { st.explainVal = ta.value; saveState(); });
+      if (st.correct !== null || (st.rubricChecked && st.rubricChecked.length)) {
+        showExplainRubric(st.correct === true ? "已记录自评通过" : (st.correct === false ? "已记录需再巩固" : ""));
+      }
+      body.querySelector(".btn-sol").addEventListener("click", () => showExplainRubric(""));
+    }
+
+    updateSlotHeader(slot, id);
+    window.__renderAllMath(body);
+  }
+
+  redraw();
+}
+
+// Live 1s timer tick for currently active exercises
+setInterval(() => {
+  for (const id of Object.keys(ACTIVE_TIMERS)) {
+    const slot = document.querySelector(`.prob[data-ex-id="${id}"]`);
+    if (slot) updateSlotHeader(slot, id);
+  }
+}, 1000);
+
+// Recall batch commit buttons
+document.querySelectorAll(".btn-commit-recall").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const kpId = btn.dataset.kp;
+    const kp = KP_META.find(k => k.id === kpId);
+    if (!kp) return;
+    const statusEl = document.querySelector(`[data-kp-recall-status="${kpId}"]`);
+    const missing = kp.recallIds.filter(rid => getExState(rid).correct === null);
+    if (missing.length > 0) {
+      statusEl.textContent = `请先完成本步全部 3 道 Recall 题（还差 ${missing.join("、")}，第 1 题请展开评分清单并点「按当前勾选提交自评」）。`;
+      return;
+    }
+    const nowMs = virtualNowMs();
+    const items = kp.recallIds.map(rid => {
+      const s = getExState(rid);
+      return {
+        correct: s.correct ? 1 : 0,
+        hintsUsed: s.hintsUsed,
+        attemptNo: s.attemptNo,
+        durationMs: s.durationMs,
+        targetSeconds: getTargetSeconds(EX_MAP[rid])
+      };
+    });
+    const batchRating = reviewActivityRating(items);
+    const key = `kp:${kpId}`;
+    const res = scheduleReview(getOrCreateCard(key, nowMs), nowMs, batchRating);
+    STATE.cards[key] = res.card;
+    saveState();
+    renderDashboard();
+    statusEl.textContent = `已完成第 ${res.card.reps} 轮 Recall（评级 ${batchRating.toUpperCase()}）→ 下次复习间隔 ${res.intervalDays} 天（${fmtDateTime(res.card.dueMs)}）。`;
+  });
+});
+
+// Time-travel & persistence controls
+document.querySelectorAll("[data-shift-days]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const days = Number(btn.dataset.shiftDays);
+    STATE.simOffsetMs = (STATE.simOffsetMs || 0) + days * MS_PER_DAY;
+    saveState();
+    renderDashboard();
+  });
+});
+
+document.getElementById("btn-clock-reset").addEventListener("click", () => {
+  STATE.simOffsetMs = 0;
+  saveState();
+  renderDashboard();
+});
+
+document.getElementById("btn-export-json").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(STATE, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `open-academy-mr-progress-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+document.getElementById("btn-import-json").addEventListener("click", () => {
+  document.getElementById("import-file-input").click();
+});
+
+document.getElementById("import-file-input").addEventListener("change", ev => {
+  const f = ev.target.files && ev.target.files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(String(reader.result));
+      STATE = Object.assign(makeDefaultState(), parsed);
+      saveState();
+      location.reload();
+    } catch (err) {
+      alert("JSON 格式无效：" + err.message);
+    }
+  };
+  reader.readAsText(f, "utf-8");
+});
+
+document.getElementById("btn-reset-all").addEventListener("click", () => {
+  if (!confirm("确定要清空当前浏览器里的全部做题进度、计时记录与 FSRS 复习排程吗？")) return;
+  localStorage.removeItem(STORAGE_KEY);
+  STATE = makeDefaultState();
+  location.reload();
+});
+
+document.querySelectorAll(".prob").forEach(renderSlot);
+renderDashboard();
+</script>
+</body>
+</html>

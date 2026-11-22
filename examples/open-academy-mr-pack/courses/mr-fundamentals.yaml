@@ -1,0 +1,23 @@
+id: mr-fundamentals
+title: "磁共振基础"
+description: "从单个自旋在静磁场与交变驱动场中的哈密顿量出发，依次建立旋波近似、相互作用图像、单比特量子门、Bloch 球几何表象、非共振频移与边带激发，最终掌握 Rabi/Ramsey 频率测量与 Hahn 回波/动力学去耦抗噪声脉冲序列。"
+units:
+  - title: "单自旋磁共振与相干演化"
+    intro: "建立自旋磁矩与外磁场的相互作用哈密顿量，用旋波近似与相互作用图像消去含时振荡，并求出单自旋的精确幺正演化与拉比跃迁概率。"
+    concepts:
+      - spin-zeeman-and-drive
+      - rotating-wave-and-frame
+      - su2-evolution-and-rabi-prob
+  - title: "单比特门、Bloch 表象与非共振微扰"
+    intro: "将磁共振演化参数化为任意单比特量子门与 Bloch 球三维旋转，并定量分析横向反向旋转项导致的 Bloch-Siegert 平移与纵向驱动引发的边带激发。"
+    concepts:
+      - single-qubit-gates
+      - bloch-sphere-representation
+      - bloch-siegert-shift
+      - longitudinal-sideband-excitation
+  - title: "频率测量与抗噪声脉冲序列"
+    intro: "利用 Rabi 与 Ramsey 脉冲序列高精度测量共振频率与退相干时间，并用 Hahn 回波与 XY4 等动力学去耦序列抑制环境磁噪声与脉冲操控误差。"
+    concepts:
+      - rabi-and-ramsey-spectroscopy
+      - spin-echo-and-noise-correlation
+      - dynamical-decoupling-and-xy4

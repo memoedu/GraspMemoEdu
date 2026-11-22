@@ -1,0 +1,74 @@
+# 符号、术语与核心公式准入表（对应 Open Academy notation.yaml 规范）
+# 每项 notation 在某概念中首次教给学习者时，将该概念 ID 写入 introduced_by。
+# academy_check.py 会静态拦截任何在硬前置链之外超前使用未教符号/公式的课时与习题。
+avoid: []
+terms:
+  - id: gyromagnetic-ratio
+    label: "旋磁比 γ / γ_e / γ_n"
+    match: ['\\gamma(?:_[enH])?\b', 'γ']
+    introduced_by: [spin-zeeman-and-drive]
+
+  - id: spin-operators
+    label: "无量纲自旋算符 S_x, S_y, S_z"
+    match: ['\bS_[xyz]\b', '\\vec\{\\boldsymbol\{S\}\}', '\\vec\{S\}']
+    introduced_by: [spin-zeeman-and-drive]
+
+  - id: rabi-freq
+    label: "共振频率 ω_0 与驱动幅值 Ω"
+    match: ['\\omega_0\b', '\\Omega\b']
+    introduced_by: [spin-zeeman-and-drive]
+
+  - id: interaction-picture
+    label: "相互作用图像变换 U_i 与有效哈密顿量 H_I"
+    match: ['\bU_i\b', '\bH_I\b']
+    introduced_by: [rotating-wave-and-frame]
+
+  - id: ladder-operators
+    label: "自旋升降算符 S^+ / S^-"
+    match: ['S\^\+', 'S\^-', 'S\^\{\+\}', 'S\^\{-\}', 'S\^\\pm']
+    introduced_by: [rotating-wave-and-frame]
+
+  - id: rotation-operator
+    label: "三维矢量旋转算符 R_{n·θ}"
+    match: ['R_\{\\vec', 'R_\{n']
+    introduced_by: [rotating-wave-and-frame]
+
+  - id: detuning-and-eff
+    label: "偏共振 δ 与有效拉比频率 Ω_eff"
+    match: ['\\delta\b', '\\Omega_\{?\\text\{?eff\}?\}?', '\\Omega_\{?eff\}?']
+    introduced_by: [su2-evolution-and-rabi-prob]
+
+  - id: pauli-vector
+    label: "泡利矩阵矢量 σ (σ = 2S)"
+    match: ['\\vec\{\\boldsymbol\{\\sigma\}\}', '\\vec\{\\sigma\}', '\\sigma_[xyz]\b']
+    introduced_by: [su2-evolution-and-rabi-prob]
+
+  - id: bloch-siegert
+    label: "Bloch-Siegert 平移 Δ_BS"
+    match: ['\\Delta_\{?\\text\{?BS\}?\}?', '\\Delta_\{?BS\}?', 'Bloch-Siegert']
+    introduced_by: [bloch-siegert-shift]
+
+  - id: bessel-sideband
+    label: "贝塞尔函数边带强度 J_n(χ)"
+    match: ['J_n\(', 'J_\{?-?\d+\}?\(', '\\chi\b']
+    introduced_by: [longitudinal-sideband-excitation]
+
+  - id: density-matrix-bloch
+    label: "密度矩阵 ρ 与迹 Tr(ρσ)"
+    match: ['\\rho\b', '\\operatorname\{Tr\}', '\\mathrm\{Tr\}', '\\text\{Tr\}', '\bTr\(']
+    introduced_by: [bloch-sphere-representation]
+
+  - id: dephasing-t2star
+    label: "退相干时间 T_2^*、半高全宽 FWHM 与磁涨落 σ_b"
+    match: ['T_2\^\*', 'T_\{2\}\^\*', '\bFWHM\b', '\\sigma_b\b']
+    introduced_by: [rabi-and-ramsey-spectroscopy]
+
+  - id: correlation-time-t2
+    label: "回波相干时间 T_2、关联时间 τ_c 与噪声函数 η(t)"
+    match: ['\bT_2\b', '\\tau_c\b', '\\eta\(t\)']
+    introduced_by: [spin-echo-and-noise-correlation]
+
+  - id: gate-fidelity
+    label: "门保真度 F_{XY4} / F_{CPMG}"
+    match: ['F_\{?XY4\}?', 'F_\{?\\text\{?CPMG\}?\}?', 'F_\{?CPMG\}?']
+    introduced_by: [dynamical-decoupling-and-xy4]

@@ -1,0 +1,32 @@
+# What a learner starting 旋波近似与相互作用图像 (rotating-wave-and-frame) has been taught
+
+## Required topics (hard prerequisites, direct or through a chain), prerequisites first
+
+### 量子力学与数学预备基础 (qm-spin-and-operators-foundation)
+默认前置的大学物理与数学基础：复数（$i^2 = -1$）与欧拉公式、微积分（偏导数 $\frac{\partial}{\partial t}$ 与乘积法则）与三角恒等式；狄拉克左右矢（$|\psi\rangle$、$\langle\phi|$）、正交归一基（$|m_S = \pm 1/2\rangle$）与线性叠加原理；本征态与本征值（$S_z |m_S = \pm 1/2\rangle = \pm\frac{1}{2}|m_S = \pm 1/2\rangle$）；厄米共轭、幺正算符（$U^\dagger U = \mathbb{1}$）、对易子 $[A,B] = AB - BA$ 与算符指数运算规则；自然单位（$\hbar = 1$）下的薛定谔方程 $i\frac{\partial}{\partial t}|\psi\rangle = H|\psi\rangle$；以及绕 $+z$ 轴逆时针（右旋）与顺时针（左旋）旋转的圆偏振光子分别携带角动量 $+1$ 与 $-1$ 的物理事实。
+(no lesson yet; prereq contract from concept definition & objectives)
+- [math] 运用幺正变换、对易子、态矢量叠加与自旋 $1/2$ 本征方程 $S_z |m_S = \pm 1/2\rangle = \pm\frac{1}{2}|m_S = \pm 1/2\rangle$ 推导量子力学算符恒等式
+- [conceptual] 在 $\hbar = 1$ 单位下从含时薛定谔方程 $i\frac{\partial}{\partial t}|\psi\rangle = H|\psi\rangle$ 出发处理含时态演化与分别携带角动量 $+1/-1$ 的右旋/左旋圆偏振光子
+
+### 自旋磁矩与驱动哈密顿量 (spin-zeeman-and-drive)
+介绍自旋磁矩与角动量的关系 $\vec{\boldsymbol{\mu}} = \gamma\vec{\boldsymbol{S}}$、电子自旋（自由电子 $\gamma_e \approx -2\pi\times 2.8025\text{ MHz/G}$，金刚石 NV 色心 $\gamma_e \approx -2\pi\times 2.8033\text{ MHz/G}$）与核自旋（如自由质子 $\gamma_n = 2\pi\times 4.2577\text{ kHz/G}$）的旋磁比差异，以及在静磁场 $B_0\vec{\boldsymbol{e}}_z$ 和横向余弦驱动场 $B_x\cos(\omega t+\varphi)\vec{\boldsymbol{e}}_x$ 作用下、除以 $\hbar$ 后以无量纲自旋算符 $\vec{\boldsymbol{S}}$ 表达的磁共振哈密顿量 $H = -\gamma B_0 S_z - \gamma B_x S_x \cos(\omega t+\varphi) = \omega_0 S_z + 2\Omega\cos(\omega t+\varphi)S_x$（对电子自旋 $\omega_0 = -\gamma_e B_0$，$2\Omega = -\gamma_e B_x$）。
+(no lesson yet; prereq contract from concept definition & objectives)
+- [conceptual] 写出自旋磁矩与外磁场的相互作用哈密顿量 $H = -\vec{\boldsymbol{\mu}}\cdot\boldsymbol{B}$ 与旋磁比关系 $\vec{\boldsymbol{\mu}} = \gamma\vec{\boldsymbol{S}}$
+- [math] 区分电子自旋与核自旋旋磁比的符号和数量级，并由 $B_0, B_x, \gamma_e$ 计算无量纲哈密顿量参数 $\omega_0 = -\gamma_e B_0$ 与 $2\Omega = -\gamma_e B_x$
+
+## Notation and ideas already taught
+- 旋磁比 γ / γ_e / γ_n (introduced by spin-zeeman-and-drive)
+- 无量纲自旋算符 S_x, S_y, S_z (introduced by spin-zeeman-and-drive)
+- 共振频率 ω_0 与驱动幅值 Ω (introduced by spin-zeeman-and-drive)
+
+## Soft links (helpful background, NOT guaranteed; anything only taught here counts as untaught)
+
+## Not yet taught at this point
+- 偏共振 δ 与有效拉比频率 Ω_eff (introduced by su2-evolution-and-rabi-prob)
+- 泡利矩阵矢量 σ (σ = 2S) (introduced by su2-evolution-and-rabi-prob)
+- Bloch-Siegert 平移 Δ_BS (introduced by bloch-siegert-shift)
+- 贝塞尔函数边带强度 J_n(χ) (introduced by longitudinal-sideband-excitation)
+- 密度矩阵 ρ 与迹 Tr(ρσ) (introduced by bloch-sphere-representation)
+- 退相干时间 T_2^*、半高全宽 FWHM 与磁涨落 σ_b (introduced by rabi-and-ramsey-spectroscopy)
+- 回波相干时间 T_2、关联时间 τ_c 与噪声函数 η(t) (introduced by spin-echo-and-noise-correlation)
+- 门保真度 F_{XY4} / F_{CPMG} (introduced by dynamical-decoupling-and-xy4)

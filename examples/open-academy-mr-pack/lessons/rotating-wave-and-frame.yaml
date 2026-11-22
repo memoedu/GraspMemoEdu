@@ -1,0 +1,255 @@
+concept: rotating-wave-and-frame
+version: 3
+sources:
+  - source: ch1-magnetic-resonance
+    section: "1.1 节, pp. 2–3, 式 (1.5)–(1.12)"
+objective: |
+  **Goal:** 能够把横向余弦驱动场分解为正反两个圆偏振分量并用角动量守恒解释旋波近似，再通过相互作用图像变换（旋转公式法与升降算符法）把含时磁共振哈密顿量化为不含时形式。
+# 注：前置概念 spin-zeeman-and-drive 当前为 stub（尚未编写正课），按 Open Academy validate.ts 规则暂省略 recap 字段，改为在开篇和第 1 步首段自包含复述起点哈密顿量。
+where_this_fits: |
+  ### 什么是旋波近似与相互作用图像？
+
+  **旋波近似**是把沿固定方向来回振荡的驱动场拆成顺、逆时针两个旋转分量后，舍去不能激发跃迁的反向分量；**相互作用图像**则是切换到随驱动场一起旋转的参考系，把依然随时间变化的哈密顿量写成常系数形式。
+
+  为什么要做这两步？在静磁场和横向交变磁场下，哈密顿量带着随时间 $t$ 振荡的余弦项，很难直接看出自旋会怎样演化。先简化驱动场、再换到旋转坐标系，就能把时间 $t$ 彻底消去，为下一步求解演化铺平道路。
+knowledge_points:
+  - id: rwa-split-field
+    title: "拆开驱动场并舍去反向项"
+    tldr: |
+      - 线偏振场可拆成正反两个等幅度旋转场。
+      - 电子自旋跃迁匹配逆时针 $+1$ 光子分量，反向分量在弱驱动下可舍去。
+      - 若驱动太强使 $\Omega$ 可比拟能隙 $\omega_0$，旋波近似不再适用，反向项引起共振频移。
+    explain: |
+      ### 从静态能级与线偏振场出发
+
+      对于自旋 $1/2$ 的电子（如金刚石 NV 色心），无量纲算符 $S_z$ 的两个本征态用磁量子数 $m_S = \pm 1/2$ 记作 $|m_S = \pm 1/2\rangle$，满足 $S_z|m_S = \pm 1/2\rangle = \pm\frac{1}{2}|m_S = \pm 1/2\rangle$。电子旋磁比 $\gamma_e < 0$，在外加静磁场 $B_0 > 0$ 下 $\omega_0 = -\gamma_e B_0 > 0$，因此 $H_0 = \omega_0 S_z$ 给下能级 $|m_S = -1/2\rangle$ 与上能级 $|m_S = +1/2\rangle$ 赋予能量 $-\omega_0/2$ 和 $+\omega_0/2$，两能级之间的能量差（能隙）为 $\omega_0$。
+
+      再叠加沿 $x$ 轴来回振荡的横向交变驱动场（幅值参数 $2\Omega = -\gamma_e B_x$，普通频率 $\omega/(2\pi)$，初相位 $\varphi$），除以 $\hbar$ 后得
+      $$H = \omega_0 S_z + 2\Omega\cos(\omega t + \varphi) S_x$$
+
+      ### 把余弦场拆成两个旋转分量
+
+      只沿 $x$ 轴来回振荡的场叫**线偏振**场，在 $x\text{-}y$ 平面内绕圆圈转动的场叫**圆偏振**场。在右端一加一减同一个 $y$ 方向自旋分量 $S_y$ 项（$S_y$ 抵消、$S_x$ 相加还原），就把线偏振拆成一正一反两个等幅度的圆偏振分量：
+      $$
+      \begin{aligned}
+      H &= \omega_0 S_z + 2\Omega\cos(\omega t + \varphi) S_x \\
+        &= \omega_0 S_z + \Omega\left[\cos(\omega t + \varphi)S_x + \sin(\omega t + \varphi)S_y\right] + \underbrace{\Omega\left[\cos(\omega t + \varphi)S_x - \sin(\omega t + \varphi)S_y\right]}_{\text{①}}
+      \end{aligned}
+      $$
+      下图左侧是两能级图，右侧是从 $+z$ 轴俯视的 $x\text{-}y$ 平面分解图：
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="左图为自旋二分之一的两能级示意图，下能级 m_S 等于负二分之一与上能级 m_S 等于正二分之一之间的能级差为 omega_0，向上跃迁角动量变化为 +1；右图为 x-y 平面驱动场分解图，沿 x 轴的线偏振驱动场拆成幅度均为 Omega 的逆时针蓝色分量（角动量 +1，保留）与顺时针红色分量①（角动量 -1，被旋波近似舍去）。">
+      <defs>
+      <marker id="rwa1-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
+      <marker id="rwa1-red" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#ef4444"/></marker>
+      <marker id="rwa1-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker>
+      <marker id="rwa1-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker>
+      <marker id="rwa1-dark" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#171717"/></marker>
+      </defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#171717">
+      <line x1="278" y1="22" x2="278" y2="278" stroke="#d4d4d4" stroke-width="1"/>
+      <text x="145" y="28" text-anchor="middle" font-size="14" font-weight="600">静态能级 (H₀ = ω₀ S_z)</text>
+      <line x1="115" y1="78" x2="225" y2="78" stroke="#171717" stroke-width="2.5"/>
+      <line x1="115" y1="222" x2="225" y2="222" stroke="#171717" stroke-width="2.5"/>
+      <text x="106" y="83" text-anchor="end">|m_S = +1/2⟩</text>
+      <text x="106" y="227" text-anchor="end">|m_S = -1/2⟩</text>
+      <line x1="168" y1="216" x2="168" y2="85" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#rwa1-amber)"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="176" y="143" fill="#f59e0b">Δm_S = +1</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="176" y="162" fill="#f59e0b">能隙 ω₀</text>
+      <text x="455" y="28" text-anchor="middle" font-size="14" font-weight="600">x-y 平面圆偏振分解 (+z 朝外)</text>
+      <circle cx="425.0" cy="165.0" r="82.0" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5" stroke-dasharray="4 4"/>
+      <line x1="323.0" y1="165.0" x2="592.23" y2="165.0" stroke="#d4d4d4" stroke-width="1.5" marker-end="url(#rwa1-dark)"/>
+      <line x1="425.0" y1="271.0" x2="425.0" y2="55.0" stroke="#d4d4d4" stroke-width="1.5" marker-end="url(#rwa1-dark)"/>
+      <text x="598.23" y="169.0">x</text>
+      <text x="432.0" y="59.0">y</text>
+      <line x1="489.62" y1="114.52" x2="489.62" y2="215.48" stroke="#d4d4d4" stroke-width="1.2" stroke-dasharray="3 3"/>
+      <line x1="489.62" y1="114.52" x2="554.23" y2="165.0" stroke="#d4d4d4" stroke-width="1.2" stroke-dasharray="3 3"/>
+      <line x1="489.62" y1="215.48" x2="554.23" y2="165.0" stroke="#d4d4d4" stroke-width="1.2" stroke-dasharray="3 3"/>
+      <line x1="425.0" y1="165.0" x2="554.23" y2="165.0" stroke="#10b981" stroke-width="2.5" marker-end="url(#rwa1-green)"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="550.23" y="185.0" text-anchor="middle" fill="#10b981">合矢量 2Ω cos(ωt+φ)</text>
+      <line x1="425.0" y1="165.0" x2="489.62" y2="114.52" stroke="#3b82f6" stroke-width="3" marker-end="url(#rwa1-blue)"/>
+      <line x1="425.0" y1="165.0" x2="489.62" y2="215.48" stroke="#ef4444" stroke-width="3" marker-end="url(#rwa1-red)"/>
+      <path d="M510.65 119.46 A97.0 97.0 0 0 0 454.97 72.75" fill="#ffffff" fill-opacity="0" stroke="#3b82f6" stroke-width="2" marker-end="url(#rwa1-blue)"/>
+      <path d="M510.65 210.54 A97.0 97.0 0 0 1 454.97 257.25" fill="#ffffff" fill-opacity="0" stroke="#ef4444" stroke-width="2" marker-end="url(#rwa1-red)"/>
+      <path d="M453.0 165.0 A28 28 0 0 0 447.06 147.76" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="1.5"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="476.71" y="155.33" fill="#737373">ωt+φ</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="497.62" y="100.52" fill="#3b82f6">逆时针 (+1 保留)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="497.62" y="116.52" fill="#3b82f6">幅值 Ω</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="497.62" y="229.48" fill="#ef4444">顺时针 (-1 忽略①)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="497.62" y="245.48" fill="#ef4444">幅值 Ω</text>
+      </g>
+      </svg>
+      ```
+
+      交变电磁场携带量子化的能量份，叫做**光子**。右图中蓝色矢量绕 $+z$ 轴逆时针旋转，称作右旋圆偏振，对应角动量 $+1$ 的光子；红色矢量项①顺时针旋转，称作左旋圆偏振，对应角动量 $-1$ 的光子。
+
+      ### 用角动量守恒舍去反向项
+
+      电子自旋从 $|m_S = -1/2\rangle$ 向上吸收跃迁到 $|m_S = +1/2\rangle$ 时 $\Delta m_S = +1$，必须吸收 $+1$ 光子（向下发射跃迁 $\Delta m_S = -1$ 时则放出一个 $+1$ 光子，同样配对同一逆时针模式）。项①不仅对应角动量 $-1$ 不守恒，还沿相反方向高速旋转。于是在**旋波近似（Rotating-Wave Approximation，简称 RWA）**下舍去项①：
+      $$H \approx \omega_0 S_z + \Omega\left[\cos(\omega t + \varphi)S_x + \sin(\omega t + \varphi)S_y\right]$$
+
+      两项幅值同为 $\Omega$，舍去项①并不是因为它更小，而是角动量不守恒且方向反向。
+
+      ### 判断旋波近似何时在强驱动下失效
+
+      旋波近似仅在驱动远弱于能隙（$\Omega \ll \omega_0$，称作**弱驱动**条件）且驱动频率接近共振（$\omega$ 靠近能隙 $\omega_0$）时足够准确，此时反向项迅速平均抵消。若驱动强到 $\Omega$ 可比拟 $\omega_0$，项①来不及抵消并引起共振频率偏移，就必须保留反向项再做修正。
+    worked: |
+      我们来对一个典型的金刚石 NV 色心电子自旋实验做一次旋波近似分解。设共振普通频率（即能隙对应频率）$\omega_0 / (2\pi) = 10\text{ GHz}$，横向交变驱动场的普通频率 $\omega / (2\pi) = 9.99\text{ GHz}$、总幅值参数 $2\Omega / (2\pi) = 20\text{ MHz}$，初相位 $\varphi = 0$。
+
+      1. **计算单个圆偏振分量的驱动幅值。** 从线性项 $2\Omega\cos(\omega t) S_x$ 拆成两个圆偏振分量后，每个分量的幅值减半：
+         $$\Omega / (2\pi) = \frac{20\text{ MHz}}{2} = 10\text{ MHz}.$$
+
+      2. **写出完整拆解式与被舍去的反向项①。** 按逆时针和顺时针分量展开后，用下括号标出顺时针项①：
+         $$H = \omega_0 S_z + \Omega\left[\cos(\omega t)S_x + \sin(\omega t)S_y\right] + \underbrace{\Omega\left[\cos(\omega t)S_x - \sin(\omega t)S_y\right]}_{\text{①}}.$$
+
+      3. **结合角动量守恒与弱驱动条件舍去项①。** 向上跃迁需要 $\Delta m_S = +1$，只匹配角动量 $+1$ 的逆时针分量；同时驱动 $\Omega / (2\pi) = 10\text{ MHz} \ll \omega_0 / (2\pi) = 10\text{ GHz}$ 且 $\omega$ 接近 $\omega_0$，旋波近似足够准确：
+         $$H \approx \omega_0 S_z + \Omega\left[\cos(\omega t)S_x + \sin(\omega t)S_y\right].$$
+
+      这样就把沿 $x$ 轴振荡的驱动场化简成了单一逆时针旋转驱动场。
+    problems:
+      - rwa-split-basics
+      - rwa-split-self-explain
+      - rwa-split-drive-amp-template
+      - rwa-split-spot-mistake
+      - rwa-split-nuclear-transfer
+
+  - id: rwa-rotating-frame
+    title: "跳进旋转坐标系消去时间"
+    tldr: |
+      - 相互作用图像变换相当于坐上与驱动场同频逆时针旋转的转盘去观察系统。
+      - 在转盘上看，旋转的驱动矢量变成只由初相位决定的固定矢量，不再随时间变化。
+      - 变换后整个哈密顿量成为常系数形式，由频率差与固定初相位共同决定。
+    explain: |
+      ### 切换到相互作用图像
+
+      经旋波近似后，驱动矢量仍以角频率 $\omega$ 绕 $z$ 轴逆时针旋转。如果我们坐上同频逆时针旋转的参考系去观察，转动的矢量就会静止下来。
+
+      量子力学中实现这一参考系切换的算符叫**相互作用图像变换**，定义为 $U_i = e^{-i\omega t S_z}$，其中 $i$ 是虚数单位（$i^2 = -1$）。$U_i$ 是**幺正算符**，即它的厄米共轭 $U_i^\dagger$（把数值取复共轭、算符共轭转置并倒换乘积次序）恰好等于它的逆算符，满足 $U_i^\dagger U_i = \mathbb{1}$（单位算符）。由于 $S_z$ 自身厄米（$S_z^\dagger = S_z$），取共轭后指数变号，即 $U_i^\dagger = e^{+i\omega t S_z}$。
+
+      设实验室系态矢量为 $|\psi\rangle$，旋转系里的态矢量记为 $|\psi_I\rangle = U_i^\dagger|\psi\rangle$，即 $|\psi\rangle = U_i|\psi_I\rangle$。将其代入含时薛定谔方程 $i\frac{\partial}{\partial t}|\psi\rangle = H|\psi\rangle$，左侧由偏导乘积法则展开得到 $i\left(\frac{\partial}{\partial t}U_i\right)|\psi_I\rangle + U_i\, i\frac{\partial}{\partial t}|\psi_I\rangle = H U_i|\psi_I\rangle$。两边左乘 $U_i^\dagger$ 并整理出等效方程 $i\frac{\partial}{\partial t}|\psi_I\rangle = H_I|\psi_I\rangle$，其中有效哈密顿量为
+      $$
+      \begin{aligned}
+      H_I &= U_i^\dagger H U_i - U_i^\dagger i \frac{\partial}{\partial t} U_i \\
+          &= (\omega_0 - \omega)S_z + \Omega \underbrace{U_i^\dagger \left[\cos(\omega t + \varphi)S_x + \sin(\omega t + \varphi)S_y\right] U_i}_{\text{②}}
+      \end{aligned}
+      $$
+      上式第一项由两部分相加得到。一方面，$S_z$ 与仅含 $S_z$ 的 $U_i$ **对易**（相乘可交换顺序），所以 $U_i^\dagger(\omega_0 S_z)U_i = \omega_0 S_z U_i^\dagger U_i = \omega_0 S_z$。另一方面，$\frac{\partial}{\partial t}U_i = -i\omega S_z U_i$，代回 $-U_i^\dagger i\frac{\partial}{\partial t}U_i$ 并用 $i^2=-1$ 得出 $-\omega S_z$，相加即得 $(\omega_0 - \omega)S_z$。
+
+      ### 用三维旋转公式化解时间依赖
+
+      令括号里旋转矢量的坐标为 $\vec{\boldsymbol{r}} = (\cos(\omega t + \varphi), \sin(\omega t + \varphi), 0)$，就可把夹在 $U_i^\dagger$ 与 $U_i$ 中间的部分写成 $\vec{\boldsymbol{r}}\cdot\vec{\boldsymbol{S}}$，整块记为项②。借助对任意自旋量子数都成立的**三维旋转公式**：
+      $$e^{-i\theta \vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{S}}}\left(\vec{\boldsymbol{r}}\cdot\vec{\boldsymbol{S}}\right)e^{i\theta \vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{S}}} = R_{\vec{\boldsymbol{n}}\cdot\theta}(\vec{\boldsymbol{r}})\cdot\vec{\boldsymbol{S}}$$
+      这里 $\vec{\boldsymbol{n}}$ 是**单位**方向矢量，而记号 $R_{\vec{\boldsymbol{n}}\cdot\theta}(\vec{\boldsymbol{r}})$ 里的中间点只用来分隔转轴和转角、不代表点乘，意思是把三维矢量 $\vec{\boldsymbol{r}}$ 按右手定则绕单位轴 $\vec{\boldsymbol{n}}$ 转过角度 $\theta$（右手大拇指指向 $\vec{\boldsymbol{n}}$，四指弯曲为正转角方向）。把项②左右两边同时写成 $U_i^\dagger = e^{+i\omega t S_z} = e^{-i(\omega t)(-S_z)}$ 与 $U_i = e^{-i\omega t S_z} = e^{+i(\omega t)(-S_z)}$，与公式左边两端一一比对，立刻读出 $\vec{\boldsymbol{n}} = (0, 0, -1)$ 且 $\theta = \omega t$。
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="x-y 平面内三维旋转公式示意图：实验室坐标系中随时间转到角度 omega t 加 phi 的黑色矢量 r，沿橙色箭头绕 z 轴负方向（即顺时针）转动角度 omega t 后，回到固定角度 phi 的蓝色矢量 r'，坐标为 (cos phi, sin phi, 0)，从而消除时间变量 t。">
+      <defs>
+      <marker id="rwa2-dark" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#171717"/></marker>
+      <marker id="rwa2-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
+      <marker id="rwa2-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker>
+      </defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#171717">
+      <path d="M360.0 240.0 A165.0 165.0 0 0 0 200.76 75.1" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5" stroke-dasharray="4 4"/>
+      <line x1="170.0" y1="240.0" x2="408.0" y2="240.0" stroke="#d4d4d4" stroke-width="1.5" marker-end="url(#rwa2-dark)"/>
+      <line x1="195.0" y1="265.0" x2="195.0" y2="47.0" stroke="#d4d4d4" stroke-width="1.5" marker-end="url(#rwa2-dark)"/>
+      <text x="414.0" y="244.0">x</text>
+      <text x="203.0" y="51.0">y</text>
+      <text x="181.0" y="256.0" fill="#737373">O</text>
+      <path d="M247.0 240.0 A52 52 0 0 0 242.13 218.02" fill="#ffffff" fill-opacity="0" stroke="#10b981" stroke-width="2"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="261.39" y="229.28" fill="#10b981">φ</text>
+      <path d="M238.76 136.9 A112 112 0 0 1 296.51 192.67" fill="#ffffff" fill-opacity="0" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#rwa2-amber)"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="283.92" y="151.92" fill="#f59e0b">顺时针转 ωt</text>
+      <line x1="195.0" y1="240.0" x2="259.47" y2="88.12" stroke="#171717" stroke-width="3" marker-end="url(#rwa2-dark)"/>
+      <line x1="195.0" y1="240.0" x2="344.54" y2="170.27" stroke="#3b82f6" stroke-width="3" marker-end="url(#rwa2-blue)"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="267.47" y="82.12" font-weight="600">r⃗ = (cos(ωt+φ), sin(ωt+φ), 0)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="354.54" y="174.27" fill="#3b82f6" font-weight="600">r⃗' = (cos φ, sin φ, 0)</text>
+      <rect x="405" y="205" width="222" height="74" rx="6" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.2"/>
+      <text x="417" y="227" fill="#171717" font-weight="600">变换 U_i = exp(-i ω t S_z)</text>
+      <text x="417" y="248" fill="#737373">转轴 n⃗ = (0, 0, -1)，转角 θ = ωt</text>
+      <text x="417" y="268" fill="#3b82f6">转动后与时间 t 无关</text>
+      </g>
+      </svg>
+      ```
+
+      绕 $(0, 0, -1)$ 转动 $\omega t$ 就是沿着橙色箭头顺时针转回 $\omega t$ 角度，黑色矢量 $\vec{\boldsymbol{r}}$ 回到只含初相位的蓝色固定矢量 $\vec{\boldsymbol{r}}' = (\cos\varphi, \sin\varphi, 0)$，从而把整个哈密顿量变成与时间无关的常系数形式：
+      $$H_I = (\omega_0 - \omega)S_z + \Omega\left[\cos(\varphi)S_x + \sin(\varphi)S_y\right]$$
+
+      在这个式子里，驱动初相位 $\varphi$ 决定了有效驱动轴在 $x\text{-}y$ 平面中的指向：例如 $\varphi = 0$ 时给出 $+\Omega S_x$，$\varphi = \pi/2$ 时给出 $+\Omega S_y$，$\varphi = \pi$ 时则给出 $-\Omega S_x$。
+    worked: |
+      我们来计算一套具体参数下的旋转坐标系有效哈密顿量 $H_I$。设电子自旋共振普通频率 $\omega_0/(2\pi) = 10\text{ GHz}$，交变驱动场频率 $\omega/(2\pi) = 9.99\text{ GHz}$，单分量驱动幅值 $\Omega/(2\pi) = 10\text{ MHz}$，初相位 $\varphi = \pi/2$。
+
+      1. **求出静态项与求导修正合并后的 $S_z$ 系数。** 将 $\omega_0/(2\pi)$ 与 $\omega/(2\pi)$ 代入变换后的 $(\omega_0 - \omega)S_z$，算出 $S_z$ 项的频率系数：
+         $$(\omega_0 - \omega)/(2\pi) = 10\text{ GHz} - 9.99\text{ GHz} = 10\text{ MHz}.$$
+
+      2. **确定三维旋转公式参数并转回固定矢量。** 这里 $\vec{\boldsymbol{n}}=(0,0,-1)$、$\theta = \omega t$，把 $\vec{\boldsymbol{r}} = (\cos(\omega t + \pi/2), \sin(\omega t + \pi/2), 0)$ 顺时针转回 $\omega t$，得到 $\vec{\boldsymbol{r}}' = (0, 1, 0)$：
+         $$\Omega\left[\cos(\pi/2)S_x + \sin(\pi/2)S_y\right] = \Omega S_y.$$
+
+      3. **合成最终的不含时哈密顿量 $H_I$。** 将上述两项合并，并除以 $2\pi$ 以普通频率单位写出结果：
+         $$H_I / (2\pi) = 10\text{ MHz}\cdot S_z + 10\text{ MHz}\cdot S_y.$$
+
+      所有含 $\cos(\omega t)$ 和 $\sin(\omega t)$ 的振荡项都已彻底消去，原本含时的哈密顿量变成了一个常系数算符。
+    problems:
+      - rwa-frame-basics
+      - rwa-frame-self-explain
+      - rwa-frame-detuning-template
+      - rwa-frame-phase-axis
+      - rwa-frame-spot-mistake
+
+  - id: rwa-ladder-operators
+    title: "用算符代数消去时间"
+    tldr: |
+      - 把横向自旋算符改写成专门负责升高和降低能级的两个升降算符。
+      - 在相互作用图像下，上升算符乘出一个与驱动相位恰好相消的时间因子。
+      - 这套纯代数推导不仅适用于高自旋，还能直接推广到光场玻色子系统。
+    explain: |
+      ### 为什么要学升降算符
+
+      前面用三维旋转公式虽然直接，但日后遇到更复杂的驱动场或其他量子系统时，未必总好套用空间旋转。这里再学一种只靠算符代数就能消去时间的方法。
+
+      我们利用 $S_x, S_y$ 定义一对**自旋升降算符**：上升算符 $S^+ = S_x + i S_y$ 和下降算符 $S^- = S_x - i S_y$，反解可得 $S_x = \frac{1}{2}(S^+ + S^-)$ 与 $S_y = \frac{1}{2}(-i S^+ + i S^-)$。因为 $S_x, S_y$ 都是厄米算符，即 $S_x^\dagger = S_x$、$S_y^\dagger = S_y$，所以对 $S^+$ 取厄米共轭恰好得到下降算符：$(S^+)^\dagger = S^-$。按自旋角动量算符的乘法规则，它们作用在 $|m_S = \pm 1/2\rangle$ 上时，上升算符把下态升到上态、下降算符把上态降到下态，越出边界则为零：
+      $$
+      \begin{aligned}
+      S^+|m_S = -1/2\rangle &= |m_S = +1/2\rangle, & S^+|m_S = +1/2\rangle &= 0 \\
+      S^-|m_S = +1/2\rangle &= |m_S = -1/2\rangle, & S^-|m_S = -1/2\rangle &= 0
+      \end{aligned}
+      $$
+
+      ### 用算符共轭消去时间
+
+      把 $S_x, S_y$ 代入项②，并用欧拉公式 $\cos\alpha \pm i\sin\alpha = e^{\pm i\alpha}$ 合并指数。利用共轭倒序法则 $(A B)^\dagger = B^\dagger A^\dagger$ 与数乘法则 $(c A)^\dagger = c^* A^\dagger$，可得 $(e^{-i(\omega t+\varphi)} U_i^\dagger S^+ U_i)^\dagger = e^{i(\omega t+\varphi)} U_i^\dagger S^- U_i$。于是括号里含 $S^-$ 的第二项恰好是第一项的厄米共轭，简记为 $h.c.$：
+      $$
+      \begin{aligned}
+      \text{②} &= U_i^\dagger \left[\cos(\omega t + \varphi)S_x + \sin(\omega t + \varphi)S_y\right] U_i \\
+               &= \frac{1}{2} U_i^\dagger \left[e^{-i(\omega t + \varphi)}S^+ + e^{i(\omega t + \varphi)}S^-\right] U_i \\
+               &= \frac{1}{2}\left[e^{-i(\omega t + \varphi)} U_i^\dagger S^+ U_i + h.c.\right]
+      \end{aligned}
+      $$
+      根据算符函数的通用作用规则：若某算符满足 $S_z|m_S\rangle = m_S|m_S\rangle$，则函数 $f(S_z)$ 作用在该本征态上只需把 $S_z$ 换成数值 $m_S$，即 $f(S_z)|m_S\rangle = f(m_S)|m_S\rangle$。由于 $S^+$ 把 $m_S$ 抬高 $+1$，这让我们得到恒等式 $U_i^\dagger S^+ U_i = e^{i\omega t} S^+$（下方例题给出逐态证明）。代回上式，指数中的 $-i\omega t$ 与 $+i\omega t$ 立刻相消：
+      $$\text{②} = \frac{1}{2}\left(e^{-i\varphi} S^+ + e^{i\varphi} S^-\right) = \cos(\varphi)S_x + \sin(\varphi)S_y$$
+      这与三维旋转公式所得完全一致。因为上述代数推导只用到 $S^+$ 将磁量子数抬高 $+1$ 这一性质，它对任意自旋量子数 $S > 1/2$ 的高自旋系统同样成立。此外，这一关系还能直接推广到谐振子或光场这类**玻色子**系统：那里粒子数态 $|n\rangle$ 满足 $a^\dagger a|n\rangle = n|n\rangle$，**产生算符** $a^\dagger$ 将 $|n\rangle$ 变为 $\sqrt{n+1}|n+1\rangle$，**湮灭算符** $a$ 将粒子数降一级。由于 $a^\dagger$ 每次把量子数 $n$ 抬高 $+1$，且数值标量 $e^{i\omega t}$ 可以越过算符交换顺序，同样有
+      $$e^{i\omega t\, a^\dagger a} a^\dagger e^{-i\omega t\, a^\dagger a} = a^\dagger e^{i\omega t}.$$
+    worked: |
+      我们来逐步证明算符恒等式 $U_i^\dagger S^+ U_i = e^{i\omega t} S^+$，并代回 $\varphi = \pi/2$ 核对结果。因为任意自旋 $1/2$ 量子态都能写成两个本征基矢 $\{|m_S=+1/2\rangle, |m_S=-1/2\rangle\}$ 的线性叠加 $|\psi\rangle = c_+|m_S=+1/2\rangle + c_-|m_S=-1/2\rangle$，只要在两个本征基矢上分别验证等式两边相等，就由算符线性严格证明了算符恒等式对所有态都成立。
+
+      1. **检验作用在下能级本征基矢 $|m_S = -1/2\rangle$ 上。** 由规则 $f(S_z)|m_S\rangle = f(m_S)|m_S\rangle$，右侧 $U_i = e^{-i\omega t S_z}$ 作用在 $|m_S=-1/2\rangle$ 上给出 $e^{+i\omega t/2}$；被 $S^+$ 升到上态 $|m_S=+1/2\rangle$ 后，左侧 $U_i^\dagger = e^{+i\omega t S_z}$ 再给出同号因子 $e^{+i\omega t/2}$，与右端 $e^{i\omega t}S^+|m_S=-1/2\rangle$ 完全相同：
+         $$U_i^\dagger S^+ U_i |m_S = -1/2\rangle = e^{i\omega t/2} U_i^\dagger S^+ |m_S = -1/2\rangle = e^{i\omega t/2} U_i^\dagger |m_S = +1/2\rangle = e^{i\omega t} |m_S = +1/2\rangle.$$
+
+      2. **检验另一本征基矢 $|m_S = +1/2\rangle$。** 因为 $U_i|m_S = +1/2\rangle = e^{-i\omega t/2}|m_S = +1/2\rangle$，且 $S^+|m_S = +1/2\rangle = 0$，所以左端结果为 $0$，与右端 $e^{i\omega t}S^+|m_S=+1/2\rangle = 0$ 一致，恒等式 $U_i^\dagger S^+ U_i = e^{i\omega t} S^+$ 证毕。
+
+      3. **代回项②并核对具体参数。** 将 $\varphi = \pi/2$、$(\omega_0 - \omega)/(2\pi) = 10\text{ MHz}$、$\Omega/(2\pi) = 10\text{ MHz}$ 代入无时间依赖的项②：
+         $$\text{②} = \frac{1}{2}\left(e^{-i\pi/2} S^+ + e^{i\pi/2} S^-\right) = \frac{1}{2}\left(-i S^+ + i S^-\right) = S_y.$$
+
+      于是 $H_I/(2\pi) = 10\text{ MHz}\cdot S_z + 10\text{ MHz}\cdot S_y$，升降算符法与三维旋转公式法所得的常系数哈密顿量完全吻合。
+    problems:
+      - rwa-ladder-basics
+      - rwa-ladder-self-explain
+      - rwa-ladder-phase-template
+      - rwa-ladder-spot-mistake
+      - rwa-ladder-limit-transfer
+final: rwa-final-explain
+summary: |
+  - **旋波近似（RWA）与适用界限**：把沿 $x$ 轴的线性驱动拆成幅值同为 $\Omega$ 的正反两个圆偏振分量后，由于电子自旋向上跃迁要求 $\Delta m_S = +1$，舍去角动量不守恒且方向反向的分量，保留 $H \approx \omega_0 S_z + \Omega[\cos(\omega t+\varphi)S_x + \sin(\omega t+\varphi)S_y]$；当强驱动使 $\Omega$ 可比拟能隙 $\omega_0$ 时近似失效，反向项会引起共振频率偏移。
+  - **相互作用图像**：作幺正变换 $U_i = e^{-i\omega t S_z}$，无论是用三维旋转公式 $e^{-i\theta \vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{S}}}(\vec{\boldsymbol{r}}\cdot\vec{\boldsymbol{S}})e^{i\theta \vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{S}}} = R_{\vec{\boldsymbol{n}}\cdot\theta}(\vec{\boldsymbol{r}})\cdot\vec{\boldsymbol{S}}$，还是用升降算符恒等式 $U_i^\dagger S^+ U_i = e^{i\omega t} S^+$（可推广至高自旋与玻色子产生湮灭算符 $a^\dagger, a$），都能消去时间 $t$。
+  - **不含时有效哈密顿量**：变换后得到常系数哈密顿量 $H_I = (\omega_0 - \omega)S_z + \Omega[\cos(\varphi)S_x + \sin(\varphi)S_y]$。
+  **Next:** 下一节「有效场演化与拉比跃迁概率」将对刚求出的常系数哈密顿量 $H_I$ 直接作演化计算，导出自旋二能级系统的跃迁概率公式。

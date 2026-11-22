@@ -1,0 +1,33 @@
+schedule:
+  mon: 60
+  tue: 60
+  wed: 60
+  thu: 60
+  fri: 60
+  sat: 120
+  sun: 60
+domains:
+  - id: magnetic-resonance
+    title: "磁共振基础"
+    description: "单自旋磁共振原理、非共振微扰效应、单比特量子门操控、Bloch 球几何表示与常用脉冲序列。"
+courses:
+  - mr-fundamentals
+default_course: mr-fundamentals
+subject:
+  title: "磁共振与量子控制"
+  tutor_context: "学习者具备基础线性代数与量子力学背景（2x2 复矩阵、狄拉克态矢、算符演化与基本三角/复数指数运算），正在以《第1章 磁共振基础》讲义为依据学习单自旋磁共振、NV 色心操控与脉冲序列。"
+grounded: true
+goals:
+  - id: g-spin-control
+    text: "掌握单自旋磁共振的哈密顿量变换、非共振效应、单比特门与 Bloch 几何表示，以及测频与抗噪声脉冲序列"
+    concepts:
+      - spin-zeeman-and-drive
+      - rotating-wave-and-frame
+      - su2-evolution-and-rabi-prob
+      - single-qubit-gates
+      - bloch-sphere-representation
+      - bloch-siegert-shift
+      - longitudinal-sideband-excitation
+      - rabi-and-ramsey-spectroscopy
+      - spin-echo-and-noise-correlation
+      - dynamical-decoupling-and-xy4

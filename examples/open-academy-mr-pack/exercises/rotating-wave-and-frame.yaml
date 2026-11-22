@@ -1,0 +1,676 @@
+concept: rotating-wave-and-frame
+exercises:
+  # ==========================================================================
+  # Step 1: rwa-split-field (5 题课堂/测验题 + 3 题 FSRS recall)
+  # ==========================================================================
+  - id: rwa-split-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "在旋波近似中，为什么我们把线性交变驱动项 $2\\Omega\\cos(\\omega t+\\varphi)S_x$ 拆开后，会舍去其中顺时针旋转的分量？"
+    options:
+      - id: a
+        text: "顺时针旋转分量的驱动幅值接近零，在哈密顿量中几乎不起作用。"
+        correct: false
+        feedback: "两个旋转分量的幅值完全相同，都是 $\\Omega$；舍去反向分量是因为角动量不守恒且方向反向。"
+      - id: b
+        text: "顺时针分量对应角动量为 $-1$ 的光子，与电子自旋向上跃迁所需的 $\\Delta m_S=+1$ 不守恒，且旋转方向相反。"
+        correct: true
+        feedback: "完全正确。电子自旋从 $|m_S=-1/2\\rangle$ 跃迁到 $|m_S=+1/2\\rangle$ 时 $\\Delta m_S=+1$，只匹配逆时针（$+1$）圆偏振光子；顺时针（$-1$）分量角动量不守恒且反向快速振荡，在弱驱动下可忽略。"
+      - id: c
+        text: "顺时针分量的角频率恰好为零，属于静态磁场，因此被合并进了 $\\omega_0 S_z$。"
+        correct: false
+        feedback: "顺时针分量以角频率 $\\omega$ 在 $x\\text{-}y$ 平面内顺时针旋转，并不是静磁场。"
+      - id: d
+        text: "只有在驱动初相位 $\\varphi=0$ 的特殊情形下顺时针分量才消失，其他相位下必须保留。"
+        correct: false
+        feedback: "无论初相位 $\\varphi$ 取何值，两个旋转分量的幅值始终都是 $\\Omega$，旋转方向也都不受 $\\varphi$ 改变。"
+    solution: "拆出的两个圆偏振分量幅值都是 $\\Omega$；电子自旋向上跃迁要求 $\\Delta m_S=+1$，只匹配逆时针（角动量 $+1$）分量，顺时针（角动量 $-1$）分量违背角动量守恒且方向相反，在弱驱动下可以忽略。"
+
+  - id: rwa-split-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "在刚才金刚石 NV 色心的例题里，已知 $2\\Omega/(2\\pi) = 20\\text{ MHz}$，为什么拆解后写出的每个圆偏振分量前面的系数变成了 $10\\text{ MHz}$ 而不是 $20\\text{ MHz}$？"
+    options:
+      - id: a
+        text: "因为把单个线偏振场一分为二写成逆时针与顺时针两个旋转场之和，每份各分担一半幅值 $\\Omega$。"
+        correct: true
+        feedback: "没错。把两个分量相加时，$S_y$ 项一正一负抵消，而 $S_x$ 项 $\\Omega+\\Omega$ 恰好还原回 $2\\Omega\\cos(\\omega t)S_x$。"
+      - id: b
+        text: "因为在旋波近似里直接丢掉了反向分量，剩下的保留项角频率自然折半，导致系数变为原来的一半。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "系数的 $1/2$ 出现在数学恒等拆解那一步，而不是忽略反向项造成的。"
+      - id: c
+        text: "因为电子自旋的量子数是 $1/2$，计算所有横向频率系数时都要额外乘以 $1/2$。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "无量纲算符 $S_x$ 本身已经对应自旋 $1/2$，这里的减半纯属两个圆偏振矢量合成为线偏振矢量时的几何关系。"
+      - id: d
+        text: "因为驱动初相位 $\\varphi=0$ 时 $\\sin(\\omega t)$ 项在 $t=0$ 为零，使总驱动幅度减半。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "$\\sin(\\omega t)$ 只在特定时刻为零，不会把整条式子的系数变成一半；这里对所有时刻 $t$ 和所有相位 $\\varphi$ 都成立。"
+    solution: "正、反两个圆偏振分量相加时，$y$ 方向分量相消、$x$ 方向分量相加为 $2\\Omega\\cos(\\omega t+\\varphi)S_x$，所以单个分量的幅值是 $2\\Omega$ 的一半，即 $10\\text{ MHz}$。"
+
+  - id: rwa-split-drive-amp-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    params:
+      Bx:
+        min: 2
+        max: 10
+        step: 2
+    prompt: "在横向线性交变驱动场 $B_x\\cos(\\omega t+\\varphi)\\vec{\\boldsymbol{e}}_x$ 作用下，电子自旋旋磁比满足 $|\\gamma_e|/(2\\pi) = 2.8\\text{ MHz/G}$。若驱动磁场振幅 $B_x = {{=Bx}}\\text{ G}$，做旋波近似后保留下来的单一圆偏振分量的驱动幅值 $\\Omega/(2\\pi)$ 是多少 $\\text{MHz}$？"
+    answer_expr: "2.8 * Bx / 2"
+    tolerance:
+      abs: 0.01
+    common_wrong:
+      - answer_expr: "2.8 * Bx"
+        category: misapplied_technique
+        feedback: "由 $2\\Omega = -\\gamma_e B_x$ 算出的是线性驱动总系数 $2\\Omega/(2\\pi)$，拆成正反两个圆偏振分量后单分量幅值只有一半，需要再除以 $2$。"
+      - answer_expr: "2.8 * Bx / 4"
+        category: math_error
+        feedback: "线性项中是 $2\\Omega$ 而不是 $4\\Omega$，只需把 $|\\gamma_e| B_x / (2\\pi)$ 除以 $2$ 即可。"
+    hints:
+      - "先由前序关系 $|2\\Omega| = |\\gamma_e| B_x$ 算出线性哈密顿量中的系数 $2\\Omega/(2\\pi)$。"
+      - "再把线偏振拆成一正一反两个圆偏振分量，取单分量幅值 $\\Omega/(2\\pi)$。"
+    solution: "由 $2\\Omega/(2\\pi) = |\\gamma_e| B_x/(2\\pi) = 2.8 \\times {{=Bx}} = {{=2.8*Bx}}\\text{ MHz}$，拆分为两个圆偏振分量后单个分量的幅值为 $\\Omega/(2\\pi) = {{=2.8*Bx}}/2 = {{=2.8*Bx/2}}\\text{ MHz}$。"
+
+  - id: rwa-split-spot-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "一位同学在笔记中写道：「旋波近似能够忽略反向旋转项 $\\Omega[\\cos(\\omega t+\\varphi)S_x - \\sin(\\omega t+\\varphi)S_y]$，是因为在分出正反两项时反向分量的幅值几乎比正向分量小一个数量级。」这段说法哪里出错了？"
+    options:
+      - id: a
+        text: "正反两项幅值同为 $\\Omega$ 完全相等；反向项被忽略是因为它对应角动量 $-1$ 不满足跃迁守恒，且反向快速旋转。"
+        correct: true
+        feedback: "判断精准。在数学拆分中两项幅值对称相等，导致两者作用悬殊的是角动量匹配与旋转方向。"
+      - id: b
+        text: "反向项的幅值其实比正向项大两倍，但因为旋转方向为顺时针，所以它自身已经相互抵消为零。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "两项的幅值严格相等都是 $\\Omega$，旋转方向相反并不会让算符自身瞬间变成零。"
+      - id: c
+        text: "原因在于 $S_y$ 前面的负号使反向项对任意态 $|m_S = \\pm 1/2\\rangle$ 的作用结果恒等于零。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "$S_y$ 前面的负号只改变圆偏振的旋转方向（逆时针变顺时针），并不改变横向幅值，也不会让算符作用恒为零。"
+      - id: d
+        text: "只有在静态磁场 $B_0=0$ 时两项幅值才相等；外加静磁场会把反向分量的磁场幅值压低。"
+        correct: false
+        category: missing_prerequisite
+        feedback: "静磁场 $B_0$ 只进入 $\\omega_0 S_z$ 确定能级分裂，不会改变外加驱动线圈产生的横向驱动场振幅 $B_x$。"
+    solution: "线性余弦场拆分出的顺、逆时针两项幅值都是 $\\Omega$，大小完全一样。忽略顺时针项的物理原因是它对应 $-1$ 光子角动量、与 $\\Delta m_S=+1$ 跃迁不守恒，并且方向相反会在弱驱动下平均抵消。"
+
+  - id: rwa-split-nuclear-transfer
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "考虑一个全新的对象：氢核（质子，同样是具有本征态 $|m_S = \\pm 1/2\\rangle$ 的自旋 $1/2$ 系统）在静磁场 $B_0 > 0$ 中，其旋磁比 $\\gamma_n > 0$（与电子 $\\gamma_e < 0$ 符号相反），因此静磁场哈密顿量为 $H_0 = -\\gamma_n B_0 S_z$。当自旋从能量更低的下能级吸收光子向上能级跃迁时，应当保留哪个旋转方向的圆偏振驱动分量？"
+    options:
+      - id: a
+        text: "下能级仍是 $|m_S = -1/2\\rangle$，向上跃迁 $\\Delta m_S = +1$，仍保留逆时针（$+1$）分量。"
+        correct: false
+        category: misapplied_technique
+        feedback: "由 $S_z|m_S=\\pm 1/2\\rangle = \\pm\\frac{1}{2}|m_S=\\pm 1/2\\rangle$，当 $\\gamma_n > 0$ 时 $-\\gamma_n B_0 < 0$，于是 $|m_S = +1/2\\rangle$ 能量为负更低，下能级和上能级与电子自旋恰好颠倒。"
+      - id: b
+        text: "下能级变为 $|m_S = +1/2\\rangle$，向上跃迁需要 $\\Delta m_S = -1$，因此应当保留顺时针（$-1$）圆偏振分量。"
+        correct: true
+        feedback: "迁移非常准确！因为 $\\gamma_n > 0$，$H_0 = -\\gamma_n B_0 S_z$ 让 $|m_S = +1/2\\rangle$ 成为低能级，向上跃迁到 $|m_S = -1/2\\rangle$ 时角动量变化为 $\\Delta m_S = -1$，正好吸收角动量为 $-1$ 的顺时针（左旋）圆偏振光子。"
+      - id: c
+        text: "由于旋磁比变正，两个圆偏振分量都会满足跃迁条件，旋波近似不再能忽略任何一项。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "跃迁只对应唯一的角动量变化 $\\Delta m_S = -1$，相反方向的 $+1$ 分量此时变成不守恒与反向项，照样被忽略。"
+      - id: d
+        text: "质子自旋无法与 $x\\text{-}y$ 平面内的圆偏振磁场耦合，只能靠纵向 $z$ 方向驱动产生跃迁。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "横向圆偏振分量依然提供翻转自旋的耦合，改变的只是发生共振的旋转方向。"
+    solution: "由 $S_z|m_S=\\pm 1/2\\rangle = \\pm\\frac{1}{2}|m_S=\\pm 1/2\\rangle$ 可知，当 $\\gamma_n > 0$ 且 $B_0 > 0$ 时，$H_0 = -\\gamma_n B_0 S_z$ 使得 $|m_S=+1/2\\rangle$ 能量更低、$|m_S=-1/2\\rangle$ 能量更高。从下能级向上跃迁时 $\\Delta m_S = -1$，由角动量守恒应保留顺时针（角动量 $-1$）旋转分量。"
+
+  - id: rwa-recall-split-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: rwa-split-field
+    difficulty: 1
+    est_minutes: 1
+    prompt: "用一两句话说明：旋波近似是如何处理线性交变驱动项的，为什么只保留其中一项？"
+    rubric:
+      - id: r1
+        criterion: "说明将线性驱动拆成逆时针和顺时针两个等幅度的圆偏振分量，并忽略反向旋转项。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "说明保留项的光子角动量与电子自旋向上跃迁的角动量变化（$\\Delta m_S = +1$）守恒，而反向项角动量不守恒且方向相反。"
+        weight: 1
+        required: true
+      - id: r3
+        criterion: "补充指出这一近似要求驱动强度远小于能隙（弱驱动条件 $\\Omega \\ll \\omega_0$），否则反向项会引起共振频率偏移。"
+        weight: 1
+        required: false
+    exemplar: "旋波近似把沿固定方向振荡的线偏振驱动拆成幅值均为 $\\Omega$ 的逆时针与顺时针两个圆偏振分量，并舍去顺时针分量。因为电子自旋向上跃迁需要 $\\Delta m_S = +1$，只能吸收逆时针的 $+1$ 角动量光子，而反向分量角动量不守恒且方向相反，仅在弱驱动 $\\Omega \\ll \\omega_0$ 下可忽略，强驱动下会引起共振频率偏移。"
+
+  - id: rwa-recall-split-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: rwa-split-field
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "下面哪一项描述的是经旋波近似简化后、被**舍去**的那个横向驱动项（项①）？"
+    options:
+      - id: a
+        text: "$\\Omega[\\cos(\\omega t+\\varphi)S_x - \\sin(\\omega t+\\varphi)S_y]$，在 $x\\text{-}y$ 平面内顺时针旋转。"
+        correct: true
+        feedback: "正确。$S_y$ 前取负号对应顺时针旋转、角动量为 $-1$ 的反向分量，正是旋波近似忽略的项①。"
+      - id: b
+        text: "$\\Omega[\\cos(\\omega t+\\varphi)S_x + \\sin(\\omega t+\\varphi)S_y]$，在 $x\\text{-}y$ 平面内逆时针旋转。"
+        correct: false
+        feedback: "这是与自旋跃迁角动量守恒匹配、在旋波近似中被保留下来的同向旋转驱动项。"
+      - id: c
+        text: "$\\omega_0 S_z$，确定系统 $|m_S = \\pm 1/2\\rangle$ 两能级分裂的静态部分。"
+        correct: false
+        feedback: "这是由静态外磁场 $B_0$ 决定的不含时能级项，不属于交变驱动项。"
+      - id: d
+        text: "$(\\omega_0 - \\omega)S_z + \\Omega[\\cos(\\varphi)S_x + \\sin(\\varphi)S_y]$，已消除时间的哈密顿量。"
+        correct: false
+        feedback: "这是作完相互作用图像变换 $U_i$ 之后得到的不含时有效哈密顿量 $H_I$。"
+    solution: "线偏振驱动拆成正、反两项，其中 $S_y$ 前带负号的 $\\Omega[\\cos(\\omega t+\\varphi)S_x - \\sin(\\omega t+\\varphi)S_y]$ 顺时针旋转（角动量 $-1$），在旋波近似中被舍去。"
+
+  - id: rwa-recall-split-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: rwa-split-field
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "补全电子自旋作旋波近似后的哈密顿量空缺部分（只需填写方括号中加号后面的完整项；用 `w` 表示 $\\omega$、`phi` 表示 $\\varphi$、`S_y` 表示纵轴自旋算符，乘法用 `*` 连接）：$H \\approx \\omega_0 S_z + \\Omega[\\cos(\\omega t+\\varphi)S_x + \\text{___}]$。"
+    accept:
+      - "sin(w*t+phi)*S_y"
+      - "sin(wt+phi)S_y"
+      - "sin(wt+phi)*S_y"
+      - "sin(w*t+phi)S_y"
+      - "\\sin(\\omega t+\\varphi)S_y"
+      - "sin(ωt+φ)S_y"
+    regex: "^\\\\?sin\\s*\\(\\s*(?:w|\\\\omega|ω)\\s*\\*?\\s*t\\s*\\+\\s*(?:phi|\\\\varphi|φ)\\s*\\)\\s*\\*?\\s*S_?y$"
+    solution: "保留下来的逆时针圆偏振分量为 $\\Omega[\\cos(\\omega t+\\varphi)S_x + \\sin(\\omega t+\\varphi)S_y]$，因此空缺处为 $\\sin(\\omega t+\\varphi)S_y$。"
+
+  # ==========================================================================
+  # Step 2: rwa-rotating-frame (5 题课堂/测验题 + 3 题 FSRS recall)
+  # ==========================================================================
+  - id: rwa-frame-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "在旋波近似之后，为什么还要再做一次相互作用图像变换 $U_i = e^{-i\\omega t S_z}$？"
+    options:
+      - id: a
+        text: "切换到以频率 $\\omega$ 逆时针旋转的参考系，把驱动场中的时间依赖 $t$ 完全消去，得到常系数哈密顿量。"
+        correct: true
+        feedback: "准确。在随着驱动场同步旋转的坐标系里看，横向矢量不再转动，于是 $H_I$ 变得与时间 $t$ 无关。"
+      - id: b
+        text: "把之前忽略的顺时针反向旋转项重新加回来，用来修正强驱动引起的能级移动。"
+        correct: false
+        feedback: "$U_i = e^{-i\\omega t S_z}$ 处理的是保留下来的同向驱动项，并不会恢复已被旋波近似丢弃的反向项。"
+      - id: c
+        text: "让系统能级间隔从 $\\omega_0$ 放大为 $\\omega_0 + \\omega$，从而提高跃迁的概率。"
+        correct: false
+        feedback: "变换中的求导修正项 $-U_i^\\dagger i \\frac{\\partial}{\\partial t} U_i$ 给出的是 $-\\omega S_z$，使有效 $S_z$ 系数变为 $\\omega_0 - \\omega$ 而不是相加。"
+      - id: d
+        text: "把原本沿 $z$ 轴的静态磁场消除为零，无论驱动频率 $\\omega$ 取什么值都能消除 $S_z$ 项。"
+        correct: false
+        feedback: "只有当 $\\omega = \\omega_0$ 时 $(\\omega_0 - \\omega)S_z$ 才为零；一般情形下还保留着 $(\\omega_0 - \\omega)S_z$。"
+    solution: "变换 $U_i = e^{-i\\omega t S_z}$ 对应坐进以角频率 $\\omega$ 逆时针转动的参考系，既消去了驱动场里的 $\\omega t$，又把静态项变为 $(\\omega_0 - \\omega)S_z$，得到不含时的 $H_I$。"
+
+  - id: rwa-frame-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "在刚才 $\\varphi = \\pi/2$ 的例题第 2 步中，用三维旋转公式化简 $U_i^\\dagger[\\cos(\\omega t+\\varphi)S_x + \\sin(\\omega t+\\varphi)S_y]U_i$ 时，为什么对应旋转轴必须取 $\\vec{\\boldsymbol{n}} = (0, 0, -1)$ 而不是 $(0, 0, +1)$？"
+    options:
+      - id: a
+        text: "因为待化简式把 $U_i^\\dagger = e^{+i\\omega t S_z}$ 放在左边、$U_i = e^{-i\\omega t S_z}$ 放在右边，与标准公式 $e^{-i\\theta\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}}(\\cdots)e^{i\\theta\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}}$ 的符号正好相反，故转轴取负 $z$ 轴。"
+        correct: true
+        feedback: "抓住了关键！$e^{+i\\omega t S_z} = e^{-i(\\omega t)(-S_z)}$，所以 $\\vec{\\boldsymbol{n}} = (0,0,-1)$、$\\theta = \\omega t$，几何上顺时针转回 $\\omega t$ 恰好抵消矢量里自带的 $+\\omega t$。"
+      - id: b
+        text: "因为只有当 $\\varphi = \\pi/2$ 时旋转轴才指向 $-z$ 方向；若 $\\varphi = 0$，旋转轴就会变为 $+z$ 方向。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "转轴 $\\vec{\\boldsymbol{n}}=(0,0,-1)$ 完全由 $U_i = e^{-i\\omega t S_z}$ 的指数形式决定，与初相位 $\\varphi$ 无关。"
+      - id: c
+        text: "因为对电子自旋 $\\gamma_e < 0$，所以所有空间坐标轴在代入公式前都必须先取负号。"
+        correct: false
+        category: missing_prerequisite
+        feedback: "旋磁比符号影响的是能级顺序与 $\\omega_0$，不会改变算符共轭旋转公式里的几何转轴约定。"
+      - id: d
+        text: "因为旋转公式 $R_{\\vec{\\boldsymbol{n}}\\cdot\\theta}$ 的下标规定，凡是含三角函数的矢量旋转都只能绕负坐标轴定义。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "三维旋转公式的 $\\vec{\\boldsymbol{n}}$ 可以指向任意单位方向，取 $(0,0,-1)$ 纯粹是为了匹配左边 $e^{+i\\omega t S_z}$ 与右边 $e^{-i\\omega t S_z}$ 的指数符号。"
+    solution: "旋转公式左端为 $e^{-i\\theta \\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}}$、右端为 $e^{+i\\theta \\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}}$；对比 $U_i^\\dagger(\\cdots)U_i = e^{+i\\omega t S_z}(\\cdots)e^{-i\\omega t S_z}$，必须把 $+\\omega t S_z$ 写成 $-(\\omega t)(-S_z)$，即 $\\vec{\\boldsymbol{n}} = (0,0,-1)$。"
+
+  - id: rwa-frame-detuning-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    params:
+      B0:
+        min: 100
+        max: 300
+        step: 50
+      f_drive:
+        min: 250
+        max: 800
+        step: 50
+    constraints:
+      - "2.8 * B0 != f_drive"
+    prompt: "某电子自旋处于静磁场 $B_0 = {{=B0}}\\text{ G}$ 中，旋磁比满足 $\\gamma_e/(2\\pi) = -2.8\\text{ MHz/G}$。外加频率为 $\\omega/(2\\pi) = {{=f_drive}}\\text{ MHz}$ 的横向交变驱动场，并作相互作用图像变换 $U_i = e^{-i\\omega t S_z}$。在旋转坐标系有效哈密顿量 $H_I/(2\\pi)$ 中，$S_z$ 前面的系数（即 $(\\omega_0 - \\omega)/(2\\pi)$）是多少 $\\text{MHz}$？"
+    answer_expr: "2.8 * B0 - f_drive"
+    tolerance:
+      abs: 0.01
+    common_wrong:
+      - answer_expr: "f_drive - 2.8 * B0"
+        category: math_error
+        feedback: "符号弄反了：$H_I$ 中 $S_z$ 项是 $(\\omega_0 - \\omega)S_z$，不是 $(\\omega - \\omega_0)S_z$。"
+      - answer_expr: "2.8 * B0"
+        category: misapplied_technique
+        feedback: "这是实验室坐标系下的共振频率 $\\omega_0/(2\\pi)$，还没减去变换导数项 $-U_i^\\dagger i\\frac{\\partial}{\\partial t} U_i$ 带来的 $-\\omega S_z$。"
+      - answer_expr: "2.8 * B0 + f_drive"
+        category: math_error
+        feedback: "求导修正项带来的是减 $\\omega$ 而不是加 $\\omega$。"
+    hints:
+      - "先利用 $\\omega_0 = -\\gamma_e B_0$ 算出自旋的静态共振频率 $\\omega_0/(2\\pi)$（注意两个负号相消为正）。"
+      - "再代入 $H_I = (\\omega_0 - \\omega)S_z + \\cdots$ 求出 $(\\omega_0 - \\omega)/(2\\pi)$。"
+    solution: "自旋共振频率为 $\\omega_0/(2\\pi) = -(-2.8)\\times {{=B0}} = {{=2.8*B0}}\\text{ MHz}$。经 $U_i = e^{-i\\omega t S_z}$ 变换后，$S_z$ 项的频率系数为 $(\\omega_0 - \\omega)/(2\\pi) = {{=2.8*B0}} - {{=f_drive}} = {{=2.8*B0 - f_drive}}\\text{ MHz}$。"
+
+  - id: rwa-frame-phase-axis
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "经过旋波近似与相互作用图像变换 $U_i = e^{-i\\omega t S_z}$ 后，若实验中想让旋转坐标系里的驱动场单独指向 $-x$ 方向（即驱动项化为 $-\\Omega S_x$），应当把驱动场的初相位 $\\varphi$ 设为多少？"
+    options:
+      - id: a
+        text: "$\\varphi = 0$"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "当 $\\varphi = 0$ 时，$\\cos(0)=1, \\sin(0)=0$，驱动项指向 $+x$ 方向（$+\\Omega S_x$）。"
+      - id: b
+        text: "$\\varphi = \\pi / 2$"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "当 $\\varphi = \\pi/2$ 时，$\\cos(\\pi/2)=0, \\sin(\\pi/2)=1$，驱动项沿 $+y$ 方向（$+\\Omega S_y$）。"
+      - id: c
+        text: "$\\varphi = \\pi$"
+        correct: true
+        feedback: "正确！代入 $\\varphi = \\pi$ 得 $\\cos\\pi = -1, \\sin\\pi = 0$，有效驱动项恰好成为 $-\\Omega S_x$。"
+      - id: d
+        text: "$\\varphi = 3\\pi / 2$"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "当 $\\varphi = 3\\pi/2$ 时，驱动项为 $-\\Omega S_y$，指向 $-y$ 方向。"
+    solution: "在 $H_I = (\\omega_0 - \\omega)S_z + \\Omega[\\cos(\\varphi)S_x + \\sin(\\varphi)S_y]$ 中，令 $\\cos\\varphi = -1$ 且 $\\sin\\varphi = 0$，即取初相位 $\\varphi = \\pi$。"
+
+  - id: rwa-frame-spot-mistake
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "某学习者做相互作用图像变换时，误把变换算符符号写反，选用了 $V_i = e^{+i\\omega t S_z}$ 而不是 $U_i = e^{-i\\omega t S_z}$。如果把 $V_i$ 代入 $H_{\\text{new}} = V_i^\\dagger H V_i - V_i^\\dagger i\\frac{\\partial}{\\partial t} V_i$ 来化简 $H = \\omega_0 S_z + \\Omega[\\cos(\\omega t+\\varphi)S_x + \\sin(\\omega t+\\varphi)S_y]$，会发生什么？"
+    options:
+      - id: a
+        text: "旋转方向加倍而非抵消，驱动项反而变成以 $2\\omega t + \\varphi$ 高速旋转，无法消去时间 $t$。"
+        correct: true
+        feedback: "完全正确！$V_i^\\dagger(\\cdots)V_i = e^{-i\\omega t S_z}(\\cdots)e^{i\\omega t S_z}$ 对应 $\\vec{\\boldsymbol{n}}=(0,0,+1)$、$\\theta=\\omega t$，会把矢量再逆时针转 $\\omega t$，角度变成 $2\\omega t + \\varphi$，时间不仅没消掉还翻倍了。"
+      - id: b
+        text: "依然能完全消去时间 $t$，只是结果里的初相位 $\\varphi$ 会变成 $-\\varphi$。"
+        correct: false
+        category: math_error
+        feedback: "只有反向转回 $\\omega t$ 才能抵消 $+\\omega t$；同向再转 $\\omega t$ 会让角度叠加为 $2\\omega t + \\varphi$。"
+      - id: c
+        text: "只改变 $S_z$ 项的符号使它变成 $(\\omega_0 + \\omega)S_z$，而横向驱动项照常变成 $\\Omega[\\cos\\varphi S_x + \\sin\\varphi S_y]$。"
+        correct: false
+        category: misapplied_technique
+        feedback: "除了静态项确实变成 $(\\omega_0 + \\omega)S_z$，横向矢量也会同向叠加转动而保留 $2\\omega t$，不会变成常数。"
+      - id: d
+        text: "正负号取反会让时间求导项把 $\\omega_0 S_z$ 完全抵消，导致不论 $\\omega$ 取何值都不再出现 $S_z$ 项。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "用 $V_i = e^{+i\\omega t S_z}$ 求偏导时，$i^2=-1$ 使导数项变成 $+\\omega S_z$，它和 $\\omega_0 S_z$ 同号相加成 $(\\omega_0+\\omega)S_z$，不会抵消为零。"
+    solution: "由于 $S_z^\\dagger = S_z$，$V_i^\\dagger = e^{-i\\omega t S_z}$；对 $V_i$ 求偏导给出 $+\\omega S_z$ 使静态项变为 $(\\omega_0+\\omega)S_z$。同时套用三维旋转公式得 $\\vec{\\boldsymbol{n}}=(0,0,+1)$、转角 $+\\omega t$，将矢量从 $\\omega t+\\varphi$ 逆时针继续转到 $2\\omega t+\\varphi$，时间无法消去。"
+
+  - id: rwa-recall-frame-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: rwa-rotating-frame
+    difficulty: 1
+    est_minutes: 1
+    prompt: "用一两句话说明：相互作用图像变换 $U_i = e^{-i\\omega t S_z}$ 做了什么，它如何同时改写静磁场项和横向驱动项？"
+    rubric:
+      - id: r1
+        criterion: "说明 $U_i = e^{-i\\omega t S_z}$ 切换到随驱动场以频率 $\\omega$ 同步旋转的参考系。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "说明由于时间求导修正，静磁场项变成 $(\\omega_0 - \\omega)S_z$，而横向旋转驱动项转回固定初相位 $\\varphi$ 从而消去时间 $t$。"
+        weight: 1
+        required: true
+      - id: r3
+        criterion: "补充指出转换后的旋转坐标系有效哈密顿量 $H_I$ 是一个与时间无关的常系数形式。"
+        weight: 1
+        required: false
+    exemplar: "变换 $U_i = e^{-i\\omega t S_z}$ 把参考系切换到以角频率 $\\omega$ 逆时针同步旋转的坐标系中。通过时间求导项把静态项变为 $(\\omega_0 - \\omega)S_z$，同时把旋转驱动矢量顺时针转回固定初相位 $\\varphi$，从而消去时间 $t$ 并得到常系数哈密顿量 $H_I$。"
+
+  - id: rwa-recall-frame-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: rwa-rotating-frame
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "在由 $H_I = U_i^\\dagger H U_i - U_i^\\dagger i\\frac{\\partial}{\\partial t}U_i$ 推导旋转坐标系哈密顿量时，$-U_i^\\dagger i\\frac{\\partial}{\\partial t}U_i$ 这一项直接贡献了最终式中的哪一部分？"
+    options:
+      - id: a
+        text: "给出了有效 $S_z$ 系数中的 $-\\omega S_z$，与 $\\omega_0 S_z$ 合并为 $(\\omega_0 - \\omega)S_z$。"
+        correct: true
+        feedback: "正确。对 $U_i = e^{-i\\omega t S_z}$ 求时间偏导产生 $-i\\omega S_z U_i$，消去前后幺正算符并带负号即 $-\\omega S_z$。"
+      - id: b
+        text: "给出了驱动项中的固定初相位分量 $\\Omega\\sin(\\varphi)S_y$。"
+        correct: false
+        feedback: "固定初相位 $\\varphi$ 是由 $U_i^\\dagger [\\cos(\\omega t+\\varphi)S_x + \\sin(\\omega t+\\varphi)S_y] U_i$ 经旋转公式化简出来的。"
+      - id: c
+        text: "提供了旋波近似中被舍弃的顺时针反向旋转项 $\\Omega[\\cos(\\omega t+\\varphi)S_x - \\sin(\\omega t+\\varphi)S_y]$。"
+        correct: false
+        feedback: "反向项在实验室系拆分时就已经产生，与变换导数项无关。"
+      - id: d
+        text: "把 $S_x$ 改写成了升降算符的组合 $(S^+ + S^-)/2$。"
+        correct: false
+        feedback: "这是升降算符自身的定义恒等式，不是变换的时间求导项产生的。"
+    solution: "由于 $U_i = e^{-i\\omega t S_z}$ 含时间 $t$，参考系变换公式里的导数修正 $-U_i^\\dagger i \\frac{\\partial}{\\partial t} U_i$ 等于 $-\\omega S_z$，与静态项 $\\omega_0 S_z$ 合并成 $(\\omega_0 - \\omega)S_z$。"
+
+  - id: rwa-recall-frame-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: rwa-rotating-frame
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "在旋波近似下作变换 $U_i = e^{-i\\omega t S_z}$ 后，有效哈密顿量 $H_I$ 中 $S_z$ 前面的系数是多少？请直接键入以 `w0` 表示 $\\omega_0$、以 `w` 表示 $\\omega$ 的标量表达式。"
+    answer: "w0 - w"
+    variables:
+      w0: [5, 25]
+      w: [1, 20]
+    solution: "静态项 $\\omega_0 S_z$ 与求导修正项 $-\\omega S_z$ 相加，因此 $S_z$ 前的系数为 $\\omega_0 - \\omega$。"
+
+  # ==========================================================================
+  # Step 3: rwa-ladder-operators (5 题课堂/测验题 + 3 题 FSRS recall)
+  # ==========================================================================
+  - id: rwa-ladder-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "对于自旋 $1/2$ 的上下两能级 $|m_S = \\pm 1/2\\rangle$，上升算符 $S^+$ 的作用是什么？"
+    options:
+      - id: a
+        text: "把 $|m_S = -1/2\\rangle$ 变成 $|m_S = +1/2\\rangle$，而作用在 $|m_S = +1/2\\rangle$ 上结果为 $0$。"
+        correct: true
+        feedback: "完全正确。$S^+$ 将磁量子数提高 $1$；已是最高态 $|m_S = +1/2\\rangle$ 时无法继续升高，故变为零。"
+      - id: b
+        text: "把 $|m_S = +1/2\\rangle$ 变成 $|m_S = -1/2\\rangle$，而作用在 $|m_S = -1/2\\rangle$ 上结果为 $0$。"
+        correct: false
+        feedback: "那是下降算符 $S^-$ 的作用，正好与上升算符 $S^+$ 相反。"
+      - id: c
+        text: "让 $|m_S = -1/2\\rangle$ 与 $|m_S = +1/2\\rangle$ 互相交换，两个基态都不会变为 $0$。"
+        correct: false
+        feedback: "互相交换的是 $2S_x = S^+ + S^-$；单独的 $S^+$ 只能单向升高并会归零最高态。"
+      - id: d
+        text: "保持 $|m_S = \\pm 1/2\\rangle$ 不变，只分别乘上 $+1/2$ 和 $-1/2$ 的本征值。"
+        correct: false
+        feedback: "那是沿 $z$ 轴的自旋算符 $S_z$ 的作用规则。"
+    solution: "上升算符满足 $S^+|m_S=-1/2\\rangle = |m_S=+1/2\\rangle$ 与 $S^+|m_S=+1/2\\rangle = 0$，负责单向升高磁量子数。"
+
+  - id: rwa-ladder-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "在刚才证明 $U_i^\\dagger S^+ U_i = e^{i\\omega t} S^+$ 的第 1 步推导里，为什么 $U_i^\\dagger$ 和 $U_i$ 作用在 $S^+$ 两边后没有抵消掉，反而合出了相位 $e^{i\\omega t}$？"
+    options:
+      - id: a
+        text: "因为 $U_i$ 作用在跃迁前的初态 $|m_S=-1/2\\rangle$ 上给出 $e^{+i\\omega t/2}$，经过 $S^+$ 跃迁到 $|m_S=+1/2\\rangle$ 后再受 $U_i^\\dagger$ 作用又给出同号的 $e^{+i\\omega t/2}$，两个指数因子 $e^{+i\\omega t/2}$ 相乘、指数相加得到 $e^{i\\omega t}$。"
+        correct: true
+        feedback: "理解非常透彻！两边分别抓住了 $m_S$ 相反的两个态，$U_i$ 与 $U_i^\\dagger$ 的共轭负号和 $m_S$ 的正负号正好负负得正，使相位叠加而非抵消。"
+      - id: b
+        text: "因为 $U_i^\\dagger$ 本身等于 $U_i$ 而非它的逆算符，所以两者相乘使相位翻倍。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "$U_i$ 是幺正算符，$U_i^\\dagger$ 正是它的逆（$U_i^\\dagger U_i = \\mathbb{1}$）；不抵消是因为中间夹着的 $S^+$ 改变了量子态的 $m_S$。"
+      - id: c
+        text: "因为上升算符 $S^+$ 必须满足非线性的指数规则，会把左右两侧指数频率各自翻倍。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "$S^+$ 是常规线性算符，相位变成 $\\omega t$ 源于上下能级之差 $\\Delta m_S = (+1/2) - (-1/2) = 1$。"
+      - id: d
+        text: "因为我们只计算了 $t=0$ 时刻的值，所以不能把指数合并成 $1$。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "推导对任意时刻 $t$ 都严格成立，与是否取 $t=0$ 无关。"
+    solution: "$U_i = e^{-i\\omega t S_z}$ 作用在 $|m_S=-1/2\\rangle$ 上产生 $e^{+i\\omega t/2}$；$S^+$ 将其升至 $|m_S=+1/2\\rangle$ 后，$U_i^\\dagger = e^{+i\\omega t S_z}$ 再次给出同号因子 $e^{+i\\omega t/2}$，两者相乘刚好为 $e^{i\\omega t}$。"
+
+  - id: rwa-ladder-phase-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    params:
+      B0:
+        min: 50
+        max: 200
+        step: 50
+      t_ns:
+        min: 1
+        max: 4
+        step: 1
+    prompt: "电子自旋（$|\\gamma_e|/(2\\pi) = 2.8\\text{ MHz/G}$）处在静磁场 $B_0 = {{=B0}}\\text{ G}$ 中，且横向驱动频率 $\\omega$ 恰好调至与自旋共振（$\\omega = \\omega_0$）。在变换 $U_i = e^{-i\\omega t S_z}$ 下有 $U_i^\\dagger S^+ U_i = e^{i\\omega t}S^+$。当演化时间 $t = {{=t_ns}}\\text{ ns}$ 时，指数相位角 $\\omega t$ 等于多少度（用角度制 $360^\\circ$ 对应 $2\\pi$ 弧度计算）？"
+    answer_expr: "360 * (2.8 * B0 * 0.001) * t_ns"
+    tolerance:
+      abs: 0.1
+    common_wrong:
+      - answer_expr: "180 * (2.8 * B0 * 0.001) * t_ns"
+        category: math_error
+        feedback: "这里只算出了半个相位 $\\omega t/2$（即单侧 $U_i$ 的相位）；由于 $U_i^\\dagger S^+ U_i = e^{i\\omega t}S^+$，总相位角是整倍的 $\\omega t$。"
+      - answer_expr: "360 * B0 * 0.001 * t_ns"
+        category: missing_prerequisite
+        feedback: "忘记把磁场 $B_0$ 乘上旋磁比 $|\\gamma_e|/(2\\pi) = 2.8\\text{ MHz/G}$ 换算为共振频率 $\\omega_0/(2\\pi)$。"
+    hints:
+      - "先用共振条件 $\\omega/(2\\pi) = \\omega_0/(2\\pi) = 2.8\\times B_0\\text{ MHz}$（注意 $1\\text{ MHz} = 10^{-3}\\text{ GHz}$，$1\\text{ ns} = 10^{-9}\\text{ s}$）。"
+      - "再由 $\\omega t$ 对应的周期数 $f\\cdot t$ 乘以 $360^\\circ$ 得到角度。"
+    solution: "共振频率 $f = \\omega/(2\\pi) = 2.8\\times {{=B0}} = {{=2.8*B0}}\\text{ MHz} = {{=2.8*B0*0.001}}\\text{ GHz}$。在 $t = {{=t_ns}}\\text{ ns}$ 内积累的周期数为 $f t = {{=2.8*B0*0.001*t_ns}}$，因此角度为 $360^\\circ \\times {{=2.8*B0*0.001*t_ns}} = {{=360*2.8*B0*0.001*t_ns}}^\\circ$。"
+
+  - id: rwa-ladder-spot-mistake
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "一名学习者试图把 $\\Omega[\\cos(\\omega t+\\varphi)S_x + \\sin(\\omega t+\\varphi)S_y]$ 改写成升降算符形式，写出：$S_x = \\frac{1}{2}(S^+ + S^-)$，$S_y = \\frac{1}{2}(i S^+ - i S^-)$。如果按这个式子继续推导，结果会在哪里出错？"
+    options:
+      - id: a
+        text: "$S_y$ 中的虚数符号写反了，正确应为 $S_y = (-i S^+ + i S^-)/2$；按错式推导会把 $S^+$ 前的复指数搞成 $e^{+i(\\omega t+\\varphi)}$，与 $U_i^\\dagger S^+ U_i = e^{+i\\omega t}S^+$ 叠加而不是抵消。"
+        correct: true
+        feedback: "一针见血！因为 $S^+ = S_x + i S_y, S^- = S_x - i S_y$，所以 $S^+ - S^- = 2i S_y$，必须两边同除以 $2i$ 即乘 $-i/2$ 得到 $S_y = (-i S^+ + i S^-)/2$。"
+      - id: b
+        text: "符号都对，只是 $S_x$ 和 $S_y$ 前面都不应该除以 $2$，因为自旋算符已经无量纲化。"
+        correct: false
+        category: math_error
+        feedback: "由 $S^\\pm = S_x \\pm i S_y$ 反解 $S_x, S_y$ 时，系数 $1/2$ 是二元方程相加减的必然结果。"
+      - id: c
+        text: "会导致 $S^+$ 和 $S^-$ 不再互为厄米共轭，不过对计算 $\\varphi=0$ 时的 $H_I$ 没有影响。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "由于 $S_x, S_y$ 为厄米算符，$(S^+)^\\dagger = S^-$ 是定义决定的；改写错的是 $S_y$ 的反解公式，即便 $\\varphi=0$ 展开时间演化也依然会把旋转方向算反。"
+      - id: d
+        text: "错误只发生在 $S_x$ 应当写成 $(S^+ - S^-)/2$，而 $S_y$ 的表达式是完全正确的。"
+        correct: false
+        category: math_error
+        feedback: "$S^+ + S^- = (S_x+iS_y)+(S_x-iS_y) = 2S_x$，所以 $S_x = (S^+ + S^-)/2$ 是正确的，错在 $S_y$。"
+    solution: "由 $S^\\pm = S_x \\pm i S_y$ 可得 $S_y = (S^+ - S^-)/(2i) = (-i S^+ + i S^-)/2$。符号写反等同于把顺时针当成逆时针，从而无法与 $U_i^\\dagger S^+ U_i = e^{i\\omega t}S^+$ 抵消时间变量。"
+
+  - id: rwa-ladder-limit-transfer
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "综合升降算符相互作用图像变换的推广以及旋波近似的适用条件，下面哪一项判断是正确的？"
+    options:
+      - id: a
+        text: "在谐振子产生湮灭算符中，$e^{i\\omega t\\, a^\\dagger a} a^\\dagger e^{-i\\omega t\\, a^\\dagger a} = a^\\dagger e^{i\\omega t}$ 依然成立；但若驱动强到 $\\Omega$ 可比拟 $\\omega_0$，旋波近似失效，反向项会引起共振频率偏移。"
+        correct: true
+        feedback: "全部准确！产生算符 $a^\\dagger$ 将粒子数 $n$ 升高 $1$，就像 $S^+$ 将 $m_S$ 升高 $1$；同时我们牢记 $\\Omega \\ll \\omega_0$ 才是旋波近似成立的前提。"
+      - id: b
+        text: "因为产生算符 $a^\\dagger$ 作用后会出现随 $n$ 增大的系数 $\\sqrt{n+1}$，所以它在 $e^{-i\\omega t\\, a^\\dagger a}$ 下的相位因子也取决于粒子数态 $|n\\rangle$ 的具体取值，不再统一等于 $e^{i\\omega t}$。"
+        correct: false
+        category: misapplied_technique
+        feedback: "因子 $\\sqrt{n+1}$ 只是常数倍系数、与算符可交换，粒子数差值恒为 $(n+1)-n = +1$，因此相位因子始终是 $e^{i\\omega t}$，与 $n$ 无关。"
+      - id: c
+        text: "只要使用升降算符法而不是三维旋转公式法，即便 $\\Omega$ 大于 $\\omega_0$ 也能把所有反向项精确消除而不产生任何误差。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "两种数学方法只是在旋波近似之后对同向项做等价化简，无法消除在近似这一步被人为丢弃的反向旋转项。"
+      - id: d
+        text: "旋波近似在 $\\Omega \\gg \\omega_0$（超强驱动）时反而最精确，因为此时驱动项占主导地位。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "恰好相反：$\\Omega$ 越大，忽略反向项带来的频率偏移就越明显；旋波近似依赖的是弱驱动条件 $\\Omega \\ll \\omega_0$。"
+    solution: "基于本征值差 $+1$ 的推导可直接推广到玻色子产生算符 $e^{i\\omega t\\, a^\\dagger a} a^\\dagger e^{-i\\omega t\\, a^\\dagger a} = a^\\dagger e^{i\\omega t}$；而旋波近似本身必须在弱驱动（$\\Omega \\ll \\omega_0$）下才准确，强驱动下反向项会导致共振频率偏移。"
+
+  - id: rwa-recall-ladder-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: rwa-ladder-operators
+    difficulty: 1
+    est_minutes: 1
+    prompt: "用一两句话说明：升降算符法如何通过变换 $U_i = e^{-i\\omega t S_z}$ 消去时间 $t$，以及它为何能直接推广到玻色子系统？"
+    rubric:
+      - id: r1
+        criterion: "说明将驱动项改写为 $S^+$、$S^-$ 的形式后，利用 $U_i^\\dagger S^+ U_i = e^{i\\omega t}S^+$ 与驱动因子 $e^{-i\\omega t}$ 相互抵消，从而消除时间 $t$。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "说明该推导只依赖于算符将量子数抬高 $+1$ 的本征值差性质，因此同样适用于谐振子或光场的玻色子产生算符 $e^{i\\omega t\\, a^\\dagger a} a^\\dagger e^{-i\\omega t\\, a^\\dagger a} = a^\\dagger e^{i\\omega t}$。"
+        weight: 1
+        required: true
+      - id: r3
+        criterion: "补充指出该算符恒等式对任意高自旋（$S > 1/2$）系统同样成立。"
+        weight: 1
+        required: false
+    exemplar: "把横向驱动改写成升降算符 $S^+, S^-$ 后，上升算符在相互作用图像下满足 $U_i^\\dagger S^+ U_i = e^{i\\omega t}S^+$，其中的 $+i\\omega t$ 恰好与驱动项里的 $e^{-i(\\omega t+\\varphi)}$ 抵消时间依赖。由于推导只依赖于磁量子数改变 $+1$ 的性质，该方法对任意高自旋以及满足 $a^\\dagger|n\\rangle = \\sqrt{n+1}|n+1\\rangle$ 的玻色子产生算符（给出 $e^{i\\omega t\\,a^\\dagger a}a^\\dagger e^{-i\\omega t\\,a^\\dagger a} = a^\\dagger e^{i\\omega t}$）同样成立。"
+
+  - id: rwa-recall-ladder-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: rwa-ladder-operators
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "与三维旋转公式法相比，用升降算符法完成相互作用图像变换的独特优势是什么？"
+    options:
+      - id: a
+        text: "完全利用态本征值升降差，不依赖旋转几何公式，且能直接推广到产生、湮灭算符 $a^\\dagger, a$。"
+        correct: true
+        feedback: "正确。只要态差值为 $+1$ 就能得出相同的相位消除律，无需记忆三维旋转公式。"
+      - id: b
+        text: "不需要满足弱驱动条件 $\\Omega \\ll \\omega_0$，强驱动下也不用考虑反向旋转项效应。"
+        correct: false
+        feedback: "两种方法得到的是完全同一个 $H_I$，旋波近似的强驱动限制对两者完全一样。"
+      - id: c
+        text: "可以同时消去静态项 $(\\omega_0 - \\omega)S_z$，让整个 $H_I$ 变成零。"
+        correct: false
+        feedback: "不论采用哪种方法，非共振时的 $(\\omega_0 - \\omega)S_z$ 项都会保留在 $H_I$ 中。"
+      - id: d
+        text: "只适用于自旋 $1/2$ 系统，对高自旋系统必须退回三维旋转公式法。"
+        correct: false
+        feedback: "只要是角动量升降算符 $S^+$ 把 $m_S$ 提升 $1$，升降算符法对高自旋系统照样成立。"
+    solution: "升降算符法和三维旋转公式法得到完全等价的不含时 $H_I$，其独到之处在于代数简洁，并且可直接推广到玻色子产生与湮灭算符 $a^\\dagger, a$。"
+
+  - id: rwa-recall-ladder-formula
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: rwa-ladder-operators
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "写出上升算符 $S^+$ 在相互作用图像 $U_i = e^{-i\\omega t S_z}$ 下化简后的结果：请填写 $U_i^\\dagger S^+ U_i = \\text{___}$ 的右端完整表达式（以 `w` 表示 $\\omega$、`S^+` 表示上升算符，指数可用 `e^(...)` 或 `exp(...)` 表示）。"
+    accept:
+      - "e^{i\\omega t}S^+"
+      - "e^{iwt} S^+"
+      - "e^{iwt}S^+"
+      - "exp(i*w*t)*S^+"
+      - "exp(i*w*t) * S^+"
+      - "e^(i*w*t)*S^+"
+      - "e^{i\\omega t} S^+"
+    regex: "^(?:e\\s*\\^\\s*[({]?\\s*i\\s*\\*?\\s*(?:w|\\\\omega|ω)\\s*\\*?\\s*t\\s*[)}]?|exp\\s*\\(\\s*i\\s*\\*?\\s*(?:w|\\\\omega|ω)\\s*\\*?\\s*t\\s*\\))\\s*\\*?\\s*S\\s*\\^\\s*\\{?\\+\\}?$"
+    solution: "由于 $S^+$ 把磁量子数升高 $1$，因此 $U_i^\\dagger S^+ U_i = e^{i\\omega t} S^+$。"
+
+  # ==========================================================================
+  # Lesson Final: Explain it 自评总结题
+  # ==========================================================================
+  - id: rwa-final-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "请用自己的话系统回答三个问题：（1）旋波近似是如何分解线性驱动场并决定舍去哪一项的？（2）相互作用图像变换 $U_i = e^{-i\\omega t S_z}$ 如何消除时间变量 $t$？（3）在什么条件下旋波近似会失效？"
+    rubric:
+      - id: r1
+        criterion: "说明将线偏振余弦场分解为等幅度的逆时针（$+1$ 角动量）与顺时针（$-1$ 角动量）两个圆偏振分量，并以电子自旋向上跃迁 $\\Delta m_S = +1$ 的角动量守恒与方向相反解释为何舍去顺时针项。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "说明 $U_i = e^{-i\\omega t S_z}$ 切换到随驱动同步旋转的参考系，通过导数修正把静态项变为 $(\\omega_0 - \\omega)S_z$，并利用三维旋转公式或 $U_i^\\dagger S^+ U_i = e^{i\\omega t}S^+$ 将旋转驱动转回只含初相位 $\\varphi$ 的常系数形式。"
+        weight: 1
+        required: true
+      - id: r3
+        criterion: "说明当驱动场太强、$\\Omega$ 可比拟或不再远小于 $\\omega_0$ 时，旋波近似失效，被舍去的反向项会引起共振频率偏移。"
+        weight: 1
+        required: true
+      - id: r4
+        criterion: "补充指出升降算符方法不仅对高自旋成立，还可直接推广到玻色子的产生与湮灭算符 $a^\\dagger, a$。"
+        weight: 1
+        required: false
+    exemplar: "旋波近似先把沿 $x$ 轴振荡的余弦场 $2\\Omega\\cos(\\omega t+\\varphi)S_x$ 拆成幅值同为 $\\Omega$ 的逆时针与顺时针两个圆偏振分量；由于电子自旋向上跃迁需要吸收 $+1$ 角动量光子（$\\Delta m_S=+1$），顺时针（$-1$）分量角动量不守恒且方向相反，在弱驱动下被忽略。接着作相互作用图像变换 $U_i = e^{-i\\omega t S_z}$ 坐进同步旋转参考系：时间求导把静态能级项改写为 $(\\omega_0 - \\omega)S_z$，而通过三维旋转公式顺时针转回 $\\omega t$（或借助升降算符恒等式 $U_i^\\dagger S^+ U_i = e^{i\\omega t}S^+$），含时驱动化简为固定的 $\\Omega[\\cos(\\varphi)S_x + \\sin(\\varphi)S_y]$，升降算符法还可推广到产生湮灭算符。最后，当强驱动下 $\\Omega$ 不再远小于 $\\omega_0$ 时，反向项无法被平均掉而引发共振频率偏移，旋波近似随之失效。"
