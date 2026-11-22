@@ -11,10 +11,11 @@ from .context_library import ContextLibraryStore, find_material, lookup_context,
 from .learning_storage import MemoryLearningStore
 from .service import DomainError
 from .training_audio import FunASRTranscriber, audio_question, decode_recording, read_audio
+from .voice_input import VOICE_PATH, VoiceRecording, recorded_wave, refine_voice
 
 PUBLIC_PATHS = {'/api/context-library', '/api/context-library/material', '/api/context-library/lookup',
                 '/api/context-library/marks', '/api/training-audio', '/api/training-audio/status',
-                '/api/training-audio/transcribe'}
+                '/api/training-audio/transcribe', VOICE_PATH}
 
 
 class ReadingQuote(BaseModel):
@@ -46,7 +47,7 @@ class AudioRecording(BaseModel):
 
 
 def register_context_library_routes(app, catalog, access_store, subjects, *, activate_points=None,
-                                    transcriber=None, dictionary=None, connect_for=None):
+                                    transcriber=None, dictionary=None, connect_for=None, voice_refiner=refine_voice):
     """connect_for(access, request) may reuse the host's administrator preview DB.
 
     activate_points(access, topic, point_ids, context, request) queues existing points for
@@ -57,6 +58,7 @@ def register_context_library_routes(app, catalog, access_store, subjects, *, act
     normal = ContextLibraryStore(access_store._connect)
     preview, preview_lock = {}, threading.Lock()
     transcriber = transcriber if transcriber is not None else FunASRTranscriber()
+    voice_slots = threading.BoundedSemaphore(2)
     app.state.context_library = normal
 
     def close_previews():
@@ -167,9 +169,12 @@ def register_context_library_routes(app, catalog, access_store, subjects, *, act
             raise DomainError('transcription_not_applicable', '此题使用文字作答。', 422)
         if payload.content_version != topic['version']:
             raise DomainError('audio_version_changed', '题目版本已变化，请刷新后重新录音。', 409)
+        return recorded_text(access, lambda: decode_recording(payload.data_base64))
+
+    def recorded_text(access, decode):
         if not bool(getattr(transcriber, 'configured', True)):
             raise DomainError('transcription_unavailable', '语音转写尚未配置；可直接填写文字答案。', 503)
-        data = decode_recording(payload.data_base64)
+        data = decode()
         limits = app.state.public_limits
         limits.consume(('audio-transcription', access['learner_id']), limits.submissions_per_minute)
         # Reserve before the external call, outside the SQLite write lock.
@@ -182,3 +187,16 @@ def register_context_library_routes(app, catalog, access_store, subjects, *, act
             raise DomainError('transcription_failed', '未获得有效转写，请重试或直接填写答案。', 502)
         return {'text': result['text'], 'provider': result.get('provider', 'configured'),
                 'segments': result.get('segments', []), 'editable': True}
+
+    @app.post(VOICE_PATH)
+    def voice_input(request: Request, payload: VoiceRecording):
+        access = access_store.resolve(request.headers.get('x-learning-identity'))
+        if access.get('role') != 'account':
+            raise DomainError('transcription_account_required', '请登录账号后使用语音转写；也可直接填写文字答案。', 403)
+        if not voice_slots.acquire(blocking=False):
+            raise DomainError('transcription_busy', '语音转写正在处理其他录音，请稍后重试。', 429)
+        try:
+            result = recorded_text(access, lambda: recorded_wave(payload))
+            return {'text': voice_refiner(result['text'], payload.profile)}
+        finally:
+            voice_slots.release()

@@ -28,6 +28,7 @@ class PublicExportTests(unittest.TestCase):
                          'icon-180.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png'}
             pwa_files.update({'restore.html', 'migration-source.html', 'origin-transfer.js'})
             pwa_files.add('beginner-hints.js')
+            pwa_files.update({'microphone-recorder.js', 'voice-input.js'})
             pwa_files.update({'question-tools.js', 'calculator.js', 'calculator-panel.js', 'calculator-inputs.js', 'calculator-policy.js',
                               'calculator-engine.js', 'calculator-worker.js', 'calculator.css'})
             self.assertTrue(pwa_files <= {p.name for p in output.iterdir()})

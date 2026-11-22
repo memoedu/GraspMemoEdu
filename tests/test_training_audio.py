@@ -152,6 +152,33 @@ class TrainingAudioApiTests(unittest.TestCase):
                                     headers={'X-Learning-Identity': guest['identity_token']}, json=self.body)
         self.assertEqual(response.status_code, 403)
 
+    def test_general_voice_reuses_account_boundary_and_asr_without_grading(self):
+        from unittest.mock import patch
+        path = '/api/voice-input/transcribe'
+        body = {'mime_type': self.body['mime_type'], 'data_base64': self.body['data_base64'], 'profile': 'answer'}
+        with patch('graspmemoedu.voice_input.independent_settings', side_effect=ValueError):
+            result = self.client.post(path, headers=self.headers, json=body)
+        self.assertEqual(result.status_code, 502, result.text)
+        self.assertEqual(self.transcriber.calls, [self.audio_data])
+        guest = self.access.create_guest()
+        result = self.client.post(path, headers={'X-Learning-Identity': guest['identity_token']}, json=body)
+        self.assertEqual(result.status_code, 403)
+        self.assertEqual(len(self.transcriber.calls), 1)
+
+    def test_refinement_profiles_route_only_general_and_reject_calculator_prose(self):
+        from unittest.mock import Mock
+        from graspmemoedu.voice_input import refine_voice
+        general = Mock(side_effect=['writing', '正文'])
+        self.assertEqual(refine_voice('原文', 'general', general), '正文')
+        self.assertEqual(general.call_count, 2)
+        answer = Mock(return_value='解为 x=2')
+        self.assertEqual(refine_voice('解为 x=2', 'answer', answer), '解为 x=2')
+        self.assertEqual(answer.call_count, 1)
+        self.assertEqual(refine_voice('二加三', 'calculator', Mock(return_value='2+3')), '2+3')
+        for value in ('答案是2+3', '2+3\t', '2+3\n', 'result=5', '`2+3`'):
+            with self.subTest(value=value), self.assertRaises(DomainError):
+                refine_voice('二加三', 'calculator', Mock(return_value=value))
+
 
 class TrainingAudioBackupTests(unittest.TestCase):
     setUp = test_site_backup.SiteBackupAcceptanceTests.setUp
