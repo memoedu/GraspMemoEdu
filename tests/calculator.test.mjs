@@ -2,6 +2,25 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {calculate} from '../web/calculator-engine.js';
 import {calculatorWorksheets, expressionCompletions, permitsModule, tools} from '../web/calculator-policy.js';
+import {formulaTemplates, matchesCompletion, nativeFormulaSample} from '../web/formula-catalog.js';
+import previews from '../web/vendor/formula/previews.mjs';
+
+test('formula and calculator suggestions match insertions and each math choice has a built preview', () => {
+  const native = expressionCompletions({level: 'cas'}, {equation: true});
+  for (const item of native) assert.ok(previews[nativeFormulaSample(item.value)], item.value);
+  for (const item of formulaTemplates) assert.ok(previews[item.sample], item.label);
+  for (const entries of [native, formulaTemplates]) {
+    const factorial = entries.find(item => (item.latex || item.value) === '!');
+    assert.equal(factorial.label, '!');
+    assert.ok(matchesCompletion(factorial, '!'));
+    for (const query of ['F', 'f', 'X', 'x', 'digit', '5000']) {
+      assert.equal(matchesCompletion(factorial, query), false);
+      assert.equal(entries.some(item => item.label === 'factorial' && matchesCompletion(item, query)), false);
+    }
+    assert.ok(entries.some(item => item.label === 'floor' && matchesCompletion(item, 'f')));
+    assert.ok(entries.some(item => item.label === 'factorial' && matchesCompletion(item, 'fact')));
+  }
+});
 
 const modules = tools.map(([id]) => id);
 const cas = {level: 'cas', enable_modules: modules};
