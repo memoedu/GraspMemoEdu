@@ -185,7 +185,7 @@ try {
   assert.deepEqual(await toolIds(), ['expression', 'graph']);
   assert.equal(await page.locator('#trainingstepCard .questionTools').count(), 0);
   await select('graph');
-  await page.getByRole('button', {name: '下一页', exact: true}).last().click();
+  await page.getByRole('button', {name: '隔离习题 exact', exact: true}).click();
   await page.getByRole('heading', {name: '习题 2', exact: true}).waitFor();
   await dialog.waitFor({state: 'detached'});
   assert.equal(await toolbar.count(), 0);
