@@ -37,7 +37,7 @@ class PublicExportTests(unittest.TestCase):
             for name, digest in json.loads(formula_assets.read_text(encoding='utf-8'))['files'].items():
                 with self.subTest(asset=name):
                     self.assertEqual(hashlib.sha256((output / name).read_bytes()).hexdigest(), digest)
-            pwa_files.update({'question-tools.js', 'calculator.js', 'calculator-panel.js', 'calculator-inputs.js', 'calculator-policy.js',
+            pwa_files.update({'question-tools.js', 'math-syntax.js', 'calculator.js', 'calculator-panel.js', 'calculator-inputs.js', 'calculator-policy.js',
                               'calculator-engine.js', 'calculator-worker.js', 'calculator.css'})
             self.assertTrue(pwa_files <= {p.name for p in output.iterdir()})
             self.assertEqual({p.name for p in output.iterdir()} - pwa_files - {'catalog-workspace.js', 'student-dashboard.js', 'presence.js', 'training.js', 'training.css', 'training-messages.js', 'learning-ui.js', 'review-papers.js', 'review-paper-messages.js', 'review-directory.js', 'task-tree.js', 'catalog-outline.js', 'content-timer.js', 'self-assessment.js', 'academy-messages.js', 'hyperskill.js', 'memory-chunk.js', 'point-assessment.js', 'context-library.js', 'context-library.css', 'context-library-messages.js', 'training-audio.js'},
