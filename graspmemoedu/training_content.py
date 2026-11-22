@@ -11,6 +11,7 @@ from .catalog import Catalog
 from .question_types import validate_interaction
 from .service import DomainError
 from .subject_registry import SUBJECT_IDS
+from . import calculator
 
 IDENTIFIER = re.compile(r'[a-z0-9][a-z0-9_-]{0,63}\Z')
 DIRECTORY = 'training-banks'
@@ -53,6 +54,7 @@ def validate(bank):
                 'Duplicate or invalid group')
         ids.add(group['id'])
         require(text(group.get('title'), 200), 'Missing group title')
+        calculator.validate(group)
         if 'unlock_policy' in group:
             from .linked_points import validate_unlock
             validate_unlock(group['unlock_policy'])
@@ -70,6 +72,7 @@ def validate(bank):
             require(isinstance(q, dict) and identifier(q.get('id')) and q['id'] not in questions,
                     'Question IDs must be unique within the bank')
             questions.add(q['id'])
+            calculator.validate(q)
             external = 'hyperskill' in q
             require(all(text(q.get(key)) for key in ('question', 'answer_type', 'constraints')
                         + (() if external else ('reference_answer',))),

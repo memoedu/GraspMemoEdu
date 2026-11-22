@@ -1,2 +1,4 @@
 # Keep pinned vendor bundles, licenses and fonts byte-identical across checkouts.
 /web/vendor/** -text
+# Preserve whitespace embedded in minified upstream calculator strings.
+/web/vendor/calculator/*.mjs -whitespace

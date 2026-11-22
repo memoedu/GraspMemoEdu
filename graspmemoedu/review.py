@@ -387,6 +387,7 @@ class ReviewBackend:
                     (state['status'], encode(state), state['session_id'], *self.key))
 
     def _public(self, state):
+        from .calculator import presentation as calculator_presentation
         result = {key: state.get(key) for key in (
             'session_id', 'module_id', 'course_version', 'revision', 'status', 'mastery',
             'practice_error_count', 'practice_answered_count', 'practice_target_count',
@@ -398,7 +399,8 @@ class ReviewBackend:
         from .lesson_display import LessonDisplay
         display = LessonDisplay(self.learning.data_dir, self.learning.course)
         question = display.question(self.question_for_session(state))
-        result['practice'] = {'id': question['id'], 'title': question['title'], 'html': question['html'],
+        result['practice'] = {'id': question['id'], 'title': question['title'],
+                              **calculator_presentation(self.learning.course, question),
                               'phase': state['phase'],
                               'content_version': state.get('question_bank_revision') or self.version,
                               'kind': 'practice', 'explanation_html':

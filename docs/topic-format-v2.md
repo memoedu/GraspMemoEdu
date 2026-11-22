@@ -28,6 +28,8 @@ Introduction 的 `children` 是普通正文，`example` 是不评分的说明性
 
 ## 作者 JSON
 
+Topic 根、Example 和 Practice 节点可带 `calculate`，使用 [按题配置计算器](calculator.md) 定义的档位与禁用项。
+
 JSON 是作者源文件，不是已编译的 `topic.json`。结构定义见 [JSON Schema](topic-format-v2.schema.json)，实际校验与 Markdown 归一均由 `graspmemoedu/topic_format.py` 实现。
 
 ```json

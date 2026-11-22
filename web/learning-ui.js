@@ -1,11 +1,12 @@
-import {t, learningTitle} from './i18n.js?v=55a8c2a9b5fd9dbd';
-import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=55a8c2a9b5fd9dbd';
-import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=55a8c2a9b5fd9dbd';
-import {enhanceTopicContent} from './topic-content.js?v=55a8c2a9b5fd9dbd';
-import {sourceAttributions} from './memory-chunk.js?v=55a8c2a9b5fd9dbd';
-import {mountPassageBlanks} from './composite-input.js?v=55a8c2a9b5fd9dbd';
-import {placeContentActions} from './content-report.js?v=55a8c2a9b5fd9dbd';
-import {answerAssessment, pointAssessment} from './point-assessment.js?v=55a8c2a9b5fd9dbd';
+import {t, learningTitle} from './i18n.js?v=0810407dcac5c0a6';
+import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=0810407dcac5c0a6';
+import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=0810407dcac5c0a6';
+import {enhanceTopicContent} from './topic-content.js?v=0810407dcac5c0a6';
+import {sourceAttributions} from './memory-chunk.js?v=0810407dcac5c0a6';
+import {mountPassageBlanks} from './composite-input.js?v=0810407dcac5c0a6';
+import {placeContentActions} from './content-report.js?v=0810407dcac5c0a6';
+import {answerAssessment, pointAssessment} from './point-assessment.js?v=0810407dcac5c0a6';
+import {calculatorButton} from './calculator.js?v=0810407dcac5c0a6';
 
 const node = (tag, cls = '', text) => {
   const item = document.createElement(tag); item.className = cls;
@@ -164,7 +165,9 @@ export function renderReaderStep(target, step, {titleId = 'stepTitle', title = r
   if (counter) heading.append(node('span', 'stepCounter', counter));
   let stem = decorate(readerContent(step.html, references), 'question');
   const actions = node('div', 'questionActions');
-  placeContentActions(stem, actions); heading.append(actions);
+  placeContentActions(stem, actions);
+  const calculator = calculatorButton(step.calculate); if (calculator) actions.prepend(calculator);
+  heading.append(actions);
   target.setAttribute('aria-labelledby', titleId); target.replaceChildren(heading, stem);
   const sectionHeading = readingSectionHeading(step.section); if (sectionHeading) target.prepend(sectionHeading);
   readingFields(target, step, {references, decorate});

@@ -9,6 +9,7 @@ from .question_types import public_interaction
 from .service import DomainError
 from .atomic_content import public_source_attributions
 from .lesson_display import LessonDisplay
+from . import calculator
 
 
 def trainable(topic):
@@ -17,6 +18,7 @@ def trainable(topic):
 
 def validate_source_topic(topic):
     from .catalog import Catalog
+    calculator.validate(topic)
     if not topic.get('version') or topic.get('topic_format_version') != 2 or topic.get('topic_kind') != 'lesson':
         raise ValueError('Invalid source content identity')
     availability = topic['availability']
@@ -37,6 +39,7 @@ def validate_source_topic(topic):
     from .question_types import validate_interaction
     for q in [q for m in topic['modules'] for q in [m['example'], *m['practices']]] + topic.get('unassigned_questions', []):
         Catalog._identifier(q['id'])
+        calculator.validate(q)
         if q['id'] in questions:
             raise ValueError('Duplicate source question')
         questions.add(q['id'])
@@ -52,7 +55,7 @@ def reading_blocks(topic, display=None):
         if display:
             q = display.question(q)
         interaction = public_interaction(q)
-        result.append({'id': q['id'], 'title': q.get('title', ''), 'kind': 'question', 'html': q['html'],
+        result.append({'id': q['id'], 'title': q.get('title', ''), 'kind': 'question', **calculator.presentation(topic, q),
                        'interaction': interaction, 'actions': [],
                        **({'preview_answer': True} if display and display.preview and interaction else {}),
                        'explanation_html': q.get('explanation_html', '')})

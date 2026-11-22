@@ -17,7 +17,7 @@ from .review_cards import register_point, require_unreserved
 from .reference_answers import reference_fields
 from .dependency_nodes import group_key
 from .linked_points import bypass_mastery
-from . import multi_step
+from . import calculator, multi_step
 
 
 def packed(value):
@@ -284,11 +284,13 @@ class TrainingService:
             external = con.execute('SELECT body FROM training_external_rounds WHERE attempt=?', (attempt_id,)).fetchone()
             run = json.loads(external['body']) if external else None
         revealed = row['phase'] == 'done' or row['phase'] == 'shown' and not question.get('multi_step')
+        bank = self.catalog.bank(row['bank'])
+        group = next((item for item in bank['groups'] if item['id'] == row['group_id']), {})
         value = {'attempt_id': row['id'], 'bank_id': row['bank'], 'group_id': row['group_id'],
                 'question_id': row['question'], 'version': row['version'], 'phase': row['phase'],
                 'mode': row['mode'], 'created_at': row['created_at'], 'completed_at': row['completed_at'],
                 'question': {'id': question['id'], 'title': question.get('title', question['id']),
-                             'html': question['html'], 'interaction': public_interaction(question)},
+                             **calculator.presentation(group, question), 'interaction': public_interaction(question)},
                 'explanation_html': question['explanation_html'] if revealed else None,
                 **reference_fields(question, revealed, answer=submission['answer'] if submission and result
                                    and result.get('self_rating') is None and not result.get('stop_requested') else None),
@@ -706,7 +708,7 @@ class TrainingService:
                 value = {'attempt_id': ident, 'preview': True, 'bank_id': bank_id, 'group_id': group_id,
                          'linked_points': bool(question.get('point_ids')),
                          'question_id': qid, 'version': bank['version'], 'phase': 'answer',
-                         'question': {'id': qid, 'title': question.get('title', qid), 'html': question['html'],
+                         'question': {'id': qid, 'title': question.get('title', qid), **calculator.presentation(source, question),
                                       'interaction': public_interaction(question)},
                          'answer': '', 'answer_display': '', 'explanation_html': None,
                          'can_self_rate': self_rating and is_reproduction(question)

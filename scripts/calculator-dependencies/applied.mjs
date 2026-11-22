@@ -1,0 +1,10 @@
+export {default as sigmoid} from '@stdlib/math-base-special-expit';
+export {default as softplus} from '@stdlib/math-base-special-log1pexp';
+export {ConfusionMatrix} from 'ml-confusion-matrix';
+export {PCA} from 'ml-pca';
+export {balance} from 'fast-balance';
+export {default as FFT} from 'fft.js';
+export {MoonPhase, Body, Observer, SearchRiseSet} from 'astronomy-engine';
+export {default as geodesic} from 'geographiclib-geodesic';
+export {FV, PV, PMT, NPV, IRR} from '@formulajs/formulajs';
+export {default as solver} from 'javascript-lp-solver';

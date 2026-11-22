@@ -395,6 +395,7 @@ export async function importCourse(sourcePath, sidecarPath, outputPath, auditPat
       content_order:author.content_order, content_nodes:author.content_nodes, references:author.references});
     if (author.document.sections) course.sections = author.document.sections.map(s => ({...s, title_html:render.heading(s.title)}));
     if (author.document.reading_lineage) course.reading_lineage = author.document.reading_lineage;
+    if (Object.hasOwn(author.document, 'calculate')) course.calculate = author.document.calculate;
     if (content.references.length) course.bank_questions = content.references.map(node => ({id:node.meta.id,
       reference:node.meta.reference, ...(node.meta.section_id ? {section_id:node.meta.section_id} : {})}));
     course.introductions = content.introductions.map(node => ({id:node.meta.id,
@@ -424,6 +425,7 @@ export async function importCourse(sourcePath, sidecarPath, outputPath, auditPat
       for (const item of interactionTexts(interaction)) item.html = render.nodes([{head: item.text, lines: [], children: [], line: question.line}]);
       const notice = corrections.length ? `<p class="contentErratum" role="note">${escape(corrections.map(c => c.display_note).join(' '))}</p>` : '';
       return {id:question.id, title:question.title, question:question.question, html,
+        ...(question.node?.meta && Object.hasOwn(question.node.meta, 'calculate') ? {calculate:question.node.meta.calculate} : {}),
         ...(interaction ? {interaction} : {}),
         explanation_html:notice + render.wrap(question.explanationNode, render.nodes(explanationNodes)), reference_answer:answer.reference_answer,
         answer_type:answer.answer_type, constraints:answer.constraints,

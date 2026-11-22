@@ -198,6 +198,8 @@ def validate_atomic(topic):
     for card in cards:
         require(identifier(card.get('id')) and card['id'] not in questions, 'Duplicate flashcard')
         required_fields = ('title', 'question', 'html', 'answer_type', 'constraints')
+        from .calculator import validate as validate_calculate
+        validate_calculate(card)
         if not external:
             required_fields += ('reference_answer', 'explanation_html')
         require(all(text(card.get(field)) for field in required_fields),
