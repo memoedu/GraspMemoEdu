@@ -38,6 +38,22 @@ const completions = page.locator('.inputCompletions');
 const option = label => completions.getByRole('option', {name: label, exact: true});
 const assign = dialog.getByRole('button', {name: '赋值', exact: true});
 const variable = name => dialog.getByRole('textbox', {name: `变量 ${name}`, exact: true});
+async function sidebarOrientation(cardSelector) {
+  return toolbar.evaluate((element, selector) => {
+    const card = document.querySelector(selector).getBoundingClientRect();
+    const rail = element.closest('.questionToolRail').getBoundingClientRect();
+    const history = document.querySelector('.appLayout:not([hidden]) .historySidebar');
+    const previous = history?.getBoundingClientRect();
+    const group = element.querySelector('.questionToolGroup');
+    const scroller = element.querySelector('.questionToolGroups');
+    return {
+      rightOfCard: rail.left >= card.right && Math.abs(rail.top - card.top) <= 1,
+      leftHistory: !previous || previous.right <= card.left,
+      direction: getComputedStyle(group).flexDirection,
+      fits: scroller.scrollWidth <= scroller.clientWidth && document.documentElement.scrollWidth <= innerWidth,
+    };
+  }, cardSelector);
+}
 async function text(value) {
   await outputBox.getByText(value, {exact: true}).waitFor();
 }
@@ -56,11 +72,22 @@ try {
   assert.equal(await launch.textContent(), '');
   assert.equal(await launch.getAttribute('aria-label'), '科学计算器');
   assert.equal(await page.locator('#stepCard .questionTools').count(), 0);
-  assert.equal(await toolbar.evaluate(element => {
-    const card = document.getElementById('stepCard').getBoundingClientRect();
-    const row = element.getBoundingClientRect();
-    return row.bottom <= card.top && Math.abs(card.right - row.right) <= 1;
-  }), true);
+  for (const [width, direction] of [[1440, 'row'], [1120, 'column'], [768, 'column'], [414, 'column'],
+                                    [375, 'column'], [320, 'column'], [1440, 'row']]) {
+    await page.setViewportSize({width, height: 900});
+    assert.deepEqual(await sidebarOrientation('#stepCard'), {
+      rightOfCard: true, leftHistory: true, direction, fits: true,
+    }, String(width));
+  }
+  await page.setViewportSize({width: 1120, height: 900});
+  await launch.focus();
+  await launch.press('ArrowDown');
+  assert.equal(await tool('graph').evaluate(button => button === document.activeElement), true);
+  await page.locator('#historyButton').click();
+  assert.equal((await sidebarOrientation('#stepCard')).direction, 'row');
+  await page.locator('#historyButton').click();
+  assert.equal((await sidebarOrientation('#stepCard')).direction, 'column');
+  await page.setViewportSize({width: 1440, height: 900});
   await launch.focus();
   await launch.press('ArrowRight');
   assert.equal(await tool('graph').evaluate(button => button === document.activeElement), true);
@@ -145,8 +172,18 @@ try {
 
   await next.click();
   await dialog.waitFor({state: 'detached'});
-  assert.deepEqual(await toolIds(), ['expression', 'graph', 'integral', 'matrix', 'statistics', 'modular', 'machine_learning']);
+  assert.deepEqual(await toolIds(), ['expression', 'graph', 'integral', 'matrix', 'statistics', 'machine_learning', 'modular']);
+  assert.deepEqual(await toolbar.locator('.questionToolGroup').evaluateAll(groups => groups.map(group =>
+    [...group.querySelectorAll('[data-question-tool]')].map(tool => tool.dataset.questionTool))), [
+    ['expression', 'graph', 'integral'],
+    ['matrix', 'statistics', 'machine_learning'],
+    ['modular'],
+  ]);
+  assert.deepEqual(await sidebarOrientation('#stepCard'), {
+    rightOfCard: true, leftHistory: true, direction: 'row', fits: true,
+  });
   await page.screenshot({path: path.join(output, 'desktop-toolbar.png')});
+  checks.push('Tools stay next to the card at 320–1440px, switch direction on resize, and organize related worksheets in groups.');
   await select('matrix');
   assert.equal(await field('a').count(), 1);
   assert.equal(await dialog.locator('option[value="matrix_inverse"]').evaluate(option => option.disabled), true);
@@ -219,6 +256,9 @@ try {
     checks.push(`${width}px calculator fits and keypad targets are at least 44px tall.`);
   }
   await page.setViewportSize({width: 375, height: 840});
+  await launch.press('End');
+  assert.equal(await tool('modular').evaluate(button => button === document.activeElement), true);
+  assert.ok(await toolbar.locator('.questionToolGroups').evaluate(list => list.scrollTop > 0));
   await page.screenshot({path: path.join(output, 'mobile-center.png')});
   await dialog.getByRole('button', {name: '关闭计算器'}).click();
   assert.equal(await launch.evaluate(element => element === document.activeElement), true);
@@ -265,6 +305,9 @@ try {
   await toolbar.waitFor();
   assert.deepEqual(await toolIds(), ['expression', 'graph']);
   assert.equal(await page.locator('#trainingstepCard .questionTools').count(), 0);
+  assert.deepEqual(await sidebarOrientation('#trainingstepCard'), {
+    rightOfCard: true, leftHistory: true, direction: 'row', fits: true,
+  });
   const bankAnswer = page.locator('form.answerForm textarea:visible');
   await bankAnswer.fill('f');
   await option('floor').waitFor();
