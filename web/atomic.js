@@ -1,17 +1,18 @@
-import {t, translateMessage} from './i18n.js?v=5650d14da25fc7af';
-import {setQuestionTools} from './question-tools.js?v=5650d14da25fc7af';
-import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=5650d14da25fc7af';
-import {selfAssessment, referenceAnswer, prepareAnswerContent, ratingChoices} from './self-assessment.js?v=5650d14da25fc7af';
-import {reportableContent} from './content-report.js?v=5650d14da25fc7af';
-import {createLearningCache} from './learning-cache.js?v=5650d14da25fc7af';
-import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=5650d14da25fc7af';
-import {enhanceSourceContent} from './topic-content.js?v=5650d14da25fc7af';
-import {memoryChunk, chunkPeek, sourceAttributions} from './memory-chunk.js?v=5650d14da25fc7af';
-import {topicProgress, topicHistory, readingFields, readingSectionHeading} from './learning-ui.js?v=5650d14da25fc7af';
-import {pointAssessment} from './point-assessment.js?v=5650d14da25fc7af';
-import {trainingAudio} from './training-audio.js?v=5650d14da25fc7af';
-import {ideaSetupHash, ideaSetupLink} from './idea-setup.js?v=5650d14da25fc7af';
-import {learningHint} from './beginner-hints.js?v=5650d14da25fc7af';
+import {t, translateMessage} from './i18n.js?v=2af66fd14ba4821c';
+import {setQuestionTools} from './question-tools.js?v=2af66fd14ba4821c';
+import {enableVoiceAnswer, voiceAnswerPending} from './voice-input.js?v=2af66fd14ba4821c';
+import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=2af66fd14ba4821c';
+import {selfAssessment, referenceAnswer, prepareAnswerContent, ratingChoices} from './self-assessment.js?v=2af66fd14ba4821c';
+import {reportableContent} from './content-report.js?v=2af66fd14ba4821c';
+import {createLearningCache} from './learning-cache.js?v=2af66fd14ba4821c';
+import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=2af66fd14ba4821c';
+import {enhanceSourceContent} from './topic-content.js?v=2af66fd14ba4821c';
+import {memoryChunk, chunkPeek, sourceAttributions} from './memory-chunk.js?v=2af66fd14ba4821c';
+import {topicProgress, topicHistory, readingFields, readingSectionHeading} from './learning-ui.js?v=2af66fd14ba4821c';
+import {pointAssessment} from './point-assessment.js?v=2af66fd14ba4821c';
+import {trainingAudio} from './training-audio.js?v=2af66fd14ba4821c';
+import {ideaSetupHash, ideaSetupLink} from './idea-setup.js?v=2af66fd14ba4821c';
+import {learningHint} from './beginner-hints.js?v=2af66fd14ba4821c';
 
 const node = (tag, cls = '', text) => {
   const el = document.createElement(tag); el.className = cls;
@@ -240,6 +241,7 @@ export function createAtomicView(bridge) {
       finish:()=>mutate('academy/finish'),next:()=>mutate('continue')});
     if (question.academy) return academyQuestion(box, question, history);
     const form = node('form', 'atomicAnswerForm'); form.id = 'atomicAnswerForm';
+    enableVoiceAnswer(form, {defer: (!question.interaction || question.interaction.type === 'text') && question.interaction?.grading !== 'exact'});
     const disabled = history || question.phase !== 'answer' || busy || Boolean(state.pause || state.pending_submission_id) || !state.can_submit;
     let input;
     const value = history || question.phase === 'feedback' ? question.answer || '' : read(draftKey()) || '';
@@ -253,8 +255,10 @@ export function createAtomicView(bridge) {
       form.append(label, input);
     }
     const send = node('button', 'primaryButton', t(state.pending_submission_id ? 'atomic.judging' : 'atomic.submit'));
-    send.type = 'submit'; send.disabled = disabled || !answerReady(input);
-    input.addEventListener('input', () => { if (!history) write(draftKey(), input.value); send.disabled = disabled || !answerReady(input); });
+    const refreshSubmit = () => { send.disabled = disabled || (!answerReady(input) && !voiceAnswerPending(form)); };
+    send.type = 'submit'; refreshSubmit();
+    form.addEventListener('voiceinputchange', refreshSubmit);
+    input.addEventListener('input', () => { if (!history) write(draftKey(), input.value); refreshSubmit(); });
     input.addEventListener('keydown', event => {
       if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !event.isComposing) { event.preventDefault(); form.requestSubmit(); }
     });

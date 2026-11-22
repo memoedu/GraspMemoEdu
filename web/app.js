@@ -1,18 +1,19 @@
-import { t, getLanguage, translateMessage, applyStaticTranslations, learningTitle } from "./i18n.js?v=5650d14da25fc7af";
-import {answerReady} from './question-input.js?v=5650d14da25fc7af';
-import {reportableContent, visibleContentTopics} from './content-report.js?v=5650d14da25fc7af';
-import {startPresence} from './presence.js?v=5650d14da25fc7af';
-import {createLearningCache} from './learning-cache.js?v=5650d14da25fc7af';
-import {createReadCache, createContentCache, createValidationCache, readLifetime, contentPath, contentKey} from './response-cache.js?v=5650d14da25fc7af';
+import { t, getLanguage, translateMessage, applyStaticTranslations, learningTitle } from "./i18n.js?v=2af66fd14ba4821c";
+import {answerReady} from './question-input.js?v=2af66fd14ba4821c';
+import {reportableContent, visibleContentTopics} from './content-report.js?v=2af66fd14ba4821c';
+import {startPresence} from './presence.js?v=2af66fd14ba4821c';
+import {createLearningCache} from './learning-cache.js?v=2af66fd14ba4821c';
+import {createReadCache, createContentCache, createValidationCache, readLifetime, contentPath, contentKey} from './response-cache.js?v=2af66fd14ba4821c';
 
-import {answerEditor, readerContent, readerStepTitle as sharedReaderStepTitle, readerHistorySteps, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, readerDrawerState, topicProgress, topicHistory} from './learning-ui.js?v=5650d14da25fc7af';
-import {selfAssessment, showAnswerButton} from './self-assessment.js?v=5650d14da25fc7af';
-import {mountTopicBacklinks, focusContentNode} from './topic-content.js?v=5650d14da25fc7af';
-import {renderSourceReader} from './learning-ui.js?v=5650d14da25fc7af';
-import {lessonTaskLabel, readingSectionHeading} from './learning-ui.js?v=5650d14da25fc7af';
-import {createTrainingView} from './training.js?v=5650d14da25fc7af';
-import {clearLearningHint, learningHint, practiceHint} from './beginner-hints.js?v=5650d14da25fc7af';
-import {setQuestionTools} from './question-tools.js?v=5650d14da25fc7af';
+import {answerEditor, readerContent, readerStepTitle as sharedReaderStepTitle, readerHistorySteps, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, readerDrawerState, topicProgress, topicHistory} from './learning-ui.js?v=2af66fd14ba4821c';
+import {selfAssessment, showAnswerButton} from './self-assessment.js?v=2af66fd14ba4821c';
+import {mountTopicBacklinks, focusContentNode} from './topic-content.js?v=2af66fd14ba4821c';
+import {renderSourceReader} from './learning-ui.js?v=2af66fd14ba4821c';
+import {lessonTaskLabel, readingSectionHeading} from './learning-ui.js?v=2af66fd14ba4821c';
+import {createTrainingView} from './training.js?v=2af66fd14ba4821c';
+import {clearLearningHint, learningHint, practiceHint} from './beginner-hints.js?v=2af66fd14ba4821c';
+import {setQuestionTools} from './question-tools.js?v=2af66fd14ba4821c';
+import {installVoiceInput, refreshVoiceInput, voiceAnswerPending} from './voice-input.js?v=2af66fd14ba4821c';
 
 let topicTraining = null, topicTrainingKey = null;
 function stopTopicTraining() { topicTraining?.stop(); topicTraining = null; topicTrainingKey = null; }
@@ -655,6 +656,7 @@ function renderIdentity() {
   $("guestDemoCheckbox").checked = canUseDemo() && storageRead(localStorage, demoPreferenceKey(), "false") === "true";
   renderIdentityNotice();
   portal?.setIdentity(access);
+  refreshVoiceInput();
 }
 
 function featureMessage(feature) {
@@ -1405,11 +1407,15 @@ function renderStepNavigation(target, step, actions) {
 function answerForm(step, stem) {
   const {form, input, submit, bottom} = answerEditor(step, stem, draftValue(step));
   form.addEventListener("submit", submitAnswer);
+  const refreshSubmit = () => {
+    submit.disabled = (!answerReady(input) && !voiceAnswerPending(form)) || actionBusy || pauseBusy || !can("submit_answer");
+  };
+  form.addEventListener('voiceinputchange', refreshSubmit);
   input.addEventListener("input", () => {
     saveDraft(step, input.value);
     $("answerError").hidden = true;
     input.removeAttribute("aria-invalid");
-    $("submitButton").disabled = !answerReady(input) || actionBusy || pauseBusy || !can("submit_answer");
+    refreshSubmit();
     if (submissionError && input.value.trim() !== submissionError.answer) $("submitButton").textContent = t("Submit");
     else if (submissionError) $("submitButton").textContent = t("重试判题");
   });
@@ -1675,7 +1681,9 @@ async function openTopic(id, subjectId, initial = null) {
 // Discover the API while the portal's modules load. Requests still await the
 // same validated deployment and identity; failure uses the normal retry UI.
 void ensureDeployment().catch(() => {});
-const { initPortal } = await import("./portal.js?v=5650d14da25fc7af");
+installVoiceInput({host: $('siteTools'), canUse: () => !identityProblem && access?.role === 'account',
+  getIdentity: () => `${identityGeneration}:${connectionGeneration}`, request});
+const { initPortal } = await import("./portal.js?v=2af66fd14ba4821c");
 startPresence({getAccess: () => identityProblem ? null : access, request, getTopics: visibleContentTopics});
 portal = initPortal({
   fetchGuideAsset: async (url, subjectId) => {

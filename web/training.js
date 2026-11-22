@@ -1,21 +1,22 @@
-import {t, translateMessage} from './i18n.js?v=5650d14da25fc7af';
-import {ideaSetupHash, ideaSetupLink} from './idea-setup.js?v=5650d14da25fc7af';
-import {answerReady, answerEmpty} from './question-input.js?v=5650d14da25fc7af';
-import {createLearningCache} from './learning-cache.js?v=5650d14da25fc7af';
-import {catalogView, catalogPath, workspaceLayout} from './catalog-workspace.js?v=5650d14da25fc7af';
-import {helpableContent} from './content-report.js?v=5650d14da25fc7af';
-import {ratingChoices} from './self-assessment.js?v=5650d14da25fc7af';
-import {pointAssessment} from './point-assessment.js?v=5650d14da25fc7af';
-import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=5650d14da25fc7af';
-import {learningHint} from './beginner-hints.js?v=5650d14da25fc7af';
+import {t, translateMessage} from './i18n.js?v=2af66fd14ba4821c';
+import {ideaSetupHash, ideaSetupLink} from './idea-setup.js?v=2af66fd14ba4821c';
+import {answerReady, answerEmpty} from './question-input.js?v=2af66fd14ba4821c';
+import {createLearningCache} from './learning-cache.js?v=2af66fd14ba4821c';
+import {catalogView, catalogPath, workspaceLayout} from './catalog-workspace.js?v=2af66fd14ba4821c';
+import {helpableContent} from './content-report.js?v=2af66fd14ba4821c';
+import {ratingChoices} from './self-assessment.js?v=2af66fd14ba4821c';
+import {pointAssessment} from './point-assessment.js?v=2af66fd14ba4821c';
+import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=2af66fd14ba4821c';
+import {learningHint} from './beginner-hints.js?v=2af66fd14ba4821c';
 
 const node = (tag, cls = '', text) => { const n = document.createElement(tag); n.className = cls; if (text !== undefined) n.textContent = text; return n; };
 const button = (text, cls, action) => { const n = node('button', cls, text); n.type = 'button'; n.addEventListener('click', action); return n; };
 const encode = encodeURIComponent;
 const query = fields => new URLSearchParams(fields).toString();
 const ratingKeys = ['', 'training.again', 'training.hard', 'training.good', 'training.easy', 'training.retire'];
-import {answerEditor, readerFrame, readerStepTitle, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, renderReviewReader} from './learning-ui.js?v=5650d14da25fc7af';
-import {setQuestionTools} from './question-tools.js?v=5650d14da25fc7af';
+import {answerEditor, readerFrame, readerStepTitle, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, renderReviewReader} from './learning-ui.js?v=2af66fd14ba4821c';
+import {setQuestionTools} from './question-tools.js?v=2af66fd14ba4821c';
+import {voiceAnswerPending} from './voice-input.js?v=2af66fd14ba4821c';
 
 export function createTrainingView(bridge) {
   const {root, request, href, formatDate, getAccess} = bridge;
@@ -447,12 +448,14 @@ export function createTrainingView(bridge) {
       const pending = ['pending', 'running'].includes(state.submission_status);
       const failed = state.submission_status === 'error';
       const refresh = () => {
-        const show = state.can_self_rate && answerEmpty(input) && !state.submission_id;
+        const voice = voiceAnswerPending(form);
+        const show = !voice && state.can_self_rate && answerEmpty(input) && !state.submission_id;
         submit.textContent = pending ? t('training.checking') : failed || savedPayload ? t('training.retry') : t(show ? 'training.show' : state.multi_step ? 'question.submitStep' : 'training.submit');
-        submit.disabled = pending || !state.can_submit || (!failed && !savedPayload && !show && !answerReady(input));
+        submit.disabled = pending || !state.can_submit || (!failed && !savedPayload && !show && !voice && !answerReady(input));
       };
       disable(pending || failed || Boolean(savedPayload) || !state.can_submit);
       form.append(bottom); main.append(form); primary = submit;
+      form.addEventListener('voiceinputchange', refresh);
       input.addEventListener('input', () => { save('draft', draftKey, input.value); refresh(); });
       input.addEventListener('keydown', event => { if ((event.ctrlKey || event.metaKey) && event.key === 'Enter' && !event.isComposing) { event.preventDefault(); form.requestSubmit(); } });
       form.addEventListener('submit', async event => {

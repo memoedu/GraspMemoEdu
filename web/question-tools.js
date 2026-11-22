@@ -1,5 +1,6 @@
-import {getLanguage} from './i18n.js?v=5650d14da25fc7af';
-import {calculatorTools} from './calculator.js?v=5650d14da25fc7af';
+import {getLanguage} from './i18n.js?v=2af66fd14ba4821c';
+import {calculatorTools} from './calculator.js?v=2af66fd14ba4821c';
+import {voiceControls} from './voice-input.js?v=2af66fd14ba4821c';
 
 const providers = [({calculate}, english) => calculatorTools(calculate, english)];
 const toolbars = new WeakMap();
@@ -73,7 +74,7 @@ export function setQuestionTools(anchor, question) {
     event.preventDefault();
     buttons[destination].focus();
   });
-  toolbar.append(...buttons);
+  toolbar.append(...buttons, voiceControls());
   row.append(toolbar, message);
   anchor.before(row);
   toolbars.set(anchor, row);
