@@ -56,6 +56,7 @@ def main():
         topic['modules'].append(synthetic_course(2)['modules'][1])
         topic['content_order'].append({'kind': 'example', 'id': 'module-2'})
         second = topic['modules'][1]['example']
+        second['calculate'] = 'scientific'
         second['question'] = 'Fill five blanks: ' + ' · '.join('{{blank:b' + str(n) + '}}' for n in range(1, 6)) + '.'
         second['html'] = '<p>' + second['question'] + '</p>'
         second['interaction'] = {'version': 1, 'type': 'fill_blank', 'grading': 'exact',
@@ -68,7 +69,8 @@ def main():
     group = bank['groups'][1]
     group['questions'][0]['calculate'] = {'level': 'scientific', 'enable_modules': ['graph']}
     if args.conversion:
-        for identifier, options in [('one-value', ['X1 = 3', 'X1 = 5']), ('two-values', ['X1 = 5, X2 = 3', 'X1 = 3，X2 = 5'])]:
+        for identifier, options in [('one-value', ['X1 = 3', 'X1 = 5']), ('two-values', ['X1 = 5, X2 = 3', 'X1 = 3，X2 = 5']),
+                                    ('three-values', ['X1 = -2, X2 = 0, X3 = 8', 'X1 = 0, X2 = -2, X3 = 8'])]:
             group['questions'].append({**group['questions'][0], 'id': identifier, 'interaction': {
                 'version': 1, 'type': 'choice', 'options': [
                     {'id': 'a', 'text': options[0]}, {'id': 'b', 'text': options[1]}], 'correct_id': 'a'}})

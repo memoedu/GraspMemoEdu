@@ -133,6 +133,15 @@ class TrainingAudioApiTests(unittest.TestCase):
         self.assertEqual(denied.status_code, 403)
         self.assertEqual(len(self.transcriber.calls), 1)
 
+    def test_voice_commands_pass_asr_text_to_the_shared_interpreter_without_refining(self):
+        from unittest.mock import patch
+        body = {'mime_type': self.body['mime_type'], 'data_base64': self.body['data_base64'], 'profile': 'answer_commands'}
+        with patch('graspmemoedu.voice_input.independent_settings', side_effect=AssertionError('extra generation')):
+            result = self.client.post('/api/voice-input/transcribe', headers=self.headers, json=body)
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(result.json(), {'text': 'An editable transcript.'})
+        self.assertEqual(self.transcriber.calls, [self.audio_data])
+
     def test_bad_wav_stale_version_and_unconfigured_provider_never_send_audio(self):
         for patch in ({'data_base64': 'AAAA'}, {'content_version': 'old'}, {'mime_type': 'audio/webm'}):
             response = self.client.post('/api/training-audio/transcribe' + self.audio_query, headers=self.headers, json={**self.body, **patch})

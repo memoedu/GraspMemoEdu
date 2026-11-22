@@ -29,7 +29,7 @@ class VoiceRecording(BaseModel):
     model_config = ConfigDict(extra='forbid')
     mime_type: Literal['audio/mp4', 'audio/webm', 'audio/ogg', 'audio/wav']
     data_base64: str = Field(min_length=1, max_length=5592408)
-    profile: Literal['general', 'answer', 'calculator']
+    profile: Literal['general', 'answer', 'calculator', 'answer_commands']
 
 
 def recorded_wave(payload):
@@ -104,6 +104,8 @@ def refine_voice(text, profile, generate=complete):
             prompt('decide-writing.md') + '\n只返回 writing、non_writing 或 uncertain 中的一个，省略其他字符。', text).strip()
         name = 'refine-dictation-non-writing.md' if route == 'non_writing' else 'refine-writing.md'
         formatting = ('这是学生当前作答的片段。只转写已经说出的内容，保留口述的事实、公式、结论和步骤，包括可能错误的答案。'
+                      '明确保留每个空的序号、对应值、口述顺序，以及跳过、留空或改填等指令。'
+                      '即使只说第二、第三空，也不要删去空号、按顺序重新编号或补写第一空。'
                       '不纠错、不解题、不添加标题、列表符号、解释或 Markdown。公式用适合原位插入的纯文本。'
                       if profile == 'answer' else '只输出可直接插入当前光标的正文。保留自然段，不加标题、大纲标记或说明。')
         value = generate(prompt(name) + '\n\n' + prompt('refine-quotation-style.md') + '\n\n' + formatting, text).strip()

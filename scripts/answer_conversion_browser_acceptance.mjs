@@ -13,14 +13,14 @@ const context = await browser.newContext({viewport: {width: 414, height: 844}, l
 const page = await context.newPage();
 page.setDefaultTimeout(12000);
 const errors = [], requests = [];
-let respond;
+let respond, transcript = '左二配右二';
 page.on('pageerror', error => errors.push(error.message));
 page.on('request', request => {
   if (request.method() === 'POST') requests.push(new URL(request.url()).pathname);
 });
 await page.route('**/api/voice-input/transcribe?*', route => {
-  assert.equal(route.request().postDataJSON().profile, 'answer');
-  return route.fulfill({json: {text: '左二配右二'}});
+  assert.equal(route.request().postDataJSON().profile, 'answer_commands');
+  return route.fulfill({json: {text: transcript}});
 });
 const phrase = page.locator('.answerConversion textarea:visible');
 const answer = page.locator('#answerInput');
@@ -37,6 +37,18 @@ const convert = async text => {
   await status.waitFor();
 };
 const submitted = () => requests.filter(url => url === '/api/submit' || url === '/api/training/submit').length;
+const launch = page.locator('[data-question-tool=expression]:visible');
+const calculator = page.locator('.questionCalculator');
+const expression = calculator.getByRole('textbox', {name: '表达式'});
+const transfer = calculator.getByRole('button', {name: '转换', exact: true});
+const record = calculator.getByRole('button', {name: '记录', exact: true});
+const closeCalculator = () => calculator.getByRole('button', {name: '关闭计算器'}).click();
+async function compute(value) {
+  await expression.fill(value);
+  assert.ok(await transfer.isDisabled());
+  await expression.press('Enter');
+  await calculator.locator('.calculatorResult[data-state=success]').getByText(value, {exact: true}).waitFor();
+}
 
 try {
   await page.goto(base + '/#/subjects/math/courses');
@@ -73,6 +85,40 @@ try {
   await submit.click();
   await nextLesson.click();
   await openCurrentAnswer();
+  const blanks = page.locator('.inlineBlank[data-blank-id]');
+  await page.locator('#stepCard h2:visible').first().click();
+  transcript = '第二个空填 7，第三个空填负4。';
+  await speak();
+  await page.waitForFunction(() => document.querySelector('[data-blank-id=b3]').value === '-4');
+  assert.deepEqual(await blanks.evaluateAll(nodes => nodes.map(el => el.value)), ['', '7', '-4', '', '']);
+  await page.setViewportSize({width: 1366, height: 900});
+  await launch.click();
+  for (const [index, value] of ['11', '22', '33', '44', '55'].entries()) {
+    await compute(value);
+    await transfer.click();
+    assert.equal(await blanks.nth(index).inputValue(), value);
+  }
+  assert.ok(await transfer.isDisabled());
+  await closeCalculator();
+  await blanks.nth(2).click();
+  await launch.click();
+  await compute('66');
+  assert.ok(await blanks.nth(2).evaluate(el => getComputedStyle(el.closest('.calculatorSelectedBlank')).outlineStyle === 'solid'));
+  await transfer.click();
+  await compute('77');
+  await transfer.click();
+  assert.equal(await blanks.nth(2).inputValue(), '77');
+  await blanks.nth(3).click();
+  await compute('88');
+  await transfer.click();
+  assert.equal(await blanks.nth(3).inputValue(), '88');
+  assert.equal(await blanks.nth(2).evaluate(el => Boolean(el.closest('.calculatorSelectedBlank'))), false);
+  await closeCalculator();
+  await page.locator('#stepCard h2:visible').first().click();
+  transcript = '第三个空填 9，然后第二个空填 -6。';
+  await speak();
+  await page.waitForFunction(() => document.querySelector('[data-blank-id=b2]').value === '-6');
+  assert.deepEqual(JSON.parse(await answer.inputValue()), {b1: '11', b2: '-6', b3: '9', b4: '88', b5: '55'});
   await convert('1，2，3，4，5');
   const blank = page.locator('.inlineBlank[data-blank-id=b3]');
   assert.equal(await blank.inputValue(), '3');
@@ -103,22 +149,35 @@ try {
   }
   assert.equal(requests.filter(url => url === '/api/answer-conversion').length, 2);
 
-  const launch = page.locator('[data-question-tool=expression]:visible');
-  const calculator = page.locator('.questionCalculator');
   const choiceUrl = base + '/#/subjects/math/banks/isolated-bank/group-a?question=one-value';
   await setCommandInput(false);
   await page.goto(choiceUrl);
   await page.locator('.choiceOption input[value=b]').check();
   assert.equal(await page.locator('.answerConversion textarea').count(), 0);
   await launch.click();
-  const expression = calculator.getByRole('textbox', {name: '表达式'});
   await expression.fill('1+2');
   await expression.press('Enter');
   await calculator.locator('.calculatorResult').getByText('3', {exact: true}).waitFor();
-  await calculator.getByRole('button', {name: '转换', exact: true}).click();
-  await calculator.waitFor({state: 'hidden'});
+  await transfer.click();
+  await calculator.locator('.calculatorTransferStatus[data-state=success]').waitFor();
+  await closeCalculator();
   assert.equal(await page.locator('.choiceOption input:checked').inputValue(), 'a');
   assert.equal(submitted(), 1);
+
+  await page.goto(base + '/#/subjects/math/banks/isolated-bank/group-a?question=three-values');
+  await launch.click();
+  await compute('-2'); await record.click();
+  await compute('8'); await record.click();
+  await calculator.getByRole('button', {name: '撤回末值'}).click();
+  await compute('0'); await record.click();
+  await compute('7'); await transfer.click();
+  await calculator.locator('.calculatorTransferStatus[data-state=error]').waitFor();
+  assert.match(await calculator.locator('.calculatorRecorded').innerText(), /-2，0/);
+  await compute('8'); await transfer.click();
+  await calculator.locator('.calculatorTransferStatus[data-state=success]').waitFor();
+  assert.equal(await page.locator('.choiceOption input:checked').inputValue(), 'a');
+  assert.equal(await calculator.locator('.calculatorRecorded').textContent(), '');
+  await closeCalculator();
 
   await setCommandInput(true);
   await page.goto(choiceUrl);
@@ -145,7 +204,8 @@ try {
   assert.deepEqual(errors, []);
   await writeFile(path.join(output, 'browser.json'), JSON.stringify({
     matching: true, partialMatching: true, fiveBlanks: true, numericChoice: true,
-    assignmentApi: true, syntheticMicrophone: true, calculator: true,
+    assignmentApi: true, syntheticMicrophone: true, sparseAndReversedSpeech: true,
+    sequentialAndPinnedBlanks: true, recordedTriple: true, failedTransferKeepsRecords: true, calculator: true,
     commandInputDefaultOff: true, preferenceSurvivesReload: true, microphoneAndCalculatorWithBoxOff: true,
     widths: [320, 375, 414, 768], protectedDrafts: true, deliberateSubmissions: submitted(), errors,
   }, null, 2));
@@ -191,11 +251,14 @@ async function setCommandInput(enabled) {
   assert.equal(await setting.isChecked(), enabled);
 }
 
-async function recordMiddlePair() {
+async function speak() {
   await mic.click();
   const stop = page.getByRole('button', {name: '结束录音', exact: true});
   await stop.waitFor();
   await new Promise(resolve => setTimeout(resolve, 300));
   await stop.click();
+}
+async function recordMiddlePair() {
+  await speak();
   await page.locator('.matchingSlot[data-side=right][data-row="1"]', {hasText: 'R2'}).waitFor();
 }
