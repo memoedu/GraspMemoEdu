@@ -23,6 +23,31 @@ test('toolbar lists available worksheets without duplicating scientific constant
   assert.equal(ids(cas).includes('symbolic'), true);
 });
 
+test('scientific and higher calculators discover variables and evaluate with numeric bindings', async () => {
+  const scientific = {level: 'scientific'};
+  const discover = (expression, config = scientific) => run('expression', 'assign_variables', {expression}, config);
+  assert.deepEqual(await discover('2x+x+y+z^2+sin(t)+pi'), {variables: ['x', 'y', 'z', 't']});
+  assert.deepEqual(await discover('sin(pi)'), {variables: []});
+  assert.deepEqual(await discover('xy+x*y'), {variables: ['xy', 'x', 'y']});
+  for (const level of ['scientific', 'advanced', 'cas']) {
+    const config = {level};
+    assert.equal((await run('expression', 'evaluate', {
+      expression: '2x+y+z^2', assignments: {x: 'sqrt(9)', y: '1+1', z: '4'},
+    }, config)).numeric, 24);
+    await assert.rejects(run('expression', 'evaluate', {expression: 'x+x'}, config), {code: 'unassigned'});
+  }
+  await assert.rejects(discover('x', basic), {code: 'restricted'});
+  const banned = {level: 'scientific', disable_keys: ['assign_variables']};
+  await assert.rejects(discover('x', banned), {code: 'restricted'});
+  await assert.rejects(run('expression', 'evaluate', {expression: 'x', assignments: {x: '2'}}, banned), {code: 'restricted'});
+  await assert.rejects(discover('x=1'), {code: 'restricted'});
+  await assert.rejects(discover('x+y', {level: 'scientific', disable_keys: ['add']}), {code: 'restricted'});
+  await assert.rejects(run('expression', 'evaluate', {expression: 'x', assignments: {x: 'sin(2)'}},
+    {level: 'scientific', disable_keys: ['sin']}), {code: 'restricted'});
+  await assert.rejects(run('expression', 'evaluate', {expression: 'x', assignments: {x: '1/0'}}, scientific), {code: 'domain'});
+  await assert.rejects(discover('a+b+c+d+f+g+j+k+l+m+n+o+p+q'), {code: 'limit'});
+});
+
 test('all displayed example inputs run through their actual vendored component', async t => {
   for (const [module, , , operations] of tools) {
     for (const [operation, , , fields] of operations) {
