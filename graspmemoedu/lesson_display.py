@@ -83,6 +83,16 @@ class LessonDisplay:
         return result
 
     def introduction(self, intro):
+        if source := intro.get('_ma_body_source'):
+            from .mathacademy_layout import heading_blocks
+            localized = self.introduction(source)
+            if localized is source:
+                return intro
+            fragments = heading_blocks(localized['html'])
+            title = localized['title'] if intro['title'] == source['title'] else intro['title']
+            if len(fragments) == intro['_ma_body_count']:
+                return {**intro, 'title': title, 'html': fragments[intro['_ma_body_index']]}
+            return {**intro, 'title': title}
         if not self.values or EDITORIAL.match(intro['title']):
             return intro
         result = dict(intro)
