@@ -46,6 +46,7 @@ from .content_references import ContentReferenceIndex
 from .self_assessment import enabled as self_rating_enabled, protect as protect_assessment
 from .response_content import compact_response
 from .context_library_api import register_context_library_routes, PUBLIC_PATHS as CONTEXT_PATHS
+from .voice_input import VOICE_PATH, VOICE_BODY_LIMIT
 
 
 class Action(BaseModel):
@@ -421,7 +422,7 @@ def create_app(settings: Settings | None = None, service: LearningService | None
     app = FastAPI(title='GraspMemoEdu', lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
     # The subsequently registered boundary middleware wraps this body limiter.
     body_limits = {'/api/help-requests': 65536, '/api/help-images': 3 * 1024 * 1024,
-                   '/api/training-audio/transcribe': 6 * 1024 * 1024}
+                   '/api/training-audio/transcribe': 6 * 1024 * 1024, VOICE_PATH: VOICE_BODY_LIMIT}
     app.add_middleware(BodyLimitMiddleware, maximum=16384, path_limits=body_limits)
     app.state.service = service
     app.state.settings = settings

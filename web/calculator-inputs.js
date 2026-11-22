@@ -1,4 +1,4 @@
-import {constants, keypad, permitsConstant, permitsKey} from './calculator-policy.js?v=7bace6d21408de36';
+import {constants, keypad, permitsConstant, permitsKey} from './calculator-policy.js?v=3325cfcbaaa73678';
 
 const element = (tag, cls = '', text) => {
   const node = document.createElement(tag);

@@ -53,6 +53,8 @@ def main():
     (root / 'training-banks').mkdir()
     (root / 'training-banks' / 'isolated-bank.json').write_text(json.dumps(bank), encoding='utf-8')
     app = create_app(Settings(data_dir=root, port=args.port), create_learning_service(topic, root, DeterministicJudge()))
+    account = app.state.access_store.create_account('Voice input fixture', purpose='test', is_student=True)
+    (root / 'fixture-invitation.txt').write_text(account['invitation_code'], encoding='utf-8')
     print('READY calculator fixture', flush=True)
     uvicorn.run(app, host='127.0.0.1', port=args.port, log_level='warning')
 
