@@ -179,7 +179,8 @@ class SiteBackupAcceptanceTests(unittest.TestCase):
         self.other = self.access.create_guest()
         self.dashboard = DashboardStore(self.catalog, self.access)
         self.dashboard.select_course(self.guest['access'], 'course-b')
-        self.dashboard.update_profile(self.guest['access'], {'display_name': 'Portable guest', 'timezone': 'Asia/Shanghai'})
+        self.dashboard.update_profile(self.guest['access'], {'display_name': 'Portable guest', 'timezone': 'Asia/Shanghai',
+                                                            'beginner_mode_enabled': False})
         self.dashboard.save_feedback(self.guest['access'], {'message': 'Keep this local feedback', 'course_id': 'course-a'})
         self.learner = LearningService(self.topics['portable-a'], self.data, self.judge, self.guest['access']['learner_id'])
         self._complete(self.learner)
@@ -291,7 +292,8 @@ class SiteBackupAcceptanceTests(unittest.TestCase):
         access = store.resolve(self.guest['identity_token'])
         dashboard = DashboardStore(catalog, store)
         self.assertEqual(dashboard.profile(access), {'display_name': 'Portable guest', 'timezone': 'Asia/Shanghai',
-                                                    'selected_course_id': 'course-b', 'course_hierarchy_enabled': False})
+                                                      'selected_course_id': 'course-b', 'course_hierarchy_enabled': False,
+                                                      'beginner_mode_enabled': False})
         history = dashboard.dashboard(access, 'course-a')['history']
         self.assertEqual([item['id'] for item in history], ['lesson:portable-a'])
         answer = dashboard.answers(access, 'lesson:portable-a')['groups'][0]['answers'][0]
