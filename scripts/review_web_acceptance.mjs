@@ -64,7 +64,6 @@ try {
      pass('Review answer completes from its first letter using Tab');
      if(autocompleteOnly){
        await d.page.goto(base+`/#/subjects/math/topic/${topic}`);
-       await d.page.getByRole('button',{name:'下一页',exact:true}).last().click();
        await d.page.getByRole('button',{name:'已掌握，试着作答',exact:true}).click();
        const lesson=d.page.locator('#answerInput');
        await lesson.fill('f');

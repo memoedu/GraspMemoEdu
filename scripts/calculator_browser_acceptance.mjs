@@ -211,7 +211,8 @@ try {
     await option('floor').waitFor();
     assert.equal(await completions.evaluate(menu => {
       const bounds = menu.getBoundingClientRect();
-      return bounds.left >= 0 && bounds.right <= innerWidth && bounds.top >= 0 && bounds.bottom <= innerHeight;
+      return bounds.left >= 0 && bounds.right <= document.body.getBoundingClientRect().right
+        && bounds.top >= 0 && bounds.bottom <= innerHeight;
     }), true, String(width));
     if (width === 375) await page.screenshot({path: path.join(output, 'mobile-completions.png')});
     await expressionInput.press('Escape');

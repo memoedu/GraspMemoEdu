@@ -1,21 +1,21 @@
-import {t, translateMessage} from './i18n.js?v=dd33b5c7c0ee5ea2';
-import {setQuestionTools} from './question-tools.js?v=dd33b5c7c0ee5ea2';
-import {voiceAnswerPending} from './voice-input.js?v=dd33b5c7c0ee5ea2';
-import {answerEditor, readerFrame, renderReviewReader, renderMultiStep, staticStepBlanks} from './learning-ui.js?v=dd33b5c7c0ee5ea2';
-import {answerReady, questionInput, choiceTypeField} from './question-input.js?v=dd33b5c7c0ee5ea2';
-import {createLearningCache} from './learning-cache.js?v=dd33b5c7c0ee5ea2';
-import {helpableContent, reportableContent} from './content-report.js?v=dd33b5c7c0ee5ea2';
+import {t, translateMessage} from './i18n.js?v=fba711eba541e925';
+import {setQuestionTools} from './question-tools.js?v=fba711eba541e925';
+import {voiceAnswerPending} from './voice-input.js?v=fba711eba541e925';
+import {answerEditor, readerFrame, renderReviewReader, renderMultiStep, staticStepBlanks} from './learning-ui.js?v=fba711eba541e925';
+import {answerReady, questionInput, choiceTypeField} from './question-input.js?v=fba711eba541e925';
+import {createLearningCache} from './learning-cache.js?v=fba711eba541e925';
+import {helpableContent, reportableContent} from './content-report.js?v=fba711eba541e925';
 
 const node = (tag, cls = '', text) => { const x = document.createElement(tag); x.className = cls; if (text !== undefined) x.textContent = text; return x; };
 const button = (label, cls, action) => { const x = node('button', cls, label); x.type = 'button'; x.addEventListener('click', action); return x; };
 const html = content => { const x = node('div', 'courseContent'); x.innerHTML = content || ''; return x; };
-import {createContentTimer} from './content-timer.js?v=dd33b5c7c0ee5ea2';
-import {renderReviewDirectory, paperNumber} from './review-directory.js?v=dd33b5c7c0ee5ea2';
-import {selfAssessment, referenceAnswer, prepareAnswerContent} from './self-assessment.js?v=dd33b5c7c0ee5ea2';
-import {chunkPeek} from './memory-chunk.js?v=dd33b5c7c0ee5ea2';
-import {pointAssessment} from './point-assessment.js?v=dd33b5c7c0ee5ea2';
-import {trainingAudio} from './training-audio.js?v=dd33b5c7c0ee5ea2';
-import {learningHint} from './beginner-hints.js?v=dd33b5c7c0ee5ea2';
+import {createContentTimer} from './content-timer.js?v=fba711eba541e925';
+import {renderReviewDirectory, paperNumber} from './review-directory.js?v=fba711eba541e925';
+import {selfAssessment, referenceAnswer, prepareAnswerContent} from './self-assessment.js?v=fba711eba541e925';
+import {chunkPeek} from './memory-chunk.js?v=fba711eba541e925';
+import {pointAssessment} from './point-assessment.js?v=fba711eba541e925';
+import {trainingAudio} from './training-audio.js?v=fba711eba541e925';
+import {learningHint} from './beginner-hints.js?v=fba711eba541e925';
 
 export function createPaperView({root, request, href, getAccess, formatDate, progressChanged, courseSidebar, taskTree}) {
   const template = document.getElementById('appLayout').cloneNode(true);

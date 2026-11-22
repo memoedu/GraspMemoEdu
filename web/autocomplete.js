@@ -1,4 +1,4 @@
-import {Editor, Textcomplete, caretCoordinates} from './vendor/calculator/completion.mjs?v=dd33b5c7c0ee5ea2';
+import {Editor, Textcomplete, caretCoordinates} from './vendor/calculator/completion.mjs?v=fba711eba541e925';
 
 export const autocompleteGroups = ['calculator', 'answer', 'other'];
 const preferenceKey = 'graspmemoedu:autocomplete';
@@ -92,18 +92,33 @@ export function installAutocomplete(defaultCandidates) {
       if (selected) field.setAttribute('aria-activedescendant', option.id);
     });
   }
-  completion.on('rendered', () => {
+  function fitMenu() {
+    if (!completion.isShown()) return;
+    const bounds = menu.getBoundingClientRect();
+    const viewport = window.visualViewport;
+    const right = Math.min(document.body.getBoundingClientRect().right,
+      viewport ? viewport.offsetLeft + viewport.width : innerWidth) - 6;
+    const bottom = (viewport ? viewport.offsetTop + viewport.height : innerHeight) - 6;
+    if (bounds.right > right) menu.style.left = Math.max(6, right - bounds.width) + 'px';
+    if (bounds.bottom > bottom) {
+      menu.style.bottom = 'auto';
+      menu.style.top = Math.max((viewport?.offsetTop || 0) + 6, editor.getCursorOffset().clientTop - bounds.height - 3) + 'px';
+    }
+  }
+  const ariaAttributes = ['aria-autocomplete', 'aria-controls', 'aria-activedescendant'];
+  let priorAria;
+  completion.on('shown', () => {
+    priorAria = ariaAttributes.map(name => field.getAttribute(name));
     field.setAttribute('aria-autocomplete', 'list');
     field.setAttribute('aria-controls', menu.id);
+  }).on('rendered', () => {
     updateActive();
-    if (menu.getBoundingClientRect().bottom > document.documentElement.clientHeight) {
-      menu.style.bottom = 'auto';
-      menu.style.top = Math.max(0, editor.getCursorOffset().clientTop - menu.offsetHeight - 3) + 'px';
-    }
+    fitMenu();
   }).on('hidden', () => {
-    field?.removeAttribute('aria-controls');
-    field?.removeAttribute('aria-activedescendant');
-    field?.removeAttribute('aria-autocomplete');
+    ariaAttributes.forEach((name, index) => {
+      if (priorAria[index] === null) field.removeAttribute(name);
+      else field.setAttribute(name, priorAria[index]);
+    });
   });
 
   function dismiss() {
@@ -143,6 +158,8 @@ export function installAutocomplete(defaultCandidates) {
   document.addEventListener('pointerdown', event => { if (!menu.contains(event.target)) dismiss(); }, true);
   document.addEventListener('scroll', event => { if (event.target !== menu && event.target !== field) dismiss(); }, true);
   window.addEventListener('hashchange', dismiss);
+  window.addEventListener('resize', fitMenu);
+  window.visualViewport?.addEventListener('resize', fitMenu);
   window.addEventListener('storage', event => {
     if (event.key === preferenceKey || event.key === null) {
       preferences = readPreferences();
