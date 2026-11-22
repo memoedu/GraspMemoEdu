@@ -1,13 +1,13 @@
 # Math Academy JSON 课程导入
 
-`Import-MathAcademy.ps1` 按源课程 ID 接收两个 ZIP，机械转换原有 JSON，并将目标课程及显式前置内容整体安装。原 JSON、缺失信息及图谱来源随内容保存；不调用模型，不补题、答案、解析或依赖。
+`Import-MathAcademy.ps1` 按源课程 ID 接收两个 ZIP，安装目标课程及显式前置内容。练习先按[题型改造规则](#题型改造)处理。保留原 JSON、缺失信息和图谱来源。
 
 ```powershell
-# 干净隔离网站，五门首批课程及其显式前置
-./Import-MathAcademy.ps1 -TopicsZip 'D:/Downloads/topic-json.zip' -GraphsZip 'D:/Downloads/course-knowledge-graph.zip' -DataDir 'D:/Artifacts/GraspMemoEdu/isolated-import'
+# 导出课程和前置 Topic 中所有带选项的题，供本地判定
+./Import-MathAcademy.ps1 -TopicsZip 'D:/Downloads/topic-json.zip' -GraphsZip 'D:/Downloads/course-knowledge-graph.zip' -CourseIds 72,140 -QuestionInventory 'D:/Artifacts/GraspMemoEdu/ma-question-inventory.json'
 
-# 已配置正式服务器，仅机器学习 I、II 及其显式前置
-./Import-MathAcademy.ps1 -TopicsZip 'D:/Downloads/topic-json.zip' -GraphsZip 'D:/Downloads/course-knowledge-graph.zip' -CourseIds 72,140 -Target production -OutputDirectory 'D:/Artifacts/GraspMemoEdu/ma-ml-prepared'
+# 使用同一快照和课程范围，在隔离站点安装与验收
+./Import-MathAcademy.ps1 -TopicsZip 'D:/Downloads/topic-json.zip' -GraphsZip 'D:/Downloads/course-knowledge-graph.zip' -CourseIds 72,140 -QuestionPlan 'D:/Artifacts/GraspMemoEdu/ma-question-plan.json' -DataDir 'D:/Artifacts/GraspMemoEdu/isolated-import' -OutputDirectory 'D:/Artifacts/GraspMemoEdu/ma-ml-prepared'
 ```
 
 默认五门课程 ID 为 82、74、66、72、140；`-PlanOnly` 只计算闭包。环境复用项目 Python、Node/marked/MathJax/sanitize-html、Tectonic 和 pdftoppm。源 ZIP 不进入仓库或静态前端。转换缓存位于 `D:/Caches/GraspMemoEdu/mathacademy`；转换代码或渲染配置变化会失效派生缓存。
@@ -22,17 +22,26 @@ Topic 使用 `ma-topic-<源ID>`，课程使用 `ma-course-<源ID>`。一个 Topi
 
 普通 MA 课程连续指导合并展示并保留内部身份及标题。Machine Learning I（源课程 72）的 Topic 按源顺序逐块显示正文。每个原 tutorial 单独成页，其中同级最高标题各自位于对应正文页的开头，标题前有内容时单独保留。学员阅读、管理员预览和新答疑沿用相同正文块及字段译文。共享 Topic 沿用同一布局与学习身份。
 
-MA 源包用 `question.exampleId` 指明习题对应的例题，tutorial 没有对应例题的字段。可训练 Topic 使用[网站通用的默认绑定](topic-format-v2.md#身份顺序与引论)：例题绑定其前面最近的一块正文。更早的独立正文按原顺序阅读；选择「未掌握」后打开绑定正文。已有学习记录可继续，后续推进使用新规则。
+ML1 源包用 `question.exampleId` 指明习题对应的例题，tutorial 没有对应例题的字段。可训练 Topic 在前一例题模块完成后顺序展示后续正文，再进入下一例题的掌握判断。选择「未掌握」后直接进入该例题的「尝试完成／展示答案」选择。已有学习记录继续使用原步骤，后续推进使用逐块阅读。
 
 训练内容的篇末阅读必须点击继续才能完成 Topic。组合输入采用题型协议 2，整题最多 64 段、128 个控件、16384 字符；只有最后一段提交整题，刷新恢复同题草稿。
 
-新 Topic 安装时，按原题保存选择、单空与多空、各空下拉选项和分段顺序。分段正文可以来自各段自己的结构，也可以来自原文分隔符。只读 Topic 自动开放已取得的控件供试答，并保留缺失段的诊断。缺少原控件、分段正文或已验证答案时，补充来源后按原题 ID 继续处理。已有训练 Topic 可通过 `mathacademy_interactions` 使用核验过的答案按原控件发布题型修订。
+新 Topic 保留原生单空、多空和分段顺序，按题型方案处理选择题和下拉选项。分段正文可以来自各段自己的结构或原文分隔符。只读 Topic 自动开放已取得的控件供试答，并保留缺失段的诊断。缺少原控件、分段正文或已验证答案时，补充来源后按原题 ID 继续处理。已有训练 Topic 的原控件修订使用 `mathacademy_interactions` 及核验答案。
 
 源数据的 `calculate` 或 `calculator` 作为题目元数据保存。网站对已导入和今后导入的 MA 材料默认至少开放科学计算器，保留绘图、更高档位及站内明确配置的例外。旧版提示保留在存档中。见 [按题配置计算器](calculator.md)。
 
 中文展示包覆盖课内讲解、带解例题、练习题面、选项和解析，包括复习时查看的作答历史。课程名和 Topic 名沿用英文，Draft 和 Notes 保留原文。译文按原文字段绑定，并随对应 Topic 版本安装。源材料增量更新时复用未改动字段的译文。
 
 每段指导使用对应原文字段绑定的译文。ML1 的标题拆分在应用中投影，原始 Topic 版本和翻译绑定继续有效。管理员内容预览、新答疑和答疑中的当前内容使用同一份展示内容。已保存的答疑仍按提交时的快照显示。
+
+## 题型改造
+
+- 先遮住选项读题。在题干、题图和作答要求已经足以确定结果时，把计算、化简、求表达式或求多个量的题改成单空或多空。短的定性结果也可改成填空，只要题目本身明确限定了要判断的对象和结果。场景给定的量、图、单位、精度和答题范围属于题目条件。
+- 当选项本身提供待判断的命题、反例、图形、代码或其他候选对象时，保留选择。多段题逐个判断下拉控件，保留段落和原有输入位置。对改成填空的题，检查题面和输入旁是否还带解题提示，去掉示例值、备选结果、提示步骤和选项引用，只保留题目条件和需要填写的量。
+- Codex 从本地清单读题并生成方案。方案是以 `题目所在源 Topic ID/源题 ID` 为键的 JSON 对象。每项复制清单中的 `source_sha256`，填写 `mode`（`fill` 或 `keep`）及具体 `reason`。有选项的题全部纳入，缺项、额外项和换源的方案均会被拒绝。范围内没有选项时可以省略方案。
+- `fill` 的 MC 默认一个空。多个独立作答量用 `"labels": ["x =", "y ="]` 指定空位，标签只标识作答量。原题题干含有选项式措辞或提示时，以 `"edits": [["原文片段", "新文字"]]` 修改唯一出现的片段，删除时新文字用空字符串。原生下拉题用 `"dropdowns": ["s0-p2"]` 指定清单中的控件编号，段内提示用 `"section_edits": {"s0-p1": [["原文片段", ""]]}` 移除。控件和文本位置从零开始编号。
+- 题型变化不提供新的答案证据。课程 ZIP 的缺失答案仍标为缺失，转换所得输入可供试答。Reference 快照只有核验过的正确选项文本可作为填空答案。核对实际渲染，确认填空无选项或解题提示、保留的定性题选项齐全，以及多空与原分段一一对应。
+- 审核完成后，可沿同一入口传 `-Target production` 与同一方案发布。每批使用新的产物目录。已安装共享 Topic 对完全相同的冻结源文件复用原内容和身份。有实质来源差异时仍需处理同 ID 冲突。
 
 ## 安装、重跑和恢复
 

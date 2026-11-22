@@ -35,7 +35,8 @@ def source_variant(topic_question, source, assets, choice_indices=()):
     if (topic_question['id'] != f'ma-question-{qid}' or not stem
             or topic_question.get('source_format') != source['format']
             or not (installed_stem == stem or installed_stem.startswith(stem + '\n\n'))
-            or topic_question.get('_source', {}).get('parameter_changes')):
+            or topic_question.get('_source', {}).get('parameter_changes')
+            or topic_question.get('_source', {}).get('fill_in_adaptation')):
         raise ValueError(f'Question {qid} is not bound to the same source stem')
     gaps = []
     spec = controls(source, assets, gaps)
