@@ -1,7 +1,7 @@
-import {refreshCompletionSurface, setCompletionSurface, setInputCompletions} from './autocomplete.js?v=ba47c70e64eb399d';
-import {bareMathRuns, formulaSpans, formulaTemplates, formulaToken, matchesCompletion} from './formula-catalog.js?v=ba47c70e64eb399d';
-import {getLanguage} from './i18n.js?v=ba47c70e64eb399d';
-import previews from './vendor/formula/previews.mjs?v=ba47c70e64eb399d';
+import {refreshCompletionSurface, setCompletionSurface, setInputCompletions} from './autocomplete.js?v=494edfbe780e6c86';
+import {bareMathRuns, formulaSpans, formulaTemplates, formulaToken, matchesCompletion} from './formula-catalog.js?v=494edfbe780e6c86';
+import {getLanguage} from './i18n.js?v=494edfbe780e6c86';
+import previews from './vendor/formula/previews.mjs?v=494edfbe780e6c86';
 
 const local = (zh, en) => getLanguage() === 'en' ? en : zh;
 const style = 'formulaSourceHidden';
@@ -23,7 +23,7 @@ export function activeFormulaField(element) {
 }
 
 function load() {
-  runtime ||= import('./vendor/formula/editor.mjs?v=ba47c70e64eb399d').catch(error => { runtime = null; throw error; });
+  runtime ||= import('./vendor/formula/editor.mjs?v=494edfbe780e6c86').catch(error => { runtime = null; throw error; });
   return runtime;
 }
 
@@ -45,6 +45,12 @@ function replaceTyped(input, from, to, value, cursor, end = cursor) {
 function pairAnswerInput(input, literal) {
   const pairs = {'(': ')', '[': ']', '{': '}'};
   let emptyScript = -1;
+  let literalScript;
+  input.addEventListener('pointerdown', () => { literalScript = null; });
+  input.addEventListener('blur', () => { literalScript = null; });
+  input.addEventListener('keydown', event => {
+    if (literalScript && ['ArrowLeft', 'ArrowRight', 'Home', 'End', 'Tab', 'Escape'].includes(event.key)) literalScript = null;
+  });
   input.addEventListener('beforeinput', event => {
     if (!event.cancelable || event.isComposing || input.readOnly || input.disabled) return;
     const from = input.selectionStart, to = input.selectionEnd;
@@ -57,6 +63,17 @@ function pairAnswerInput(input, literal) {
       return;
     }
     if (event.inputType !== 'insertText' || !key || key.length !== 1 || previous === '\\') return;
+    if (literalScript) {
+      const start = literalScript.length, body = source.slice(start, from);
+      if (from !== to || from < start || !source.startsWith(literalScript) || !/^[a-z0-9]*$/i.test(body)) literalScript = null;
+      else if (/^[+\-*/=]$/.test(key) || body && /^[a-z0-9]$/i.test(key) && !/^\d+$/.test(body + key)) {
+        // A compound exponent needs real delimiters in the submitted spelling.
+        literalScript = null;
+        event.preventDefault();
+        replaceTyped(input, start, to, '{' + body + key + '}', from + 2);
+        return;
+      } else if (!/^[a-z0-9]$/i.test(key)) literalScript = null;
+    }
     if (from === to && key === next && [')', ']', '}'].includes(key)) {
       event.preventDefault(); input.setSelectionRange(from + 1, from + 1); emptyScript = -1;
       refreshCompletionSurface(input);
@@ -73,8 +90,11 @@ function pairAnswerInput(input, literal) {
       return;
     }
     const script = key === '^' || key === '_';
-    // Exact answers keep x^2 and a_10 as typed; MathLive groups the script in their preview.
-    if (literal && script) return;
+    // An open script already has a slot in the preview; simple exact values keep their spelling.
+    if (literal && script && from === to) {
+      literalScript = source.slice(0, from) + key;
+      return;
+    }
     if (!pairs[key] && !script) { emptyScript = -1; return; }
     const open = script ? key + '{' : key, close = script ? '}' : pairs[key];
     const selected = source.slice(from, to);

@@ -182,6 +182,9 @@ try {
   await literal.pressSequentially('x^12');
   assert.equal(await literal.inputValue(), 'x^12');
   await literal.locator('..').locator('.katex .msupsub').waitFor();
+  await literal.fill('');
+  await literal.pressSequentially('a_i+1');
+  assert.equal(await literal.inputValue(), 'a_{i+1}');
   const command = page.locator('.answerConversion textarea:visible');
   await command.pressSequentially('f');
   await option('f').waitFor();
@@ -189,7 +192,7 @@ try {
   await command.pressSequentially('y)');
   assert.equal(await command.inputValue(), 'f(y)');
   await command.locator('..').locator('.katex-html').waitFor();
-  assert.equal(await literal.inputValue(), 'x^12');
+  assert.equal(await literal.inputValue(), 'a_{i+1}');
   await page.goto(bank + 'blank');
   const blank = page.locator('.passageBlankText:visible').first();
   await blank.pressSequentially('2/3');

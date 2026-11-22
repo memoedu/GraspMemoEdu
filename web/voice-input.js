@@ -1,7 +1,7 @@
-import {getLanguage} from './i18n.js?v=ba47c70e64eb399d';
-import {activeFormulaField} from './formula-input.js?v=ba47c70e64eb399d';
-import {microphoneIcon, recordMicrophone, recordingMime} from './microphone-recorder.js?v=ba47c70e64eb399d';
-import {answerTarget, answerConversionChange} from './answer-conversion.js?v=ba47c70e64eb399d';
+import {getLanguage} from './i18n.js?v=494edfbe780e6c86';
+import {activeFormulaField} from './formula-input.js?v=494edfbe780e6c86';
+import {microphoneIcon, recordMicrophone, recordingMime} from './microphone-recorder.js?v=494edfbe780e6c86';
+import {answerTarget, answerConversionChange} from './answer-conversion.js?v=494edfbe780e6c86';
 
 const answerForms = new WeakSet();
 const textTypes = ['text', 'search', 'tel', 'url', 'email', 'number'];
