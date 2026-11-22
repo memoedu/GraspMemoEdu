@@ -13,7 +13,7 @@ const plans=await Promise.all(process.argv.slice(2).map(async original=>JSON.par
 const banks=await Promise.all(plans.map(async p=>JSON.parse(await fs.readFile(p.bank.path))));
 try {
 const results=await page.evaluate(async ({source,plans,banks})=>{
-const {renderTaskTree}=await import('data:text/javascript;base64,'+btoa(source));
+const {renderTaskTree, orderTopicSiblings}=await import('data:text/javascript;base64,'+btoa(source));
 const assert={equal:(a,b,message='')=>{if(a!==b)throw Error(message||`${a} != ${b}`);},
  notEqual:(a,b)=>{if(a===b)throw Error('Unexpected equal values');},
  match:(a,b)=>{if(!b.test(a))throw Error('Missing original title');},ok:(value,message)=>{if(!value)throw Error(message);}};
@@ -34,6 +34,40 @@ for(const ids of [['one','two','three'],['one','two']]){
  assert.ok(root.querySelector('details[data-unit-id="multiple"]'),'A filtered multiple-content group must retain its structure');
  assert.equal(root.querySelectorAll('article').length,ids.length);
 }
+const locked = id => ({...task(id), dependency_ready: false});
+const entries = [
+  {...locked('last'), prerequisites: ['middle']},
+  {...task('unlocked'), prerequisites: ['first']},
+  locked('unrelated'),
+  {...locked('middle'), prerequisites: ['first']},
+  {...locked('first'), prerequisites: ['nested-first']},
+  task('nested-first'),
+  {...task('nested-last'), prerequisites: ['first']},
+];
+const sections = [{id: 'nested', title: 'Nested', parent_id: null, topic_ids: ['nested-last', 'nested-first']}];
+const sourceOrder = ['last', 'nested', 'unlocked', 'unrelated', 'middle', 'first', 'nested-last', 'nested-first'];
+root.replaceChildren();
+renderTaskTree(root, {course: {id: 'fixture'}, tasks: entries, pending_hierarchy: sections},
+  {renderTask, sourceOrder, sortTopics: true});
+const order = parent => [...parent.children].map(child => child.dataset.unitId || child.dataset.taskId).join(',');
+assert.equal(order(root), 'unlocked,nested,unrelated,first,middle,last');
+assert.equal(order(root.querySelector('[data-unit-id="nested"] .courseUnitBody')), 'nested-last,nested-first');
+
+const sectionIds = new Set(sections[0].topic_ids);
+const review = {id: 'review', type: 'Review'};
+const flat = orderTopicSiblings([review, ...entries], entry => entry.type === 'Review' ? null : entry,
+  topic => sectionIds.has(topic.id) ? 'nested' : null);
+assert.equal(flat.map(task => task.id).join(','), 'review,unlocked,unrelated,first,middle,last,nested-first,nested-last');
+
+const group = (id, parents = []) => ({...locked(id), dependency_node_id: `group:bank:${id}`,
+  prerequisites: parents.map(parent => ({id: `group:bank:${parent}`}))});
+const groups = [group('second', ['first']), {...group('paused'), dependency_ready: true, status: 'paused'},
+  group('first'), {...group('open'), dependency_ready: true}];
+root.replaceChildren();
+renderTaskTree(root, {course: {id: 'bank'}, tasks: groups},
+  {renderTask, sourceOrder: groups.map(group => group.id), sortTopics: true});
+assert.equal(order(root), 'open,paused,first,second');
+
 for(const plan of plans){
  root.replaceChildren();renderTaskTree(root,{course:{id:plan.course_id},pending_hierarchy:plan.units,
   tasks:plan.topics.map(t=>task(t.topic_id))},{renderTask});
@@ -58,5 +92,5 @@ for(const bank of banks){
 return results;
 },{source,plans,banks});
 for(const result of results)console.log(JSON.stringify(result));
-console.log('PASS shared course/bank terminal singleton and filtered multi-item regressions');
+console.log('PASS shared course/bank sibling ordering, terminal singletons and filtered groups');
 }finally{await browser.close();}
