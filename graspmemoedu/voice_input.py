@@ -60,19 +60,19 @@ def prompt(name):
     return Path(__file__).with_name('voice_prompts').joinpath(name).read_text(encoding='utf-8')
 
 
-def complete(instructions, source):
+def complete(instructions, source, *, input_key='recording_transcript', max_tokens=4500):
     config = independent_settings()
     base_url = config['base_url'].rstrip('/')
     host = urlsplit(base_url)
     if host.scheme != 'https' or not host.hostname or host.username or host.password or host.query or host.fragment:
         raise ValueError('Invalid refinement endpoint')
     messages = [{'role': 'system', 'content': instructions}, {'role': 'user', 'content': json.dumps(
-        {'recording_transcript': source}, ensure_ascii=False)}]
+        {input_key: source}, ensure_ascii=False)}]
     openai = host.hostname == 'api.openai.com'
     if openai:
-        payload = {'model': config['model'], 'input': messages, 'store': False, 'max_output_tokens': 4500}
+        payload = {'model': config['model'], 'input': messages, 'store': False, 'max_output_tokens': max_tokens}
     else:
-        payload = {'model': config['model'], 'messages': messages, 'max_tokens': 4500, 'temperature': 0}
+        payload = {'model': config['model'], 'messages': messages, 'max_tokens': max_tokens, 'temperature': 0}
         if host.hostname == 'api.deepseek.com':
             payload['thinking'] = {'type': 'disabled'}
     request = Request(base_url + ('/responses' if openai else '/chat/completions'),
