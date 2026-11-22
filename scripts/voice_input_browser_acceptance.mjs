@@ -36,9 +36,9 @@ const toolbar = page.getByRole('toolbar', {name: '题目工具'});
 const mic = page.locator('#siteTools').getByRole('button', {name: '录音输入'});
 const stop = page.getByRole('button', {name: '结束录音', exact: true});
 const next = page.getByRole('button', {name: '下一页', exact: true}).last();
-const record = async (field, button = mic) => {
+const record = async field => {
   await field.focus();
-  await button.click();
+  await mic.click();
   await stop.waitFor();
   await new Promise(resolve => setTimeout(resolve, 290));
 };
@@ -58,7 +58,8 @@ try {
   const expression = calculator.getByRole('textbox', {name: '表达式'});
   await expression.fill('1+99');
   await expression.evaluate(field => field.setSelectionRange(2, 4));
-  await record(expression, toolbar.getByRole('button', {name: '录音输入', exact: true}));
+  await record(expression);
+  await toolbar.locator('[data-question-tool=graph]').click({trial: true});
   await page.getByRole('button', {name: '暂停录音', exact: true}).click();
   await page.getByRole('button', {name: '继续录音', exact: true}).click();
   assert.equal(await calculator.isVisible(), true);
