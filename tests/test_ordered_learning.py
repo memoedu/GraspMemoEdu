@@ -153,8 +153,7 @@ class OrderedLearningTests(unittest.TestCase):
 
     def test_authored_guidance_reopens_without_completing_the_example(self):
         topic = ordered_topic()
-        topic['sections'] = [{'id': 'section-a', 'title': '小标题', 'level': 1, 'parent_id': None}]
-        topic['introductions'][0]['section_id'] = 'section-a'
+        topic['introductions'][0]['footnotes'] = [{'id': 'note-a', 'html': '<p>脚注</p>'}]
         service = self.service(topic)
         guidance = service.state()
         example = service.advance(payload(service))
