@@ -202,7 +202,7 @@ class MathAcademyTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_interaction(spec)
 
-    def test_grouped_guidance_uses_the_existing_translation_for_each_section(self):
+    def test_independent_guidance_and_saved_group_keep_their_translations(self):
         from graspmemoedu.lesson_display import DIRECTORY, display_key
 
         topic = ordered_topic()
@@ -221,7 +221,21 @@ class MathAcademyTests(unittest.TestCase):
         }), encoding='utf-8')
 
         service = create_learning_service(topic, self.data, DeterministicJudge())
+        recap = active(service.state())
+        self.assertEqual(recap['introduction_id'], intro['id'])
+        self.assertEqual(recap['html'], '<p>第一段指导。</p>')
+        service.advance(payload(service))
         guidance = active(service.choose(payload(service, choice='unmastered')))
+        self.assertEqual(guidance['introduction_ids'], [extra['id']])
+        self.assertEqual(guidance['title'], '下一节 & 细节')
+        self.assertEqual(guidance['html'], '<p>第二段指导。</p>')
+
+        # A previously saved multi-block step remains readable in history.
+        with service._transaction() as con:
+            saved = service._load(con)
+            service._step(saved).update(introduction_id=intro['id'], introduction_ids=[intro['id'], extra['id']])
+            service._save(con, saved)
+        guidance = active(service.state())
         self.assertEqual(guidance['introduction_ids'], [intro['id'], extra['id']])
         self.assertIn('<p>第一段指导。</p>', guidance['html'])
         self.assertIn('<h3>下一节 &amp; 细节</h3><p>第二段指导。</p>', guidance['html'])

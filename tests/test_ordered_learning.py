@@ -182,6 +182,22 @@ class OrderedLearningTests(unittest.TestCase):
         self.assertEqual([s['phase'] for s in state['steps'] if s['kind'] == 'introduction'], ['reading'])
         self.assertNotIn('guidance_history', state)
 
+    def test_regular_topic_reads_earlier_body_and_binds_only_the_nearest(self):
+        topic = ordered_topic()
+        recap = {'id': 'recap', 'title': '补充', 'html': '<p>补充正文</p>'}
+        topic['introductions'].insert(1, recap)
+        topic['content_order'].insert(2, {'kind': 'introduction', 'id': recap['id']})
+        service = self.service(topic)
+        service.choose(payload(service, choice='mastered'))
+        result = service.submit(payload(service, answer='correct'))
+        service.process_submission(result['submission_id'])
+        self.assertEqual(active(service.advance(payload(service)))['introduction_id'], recap['id'])
+        service = self.service(topic)
+        self.assertEqual(active(service.state())['introduction_id'], recap['id'])
+        self.assertEqual(active(service.advance(payload(service)))['question_id'], 'module-2-example')
+        state = service.choose(payload(service, choice='unmastered'))
+        self.assertEqual(active(state)['introduction_ids'], ['intro-b'])
+
     def test_late_shared_guidance_exposes_source_order_without_rewriting_progress(self):
         topic = ordered_topic()
         topic['content_order'] = [topic['content_order'][i] for i in (0, 1, 3, 2)]
