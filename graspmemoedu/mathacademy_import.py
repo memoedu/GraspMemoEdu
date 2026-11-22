@@ -20,6 +20,7 @@ import zipfile
 
 from .topic_install import encoded, digest, import_lock
 from . import calculator
+from . import ma_question_plan
 
 ADAPTER_VERSION = 'mathacademy-json-1'
 DEFAULT_COURSES = (82, 74, 66, 72, 140)
@@ -310,11 +311,39 @@ def answer_sections(question):
     return bodies
 
 
-def controls(question, assets, gaps):
+def question_inventory(lessons):
+    inventory = {}
+    for lesson in lessons:
+        for step in lesson.get('steps', []):
+            if step['type'] != 'question':
+                continue
+            question = step['question']
+            fmt = question.get('format')
+            if fmt not in ('MC', 'FR', 'SS', 'PR', 'DS', 'CO'):
+                continue
+            bodies = () if fmt == 'MC' else answer_sections(question)
+            if item := ma_question_plan.inventory_item(question, bodies):
+                key = f'{lesson["topic"]["id"]}/{question["id"]}'
+                if key in inventory:
+                    raise ValueError(f'Duplicate MA source question: {key}')
+                inventory[key] = item
+    return inventory
+
+
+def controls(question, assets, gaps, decision=None):
     fmt, qid = question.get('format'), question['id']
     if fmt is None:
         gaps.append({'code': 'interaction_missing', 'question': qid}); return None
     if fmt == 'MC':
+        if decision and decision['mode'] == 'fill':
+            rows = [{'id': f'answer{i}', 'type': 'text', 'label': label}
+                    for i, label in enumerate(decision.get('labels', ['']), 1)]
+            content = '\n\n'.join(
+                (html.escape(row['label']) + ' ' if row['label'] else '') + '{{control:' + row['id'] + '}}'
+                for row in rows)
+            return {'version': 2, 'type': 'composite', 'grading': 'unavailable', 'controls': rows,
+                    'sections': [{'id': 's0', 'html': assets.render(content, None, gaps),
+                                  'control_ids': [row['id'] for row in rows], 'complete': True}]}
         options = [{'id': f'o{i}', 'text': question['choice' + str(i)],
                     'html': assets.render(question['choice' + str(i)], None, gaps)} for i in range(1, 6)
                    if str(question.get('choice' + str(i)) or '').strip()]
@@ -324,6 +353,8 @@ def controls(question, assets, gaps):
     if fmt not in ('FR', 'SS', 'PR', 'DS', 'CO'):
         raise ValueError('Unsupported source question format: ' + str(fmt))
     bodies = answer_sections(question)
+    convert = set(decision.get('dropdowns', ())) if decision else set()
+    edits = decision.get('section_edits', {}) if decision else {}
     rows, sections, identities = [], [], {}
     def register(control, section, position, kind):
         identity = (kind, control.get('id'), control.get('index'), section)
@@ -346,9 +377,12 @@ def controls(question, assets, gaps):
     for section, body in enumerate(bodies):
         parts, ids, floating = [], [], []
         for position, segment in enumerate(body or []):
+            pointer = f's{section}-p{position}'
             if 'select' in segment or 'textbox' in segment:
                 kind = 'select' if 'select' in segment else 'text'
                 control = segment.get('select', segment.get('textbox'))
+                if kind == 'select' and pointer in convert:
+                    kind = 'text'
                 cid = register(control, section, position, kind); ids.append(cid)
                 if control.get('context') == 'mathJax' or (sum(p.count('\\[') - p.count('\\]') for p in parts) > 0):
                     number = next(r['label'] for r in rows if r['id'] == cid)
@@ -360,7 +394,10 @@ def controls(question, assets, gaps):
             elif segment.get('newParagraph'):
                 parts.append('\n\n')
             elif 'mathJax' in segment or 'text' in segment:
-                parts.append(str(segment.get('mathJax', segment.get('text', ''))))
+                content = str(segment.get('mathJax', segment.get('text', '')))
+                if pointer in edits:
+                    content = ma_question_plan.revise_stem(content, edits[pointer], allow_empty=True)
+                parts.append(content)
             elif segment.get('image') or segment.get('graphic'):
                 image = segment.get('image', segment.get('graphic'))
                 ref = image if isinstance(image, str) else str(image.get('fileId', image.get('src', '')))
@@ -397,12 +434,20 @@ def template_segments(template):
     return segments if position else None
 
 
-def adapt(source, assets):
+def adapt(source, assets, question_plan=None):
     lesson = source['lesson']; tid = lesson['topic']['id']; gaps = []
+    question_plan = question_plan or {}
+    version = source_fingerprint(source)
+    changed = {qid: {k: v for k, v in row.items() if k not in ('reason', 'source_sha256')}
+               for qid, row in question_plan.items() if row['mode'] == 'fill'}
+    if changed:
+        version = digest(encoded([version, changed]))
     topic = {'id': f'ma-topic-{tid}', 'title': lesson['topic']['name'], 'topic_format_version': 2,
              'topic_kind': 'lesson', 'source_adapter': 'mathacademy', 'training_mode': 'paradigm',
              'introductions': [], 'modules': [], 'content_order': [], 'unassigned_questions': [],
-             'version': source_fingerprint(source), 'content_version': source_fingerprint(source)}
+             'version': version, 'content_version': version}
+    if changed:
+        topic['_source_question_plan'] = digest(encoded(changed))
     topic.update(calculation_metadata(lesson, lesson['topic']))
     modules, questions, step_numbers = {}, [], []
     for position, step in enumerate(lesson.get('steps', [])):
@@ -429,7 +474,11 @@ def adapt(source, assets):
             modules[payload['id']] = module; topic['modules'].append(module)
             topic['content_order'].append({'kind': 'example', 'id': ident})
         else:
-            q = question_model(payload, assets, gaps, step=step); q['_source'] = private
+            decision = question_plan.get(str(payload['id']))
+            q = question_model(payload, assets, gaps, step=step, decision=decision)
+            q['_source'] = private
+            if decision and decision['mode'] == 'fill':
+                private['fill_in_adaptation'] = True
             questions.append((payload.get('exampleId'), q))
     if step_numbers != sorted(step_numbers) or len(set(step_numbers)) != len(step_numbers):
         raise ValueError('Source step order is inconsistent')
@@ -457,7 +506,7 @@ def calculation_metadata(*sources):
     return {}
 
 
-def question_model(q, assets, gaps, example=False, *, step=None):
+def question_model(q, assets, gaps, example=False, *, step=None, decision=None):
     qid = q['id']; text = q.get('question' if example else 'text') or ''
     explanation = q.get('explanation') or ''
     if not text.strip():
@@ -468,6 +517,9 @@ def question_model(q, assets, gaps, example=False, *, step=None):
     inherited = (q.get('example') or {}) if not example else {}
     constraints = q.get('calculator', inherited.get('calculator'))
     source_html = q.get('questionHtml') or ''
+    if decision and decision.get('edits'):
+        text = ma_question_plan.revise_stem(text, decision['edits'])
+        source_html = ''
     render_text = text
     # Captured Practice stems can say "the graph above" while the diagram is a
     # separate q-<id> attachment. Choices have their own q-<id>-a-<n> identities.
@@ -485,7 +537,7 @@ def question_model(q, assets, gaps, example=False, *, step=None):
               'source_format': 'example' if example else q.get('format'), 'difficulty': q.get('difficulty')}
     result.update(calculation_metadata(q, step or {}, inherited))
     if not example:
-        interaction = controls(q, assets, gaps)
+        interaction = controls(q, assets, gaps, decision)
         if interaction:
             result['interaction'] = interaction
     return result
@@ -548,7 +600,14 @@ def course_documents(index, scope):
     return courses, graphs
 
 
-def prepare(index, scope, cache, output, *, fail_at=None):
+def prepare(index, scope, cache, output, *, fail_at=None, question_plan=None):
+    inventory = scoped_question_inventory(index, scope)
+    question_plan = {} if question_plan is None else question_plan
+    ma_question_plan.validate_plan(inventory, question_plan)
+    by_topic = defaultdict(dict)
+    for key, row in question_plan.items():
+        tid, qid = key.split('/')
+        by_topic[int(tid)][qid] = row
     cache.mkdir(parents=True, exist_ok=True); output.mkdir(parents=True, exist_ok=True)
     graphics = index.graphics(cache)
     assets = Assets(cache / 'graphics', graphics)
@@ -556,6 +615,7 @@ def prepare(index, scope, cache, output, *, fail_at=None):
     root = Path(__file__).resolve().parents[1]
     conversion = '\n'.join(inspect.getsource(value) for value in (
         teaching, source_fingerprint, Assets, controls, answer_sections, captured_sections, template_segments, adapt,
+        ma_question_plan.revise_stem,
         question_model, calculation_metadata, calculator.from_mathacademy, calculator.normalize))
     config_hash = digest((repr((ADAPTER_VERSION, sorted(SOURCE_FIELDS), GAP_LABELS, calculator.MA_LEVELS)) + conversion).encode()
                          + (root / 'scripts/render_mathacademy.mjs').read_bytes()
@@ -569,13 +629,14 @@ def prepare(index, scope, cache, output, *, fail_at=None):
             if tid not in index.names:
                 continue
             raw, source = index.read(tid)
-            key = digest((source_fingerprint(source) + config_hash).encode())
+            decisions = by_topic.get(tid, {})
+            key = digest((source_fingerprint(source) + config_hash).encode() + encoded(decisions))
             cached = cache / (key + '.json')
             if cached.exists():
                 topic = json.loads(cached.read_text(encoding='utf-8')); reused += 1
             else:
                 try:
-                    topic = renderer.render(adapt(source, assets))
+                    topic = renderer.render(adapt(source, assets, decisions))
                     from .catalog import Catalog
                     Catalog._validate_topic(topic)
                     cached.write_bytes(encoded(topic))
@@ -604,6 +665,7 @@ def prepare(index, scope, cache, output, *, fail_at=None):
         cid = int(graph['course_id'].removeprefix('ma-course-'))
         (graph_sources / f'course-{cid}.json').write_bytes(encoded(index.graphs[cid]))
     report = {'scope': scope, 'topics': reports, 'reused_conversion': reused,
+              'question_plan': question_plan,
               'readable': sum(t['readable'] for t in reports), 'trainable': sum(t['trainable'] for t in reports),
               'untrainable': sum(not t['trainable'] for t in reports), 'failed': 0}
     (output / 'report.json').write_bytes(encoded(report))
@@ -612,6 +674,10 @@ def prepare(index, scope, cache, output, *, fail_at=None):
                 'files': {p.relative_to(output).as_posix(): file_hash(p) for p in sorted(output.rglob('*')) if p.is_file() and p.name != 'manifest.json'}}
     (output / 'manifest.json').write_bytes(encoded(manifest))
     return report
+
+
+def scoped_question_inventory(index, scope):
+    return question_inventory(index.read(tid)[1]['lesson'] for tid in scope['topic_ids'] if tid in index.names)
 
 
 def install(package, data_dir, *, fail_at=None):
@@ -653,7 +719,14 @@ def install(package, data_dir, *, fail_at=None):
         for tid in {t['id'] for c in candidate['courses'] for t in c['topics']}:
             topic = json.loads((package / 'topics' / (tid + '.json')).read_text(encoding='utf-8'))
             if old and tid in old.topics:
-                if old.topics[tid] != topic:
+                original = old_root / 'mathacademy-sources/topics' / (tid + '.json')
+                incoming_source = package / 'mathacademy-sources/topics' / (tid + '.json')
+                same_frozen_source = (
+                    topic.get('_source_question_plan')
+                    and old.topics[tid].get('source_adapter') == 'mathacademy'
+                    and original.is_file() and incoming_source.is_file()
+                    and file_hash(original) == file_hash(incoming_source))
+                if old.topics[tid] != topic and not same_frozen_source:
                     raise ValueError('Existing ordinary Topic cannot be overwritten: ' + tid)
                 reused.append(tid)
             else:
@@ -790,17 +863,23 @@ def main(argv=None):
     p.add_argument('--cache', default='D:/Caches/GraspMemoEdu/mathacademy' if os.name == 'nt' else '/var/cache/graspmemoedu/mathacademy')
     p.add_argument('--output', default='D:/Artifacts/GraspMemoEdu/mathacademy-course-import/prepared')
     p.add_argument('--install-package'); p.add_argument('--fail-at', choices=['prepare', 'activate'])
+    p.add_argument('--question-inventory', type=Path, help='write the scoped option-bearing questions and exit')
+    p.add_argument('--question-plan', type=Path, help='source-bound decisions for the option-bearing questions')
     args = p.parse_args(argv)
-    if args.target == 'local' and not args.data_dir and not args.plan_only:
+    if args.target == 'local' and not args.data_dir and not args.plan_only and not args.question_inventory:
         p.error('--data-dir must explicitly name an isolated local target')
     if args.install_package:
         result = production_install(args.install_package) if args.target == 'production' else install(args.install_package, args.data_dir, fail_at=args.fail_at)
     else:
         index = SourceIndex(args.topics_zip, args.graphs_zip); scope = index.scope(args.course_ids)
+        if args.question_inventory:
+            args.question_inventory.write_bytes(encoded(scoped_question_inventory(index, scope)))
+            return
         if args.plan_only:
             print(json.dumps(scope, ensure_ascii=False)); return
         print(json.dumps({k: v for k, v in scope.items() if k != 'topic_ids'}), flush=True)
-        output = Path(args.output); prepare(index, scope, Path(args.cache), output, fail_at=args.fail_at)
+        plan = json.loads(args.question_plan.read_bytes()) if args.question_plan else None
+        output = Path(args.output); prepare(index, scope, Path(args.cache), output, fail_at=args.fail_at, question_plan=plan)
         result = production_install(output) if args.target == 'production' else install(output, args.data_dir, fail_at=args.fail_at)
     print(json.dumps(result, ensure_ascii=False), flush=True)
 
