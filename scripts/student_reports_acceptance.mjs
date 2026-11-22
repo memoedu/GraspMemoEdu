@@ -231,6 +231,9 @@ try {
     assert.equal(await hint.evaluate(el => getComputedStyle(el).pointerEvents), 'none');
     await advance.click(); await answer();
     await ordinary.waitForFunction(() => document.querySelector('.beginnerHint')?.textContent.includes('队列中已添加两道题'));
+    assert.equal(await hint.getAttribute('data-tone'), 'incorrect');
+    assert.equal(await hint.locator('.beginnerHintIcon').textContent(), '×');
+    assert.equal(await hint.locator('.beginnerHintIcon').getAttribute('aria-hidden'), 'true');
     for (const width of [320, 375, 414, 768]) {
       await ordinary.setViewportSize({width, height: 844});
       assert.ok(await hint.evaluate(el => {
@@ -246,6 +249,83 @@ try {
     await advance.click(); await answer();
     assert.equal(await ordinary.locator('.beginnerHint:not(:empty)').count(), 0);
     pass('Actual wrong answers display the committed one- and two-question queue additions, then disappear or stay suppressed');
+  }
+  if (auth.beginner) {
+    const site = publicBase || base + '/';
+    const page = active = await pageFor('beginner');
+    const hint = page.locator('.beginnerHint');
+    async function expectHint(text, tone, icon) {
+      await page.waitForFunction(text => document.querySelector('.beginnerHint')?.textContent.includes(text), text);
+      assert.equal(await hint.getAttribute('data-tone'), tone);
+      assert.equal(await hint.locator('.beginnerHintIcon').textContent(), icon);
+    }
+    async function answer(input, submit, text) {
+      await page.locator(input).fill(text);
+      await page.locator(submit).click();
+    }
+    const lesson = site + '#/subjects/math/topic/synthetic-course';
+    const afterAnswer = page.locator('#stepCard .continueRow .primaryButton:not(#submitButton)');
+    await page.goto(lesson);
+    for (let i = 0; i < 2; i++) {
+      await answer('#answerInput', '#submitButton', 'correct');
+      await afterAnswer.click();
+    }
+    if (!publicBase) {
+      // Deliver a real judged snapshot through the normal refresh path before
+      // releasing the submit response. The tip must not depend on that response.
+      let release, submitted;
+      const held = new Promise(resolve => { release = resolve; });
+      const sent = new Promise(resolve => { submitted = resolve; });
+      await page.route('**/api/submit?**', async route => {
+        const response = await route.fetch();
+        submitted(); await held; await route.fulfill({response});
+      }, {times: 1});
+      await answer('#answerInput', '#submitButton', 'correct');
+      try {
+        await sent;
+        await page.waitForFunction(async () => {
+          window.dispatchEvent(new Event('online'));
+          await new Promise(resolve => setTimeout(resolve, 200));
+          return document.querySelector('.beginnerHint')?.textContent.includes('本轮练习已完成');
+        }, undefined, {polling: 250, timeout: 15000});
+      } finally { release(); }
+    } else await answer('#answerInput', '#submitButton', 'correct');
+    await expectHint('本轮练习已完成', 'success', '✓');
+    await page.screenshot({path: path.join(out, 'hint-practice-complete.png')});
+    await page.reload(); await afterAnswer.waitFor();
+    assert.equal(await page.locator('.beginnerHint:not(:empty)').count(), 0);
+    pass(publicBase ? 'Published practice completion does not replay from history' :
+      'Practice completion appears even when a refreshed snapshot reaches Chrome before the submit response, and does not replay from history');
+
+    await page.goto(site + '#/subjects/math/review/synthetic-course/module-2?session=' + encodeURIComponent(auth.beginner_review));
+    await answer('#reviewAnswerInput', '#reviewSubmitButton', 'correct');
+    await expectHint('本轮复习已完成', 'success', '✓');
+    pass('A completed paradigm review displays its own green confirmation');
+
+    await page.goto(site + '#/subjects/english/topic/atoms');
+    await answer('#atomicAnswer', '#atomicAnswerForm button[type=submit]', '错误');
+    await expectHint('本题答错', 'incorrect', '×');
+    pass('A wrong atomic-card answer displays a red cross even without a schedule change');
+
+    await page.goto(site + '#/subjects/math/banks/isolated-bank/group-a?question=choice');
+    await page.locator('.choiceOption input[value="b"]').check();
+    await page.locator('#trainingSubmit').click();
+    await expectHint('本题已加入错题本', 'incorrect', '×');
+    pass('A wrong question-bank answer explains the automatic error-notebook enrollment');
+
+    await page.goto(site + '#/subjects/math/reviews/' + encodeURIComponent(auth.beginner_paper));
+    await answer('#paperAnswer', '#paperSubmit', '2');
+    await expectHint('本份复习已完成', 'success', '✓');
+    pass('A settled review paper displays a green completion hint');
+
+    await page.goto(lesson);
+    await afterAnswer.click();
+    await page.getByRole('button', {name: '已掌握，试着作答'}).click();
+    await answer('#answerInput', '#submitButton', 'correct');
+    await expectHint('例题答对，本模块已完成', 'success', '✓');
+    await afterAnswer.click();
+    await expectHint('本 Topic 已完成', 'success', '✓');
+    pass('Correct direct-example feedback and final Topic completion each receive a green check');
   }
   assert.deepEqual(errors, []);
 } catch (error) {

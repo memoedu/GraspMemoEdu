@@ -2,7 +2,7 @@
 
 本表从当前界面词库自动生成。修改以词库为准，随后重新生成并检查本表。术语约定见 [界面语言规范](ui-language.md)。
 
-共 1055 条界面文案映射（包括不同位置重复使用的文案）。花括号表示运行时填入的名称、数量或时间，不是页面上的固定文字。
+共 1064 条界面文案映射（包括不同位置重复使用的文案）。花括号表示运行时填入的名称、数量或时间，不是页面上的固定文字。
 
 不包括作者课程正文、题目、答案、解析或用户输入。首页的学科双语副标题按约定保留。
 
@@ -295,18 +295,27 @@
 | This answer was incorrect. One question was added to the queue. | 本题答错，队列中已添加一道题。 |
 | This answer was incorrect. Two questions were added to the queue. | 本题答错，队列中已添加两道题。 |
 | This answer was incorrect. {count} questions were added to the queue. | 本题答错，队列中已添加 {count} 道题。 |
+| This answer was incorrect. | 本题答错。 |
 | This round now requires {count} more. | 本轮练习增加 {count} 道题。 |
 | This round reached its error limit. Learning has been paused. | 本轮错误次数已达上限，学习已暂停。 |
 | You answered the example correctly and completed this module. | 例题答对，本模块已完成。 |
+| You completed this practice round. | 本轮练习已完成。 |
+| You completed this Topic. | 本 Topic 已完成。 |
+| You completed this review round. | 本轮复习已完成。 |
 | This module is skipped. You can return once an administrator unlocks it. | 这个模块已跳过，管理员解锁后可以回来补学。 |
 | There are no cards available right now. This page will continue when one is ready. | 暂时没有可推送的卡片，页面会在有卡片可练时自动继续。 |
+| There are no cards available right now. | 暂时没有可推送的卡片。 |
 | You mastered a new memory point. Its first review has been scheduled. | 已掌握新的记忆点，系统已安排首次复习。 |
 | The next review time was updated based on this answer. | 系统已根据本次表现更新记忆点的复习时间。 |
 | Automatic review has stopped for these memory points. | 这些记忆点已停止自动复习。 |
-| This question was added to your error notebook. You can see its review schedule there. | 本题已加入错题本，可以从错题本查看复习安排。 |
+| This question was added to your error notebook. | 本题已加入错题本，可在错题本中查看。 |
 | The next review for this question was scheduled based on this answer. | 系统已根据本次表现安排这道题的下次复习。 |
 | Automatic review has stopped for this question. | 本题已停止自动复习。 |
+| You completed this question. | 本题已完成。 |
 | After submission, each question is graded and the results appear in this review. | 交卷后系统会逐题判定，结果汇总在这份复习中。 |
+| This answer has been submitted. Feedback will appear after grading. | 本题已提交，判定后可查看反馈。 |
+| You completed this question. The result counts toward this review. | 本题已完成，结果已计入本轮复习。 |
+| You completed this review. The summary is ready to view. | 本份复习已完成，可以查看汇总结果。 |
 
 ## 课程、任务与设置
 
@@ -314,11 +323,6 @@
 |---|---|
 | Autocomplete | 自动补全 |
 | Calculator | 计算器 |
-| Record | 记录 |
-| Recorded | 已记录 |
-| Undo last | 撤回末值 |
-| Next blank | 下一空 |
-| Selected blank | 已选空位 |
 | Answers | 回答 |
 | Other | 其他 |
 | Choose another topic | 重新选择主题 |

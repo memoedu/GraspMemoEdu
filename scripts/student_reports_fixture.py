@@ -15,6 +15,7 @@ import uvicorn
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 from graspmemoedu.config import Settings
+from graspmemoedu.review_papers import PaperService
 from graspmemoedu.training import TrainingService
 from tests.test_student_reports import StudentReportsTests
 
@@ -22,6 +23,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--output', type=Path, required=True)
 parser.add_argument('--port', type=int, default=18870)
 parser.add_argument('--presence', action='store_true', help='Seed isolated visit history and a Q&A content snapshot')
+parser.add_argument('--beginner', action='store_true', help='Seed independent learning, bank and review paths for hint acceptance')
 args = parser.parse_args()
 args.output.mkdir(parents=True, exist_ok=True)
 with socket.socket() as probe:
@@ -62,13 +64,17 @@ submission = atoms.submit(case.action(state, answer='错误', elapsed_ms=12000))
 atoms.process_submission(submission['submission_id'])
 case.store.set_enabled(case.second, False)
 case.app.state.help_requests.assign_admins(case.second, [case.admin, case.other])
-beginner_lesson = case.app.state.admin_pauses.service_for(case.normal, case.course['id'])
-state = beginner_lesson.choose(case.action(beginner_lesson.state(), choice='unmastered'))
-while beginner_lesson._step(state)['kind'] != 'practice':
-    if beginner_lesson._step(state)['phase'] == 'guided_choice':
-        state = beginner_lesson.choose(case.action(state, choice='view_solution'))
-    else:
-        state = beginner_lesson.advance(case.action(state))
+def open_practice(learner_id):
+    lesson = case.app.state.admin_pauses.service_for(learner_id, case.course['id'])
+    state = lesson.choose(case.action(lesson.state(), choice='unmastered'))
+    while lesson._step(state)['kind'] != 'practice':
+        if lesson._step(state)['phase'] == 'guided_choice':
+            state = lesson.choose(case.action(state, choice='view_solution'))
+        else:
+            state = lesson.advance(case.action(state))
+    return lesson
+
+open_practice(case.normal)
 # Match an established profile before checking that report browsing is read-only.
 for headers in (case.headers, case.normal_headers):
     access = case.store.resolve(headers['X-Learning-Identity'])
@@ -100,6 +106,27 @@ case.app.router.routes.insert(0, Route('/deployment.json', lambda request: JSONR
 identities = {role: {'identity_token': headers['X-Learning-Identity'], 'access': case.store.resolve(headers['X-Learning-Identity'])}
               for role, headers in [('admin', case.admin_headers), ('ordinary', case.normal_headers), ('student', case.headers)]}
 identities.update(target=case.student, empty_target=case.second)
+if args.beginner:
+    learner_id, headers = case.identity('Beginner hints fixture')
+    case.app.state.help_requests.assign_admin(learner_id, case.other)
+    lesson = open_practice(learner_id)
+    past = datetime.now(timezone.utc) - timedelta(days=90)
+    lesson.review_backend.record_module_result(module_id='module-2', mastery=4,
+        result_id='beginner-review-enrollment', completed_at=past)
+    review = lesson.review_backend.begin('module-2', request_id='beginner-review-fixture')
+    access = case.store.resolve(headers['X-Learning-Identity'])
+    bank = TrainingService(case.app.state.training_catalog, case.root, learner_id, clock=lambda: past)
+    case.answer(bank, qid='exact', answer='0')
+    bank.clock = lambda: datetime.now(timezone.utc)
+    papers = PaperService(bank, case.app.state.catalog, case.app.state.admin_students.dashboard.dependency_policy,
+        access, [], lambda tid: case.app.state.admin_pauses.service_for(learner_id, tid))
+    candidate = next(item for item in papers.inbox('math')['items'] if item['kind'] == 'single')
+    paper = papers.open(candidate['id'], 'beginner-paper-fixture', 'math')
+    atoms = case.app.state.admin_pauses.service_for(learner_id, 'atoms')
+    state = atoms.choose(case.action(atoms.state(), choice='learn'))
+    atoms.advance(case.action(state))
+    identities.update(beginner={'identity_token': headers['X-Learning-Identity'], 'access': access},
+                      beginner_review=review['session_id'], beginner_paper=paper)
 if args.presence:
     from graspmemoedu.presence import PresencePulse
     now = datetime.now(timezone.utc)
