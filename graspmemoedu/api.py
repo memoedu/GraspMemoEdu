@@ -310,7 +310,8 @@ def create_app(settings: Settings | None = None, service: LearningService | None
             state['can_learn'] = 'learn' in features and state['dependency_ready']
             state['can_submit'] = 'submit_answer' in features and state['dependency_ready']
             return state
-        action_feature = {'mastered': 'learn', 'unmastered': 'learn', 'continue': 'learn', 'submit': 'submit_answer'}
+        action_feature = {'mastered': 'learn', 'unmastered': 'learn', 'continue': 'learn',
+                          'view_solution': 'learn', 'attempt_example': 'learn', 'submit': 'submit_answer'}
         if 'review_history' not in features:
             state.pop('guidance_history', None)
             state['steps'] = [step for step in state['steps'] if step['id'] == state['active_step_id']]
@@ -319,11 +320,14 @@ def create_app(settings: Settings | None = None, service: LearningService | None
                 step['current'] = True
                 if state['status'] == 'in_progress' and not state['pending_submission_id']:
                     step['actions'] = (['mastered', 'unmastered'] if step['phase'] == 'choice'
+                                       else ['attempt_example', 'view_solution'] if step['phase'] == 'guided_choice'
                                        else ['submit'] if step['phase'] == 'answer' else ['continue'])
         for step in state['steps']:
             protect_assessment(step, self_rating)
             step['actions'] = [action for action in step['actions']
-                               if state['dependency_ready'] and not state['topic_locked'] and action_feature.get(action) in features]
+                               if state['dependency_ready'] and not state['topic_locked']
+                               and action_feature.get(action) in features
+                               and (action != 'attempt_example' or 'submit_answer' in features)]
         if state.get('topic_format_version') == 2:
             state['content_references'] = references_for(access, learner)
         return state
@@ -800,6 +804,8 @@ def create_app(settings: Settings | None = None, service: LearningService | None
     @app.post('/api/choose')
     def choose(payload: Choice, request: Request):
         access, learner = identity(request, 'learn')
+        if payload.choice == 'attempt_example':
+            access_store.authorize(access, learner.topic_id, 'submit_answer')
         return public_state(learner.choose(payload.model_dump()), access, learner)
 
     @app.post('/api/continue')

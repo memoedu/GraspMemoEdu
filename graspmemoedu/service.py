@@ -332,6 +332,7 @@ class LearningService:
                                practice_target_count=LESSON_POLICY.targets[0] if self.practice_queue.supported(module) else LEGACY_LESSON_POLICY.targets[0])
             summary.update(id=module['id'], title=display.module(module)['title'], attempt_id=last['id'] if last else None)
             modules.append(summary)
+        guided_attempts = {a['id'] for a in state['attempts'] if a['learning_path'] == 'guided_example'}
         steps, guidance_history = [], []
         for saved in [*state['steps'], *self._unlocked_guidance(state)]:
             step = dict(saved)
@@ -344,13 +345,15 @@ class LearningService:
                 if section := section_for(self.course, module):
                     step['section'] = section
                 from .self_assessment import presentation
-                step.update(presentation(question, saved, visible=saved['phase'] == 'reading'
-                    or saved['kind'] == 'practice' and saved['phase'] == 'feedback'))
+                show_explanation = saved['phase'] == 'reading' or (
+                    saved['phase'] == 'feedback' and (
+                        saved['kind'] == 'practice' or saved['attempt_id'] in guided_attempts))
+                step.update(presentation(question, saved, visible=show_explanation))
                 step['content_version'] = saved.get('question_bank_revision') or self.course['version']
                 if question.get('interaction'):
                     step['interaction'] = public_interaction(question)
                     step['answer_display'] = display_answer(question, saved.get('answer'))
-                if saved['phase'] == 'reading' or (saved['kind'] == 'practice' and saved['phase'] == 'feedback'):
+                if show_explanation:
                     step['explanation_html'] = question['explanation_html']
             elif saved['kind'] == 'introduction':
                 intro = (next(i for i in self.course['introductions'] if i['id'] == saved['introduction_id'])
@@ -377,6 +380,8 @@ class LearningService:
             if is_active and is_current and state['status'] == 'in_progress' and not state['pending_submission_id']:
                 if saved['phase'] == 'choice':
                     step['actions'] = ['mastered', 'unmastered']
+                elif saved['phase'] == 'guided_choice':
+                    step['actions'] = ['attempt_example', 'view_solution']
                 elif saved['phase'] == 'answer':
                     step['actions'] = ['submit']
                 else:
@@ -455,26 +460,33 @@ class LearningService:
             if not replay:
                 self._guard(state, payload)
                 step, attempt = self._step(state), self._attempt(state)
-                if step['kind'] != 'example' or step['phase'] != 'choice':
+                if step['kind'] != 'example' or step['phase'] not in ('choice', 'guided_choice'):
                     raise DomainError('invalid_step', '此步骤不接受掌握选择。')
                 choice = payload.get('choice')
-                if choice not in ('mastered', 'unmastered'):
-                    raise DomainError('invalid_choice', '请选择已掌握或未掌握。', 422)
-                attempt['example_result'] = {'choice': choice, 'correct': None}
-                state.setdefault('started_at', now())
-                if choice == 'mastered':
-                    step['phase'] = 'answer'
+                if step['phase'] == 'guided_choice':
+                    if choice not in ('attempt_example', 'view_solution'):
+                        raise DomainError('invalid_choice', '请选择尝试完成或修王子。', 422)
+                    if choice == 'attempt_example':
+                        step['phase'] = 'answer'
+                        attempt['learning_path'] = 'guided_example'
+                    else:
+                        step['phase'] = 'reading'
+                    self._event(con, state, 'guided_example_choice', choice=choice)
                 else:
-                    step['phase'] = 'unmastered'
-                    attempt['learning_path'] = 'unmastered'
-                self._event(con, state, 'example_choice', choice=choice)
+                    if choice not in ('mastered', 'unmastered'):
+                        raise DomainError('invalid_choice', '请选择已掌握或未掌握。', 422)
+                    attempt['example_result'] = {'choice': choice, 'correct': None}
+                    state.setdefault('started_at', now())
+                    step['phase'] = 'answer' if choice == 'mastered' else 'unmastered'
+                    if choice == 'unmastered':
+                        attempt['learning_path'] = 'unmastered'
+                    self._event(con, state, 'example_choice', choice=choice)
                 self._record_action(con, 'choose', payload, fingerprint)
                 self._save(con, state)
         self.flush_logs()
         return self._public(state)
 
     def _learn(self, state):
-        example = next(s for s in state['steps'] if s['attempt_id'] == state['attempt_id'] and s['kind'] == 'example')
         if not state['introduction_read']:
             prior = next((s for s in state['steps'] if s['kind'] == 'introduction'), None)
             if prior:
@@ -484,8 +496,12 @@ class LearningService:
             else:
                 self._add_step(state, kind='introduction')
         else:
-            example['phase'] = 'reading'
-            state['active_step_id'] = state['current_step_id'] = example['id']
+            self._return_to_example(state)
+
+    def _return_to_example(self, state):
+        example = next(s for s in state['steps'] if s['attempt_id'] == state['attempt_id'] and s['kind'] == 'example')
+        example['phase'] = 'guided_choice' if self._attempt(state)['learning_path'] == 'unmastered' else 'reading'
+        state['active_step_id'] = state['current_step_id'] = example['id']
 
     def _module_order(self):
         return list(range(len(self.course['modules'])))
@@ -524,7 +540,7 @@ class LearningService:
     def _advance_step(self, con, state):
         """Advance only when the next normal page is actually being shown."""
         step, attempt = self._step(state), self._attempt(state)
-        if step['phase'] in ('choice', 'answer'):
+        if step['phase'] in ('choice', 'guided_choice', 'answer'):
             raise DomainError('answer_required', '请先完成当前步骤。')
         if step['kind'] == 'introduction':
             state['introduction_read'] = True
@@ -532,12 +548,10 @@ class LearningService:
             self._learn(state)
         elif attempt['status'] == 'completed':
             self._next_module(state)
-        elif step['kind'] == 'example' and step['phase'] in ('unmastered', 'feedback'):
+        elif step['kind'] == 'example' and (step['phase'] == 'unmastered' or
+                step['phase'] == 'feedback' and attempt['learning_path'] != 'guided_example'):
             self._learn(state)
-        elif step['kind'] == 'example' and step['phase'] == 'reading':
-            question = self._practice_question(con, state, attempt)
-            self._add_step(state, kind='practice', question=question, phase='answer')
-        elif step['kind'] == 'practice' and step['phase'] == 'feedback':
+        elif step['phase'] in ('reading', 'feedback') and step['kind'] in ('example', 'practice'):
             question = self._practice_question(con, state, attempt)
             self._add_step(state, kind='practice', question=question, phase='answer')
         else:
@@ -550,14 +564,15 @@ class LearningService:
                      if step['attempt_id'] == attempt['id'] and step['kind'] == 'practice']
             options = {}
             if attempt.get('practice_policy', {}).get('version') == LESSON_POLICY.version:
-                seeds = [group[0] for group in self.practice_queue._groups(module)[:3]]
+                seeds = self.practice_queue.lesson_seeds(module)
                 options['initial'] = seeds
                 if len(shown) < len(seeds):
                     options['selected'] = seeds[len(shown)]
-            question_id = self.practice_queue.draw(con, module, exclude=shown, **options)
+            question_id = self.practice_queue.draw(con, module, exclude=[*shown, module['example']['id']], **options)
             return self.questions[question_id]
         # A round started before this upgrade keeps its original question order.
-        return module['practices'][attempt['practice_answered_count']]
+        offset = 1 if attempt['learning_path'] == 'guided_example' else 0
+        return module['practices'][attempt['practice_answered_count'] - offset]
 
     def select(self, payload):
         with self._transaction() as con:
@@ -731,16 +746,19 @@ class LearningService:
                         'correct': correct, 'reason': reason, 'submission_id': submission_id})
                     if step['kind'] == 'example':
                         attempt['example_result'].update(correct=correct, submission_id=submission_id)
+                    if step['kind'] == 'example' and attempt['learning_path'] != 'guided_example':
                         attempt['learning_path'] = 'direct_example' if correct else 'example_incorrect'
                         if correct:
                             self._complete(con, state, 4)
                     else:
                         policy = PracticePolicy.from_dict(attempt['practice_policy']) if 'practice_policy' in attempt else LEGACY_LESSON_POLICY
                         must_pause, mastery = apply_practice_result(attempt, correct, policy)
-                        if (attempt.get('practice_queue_version') == self.practice_queue.VERSION
+                        module = self.course['modules'][attempt['module_index']]
+                        if step['kind'] == 'example':
+                            self.practice_queue.enqueue_example(con, module)
+                        elif (attempt.get('practice_queue_version') == self.practice_queue.VERSION
                                 and (not must_pause or policy.version == LEGACY_LESSON_POLICY.version)):
-                            self.practice_queue.record_result(con, self.course['modules'][attempt['module_index']],
-                                                              item['question'], correct)
+                            self.practice_queue.record_result(con, module, item['question'], correct)
                         if must_pause:
                             self._pause(con, state, 'practice_error_limit', submission={**item, 'correct': correct, 'reason': reason})
                         elif mastery is not None:

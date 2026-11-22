@@ -54,6 +54,7 @@ try {
   await action('format-lesson', 'continue');
   await action('format-lesson', 'choose', {choice:'unmastered'});
   await action('format-lesson', 'continue');
+  await action('format-lesson', 'choose', {choice:'view_solution'});
   await visit('#/subjects/math/topic/format-lesson');
   assert.ok((await page.locator('#stepCard').textContent()).includes('idea'));
   const href = await page.locator('#stepCard a.topicReference[href]').getAttribute('href');

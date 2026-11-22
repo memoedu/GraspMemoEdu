@@ -133,7 +133,6 @@ class OrderedLearningService(LearningService):
         return self._guidance_group(order_index)
 
     def _learn(self, state):
-        example = next(s for s in state['steps'] if s['attempt_id'] == state['attempt_id'] and s['kind'] == 'example')
         group = self._guidance_group(state['order_index'])
         introduction_id = group[0]
         if any(i not in state['read_introductions'] for i in group):
@@ -144,8 +143,7 @@ class OrderedLearningService(LearningService):
             else:
                 self._add_step(state, kind='introduction').update(introduction_id=introduction_id, introduction_ids=group)
         else:
-            example['phase'] = 'reading'
-            state['active_step_id'] = state['current_step_id'] = example['id']
+            self._return_to_example(state)
 
     def _module_order(self):
         indexes = {module['id']: i for i, module in enumerate(self.course['modules'])}

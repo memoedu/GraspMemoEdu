@@ -2,7 +2,7 @@
 
 本表从当前界面词库自动生成。修改以词库为准，随后重新生成并检查本表。术语约定见 [界面语言规范](ui-language.md)。
 
-共 1027 条界面文案映射（包括不同位置重复使用的文案）。花括号表示运行时填入的名称、数量或时间，不是页面上的固定文字。
+共 1029 条界面文案映射（包括不同位置重复使用的文案）。花括号表示运行时填入的名称、数量或时间，不是页面上的固定文字。
 
 不包括作者课程正文、题目、答案、解析或用户输入。首页的学科双语副标题按约定保留。
 
@@ -252,6 +252,8 @@
 | Have you mastered this problem? | 这道题，你已经掌握了吗？ |
 | Yes, try answering | 已掌握，试着作答 |
 | Not yet, learn first | 未掌握，先学习 |
+| Try the example | 尝试完成 |
+| View solution | 修王子 |
 | You chose to learn first. Select Continue learning to read the guidance. | 已选择未掌握。点击“继续学习”，阅读相关指导。 |
 | Checking your answer. You can still pause learning or review previous content. | 正在判题，请稍候。你仍可暂时终止学习或回看已学内容。 |
 | Checking your answer. You can still review previous content. | 正在判题，请稍候。你仍可回看已学内容。 |

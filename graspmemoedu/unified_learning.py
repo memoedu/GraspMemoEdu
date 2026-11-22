@@ -248,7 +248,7 @@ class UnifiedLearningService(OrderedLearningService):
                     step = self._step(state)
                     if step['kind'] == 'bank_question':
                         self._require_bank_question(con, state)
-                    if step['phase'] in ('choice', 'answer'):
+                    if step['phase'] in ('choice', 'guided_choice', 'answer'):
                         raise DomainError('answer_required', '请先完成当前步骤。')
                     if step['kind'] != 'introduction' and self._atomic_next(state):
                         state['deferred_advance'] = True

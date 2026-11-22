@@ -27,7 +27,7 @@ All learning requests send `X-Learning-Identity` with the browser's opaque ident
 
 Each identity maps to a distinct LearningService learner. Browser identity tokens may persist in localStorage scoped by API address; keep the guest token when switching to an invitation account. The SQLite database stores only token and invitation hashes in `access_` tables, included in the existing consistent backup. Invitations and permission management are CLI-only; no account administration is exposed through the public browser API. This release intentionally does not include account-login usage acceptance tests.
 
-Mutation body: `request_id` (UUID), `expected_revision` (integer), `attempt_id`, `step_id`; choose adds `choice: mastered|unmastered`; submit adds `answer`; select uses target `step_id`. Pause needs only `request_id` and always freezes latest committed state. Retry a request with identical ID and payload. A changed answer after a service error uses a new request ID. Pending submission IDs are persisted in server state; poll once per second after refresh or interrupted response.
+Mutation body: `request_id` (UUID), `expected_revision` (integer), `attempt_id`, `step_id`. Choose adds `choice`: `mastered` or `unmastered` in phase `choice`, and `attempt_example` or `view_solution` in phase `guided_choice`. Submit adds `answer`; select uses the target `step_id`. Pause needs only `request_id` and always freezes latest committed state. Retry a request with identical ID and payload. A changed answer after a service error uses a new request ID. Pending submission IDs are persisted in server state; poll once per second after refresh or interrupted response.
 
 Submit also accepts optional integer `elapsed_ms` in 0..86400000, measured only while the current question accepts an answer and the page is visible. An identical retry retains that value. Omission preserves the legacy request fingerprint; migrated records remain NULL, not fabricated zeroes. Time is informational and does not change scoring.
 
@@ -45,9 +45,9 @@ State shape:
 }
 ```
 
-Only visited content is returned in the state response; unvisited questions and unrevealed reference answers stay on the backend, apart from the separate guest experience endpoint described above. Module summaries may include locked entries without their content. `kind`: example, introduction, practice, completion. `phase`: choice, answer, unmastered, feedback, reading, completed. `actions`: mastered, unmastered, submit, continue. Active step has available learning actions; historical review has no learning actions, even if it is current. All actions are empty while paused or waiting on judging. Previously visited content can still be selected. During Introduction insertion, current module steps are `visible:false`, their history remains selectable. The page primarily renders the selected step and history navigation; returning to active uses select with active_step_id. `feedback`: `{correct,reason,submission_id}`. Pause: `{event_id,reason,message,module_id,attempt_id}`.
+Only visited content is returned in the state response; unvisited questions and unrevealed reference answers stay on the backend, apart from the separate guest experience endpoint described above. Module summaries may include locked entries without their content. `kind`: example, introduction, practice, completion. `phase`: choice, guided_choice, answer, unmastered, feedback, reading, completed. `actions`: mastered, unmastered, attempt_example, view_solution, submit, continue. Active step has available learning actions; historical review has no learning actions, even if it is current. All actions are empty while paused or waiting on judging. Previously visited content can still be selected. During Introduction insertion, current module steps are `visible:false`, their history remains selectable. The page primarily renders the selected step and history navigation; returning to active uses select with active_step_id. `feedback`: `{correct,reason,submission_id}`. Pause: `{event_id,reason,message,module_id,attempt_id}`.
 
-No answer box before mastered; feedback never auto-advances. Unmastered requires Continue before Introduction/Explanation. The pause control stays visible while waiting for judge (except completed/paused Topic); guests receive the registration hint, and only accounts granted pause_topic may submit the action. A completed last module can be paused before Continue without revoking its score. On unlock, advance to the next unfinished module, or complete if none remains. History starts expanded on the left; previous/next use select only for already unlocked steps and sit at the bottom right alongside Continue.
+After choosing unmastered, Continue opens unread guidance and returns to the guided choice. `attempt_example` requires both `learn` and `submit_answer` and opens the same answer state as mastered. Judging a guided example counts it towards the practice target and adds it to the module's review queue. `view_solution` opens the explanation and the original practice flow. Feedback waits for Continue. The pause control stays visible while waiting for judge (except completed/paused Topic); guests receive the registration hint, and only accounts granted pause_topic may submit the action. A completed last module can be paused before Continue without revoking its score. On unlock, advance to the next unfinished module, or complete if none remains. History starts expanded on the left; previous/next use select only for already unlocked steps and sit at the bottom right alongside Continue.
 
 ## Homepage, profile, feedback and Guide
 
@@ -67,9 +67,9 @@ their existing behavior. v2 returns `topic_format_version`, `topic_kind`,
 `content_version`, `reading_status`, `reread_pending` and `completed_at`.
 Introduction steps carry `introduction_id`. Source order assigns each Example and
 its Practices to the closest preceding Introduction; it is not a mandatory reading
-sequence. Ordinary v2 Topics retain the existing Example mastery choice, direct
-answer and practice flow. Unmastered or incorrect Examples open their own unread
-guidance after Continue, then resume the Example explanation. Read guidance is not
+sequence. Ordinary v2 Topics retain the Example mastery choice and direct
+answer. Unmastered or incorrect Examples open their own unread guidance after
+Continue, then open the guided choice or explanation, respectively. Read guidance is not
 repeated for later Examples in that group. Pure Introduction Topics read their own
 guidance sections in source order. The Topic type is 引论; internal guidance is 指导.
 Ordered state and course dashboard tasks report `has_practice: true` for embedded

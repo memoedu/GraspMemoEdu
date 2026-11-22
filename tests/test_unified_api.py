@@ -110,6 +110,7 @@ class UnifiedAPITests(unittest.TestCase):
         self.first_section()
         self.action('choose', choice='unmastered')
         self.action('continue')
+        self.action('choose', choice='view_solution')
         self.action('continue')
         for _ in range(4):
             state = self.answer('incorrect')
@@ -167,6 +168,7 @@ class UnifiedAPITests(unittest.TestCase):
         self.first_section()
         self.action('choose', choice='unmastered')
         self.action('continue')
+        self.action('choose', choice='view_solution')
         self.when += timedelta(hours=7)
         inbox = self.call('GET', '/api/review-papers/inbox?subject_id=math')
         candidate = next(item for item in inbox['items'] if item['kind'] == 'single')
