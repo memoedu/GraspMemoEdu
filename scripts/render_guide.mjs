@@ -3,6 +3,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
+import {mathAt} from '../web/math-syntax.js';
 
 const bundled = process.env.CODEX_NODE_MODULES || path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules');
 const mathRuntime = process.env.MATH_TOPIC_PDF_RUNTIME || 'D:/Caches/MathTopicPdf/node_modules';
@@ -84,20 +85,19 @@ const marked = new Marked({
   },
   extensions: [{
     name: 'guideBlockMath', level: 'block',
-    start(source) { const match = /\$\$|\\\[/.exec(source); return match?.index; },
     tokenizer(source) {
-      const match = /^(?:\$\$([\s\S]+?)\$\$|\\\[([\s\S]+?)\\\])(?:\n|$)/.exec(source);
-      if (match) return { type: 'guideBlockMath', raw: match[0], latex: (match[1] || match[2]).trim() };
+      const span = mathAt(source, 0, {allowUnbalanced: true});
+      if (span?.display) return {type: 'guideBlockMath', ...span};
     },
     renderer(token) { return math(token.latex, true); }
   }, {
     name: 'guideInlineMath', level: 'inline',
-    start(source) { const match = /\$|\\\(/.exec(source); return match?.index; },
+    start(source) { return /\$|\\[([]|\\begin\{/.exec(source)?.index; },
     tokenizer(source) {
-      const match = /^(?:\$(?!\$)([^$\n]+?)\$|\\\(([^\n]+?)\\\))/.exec(source);
-      if (match) return { type: 'guideInlineMath', raw: match[0], latex: (match[1] || match[2]).trim() };
+      const span = mathAt(source, 0, {allowUnbalanced: true});
+      if (span) return {type: 'guideInlineMath', ...span};
     },
-    renderer(token) { return math(token.latex, false); }
+    renderer(token) { return math(token.latex, token.display); }
   }]
 });
 

@@ -5,6 +5,7 @@ import readline from 'node:readline';
 import {fileURLToPath} from 'node:url';
 import crypto from 'node:crypto';
 import {createRequire} from 'node:module';
+import {mathAt, mathSpans} from '../web/math-syntax.js';
 const req = dir => createRequire(path.join(dir, '_entry.cjs'));
 const br = req(process.env.CODEX_NODE_MODULES || path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules'));
 const mr = req(process.env.MATH_TOPIC_PDF_RUNTIME || 'D:/Caches/MathTopicPdf/node_modules');
@@ -38,39 +39,31 @@ function math(source, display) {
   formulas.push(`<span class="${display ? 'mathDisplay' : 'mathInline'}">${html}</span>`);
   return token;
 }
-function delimitedMath(source) {
-  const environment = /^\\begin\{(align\*?|aligned|equation\*?|gather\*?|cases|bmatrix|pmatrix)\}([\s\S]*?)\\end\{\1\}/.exec(source);
-  if (environment) return {raw:environment[0],latex:environment[0],display:true};
-  for (const [open, close, display] of [['\\[','\\]',true],['\\(','\\)',false],['$$','$$',true],['$','$',false]]) {
-    if (!source.startsWith(open)) continue;
-    let depth = 0;
-    for (let i = open.length; i < source.length; i++) {
-      if (depth === 0 && source.startsWith(close, i) && source[i-1] !== '\\')
-        return {raw:source.slice(0,i+close.length),latex:source.slice(open.length,i),display};
-      if (source[i] === '{' && source[i-1] !== '\\') depth++;
-      if (source[i] === '}' && source[i-1] !== '\\') depth--;
-    }
-  }
-  return null;
-}
 function mathInHtml(html) {
-  const saved = [];
-  html = html.replace(/<(svg|pre|code)\b[\s\S]*?<\/\1>/gi, s => {saved.push(s);return `MAPROTECT${saved.length-1}END`;});
-  let result = '';
-  for (let i = 0; i < html.length;) {
-    const token = (html[i] === '$' || html[i] === '\\') && html[i-1] !== '\\' ? delimitedMath(html.slice(i)) : null;
-    if (token) { result += math(token.latex, token.display); i += token.raw.length; }
-    else result += html[i++];
+  // Preserve code, pre-rendered SVG and HTML attributes. Only text between
+  // markup boundaries can start a formula.
+  const markup = /<(pre|code|svg|mjx-container|script|style|textarea)\b[\s\S]*?<\/\1\s*>|<!--[\s\S]*?-->|<\/?[a-z][\w:-]*(?=[\s/>])(?:[^"'<>]|"[^"]*"|'[^']*')*>/gi;
+  function renderText(text) {
+    let result = '', cursor = 0;
+    for (const span of mathSpans(text)) {
+      result += text.slice(cursor, span.from) + math(span.latex, span.display);
+      cursor = span.to;
+    }
+    return result + text.slice(cursor);
   }
-  html = result;
-  return html.replace(/MAPROTECT(\d+)END/g, (_s,n) => saved[+n]);
+  let result = '', cursor = 0;
+  for (const match of html.matchAll(markup)) {
+    result += renderText(html.slice(cursor, match.index)) + match[0];
+    cursor = match.index + match[0].length;
+  }
+  return result + renderText(html.slice(cursor));
 }
 const marked = new Marked({gfm:true, renderer:{html(token){return mathInHtml(token.text);}}, extensions:[
-  {name:'maBlockMath',level:'block',start:s=>/\$\$|(?<!\\)\\\[|\\begin\{/.exec(s)?.index,
-    tokenizer(s){const m=delimitedMath(s);if(m?.display)return {type:'maBlockMath',...m};},
+  {name:'maBlockMath',level:'block',
+    tokenizer(s){const m=mathAt(s);if(m?.display)return {type:'maBlockMath',...m};},
     renderer:t=>math(t.latex,true)},
-  {name:'maInlineMath',level:'inline',start:s=>/\$|(?<!\\)\\[([]|\\begin\{/.exec(s)?.index,
-    tokenizer(s){const m=delimitedMath(s);if(m)return {type:'maInlineMath',...m};},
+  {name:'maInlineMath',level:'inline',start:s=>/\$|\\[([]|\\begin\{/.exec(s)?.index,
+    tokenizer(s){const m=mathAt(s);if(m)return {type:'maInlineMath',...m};},
     renderer:t=>math(t.latex,t.display)}
 ]});
 function safeHtml(html, prefix) {
