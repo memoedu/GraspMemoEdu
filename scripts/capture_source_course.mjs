@@ -178,7 +178,6 @@ try {
           attempt_id: state.attempt_id, step_id: state.active_step_id, ...extra});
       };
       await action('choose', {choice: 'unmastered'});
-      await action('continue');
       const guidance = [];
       while (active().kind === 'introduction') {
         assert.ok(guidance.length < introOrder.length);

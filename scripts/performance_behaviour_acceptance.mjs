@@ -36,18 +36,20 @@ try {
   await page.getByRole('button', {name: '未掌握，先学习', exact: true}).click();
   const choice = await (await choiceResponse).json();
   assert.equal(choice.$gme_content, 1);
-  assert.equal(choice.texts, null);
-  await page.getByText('已选择未掌握。点击“继续学习”，阅读相关指导。', {exact: true}).waitFor();
-  report.checks.mutation_returns_fresh_state_without_repeating_text = true;
+  assert(choice.texts.some(text => text?.$gme_previous !== undefined));
+  assert(choice.texts.some(text => typeof text === 'string'));
+  await page.getByRole('heading', {name: '指导', exact: true}).waitFor();
+  assert.equal(requests.filter(r => r.method === 'POST' && new URL(r.url).pathname === '/api/continue').length, 0);
+  report.checks.choice_opens_guidance_with_only_new_text = true;
   const continueResponse = page.waitForResponse(r => new URL(r.url()).pathname === '/api/continue');
   await page.getByRole('button', {name: '继续学习', exact: true}).click();
   const continued = await (await continueResponse).json();
   assert.equal(continued.$gme_content, 1);
-  assert(continued.texts.some(text => text?.$gme_previous !== undefined));
-  assert(continued.texts.some(text => typeof text === 'string'));
+  assert.equal(continued.texts, null);
+  await page.getByRole('button', {name: '展示答案', exact: true}).waitFor();
   assert.equal(requests.filter(r => r.method === 'POST' && new URL(r.url).pathname === '/api/choose').length, 1);
   assert.equal(requests.filter(r => r.method === 'POST' && new URL(r.url).pathname === '/api/continue').length, 1);
-  report.checks.next_page_transfers_only_new_blocks_and_no_write_replay = true;
+  report.checks.next_page_reuses_existing_text_and_no_write_replay = true;
   for (const subject of subjects) {
     await page.evaluate(async hash => {location.hash = hash; await new Promise(requestAnimationFrame);},
       '#/subjects/' + subject + '/topic/lesson-' + subject);

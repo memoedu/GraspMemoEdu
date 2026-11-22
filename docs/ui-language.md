@@ -25,7 +25,7 @@
 | Prerequisites | 前置知识 | 学习所需的基础内容 |
 | Continue learning / Resume | 继续学习 | 页面继续操作／恢复未完成任务 |
 | Try the example | 尝试完成 | 读完指导后作答例题 |
-| View solution | 修王子 | 读完指导后直接查看例题解析 |
+| Show Answer | 展示答案 | 读完指导后直接查看例题解析 |
 | Start | 开始学习 | 开始任务 |
 | Previous / Next | 上一页／下一页 | 页面导航 |
 | Submit | 提交 | 提交答案或反馈 |

@@ -47,7 +47,7 @@ State shape:
 
 Only visited content is returned in the state response; unvisited questions and unrevealed reference answers stay on the backend, apart from the separate guest experience endpoint described above. Module summaries may include locked entries without their content. `kind`: example, introduction, practice, completion. `phase`: choice, guided_choice, answer, unmastered, feedback, reading, completed. `actions`: mastered, unmastered, attempt_example, view_solution, submit, continue. Active step has available learning actions; historical review has no learning actions, even if it is current. All actions are empty while paused or waiting on judging. Previously visited content can still be selected. During Introduction insertion, current module steps are `visible:false`, their history remains selectable. The page primarily renders the selected step and history navigation; returning to active uses select with active_step_id. `feedback`: `{correct,reason,submission_id}`. Pause: `{event_id,reason,message,module_id,attempt_id}`.
 
-After choosing unmastered, Continue opens unread guidance and returns to the guided choice. `attempt_example` requires both `learn` and `submit_answer` and opens the same answer state as mastered. Judging a guided example counts it towards the practice target and adds it to the module's review queue. `view_solution` opens the explanation and the original practice flow. Feedback waits for Continue. The pause control stays visible while waiting for judge (except completed/paused Topic); guests receive the registration hint, and only accounts granted pause_topic may submit the action. A completed last module can be paused before Continue without revoking its score. On unlock, advance to the next unfinished module, or complete if none remains. History starts expanded on the left; previous/next use select only for already unlocked steps and sit at the bottom right alongside Continue.
+Choosing unmastered opens the corresponding guidance in the same response. Continue from guidance returns to the guided choice. `attempt_example` requires both `learn` and `submit_answer` and opens the same answer state as mastered. Judging a guided example counts it towards the practice target and adds it to the module's review queue. `view_solution` opens the explanation and the original practice flow. Feedback waits for Continue. The pause control stays visible while waiting for judge (except completed/paused Topic); guests receive the registration hint, and only accounts granted pause_topic may submit the action. A completed last module can be paused before Continue without revoking its score. On unlock, advance to the next unfinished module, or complete if none remains. History starts expanded on the left; previous/next use select only for already unlocked steps and sit at the bottom right alongside Continue.
 
 ## Homepage, profile, feedback and Guide
 
@@ -68,9 +68,9 @@ their existing behavior. v2 returns `topic_format_version`, `topic_kind`,
 Introduction steps carry `introduction_id`. Source order assigns each Example and
 its Practices to the closest preceding Introduction; it is not a mandatory reading
 sequence. Ordinary v2 Topics retain the Example mastery choice and direct
-answer. Unmastered or incorrect Examples open their own unread guidance after
-Continue, then open the guided choice or explanation, respectively. Read guidance is not
-repeated for later Examples in that group. Pure Introduction Topics read their own
+answer. Choosing unmastered immediately opens the corresponding guidance.
+Continue from guidance opens the guided choice. After an incorrect direct attempt,
+Continue opens unread guidance before the explanation. Pure Introduction Topics read their own
 guidance sections in source order. The Topic type is 引论; internal guidance is 指导.
 Ordered state and course dashboard tasks report `has_practice: true` for embedded
 bank questions and for a linked post-reading Practice group. This lets the UI

@@ -121,6 +121,7 @@ class ResponseContentTests(unittest.TestCase):
                     for text in delta["texts"]]
                 updated = restore(delta["state"], texts)
                 self.assertGreater(updated["revision"], rebuilt["revision"])
+                self.assertEqual(next(step for step in updated["steps"] if step["active"])["kind"], "introduction")
                 retried = client.post("/api/choose", headers=headers, json=payload).json()
                 self.assertEqual(retried["revision"], updated["revision"])
                 account = app.state.access_store.create_account("Cache authorization test")

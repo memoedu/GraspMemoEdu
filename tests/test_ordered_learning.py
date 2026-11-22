@@ -53,8 +53,7 @@ class OrderedLearningTests(unittest.TestCase):
         self.assertEqual(active(state)['question_id'], 'module-1-example')
         self.assertEqual(active(state)['actions'], ['mastered', 'unmastered'])
         self.assertEqual(len(state['steps']), 1)
-        service.choose(payload(service, choice='unmastered'))
-        state = service.advance(payload(service))
+        state = service.choose(payload(service, choice='unmastered'))
         self.assertEqual(active(state)['introduction_id'], 'intro-a')
         self.assertNotIn('intro-b', [s.get('introduction_id') for s in state['steps']])
         state = service.advance(payload(service))
@@ -70,8 +69,7 @@ class OrderedLearningTests(unittest.TestCase):
         self.assertEqual(active(state)['question_id'], 'module-2-example')
         self.assertEqual(active(state)['actions'], ['mastered', 'unmastered'])
         self.assertEqual(state['modules'][0]['status'], 'completed')
-        service.choose(payload(service, choice='unmastered'))
-        self.assertEqual(active(service.advance(payload(service)))['introduction_id'], 'intro-b')
+        self.assertEqual(active(service.choose(payload(service, choice='unmastered')))['introduction_id'], 'intro-b')
 
     def test_skips_follow_example_order_and_unlocked_module_restores_its_own_guidance(self):
         service = self.service(ordered_topic())
@@ -84,8 +82,7 @@ class OrderedLearningTests(unittest.TestCase):
         state = service.unlock(service.topic_id, record['module_id'], record['event_id'])
         self.assertEqual(active(state)['question_id'], 'module-1-example')
         self.assertEqual(state['reading_status'], 'in_progress')
-        service.choose(payload(service, choice='unmastered'))
-        self.assertEqual(active(service.advance(payload(service)))['introduction_id'], 'intro-a')
+        self.assertEqual(active(service.choose(payload(service, choice='unmastered')))['introduction_id'], 'intro-a')
 
     def test_mastered_answers_directly_and_wrong_answer_returns_to_its_guidance(self):
         service = self.service(ordered_topic())
@@ -131,13 +128,13 @@ class OrderedLearningTests(unittest.TestCase):
             service.advance(payload(service))
         self.assertEqual(service.state()['status'], 'completed')
 
-    def test_several_examples_share_preceding_guidance_without_repeating_it(self):
+    def test_several_examples_reuse_the_same_preceding_guidance_page(self):
         topic = ordered_topic()
         # Two Examples belong to A; B has no Example and must not become a forced step.
         topic['content_order'] = [topic['content_order'][i] for i in (0, 1, 3, 2)]
         service = self.service(topic)
-        service.choose(payload(service, choice='unmastered'))
-        self.assertEqual(active(service.advance(payload(service)))['introduction_id'], 'intro-a')
+        guidance = service.choose(payload(service, choice='unmastered'))
+        self.assertEqual(active(guidance)['introduction_id'], 'intro-a')
         service.advance(payload(service))
         service.choose(payload(service, choice='view_solution'))
         service.advance(payload(service))
@@ -145,12 +142,31 @@ class OrderedLearningTests(unittest.TestCase):
             result = service.submit(payload(service, answer='correct'))
             service.process_submission(result['submission_id'])
             service.advance(payload(service))
-        service.choose(payload(service, choice='unmastered'))
+        reopened = service.choose(payload(service, choice='unmastered'))
+        self.assertEqual(reopened['active_step_id'], guidance['active_step_id'])
+        self.assertEqual(active(reopened)['kind'], 'introduction')
         state = service.advance(payload(service))
         self.assertEqual(active(state)['kind'], 'example')
         state = service.choose(payload(service, choice='view_solution'))
         self.assertIsNotNone(active(state)['explanation_html'])
         self.assertEqual([s.get('introduction_id') for s in state['steps'] if s['kind'] == 'introduction'], ['intro-a'])
+
+    def test_authored_guidance_reopens_without_completing_the_example(self):
+        topic = ordered_topic()
+        topic['introductions'][0]['footnotes'] = [{'id': 'note-a', 'html': '<p>脚注</p>'}]
+        service = self.service(topic)
+        guidance = service.state()
+        example = service.advance(payload(service))
+        self.assertEqual(active(example)['question_id'], 'module-1-example')
+
+        request = payload(service, choice='unmastered')
+        reopened = service.choose(request)
+        self.assertEqual(service.choose(request), reopened)
+        self.assertEqual(reopened['active_step_id'], guidance['active_step_id'])
+        next_state = service.advance(payload(service))
+        self.assertEqual(next_state['active_step_id'], example['active_step_id'])
+        self.assertEqual(active(next_state)['phase'], 'guided_choice')
+        self.assertEqual(next_state['modules'][0]['status'], 'in_progress')
 
     def test_mastered_first_example_does_not_mark_its_shared_guidance_read(self):
         topic = ordered_topic()
@@ -161,8 +177,7 @@ class OrderedLearningTests(unittest.TestCase):
         service.process_submission(result['submission_id'])
         service.advance(payload(service))
         self.assertEqual([s['phase'] for s in service.state()['guidance_history']], ['available'])
-        service.choose(payload(service, choice='unmastered'))
-        state = service.advance(payload(service))
+        state = service.choose(payload(service, choice='unmastered'))
         self.assertEqual(active(state)['introduction_id'], 'intro-a')
         self.assertEqual([s['phase'] for s in state['steps'] if s['kind'] == 'introduction'], ['reading'])
         self.assertNotIn('guidance_history', state)
@@ -175,8 +190,7 @@ class OrderedLearningTests(unittest.TestCase):
         result = service.submit(payload(service, answer='correct'))
         service.process_submission(result['submission_id'])
         service.advance(payload(service))
-        service.choose(payload(service, choice='unmastered'))
-        state = service.advance(payload(service))
+        state = service.choose(payload(service, choice='unmastered'))
         self.assertEqual([s['kind'] for s in state['steps']], ['example', 'example', 'introduction'])
         self.assertEqual(active(state)['introduction_id'], 'intro-a')
         self.assertEqual(active(state)['module_id'], 'module-2')

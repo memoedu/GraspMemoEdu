@@ -81,8 +81,9 @@ try {
   assert.ok(hierarchy.indent >= 16 && hierarchy.framed && hierarchy.sidebarX > hierarchy.mainRight);
   pass('Introduction, annotated chunk, atomic learning, then Example in the same Topic');
   await page.locator('#stepCard').getByRole('button', {name: '未掌握，先学习', exact: true}).click();
+  await page.locator('#stepTitle').filter({hasText: '第一段指导'}).waitFor();
   await next();
-  await page.getByRole('button', {name: '修王子', exact: true}).click();
+  await page.getByRole('button', {name: '展示答案', exact: true}).click();
   const before = await state();
   await screenshot('example-desktop');
   await page.setViewportSize({width: 390, height: 844});

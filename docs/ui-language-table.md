@@ -253,7 +253,7 @@
 | Yes, try answering | 已掌握，试着作答 |
 | Not yet, learn first | 未掌握，先学习 |
 | Try the example | 尝试完成 |
-| View solution | 修王子 |
+| Show Answer | 展示答案 |
 | You chose to learn first. Select Continue learning to read the guidance. | 已选择未掌握。点击“继续学习”，阅读相关指导。 |
 | Checking your answer. You can still pause learning or review previous content. | 正在判题，请稍候。你仍可暂时终止学习或回看已学内容。 |
 | Checking your answer. You can still review previous content. | 正在判题，请稍候。你仍可回看已学内容。 |
