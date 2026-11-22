@@ -32,6 +32,9 @@ async function select(value) {
 const toolIds = () => toolbar.getByRole('button').evaluateAll(buttons => buttons.map(button => button.dataset.questionTool));
 const calculate = () => dialog.getByRole('button', {name: '计算结果'}).click();
 const field = item => dialog.locator(`[name="${item}"]`);
+const expressionInput = dialog.getByRole('textbox', {name: '表达式'});
+const assign = dialog.getByRole('button', {name: '赋值', exact: true});
+const variable = name => dialog.getByRole('textbox', {name: `变量 ${name}`, exact: true});
 async function text(value) {
   await outputBox.getByText(value, {exact: true}).waitFor();
 }
@@ -73,6 +76,29 @@ try {
   await dialog.getByRole('textbox', {name: '表达式'}).fill('2^8');
   await dialog.getByRole('textbox', {name: '表达式'}).press('Enter');
   await text('256');
+  await expressionInput.fill('x^2');
+  await calculate();
+  await text('请点击「赋值」，并填写原式中每个变量的值。');
+  await assign.click();
+  await variable('x').waitFor();
+  assert.equal(await dialog.locator('.calculatorAssignmentValue').count(), 1);
+  await dialog.locator('[data-calculator-key="digit_3"]').click();
+  assert.equal(await variable('x').inputValue(), '3');
+  assert.equal(await expressionInput.inputValue(), 'x^2');
+  await variable('x').press('Enter');
+  await text('9');
+  await expressionInput.fill('x*y+z');
+  assert.equal(await dialog.locator('.calculatorAssignmentValue').count(), 0);
+  await assign.click();
+  await variable('z').waitFor();
+  assert.equal(await dialog.locator('.calculatorAssignmentValue').count(), 3);
+  assert.equal(await variable('x').inputValue(), '3');
+  await variable('y').fill('1+1');
+  await variable('z').fill('4');
+  await calculate();
+  await text('10');
+  checks.push('Scientific calculation supports one or more assignments with the same keypad, keyboard, and numeric parser.');
+  await expressionInput.focus();
   await dialog.getByRole('combobox', {name: '选择常数'}).selectOption('c');
   assert.match(await dialog.getByRole('textbox', {name: '表达式'}).inputValue(), /c/);
   await select('graph');
@@ -127,6 +153,14 @@ try {
   checks.push('The per-question grant opens modular exponentiation and ML. Probability and inverse remain unavailable.');
 
   await select('expression');
+  await expressionInput.fill('x+y+z');
+  await assign.click();
+  await variable('z').waitFor();
+  await variable('x').fill('1');
+  await variable('y').fill('2');
+  await variable('z').fill('4');
+  await calculate();
+  await text('7');
   for (const width of [320, 375, 414, 768]) {
     await page.setViewportSize({width, height: 840});
     await page.waitForFunction(() => document.querySelector('.questionCalculator')?.dataset.layout === 'center');
@@ -150,10 +184,16 @@ try {
   await next.click(); await open();
   assert.deepEqual(await toolIds(), ['expression']);
   assert.equal(await dialog.locator('[data-calculator-key="sin"]').count(), 0);
+  assert.equal(await assign.count(), 0);
   await dialog.getByRole('button', {name: '关闭计算器'}).click();
   await next.click();
   assert.equal(await toolbar.count(), 0);
   await next.click(); await open();
+  await expressionInput.fill('2x');
+  await assign.click();
+  await variable('x').fill('6');
+  await calculate();
+  await text('12');
   await select('symbolic');
   await dialog.getByRole('combobox', {name: '运算'}).selectOption('antiderivative');
   await field('expression').fill('x^2');
