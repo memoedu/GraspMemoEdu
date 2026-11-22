@@ -23,6 +23,7 @@ from . import calculator
 from . import ma_question_plan
 
 ADAPTER_VERSION = 'mathacademy-json-1'
+PRACTICE_ENRICHMENT = 'mathacademy-practice-enrichment'
 DEFAULT_COURSES = (82, 74, 66, 72, 140)
 SOURCE_FIELDS = {'taskId', 'testMode', 'rendered', 'inputAnswers', 'answer', 'answers', 'complete',
                  'difficultyClass', 'difficultySymbol'}
@@ -680,6 +681,65 @@ def scoped_question_inventory(index, scope):
     return question_inventory(index.read(tid)[1]['lesson'] for tid in scope['topic_ids'] if tid in index.names)
 
 
+def validate_enrichment(package, data_dir, old, old_root, manifest, candidate):
+    """Allow a source-bound upgrade of existing read-only test Topics."""
+    from contextlib import closing
+    import sqlite3
+    from .lesson_display import DIRECTORY, read_display
+    from .test_materials import TestMaterials
+
+    rows = manifest['enrichment']
+    if not isinstance(rows, dict) or not rows or len(candidate['courses']) != 1 or old is None:
+        raise ValueError('Enrichment requires one installed test course')
+    course = candidate['courses'][0]
+    policy = TestMaterials(data_dir, old)
+    if course['id'] not in policy.courses or not set(rows) <= policy.topics:
+        raise ValueError('Enrichment must remain test-only')
+    if course != {'id': course['id'], 'units': [], 'description': old.courses[course['id']]['description'],
+                  'topics': [{'id': tid, 'path': f'topics/{tid}.json'} for tid in rows]}:
+        raise ValueError('Enrichment package cannot change course metadata')
+    members = {t['id'] for t in old.courses[course['id']]['topics']}
+    expected = {'catalog.json', 'report.json'} | {
+        path for tid in rows for path in (f'topics/{tid}.json', f'{DIRECTORY}/{tid}.json')
+    }
+    if not rows.keys() <= members or manifest['files'].keys() != expected:
+        raise ValueError('Enrichment changes files outside the selected Topics')
+    for tid, binding in rows.items():
+        source = old_root / 'mathacademy-sources' / 'topics' / f'{tid}.json'
+        prior, revised = old.topics[tid], json.loads((package / 'topics' / f'{tid}.json').read_bytes())
+        if (prior.get('source_adapter') != 'mathacademy' or prior['availability']['trainable']
+                or not prior['availability']['readable'] or file_hash(old.topic_paths[tid]) != binding['topic_sha256']
+                or file_hash(source) != binding['raw_sha256']
+                or revised['id'] != tid or revised.get('source_adapter') != 'mathacademy'
+                or not revised['availability']['trainable'] or prior['version'] == revised['version']):
+            raise ValueError('Enrichment source or version differs: ' + tid)
+        mutable = {'version', 'availability', '_enrichment', 'modules'}
+        if {k: v for k, v in prior.items() if k not in mutable} != {
+                k: v for k, v in revised.items() if k not in mutable}:
+            raise ValueError('Enrichment changes Topic structure: ' + tid)
+        if [m['id'] for m in prior['modules']] != [m['id'] for m in revised['modules']]:
+            raise ValueError('Enrichment changes example identities: ' + tid)
+        for before, after in zip(prior['modules'], revised['modules']):
+            source_ids = [q['id'] for q in before['practices']]
+            if (before['example']['id'] != after['example']['id']
+                    or [q['id'] for q in after['practices'][:len(source_ids)]] != source_ids):
+                raise ValueError('Enrichment omits or reorders an original question: ' + tid)
+        display = read_display(package / DIRECTORY / f'{tid}.json')
+        if display.get('topic_id') != tid or display.get('version') != revised['version']:
+            raise ValueError('Enrichment translation version differs: ' + tid)
+    db = data_dir / 'learning.sqlite3'
+    if db.exists():
+        with closing(sqlite3.connect(db.as_uri() + '?mode=ro', uri=True)) as con:
+            for name, in con.execute("SELECT name FROM sqlite_master WHERE type='table'"):
+                table = '"' + name.replace('"', '""') + '"'
+                columns = {col[1] for col in con.execute('PRAGMA table_info(' + table + ')')}
+                if 'topic' in columns and name != 'presence_visits':
+                    markers = ','.join('?' for _ in rows)
+                    if con.execute(f'SELECT 1 FROM {table} WHERE topic IN ({markers}) LIMIT 1', tuple(rows)).fetchone():
+                        raise ValueError('Existing selected Topic learning records require migration')
+    return rows.keys()
+
+
 def install(package, data_dir, *, fail_at=None):
     """Prepare immutable files, validate the merged website, then swap one pointer."""
     from .catalog import Catalog
@@ -715,10 +775,14 @@ def install(package, data_dir, *, fail_at=None):
             if prior.get('package_sha256') == package_hash:
                 return {**prior, 'status': 'unchanged', 'added': 0,
                         'reused': len({t['id'] for c in candidate['courses'] for t in c['topics']})}
+        upgraded = (validate_enrichment(package, data_dir, old, old_root, manifest, candidate)
+                    if manifest.get('kind') == PRACTICE_ENRICHMENT else ())
         added, reused = [], []
         for tid in {t['id'] for c in candidate['courses'] for t in c['topics']}:
             topic = json.loads((package / 'topics' / (tid + '.json')).read_text(encoding='utf-8'))
             if old and tid in old.topics:
+                if tid in upgraded:
+                    continue
                 original = old_root / 'mathacademy-sources/topics' / (tid + '.json')
                 incoming_source = package / 'mathacademy-sources/topics' / (tid + '.json')
                 same_frozen_source = (
@@ -746,7 +810,9 @@ def install(package, data_dir, *, fail_at=None):
             for course in old.courses.values():
                 c = deepcopy(course)
                 for t in c['topics']:
-                    t['path'] = os.path.relpath(old.topic_paths[t['id']], batch).replace('\\', '/')
+                    tid = t['id']
+                    t['path'] = (f'topics/{tid}.json' if tid in upgraded
+                                 else os.path.relpath(old.topic_paths[tid], batch).replace('\\', '/'))
                 if c['id'] in incoming:
                     new = incoming.pop(c['id'])
                     by_id = {t['id']: t for t in c['topics']}
@@ -804,8 +870,11 @@ def install(package, data_dir, *, fail_at=None):
         GraphStore(staged, catalog, subjects).all()
         from .test_materials import TestMaterials
         test = TestMaterials(data_dir, catalog)
-        if not set(added + reused) <= test.topics:
+        if not set([*added, *reused, *upgraded]) <= test.topics:
             raise ValueError('Imported content must be hidden before activation')
+        if upgraded and (old.courses != catalog.courses or any(
+                topic != catalog.topics[tid] for tid, topic in old.topics.items() if tid not in upgraded)):
+            raise ValueError('Enrichment changed unrelated course content')
         # Idempotency compares the effective site, not a generation's relative file names.
         same = old is not None and old.courses == catalog.courses and old.topics == catalog.topics
         same = same and all((old_root / n).exists() and (old_root / n).read_bytes() == (batch / n).read_bytes() for n in ('subjects.json', 'test-materials.json'))
@@ -820,13 +889,15 @@ def install(package, data_dir, *, fail_at=None):
             temp = data_dir / (POINTER + '.tmp')
             temp.write_bytes(encoded({'schema': 1, 'generation': generation})); os.replace(temp, data_dir / POINTER)
         loaded = Catalog.load(Settings.load(data_dir))
-        if any(loaded.topics[t] != catalog.topics[t] for t in added + reused):
+        if any(loaded.topics[t] != catalog.topics[t] for t in [*added, *reused, *upgraded]):
             raise RuntimeError('Installed content readback mismatch')
         result = {'status': 'unchanged' if same else 'installed_with_source_gaps' if report['untrainable'] else 'installed',
                   'added': len(added), 'reused': len(reused), 'readable': report['readable'], 'trainable': report['trainable'],
                   'untrainable': report['untrainable'], 'failed': 0, 'courses': [c['id'] for c in candidate['courses']],
                   'generation': generation, 'test_only': True, 'subject_id': 'math'}
         result['package_sha256'] = package_hash
+        if upgraded:
+            result['upgraded'] = sorted(upgraded)
         (batch / 'installation.json').write_bytes(encoded(result))
         return result
 

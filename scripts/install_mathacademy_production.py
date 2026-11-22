@@ -49,14 +49,15 @@ def main():
             time.sleep(1)
         raise RuntimeError('New content failed the running service health check')
     try:
-        before_database = database_state() if module == 'graspmemoedu.mathacademy_graphics' else None
+        content_only = manifest.get('kind') in {'mathacademy-inline-graphics', 'mathacademy-practice-enrichment'}
+        before_database = database_state() if content_only else None
         result = subprocess.run(['runuser', '-u', 'graspmemoedu', '--', '/opt/graspmemoedu/venv/bin/python',
             '-m', module, '--install-package', str(stage / 'package'), '--data-dir', str(data)],
             cwd='/opt/graspmemoedu/app', text=True, capture_output=True, check=True)
         receipt = json.loads(result.stdout.strip().splitlines()[-1])
         if before_database is not None:
             if database_state() != before_database:
-                raise RuntimeError('Graphics repair changed learning database rows')
+                raise RuntimeError('MA content update changed learning database rows')
             receipt['learning_database_unchanged'] = True
         # A separate host monitor may have started the service before activation.
         # Reload the selected generation even when that process is already active.
