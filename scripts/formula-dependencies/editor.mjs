@@ -26,9 +26,9 @@ function serialize(doc) {
   doc.forEach(row => paragraphs.push(row.textBetween(0, row.content.size, '', asText)));
   return paragraphs.join('\n');
 }
-const safe = latex => typeof latex === 'string' && latex.length <= 4000
-  && !/\\(?:html\w*|css\w*|includegraphics|href|url|style|class|def|gdef|edef|newcommand|renewcommand)\b/i.test(latex)
-  && validateLatex(latex).length === 0;
+const displayable = latex => typeof latex === 'string' && latex.length <= 4000
+  && !/\\(?:html\w*|css\w*|includegraphics|href|url|style|class|def|gdef|edef|newcommand|renewcommand)\b/i.test(latex);
+const safe = latex => displayable(latex) && validateLatex(latex).length === 0;
 
 const formulaSchema = $node(mathType, () => ({
   inline: true, group: 'inline', atom: true, selectable: true,
@@ -369,21 +369,15 @@ export async function createFormulaEditor(host, options) {
   };
 }
 
-export function renderFormulaText(target, text) {
-  const fragments = document.createDocumentFragment();
-  let from = 0;
-  for (const span of formulaSpans(text)) {
-    if (!safe(span.latex)) continue;
-    const item = document.createElement('span');
-    if (span.display) item.className = 'siteFormulaDisplay';
-    try {
-      katex.render(span.latex, item, {displayMode: span.display, trust: false, throwOnError: true, maxExpand: 100, maxSize: 10});
-    } catch { continue; }
-    fragments.append(text.slice(from, span.from), item);
-    from = span.to;
+export function renderLatex(target, latex, display) {
+  if (!displayable(latex)) return false;
+  try {
+    katex.render(latex, target, {displayMode: display, trust: false, throwOnError: true,
+      strict: 'ignore', maxExpand: 100, maxSize: 10});
+    return true;
+  } catch {
+    return false;
   }
-  fragments.append(text.slice(from));
-  target.replaceChildren(fragments);
 }
 
 export const isLatexFragment = safe;

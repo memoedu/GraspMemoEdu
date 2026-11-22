@@ -558,7 +558,8 @@ def prepare(index, scope, cache, output, *, fail_at=None):
         teaching, source_fingerprint, Assets, controls, answer_sections, captured_sections, template_segments, adapt,
         question_model, calculation_metadata, calculator.from_mathacademy, calculator.normalize))
     config_hash = digest((repr((ADAPTER_VERSION, sorted(SOURCE_FIELDS), GAP_LABELS, calculator.MA_LEVELS)) + conversion).encode()
-                         + (root / 'scripts/render_mathacademy.mjs').read_bytes())
+                         + (root / 'scripts/render_mathacademy.mjs').read_bytes()
+                         + (root / 'web/math-syntax.js').read_bytes())
     renderer = Renderer(); reused = 0
     topics_dir, raw_dir = output / 'topics', output / 'mathacademy-sources/topics'
     topics_dir.mkdir(exist_ok=True); raw_dir.mkdir(parents=True, exist_ok=True)

@@ -1,7 +1,7 @@
 {
   "files": {
     "vendor/formula/editor.mjs.LEGAL.txt": "fed0b6765604f5f7835a79765f45fc0b8272b79c20cf3bcb5c612fc9cfb73bd7",
-    "vendor/formula/editor.mjs": "3d34df647cbd7af5780daa06630f4e307ad40704b8558294d983cd6e8af9d7fd",
+    "vendor/formula/editor.mjs": "63b9e159c6fdb595f972c156f369a547b2967b6ef7c192bd3dfc7f4dbf5c9e7c",
     "vendor/formula/fonts/KaTeX_AMS-Regular.woff2": "0cdd387c9590a1a9f9794560022dbb59654a7d86f187aa0c81495ad42d3a7308",
     "vendor/formula/fonts/KaTeX_Caligraphic-Bold.woff2": "de7701e42cf1f4cf0b766c03fb27977207eee2f4fd5d76fa82188406da43ea4c",
     "vendor/formula/fonts/KaTeX_Caligraphic-Regular.woff2": "5d53e70ad607c2352162dec9e0923fb54ecdafaccbf604cd8dcf7d00facb989b",
@@ -23,6 +23,6 @@
     "vendor/formula/fonts/KaTeX_Size4-Regular.woff2": "a4af7d414440a1c1790825cfb700cf9cf43b0f2c4b04f0ebc523011ad9853ec0",
     "vendor/formula/fonts/KaTeX_Typewriter-Regular.woff2": "71d517d67827787cfabdf186914cc3358eda539e37931941f2b2fd4a21f68c0b",
     "vendor/formula/LICENSES.txt": "eaf8af0e91559c0a580f5d4d6d0f9282391a773a99a93281f497e8df802a72d3",
-    "vendor/formula/previews.mjs": "a3f744ba9bc6cad8f8f536a7c019fc3cf51a61d8f5ab1b73d4d1e295dd76564a"
+    "vendor/formula/previews.mjs": "592421b3c72fd05edf169a78fd7a889c2a3395b296e0ed668773924abe980eb0"
   }
 }

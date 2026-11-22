@@ -1,4 +1,4 @@
-import {getLanguage} from './i18n.js?v=3f8c0aacb32aa0ad';
+import {getLanguage} from './i18n.js?v=5407b96232dd6afb';
 
 const targets = new WeakMap();
 const local = (zh, en) => getLanguage() === 'en' ? en : zh;

@@ -10,6 +10,7 @@ import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
 import { inflateSync } from 'node:zlib';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import {mathSpans} from '../web/math-syntax.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const digest = value => crypto.createHash('sha256').update(value).digest('hex');
@@ -262,9 +263,10 @@ export async function renderer(assets = new Map(), {v2 = false, cacheGlyphs = fa
       images.push({token, html:`<img class="topicDiagram" alt="${escape(alt)}" src="data:${asset.mime};base64,${asset.data.toString('base64')}" width="${asset.width}" height="${asset.height}" style="max-width:100%;height:auto" loading="lazy">`});
       return token;
     });
-    const safe = raw.replace(/\$\$([\s\S]*?)\$\$|\$([^$\n]+)\$/g, (_whole, block, inline) => {
-      const display = block !== undefined;
-      const latex = (display ? block : inline).trim();
+    let safe = '', cursor = 0;
+    for (const span of mathSpans(raw, {allowUnbalanced: true})) {
+      const {display} = span;
+      const latex = span.latex.trim();
       if (/\\(?:href|url|htmlClass|htmlId|htmlStyle|class|style|cssId|require)\b/.test(latex)) throw new Error('Active TeX content is not supported');
       if (cacheGlyphs) svg.fontCache.useLocalID(glyphPrefix);
       const rendered = adaptor.outerHTML(document.convert(latex, {display, em:15, ex:7.5, containerWidth:655}));
@@ -275,8 +277,10 @@ export async function renderer(assets = new Map(), {v2 = false, cacheGlyphs = fa
       const html = `<${tag} class="${display ? 'mathDisplay' : 'mathInline'}" data-math-id="${id}" data-tex="${escape(latex)}">${rendered}</${tag}>`;
       replacements.push({token, html, display});
       formulas.push({id, latex, display, source_line:node.line});
-      return display ? `\n\n${token}\n\n` : token;
-    });
+      safe += raw.slice(cursor, span.from) + (display ? `\n\n${token}\n\n` : token);
+      cursor = span.to;
+    }
+    safe += raw.slice(cursor);
     // The curriculum format is local prose and mathematics. Reject markup,
     // links and arbitrary source HTML. Validated PNGs are injected afterwards.
     if (/<\/?[a-z][^>]*>|!?\[[^\]]*\]\s*\(/i.test(safe)) throw new Error(`Unsupported active Markdown at line ${node.line}`);
