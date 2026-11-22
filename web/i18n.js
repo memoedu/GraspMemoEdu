@@ -1,11 +1,11 @@
 // UI strings only. Course HTML, names, answers and explanations never enter this module.
-import {trainingMessages} from './training-messages.js?v=0c9544f7483927a9';
-import {readerMessages} from './reader-messages.js?v=0c9544f7483927a9';
-import {portalMessages} from './portal-messages.js?v=0c9544f7483927a9';
-import {staticMessages} from './static-messages.js?v=0c9544f7483927a9';
+import {trainingMessages} from './training-messages.js?v=dd33b5c7c0ee5ea2';
+import {readerMessages} from './reader-messages.js?v=dd33b5c7c0ee5ea2';
+import {portalMessages} from './portal-messages.js?v=dd33b5c7c0ee5ea2';
+import {staticMessages} from './static-messages.js?v=dd33b5c7c0ee5ea2';
 
-import {paperMessages} from './review-paper-messages.js?v=0c9544f7483927a9';
-import {academyMessages} from './academy-messages.js?v=0c9544f7483927a9';
+import {paperMessages} from './review-paper-messages.js?v=dd33b5c7c0ee5ea2';
+import {academyMessages} from './academy-messages.js?v=dd33b5c7c0ee5ea2';
 
 export const LANGUAGE_KEY = 'graspmemoedu:ui-language';
 // Read the previous namespace once on the same origin. Renaming the public

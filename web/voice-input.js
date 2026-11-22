@@ -1,5 +1,5 @@
-import {getLanguage} from './i18n.js?v=0c9544f7483927a9';
-import {microphoneIcon, recordMicrophone, recordingMime} from './microphone-recorder.js?v=0c9544f7483927a9';
+import {getLanguage} from './i18n.js?v=dd33b5c7c0ee5ea2';
+import {microphoneIcon, recordMicrophone, recordingMime} from './microphone-recorder.js?v=dd33b5c7c0ee5ea2';
 
 const widgets = new Set();
 const answerForms = new WeakSet();
@@ -37,8 +37,13 @@ function insert(target, text) {
   return true;
 }
 
+function calculatorVoiceControl() {
+  return document.querySelector('.questionToolRow[data-calculator-layout="center"] .voiceTool');
+}
+
 function paint() {
   if (!presenter?.isConnected) presenter = currentModal()?.querySelector(':scope > .voiceTool') || fallback;
+  if (presenter === fallback) presenter = calculatorVoiceControl() || fallback;
   for (const widget of widgets) {
     if (!widget.root.isConnected) { widgets.delete(widget); continue; }
     widget.paint();
@@ -176,8 +181,11 @@ export function installVoiceInput({host, canUse, getIdentity, request}) {
       modal.prepend(modalWidget);
       if (current) { presenter = modalWidget; paint(); }
     }
+    if (current && presenter === fallback && calculatorVoiceControl()) paint();
   };
-  new MutationObserver(syncDialogs).observe(document.body, {childList: true, subtree: true, attributes: true, attributeFilter: ['open']});
+  new MutationObserver(syncDialogs).observe(document.body, {
+    childList: true, subtree: true, attributes: true, attributeFilter: ['open', 'data-calculator-layout'],
+  });
   addEventListener('pagehide', resetVoiceInput);
 }
 
