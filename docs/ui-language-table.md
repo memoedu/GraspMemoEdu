@@ -2,7 +2,7 @@
 
 本表从当前界面词库自动生成。修改以词库为准，随后重新生成并检查本表。术语约定见 [界面语言规范](ui-language.md)。
 
-共 1029 条界面文案映射（包括不同位置重复使用的文案）。花括号表示运行时填入的名称、数量或时间，不是页面上的固定文字。
+共 1030 条界面文案映射（包括不同位置重复使用的文案）。花括号表示运行时填入的名称、数量或时间，不是页面上的固定文字。
 
 不包括作者课程正文、题目、答案、解析或用户输入。首页的学科双语副标题按约定保留。
 
@@ -278,6 +278,7 @@
 | Submit | 提交 |
 | Introduction | 指导 |
 | Practice | 练习 |
+| Practice {number} | 练习{number} |
 | Example | 例题 |
 | {action}. Current user: {name} | {action}，当前身份：{name} |
 | Current account: {name}{purpose} | 当前账号：{name}{purpose} |

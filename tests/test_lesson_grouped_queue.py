@@ -83,6 +83,7 @@ class GroupedLessonTests(unittest.TestCase):
                 summary = state['modules'][0]
                 self.assertEqual(summary['practice_answered_count'], 1)
                 self.assertEqual(summary['practice_error_count'], int(not correct))
+                self.assertEqual(summary['practice_target_count'], (3 if grouped else 2) + int(not correct))
                 self.assertEqual(summary['status'], 'in_progress')
                 self.assertIsNotNone(self.active(state)['explanation_html'])
                 self.assertEqual(self.queue()['pending'].count(example_id), 1)
@@ -108,6 +109,41 @@ class GroupedLessonTests(unittest.TestCase):
                     review.process_submission(reserved['submission_id'])
                     self.assertEqual(review.submission(reserved['submission_id'])['state']['mastery'], 4)
 
+    def test_direct_example_reaches_review_and_wrong_answer_uses_the_first_miss_rule(self):
+        self.course['modules'][0]['practices'] = self.course['modules'][0]['practices'][:7]
+        self.restart('sequential-review')
+        when = datetime.now(timezone.utc)
+        review = ReviewBackend(self.service, clock=lambda: when)
+        self.service.choose(self.payload(choice='mastered'))
+        state = self.answer(True)
+        self.assertEqual(state['modules'][0]['mastery'], 4)
+        when = utc_time(review.next_due_at()) + timedelta(seconds=1)
+        current = review.begin('module-1', request_id=str(uuid.uuid4()))
+        example_id = self.course['modules'][0]['example']['id']
+        self.assertEqual(current['practice']['id'], example_id)
+        payload = {'request_id': str(uuid.uuid4()), 'expected_revision': current['revision'],
+                   'question_id': example_id, 'answer': 'wrong'}
+        reserved = review.submit(current['session_id'], payload)
+        review.process_submission(reserved['submission_id'])
+        state = review.submission(reserved['submission_id'])['state']
+        self.assertEqual(state['practice_target_count'], 2)
+        self.assertEqual(len(self.queue()['pending']), 1)
+        state = review.advance(current['session_id'], {**payload, 'request_id': str(uuid.uuid4()),
+                                                       'expected_revision': state['revision']})
+        self.assertTrue(state['practice']['id'].startswith('module-1-practice-'))
+
+    def test_wrong_direct_example_in_sequential_lesson_does_not_skip_the_first_practice(self):
+        self.course['modules'][0]['practices'] = self.course['modules'][0]['practices'][:7]
+        self.restart('sequential-lesson')
+        self.service.choose(self.payload(choice='mastered'))
+        state = self.answer(False)
+        self.assertEqual(state['modules'][0]['practice_target_count'], 3)
+        self.assertEqual(self.active(self.advance())['kind'], 'introduction')
+        self.assertEqual(self.active(self.advance())['phase'], 'reading')
+        self.assertEqual(self.active(self.advance())['question_id'], 'module-1-practice-1')
+        self.answer(False)
+        self.assertEqual(self.service.state()['modules'][0]['practice_target_count'], 5)
+
     def test_legacy_attempt_keeps_sequential_questions_and_never_creates_queue(self):
         with self.service._transaction() as con:
             state = self.service._load(con)
@@ -123,6 +159,19 @@ class GroupedLessonTests(unittest.TestCase):
         state = self.advance()
         self.assertEqual(self.active(state)['question_id'], 'module-1-practice-2')
         self.assertIsNone(self.queue())
+
+    def test_started_grouped_round_retains_previous_first_miss_policy(self):
+        self.study()
+        with self.service._transaction() as con:
+            state = self.service._load(con)
+            self.service._attempt(state)['practice_policy'] = {
+                'version': 'lesson-v2', 'targets': [3, 5, 7, 9], 'ratings': [4, 3, 2, 1]}
+            self.service._save(con, state)
+        self.restart()
+        state = self.answer(False)
+        self.assertEqual(state['modules'][0]['practice_target_count'], 5)
+        self.assertEqual(self.queue()['pending'][-2:], ['module-1-practice-2', 'module-1-practice-3'])
+        self.assertEqual(self.active(self.advance())['question_id'], 'module-1-practice-4')
 
     def test_refresh_and_replayed_advance_do_not_consume_extra_questions(self):
         self.study()
@@ -161,12 +210,12 @@ class GroupedLessonTests(unittest.TestCase):
                 self.advance()
             self.answer(False)
         before = self.queue()
-        self.assertEqual(len(before['pending']), 6)
+        self.assertEqual(len(before['pending']), 5)
         self.advance()
         before_verdict = self.queue()
         state = self.answer(False)
         self.assertEqual(self.queue(), before_verdict)
-        self.assertEqual(state['modules'][0]['practice_target_count'], 9)
+        self.assertEqual(state['modules'][0]['practice_target_count'], 8)
         self.assertIsNone(state['modules'][0]['mastery'])
         self.assertEqual(state['status'], 'paused')
 
@@ -186,14 +235,16 @@ class GroupedLessonTests(unittest.TestCase):
 
     def test_same_group_errors_still_grow_target_by_two_and_never_repeat(self):
         self.study()
-        answers = [False, True, True, False, False, True, True, True, True]
+        answers = [False, True, True, False, False, True, True, True]
         delivered = []
         for index, correct in enumerate(answers):
             if index:
                 self.advance()
             delivered.append(self.active()['question_id'])
             state = self.answer(correct)
-            self.assertEqual(state['modules'][0]['practice_target_count'], 3 + 2 * answers[:index + 1].count(False))
+            errors = answers[:index + 1].count(False)
+            self.assertEqual(state['modules'][0]['practice_target_count'], (3, 4, 6, 8)[errors])
+        self.assertEqual(delivered[3], 'module-1-practice-2')
         self.assertEqual(len(delivered), len(set(delivered)))
         self.assertEqual(state['modules'][0]['mastery'], 1)
 
@@ -206,7 +257,7 @@ class GroupedLessonTests(unittest.TestCase):
             self.answer(True)
         with closing(self.service._connect()) as con:
             row = con.execute("SELECT mastery,policy_version FROM review_ratings WHERE source='lesson'").fetchone()
-        self.assertEqual(tuple(row), (4, 'lesson-v2'))
+        self.assertEqual(tuple(row), (4, 'lesson-v3'))
 
     def test_non_grouped_seven_question_bank_keeps_its_valid_two_question_target(self):
         from copy import deepcopy
@@ -219,9 +270,9 @@ class GroupedLessonTests(unittest.TestCase):
         self.assertEqual(state['modules'][0]['mastery'], 4)
 
     def test_group_expansion_preserves_lesson_targets_scores_and_fourth_error_pause(self):
-        cases = [([True, True, True], 4), ([False, True, True, True, True], 3),
-                 ([False, False, True, True, True, True, True], 2),
-                 ([False, False, False, True, True, True, True, True, True], 1),
+        cases = [([True, True, True], 4), ([False, True, True, True], 3),
+                 ([False, False, True, True, True, True], 2),
+                 ([False, False, False, True, True, True, True, True], 1),
                  ([False, False, False, False], None)]
         for case_index, (answers, mastery) in enumerate(cases):
             with self.subTest(mastery=mastery):
@@ -234,7 +285,8 @@ class GroupedLessonTests(unittest.TestCase):
                     errors = answers[:index + 1].count(False)
                     module = state['modules'][0]
                     self.assertEqual(module['practice_answered_count'], index + 1)
-                    self.assertEqual(module['practice_target_count'], (3, 5, 7, 9)[min(errors, 3)])
+                    self.assertEqual(module['practice_target_count'], (3, 4, 6, 8)[min(errors, 3)])
+                    self.assertEqual(len(self.queue()['pending']), max(0, (3, 4, 6, 8)[min(errors, 3)] - index - 1))
                     self.assertEqual(len(self.queue()['expanded_groups']), min(errors, 3))
                 self.assertEqual(module['mastery'], mastery)
                 self.assertEqual(module['status'], 'paused' if mastery is None else 'completed')

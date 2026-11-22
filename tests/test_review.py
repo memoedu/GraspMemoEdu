@@ -158,18 +158,18 @@ class ReviewBackendTests(unittest.TestCase):
         self.assertGreater(utc_time(state['due_at']), self.time)
         self.assertEqual(state['actions'], [])
 
-    def test_one_wrong_adds_two_and_finishes_as_two(self):
-        state = self.round([False, True, True], 2)
-        self.assertEqual(state['practice_target_count'], 3)
+    def test_one_wrong_adds_one_and_finishes_as_two(self):
+        state = self.round([False, True], 2)
+        self.assertEqual(state['practice_target_count'], 2)
         self.assertEqual(state['status'], 'completed')
 
-    def test_two_wrong_add_four_and_finish_as_one(self):
-        state = self.round([False, True, False, True, True], 1)
-        self.assertEqual(state['practice_target_count'], 5)
+    def test_two_wrong_add_three_and_finish_as_one(self):
+        state = self.round([False, False, True, True], 1)
+        self.assertEqual(state['practice_target_count'], 4)
         self.assertEqual(state['status'], 'completed')
 
     def test_third_wrong_on_last_question_pauses_before_completion(self):
-        state = self.round([False, False, True, True, False], None)
+        state = self.round([False, False, True, False], None)
         self.assertEqual(state['status'], 'paused')
         self.assertEqual(self.count('review_ratings'), 1)
         self.assertEqual(self.learning.state()['status'], 'paused')
@@ -199,8 +199,9 @@ class ReviewBackendTests(unittest.TestCase):
 
     def test_random_order_and_policy_are_frozen_for_started_round(self):
         self.enroll()
+        self.backend.policy = PracticePolicy('review-v1', (1, 3, 5), (4, 2, 1))
         state = self.begin()
-        self.backend.policy = PracticePolicy('review-v2', (1, 2), (4, 3))
+        self.backend.policy = PracticePolicy('review-custom', (1, 2), (4, 3))
         state = self.answer(state, False)
         self.assertEqual(state['practice_target_count'], 3)
         self.restart()
@@ -209,7 +210,7 @@ class ReviewBackendTests(unittest.TestCase):
         state = self.answer(self.advance(state), True)
         state = self.answer(self.advance(state), True)
         self.assertEqual(state['mastery'], 2)
-        self.backend.policy = PracticePolicy('review-v2', (1, 2), (4, 3))
+        self.backend.policy = PracticePolicy('review-custom', (1, 2), (4, 3))
         state = self.begin()
         state = self.answer(state, False)
         self.assertEqual(state['practice_target_count'], 2)
@@ -226,7 +227,7 @@ class ReviewBackendTests(unittest.TestCase):
         self.backend.process_submission(item['submission_id'])
         state = self.backend.submit(state['session_id'], payload)['state']
         self.assertEqual(state['practice_error_count'], 1)
-        self.assertEqual(state['practice_target_count'], 3)
+        self.assertEqual(state['practice_target_count'], 2)
         with self.assertRaises(DomainError):
             self.backend.submit(state['session_id'], {**payload, 'answer': 'correct'})
         advance = self.payload(state)

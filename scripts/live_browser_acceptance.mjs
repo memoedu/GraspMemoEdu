@@ -103,11 +103,14 @@ try {
   assert.equal(await page.getByRole('button',{name:'已掌握，试着作答',exact:true}).count(),0);
   await shot('04-explanation');
   await next();
-  for (let i=0;i<2;i++) {
-    const result = await answer(course.modules[0].practices[i].reference_answer,true);
-    assert.equal(result.modules[0].practice_error_count,0);
-    assert.equal(result.modules[0].practice_target_count,2);
-    if (i===1) assert.equal(result.modules[0].mastery,4);
+  const initialTarget = course.modules[0].practices.length === 15 ? 3 : 2;
+  for (let i=0;i<initialTarget;i++) {
+    const shown = active(await state()).question_id;
+    const practice = course.modules[0].practices.find(question=>question.id===shown);
+    const result = await answer(practice.reference_answer,true);
+    assert.equal(result.modules[0].practice_error_count,1);
+    assert.equal(result.modules[0].practice_target_count,initialTarget+1);
+    if (i===initialTarget-1) assert.equal(result.modules[0].mastery,3);
     await shot(`05-practice-${i+1}`);
     await next();
   }
@@ -121,7 +124,7 @@ try {
   s = await state();
   assert.equal(s.status,'completed');
   assert.equal(s.steps.filter(x=>x.kind==='introduction').length,1);
-  assert.equal(s.modules.every(m=>m.mastery===4),true);
+  assert.deepEqual(s.modules.map(m=>m.mastery),[3,...course.modules.slice(1).map(()=>4)]);
   await page.getByRole('heading',{name:'本 Topic 已完成',exact:true}).waitFor();
   await shot('06-completed');
   await page.reload();

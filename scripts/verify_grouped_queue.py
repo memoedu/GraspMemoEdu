@@ -150,12 +150,14 @@ def main():
                 snapshots.append({'wrong': qid, 'before': before, 'after': after})
                 old_body = json.loads(before['rows'][0]['body'])
                 new_body = json.loads(after['rows'][0]['body'])
+                assert state['practice_target_count'] == 2
+                assert new_body['pending'][:len(old_body['pending'])] == old_body['pending']
+                additions = new_body['pending'][len(old_body['pending']):]
+                assert len(additions) == 1
                 if wrong_in_group == 1:
-                    assert new_body['pending'][:len(old_body['pending'])] == old_body['pending']
-                    additions = new_body['pending'][len(old_body['pending']):]
-                    assert len(additions) == 2 and all(group(item) == group(qid) for item in additions)
+                    assert group(additions[0]) == group(qid)
                 else:
-                    assert new_body['pending'] == old_body['pending'], 'Same group expanded twice'
+                    assert new_body['expanded_groups'] == old_body['expanded_groups'], 'Same group expanded twice'
             assert review.state(state['session_id']) == state
             if state['status'] == 'in_progress':
                 state = review.advance(state['session_id'], {'request_id': str(uuid.uuid4()),
