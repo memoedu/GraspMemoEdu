@@ -5,6 +5,7 @@ Atomic card variants project their points' shared schedules, not separate cards.
 """
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
+from functools import cache
 import json
 import re
 from typing import Literal
@@ -123,7 +124,7 @@ class AdminStudents:
         return {'topic_id': topic_id, 'topic_title': topic['title'], 'course_title': course['title'],
                 'subject_id': self.subjects.topic_subject(topic_id)}
 
-    def blockers(self, con, student, topic_id, state, version, tables, current, *, atomic=False):
+    def blockers(self, con, student, topic_id, state, version, tables, ready, *, atomic=False):
         result = []
         allowed = {t['id'] for t in student['topics']}
         if not student['enabled']: result.append('account_disabled')
@@ -136,7 +137,7 @@ class AdminStudents:
             if (state or {}).get('pause') or (not atomic and 'review_topic_pauses' in tables and con.execute(
                 'SELECT 1 FROM review_topic_pauses WHERE learner=? AND topic=?', (student['learner_id'], topic_id)).fetchone()):
                 result.append('paused')
-            if not self.dashboard.dependency_policy.ready(con, student, topic_id, current_time=current.isoformat()):
+            if not ready(topic_id):
                 result.append('prerequisites')
         return result
 
@@ -187,6 +188,13 @@ class AdminStudents:
                     if self.access.test_materials.topic_visible(r['topic'], access)
                     and r['topic'] not in self.training.topic_redirects}
             states = {key: json.loads(r['body']) for key, r in rows.items()}
+            policy = self.dashboard.dependency_policy
+            dependencies = policy.dependencies()
+
+            @cache
+            def ready(topic_id):
+                return policy.ready(con, student, topic_id, dependencies=dependencies, current_time=current.isoformat())
+
             learned = [self.learned_topic(key, r) for key, r in rows.items()
                        if self.started(states[key])]
             reviews, cards = [], []
@@ -197,7 +205,7 @@ class AdminStudents:
                     context = self.context(card['topic'])
                     topic = self.catalog.topics.get(card['topic'], {})
                     title = next((m['title'] for m in topic.get('modules', []) if m['id'] == card['module']), card['module'])
-                    blocked = self.blockers(con, student, card['topic'], states.get(card['topic']), card['version'], tables, current)
+                    blocked = self.blockers(con, student, card['topic'], states.get(card['topic']), card['version'], tables, ready)
                     active = None
                     if 'review_sessions' in tables:
                         active = con.execute("SELECT id,module FROM review_sessions WHERE learner=? AND topic=? AND status='in_progress'", (learner_id, card['topic'])).fetchone()
@@ -214,7 +222,7 @@ class AdminStudents:
                     continue
                 state = atomic_state(states.get(topic_id, {}))
                 points = state.get('points', {})
-                blocked = self.blockers(con, student, topic_id, state, rows[topic_id]['version'] if topic_id in rows else topic['version'], tables, current,
+                blocked = self.blockers(con, student, topic_id, state, rows[topic_id]['version'] if topic_id in rows else topic['version'], tables, ready,
                                         atomic=sectioned_training(topic))
                 if not sectioned_training(topic) and not state.get('completed_at'): blocked.append('initial_learning')
                 dates = {}
@@ -242,7 +250,7 @@ class AdminStudents:
                         'blockers': blocked[:], 'bundle': len(point_dates) > 1})
             training_learned, training_reviews = self.training_records(con, student, tables, current, access)
             reviews.extend(training_reviews)
-            analytics = StudentReport(self, con, access, student, rows, tables, current).build(reviews, days, timezone)
+            analytics = StudentReport(self, con, access, student, rows, tables, current).build(reviews, days, timezone, ready)
             presence = today_presence(con, learner_id, current, access, self.context, self.access.test_materials)
         reviews.sort(key=lambda r: (r['due_at'] or '', r['kind'], r['id']))
         learned.sort(key=lambda r: (r['started_at'] or '', r['topic_id']), reverse=True)
