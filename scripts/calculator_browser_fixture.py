@@ -31,7 +31,7 @@ def main():
                  calculate={'level': 'cas', 'enable_modules': ['optimization', 'astronomy'],
                             'disable_modules': ['probability'], 'disable_keys': ['sin']})
     module = topic['modules'][0]
-    module['example']['constraints'] = 'Graphing'
+    module['example']['constraints'] = '按题意作答。'
     module['example']['html'] += (
         '<aside class="inline-document-callout callout" data-callout="requirement">'
         '<strong>要求</strong><p>Calculator: Graphing</p></aside>')
