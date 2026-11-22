@@ -96,6 +96,7 @@ try {
   const variantIndex = answers.findIndex(i => i.card_id.startsWith('variant-'));
   const variant = paper.items[variantIndex];
   await pick(variantIndex);
+  await page.locator('#paperstepCard .contentReportToggle').hover();
   await page.locator('#paperstepCard .requestHelpButton').waitFor();
   const reportId = (await api('help-requests', {...variant.content_context, content_version: variant.content_version,
     content_block_id: 'question:' + variant.content_context.question_id, request_id: crypto.randomUUID(), message: '【浏览器验收】请解释这张变式卡。'})).id;

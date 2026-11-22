@@ -101,6 +101,7 @@
 
 | English | 中文 |
 |---|---|
+| Try the question here. Your draft stays in this tab for self-checking. | 可在此试答。本次作答保存在当前标签页，供自己核对。 |
 | Complete learning task | 完成学习任务 |
 | Back to reading | 返回阅读 |
 | Learning progress {progress}% | 学习进度 {progress}% |
@@ -657,8 +658,7 @@
 | Loading answers… | 正在读取作答记录… |
 | No answer records are available. | 暂无可查看的作答记录。 |
 | Unable to load answers | 暂时无法读取作答记录 |
-| Question help | 题目帮助 |
-| Report a content error | 报告内容错误 |
+| Content help | 内容帮助 |
 | Correct | 正确 |
 | Incorrect | 错误 |
 | Full credit | 满分 |
@@ -685,7 +685,7 @@
 | What does Reset clear? | “重置”会清除什么？ |
 | As a guest, click the yellow Reset button beside a lesson to clear that topic’s progress and answer records and start again. Other topics and other people’s progress are unaffected. | 游客点击学习任务旁的黄色“重置”，会清空该主题的学习进度和作答记录，让你从头开始。其他主题和其他人的进度不受影响。 |
 | What if I find a problem or need help? | 题目有问题，或者不知道怎么操作怎么办？ |
-| See Guide for learning instructions. To report a question or explanation error, click Content feedback on the learning page, or use the question mark in an answer record and choose Report a content error. For other issues, choose Feedback in the avatar menu. | 操作流程可以查看“指南”。发现题目或解析有误，可在学习页点击“内容反馈”，或在作答记录中点击问号选择“报告内容错误”；其他问题可通过头像菜单中的“反馈”提出。 |
+| See Guide for learning instructions. Open the question mark in the upper right of a learning task or answer record to choose Content quality feedback or Request help. For other issues, choose Feedback in the avatar menu. | 操作流程可以查看“指南”。在学习任务或作答记录中打开右上角的问号，可选择“内容质量反馈”或“请求答疑”。其他问题可通过头像菜单中的“反馈”提出。 |
 | View Guide → | 查看指南 → |
 | Q&A | 常见问题 |
 | Guide | 指南 |
