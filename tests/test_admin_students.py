@@ -160,6 +160,24 @@ class AdminStudentsTests(unittest.TestCase):
         self.assertTrue(self.client.post('/api/profile', headers=self.headers,
                                          json={'beginner_mode_enabled': True}).json()['beginner_mode_enabled'])
 
+    def test_answer_command_input_is_opt_in_for_each_identity(self):
+        key = 'answer_command_input_enabled'
+        # Reopen a database from before the setting existed, including its accounts.
+        with self.store._transaction() as con:
+            con.execute('ALTER TABLE access_principals DROP COLUMN answer_command_input_enabled')
+        AccessStore(self.root, list(self.store.topics.values()))
+        guest = self.store.create_guest()
+        guest_headers = {'Origin': 'https://site.test', 'X-Learning-Identity': guest['identity_token']}
+        for headers in (self.headers, guest_headers):
+            self.assertIs(self.client.get('/api/profile', headers=headers).json()[key], False)
+            self.assertIs(self.client.post('/api/profile', headers=headers, json={key: True}).json()[key], True)
+            self.assertIs(self.client.get('/api/access', headers=headers).json()[key], True)
+            self.assertEqual(self.client.post('/api/profile', headers=headers, json={key: 'false'}).status_code, 422)
+            self.assertIs(self.client.post('/api/profile', headers=headers, json={'timezone': 'UTC'}).json()[key], True)
+        self.assertIs(self.client.get('/api/profile', headers=self.normal_headers).json()[key], False)
+        self.assertIs(self.client.post('/api/profile', headers=self.headers, json={key: False}).json()[key], False)
+        self.assertIs(self.client.get('/api/access', headers=guest_headers).json()[key], True)
+
     def test_future_modules_active_reviews_and_old_version_are_read_only(self):
         learner = self.learner(); backend = learner.review_backend; backend.clock = lambda: self.time
         self.assertEqual(self.detail().json()['learned'], [])  # Merely reading a Topic is not learning.

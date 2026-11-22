@@ -86,6 +86,7 @@ class DashboardStore:
             selected = None
         return {'display_name': access['display_name'], 'timezone': row['timezone'] if row else None,
                 'selected_course_id': selected, 'beginner_mode_enabled': access.get('beginner_mode_enabled', True),
+                'answer_command_input_enabled': access.get('answer_command_input_enabled', False),
                 'course_hierarchy_enabled': 'course_hierarchy' in access['features'] and (not row or bool(row['course_hierarchy_enabled']))}
 
     def update_profile(self, access, values):
@@ -122,6 +123,9 @@ class DashboardStore:
             if 'beginner_mode_enabled' in values:
                 con.execute('UPDATE access_principals SET beginner_mode_enabled=? WHERE learner_id=?',
                             (int(values['beginner_mode_enabled']), access['learner_id']))
+            if 'answer_command_input_enabled' in values:
+                con.execute('UPDATE access_principals SET answer_command_input_enabled=? WHERE learner_id=?',
+                            (int(values['answer_command_input_enabled']), access['learner_id']))
             updated = self.access_store._public(con.execute(
                 'SELECT * FROM access_principals WHERE learner_id=?', (access['learner_id'],)).fetchone())
         return self.profile(updated)

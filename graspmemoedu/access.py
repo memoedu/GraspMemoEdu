@@ -109,6 +109,8 @@ class AccessStore:
                 con.execute('ALTER TABLE access_principals ADD COLUMN is_student INTEGER NOT NULL DEFAULT 0 CHECK(is_student IN (0,1))')
             if 'beginner_mode_enabled' not in columns:
                 con.execute('ALTER TABLE access_principals ADD COLUMN beginner_mode_enabled INTEGER NOT NULL DEFAULT 1 CHECK(beginner_mode_enabled IN (0,1))')
+            if 'answer_command_input_enabled' not in columns:
+                con.execute('ALTER TABLE access_principals ADD COLUMN answer_command_input_enabled INTEGER NOT NULL DEFAULT 0 CHECK(answer_command_input_enabled IN (0,1))')
             if 'admin_name' not in columns:
                 con.execute("ALTER TABLE access_principals ADD COLUMN admin_name TEXT NOT NULL DEFAULT ''")
                 con.execute("UPDATE access_principals SET admin_name=display_name WHERE role='account'")
@@ -169,6 +171,7 @@ class AccessStore:
             'is_advanced_learner': not guest and bool(row['is_advanced_learner']),
             'is_student': not guest and bool(row['is_student']),
             'beginner_mode_enabled': bool(row['beginner_mode_enabled']),
+            'answer_command_input_enabled': bool(row['answer_command_input_enabled']),
             'features': [],
             'topics': [],
         }
