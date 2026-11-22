@@ -78,7 +78,9 @@ class UnifiedLearningTests(unittest.TestCase):
 
     def test_due_cards_wait_for_continue_preserve_cursor_and_relock_guidance(self):
         self.first_section()
-        self.service.choose(payload(self.service, choice='unmastered'))
+        state = self.service.choose(payload(self.service, choice='unmastered'))
+        self.assertEqual(active(state)['introduction_id'], 'intro-a')
+        self.assertEqual(state['modules'][0]['status'], 'in_progress')
         self.advance()
         self.service.choose(payload(self.service, choice='view_solution'))
         before = self.service.state()

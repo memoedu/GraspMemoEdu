@@ -65,12 +65,10 @@ class LearningAcceptanceTests(unittest.TestCase):
     def study(self):
         before_calls = len(self.judge.calls)
         state = self.choose("unmastered")
-        self.assertEqual(self.active(state)["phase"], "unmastered")
+        self.assertEqual(self.active(state)["kind"], "introduction")
         self.assertIn("continue", self.active(state)["actions"])
         self.assertEqual(len(self.judge.calls), before_calls)
         state = self.advance()
-        if self.active(state)["kind"] == "introduction":
-            state = self.advance()
         self.assertEqual(self.active(state)["kind"], "example")
         state = self.choose("view_solution")
         self.assertIsNotNone(self.active(state)["explanation_html"])
@@ -124,13 +122,12 @@ class LearningAcceptanceTests(unittest.TestCase):
         self.advance()
         self.assertEqual(self.active()["module_id"], "module-2")
 
-    def test_first_unmastered_requires_continue_and_introduction_is_once(self):
+    def test_unmastered_opens_guidance_directly_and_reuses_the_existing_page(self):
         example_id = self.service.state()["active_step_id"]
-        self.choose("unmastered")
-        self.assertEqual(self.active()["kind"], "example")
+        state = self.choose("unmastered")
         self.assertEqual(self.judge.calls, [])
-        state = self.advance()
         self.assertEqual(self.active(state)["kind"], "introduction")
+        guidance_id = state["active_step_id"]
         withdrawn = next(step for step in state["steps"] if step["id"] == example_id)
         self.assertFalse(withdrawn["visible"])
         self.assertTrue(withdrawn["visited"])
@@ -151,7 +148,9 @@ class LearningAcceptanceTests(unittest.TestCase):
         self.advance()
         self.answer("correct")
         self.advance()
-        self.choose("unmastered")
+        state = self.choose("unmastered")
+        self.assertEqual(state["active_step_id"], guidance_id)
+        self.assertTrue(state["introduction_read"])
         self.advance()
         self.assertEqual(self.active()["kind"], "example")
         self.assertEqual(self.active()["module_id"], "module-2")
@@ -247,12 +246,12 @@ class LearningAcceptanceTests(unittest.TestCase):
         request = self.payload(state)
         self.service.advance(request)
         self.service.advance(copy.deepcopy(request))
-        self.assertEqual(self.active()["kind"], "introduction")
+        self.assertEqual(self.active()["phase"], "guided_choice")
         stale_request = self.payload(state)
         with self.assertRaises(DomainError) as caught:
             self.service.advance(stale_request)
         self.assertEqual(caught.exception.status_code, 409)
-        self.assertEqual(self.active()["kind"], "introduction")
+        self.assertEqual(self.active()["phase"], "guided_choice")
 
     def test_reusing_request_id_for_different_payload_is_rejected(self):
         request = self.payload(choice="mastered")
@@ -347,16 +346,15 @@ class LearningAcceptanceTests(unittest.TestCase):
         def at_answer():
             self.choose("mastered")
 
-        def at_unmastered():
+        def at_intro():
             self.choose("unmastered")
 
-        def at_intro():
-            at_unmastered()
+        def at_guided_choice():
+            at_intro()
             self.advance()
 
         def at_explanation():
-            at_intro()
-            self.advance()
+            at_guided_choice()
             self.choose("view_solution")
 
         def at_practice():
@@ -366,7 +364,7 @@ class LearningAcceptanceTests(unittest.TestCase):
             self.study()
             self.answer("wrong")
 
-        for index, prepare in enumerate([at_choice, at_answer, at_unmastered, at_intro, at_explanation, at_practice, at_feedback]):
+        for index, prepare in enumerate([at_choice, at_answer, at_intro, at_guided_choice, at_explanation, at_practice, at_feedback]):
             with self.subTest(phase=prepare.__name__):
                 self.service = LearningService(copy.deepcopy(self.course), self.data_dir / str(index), self.judge)
                 prepare()
@@ -594,7 +592,6 @@ class LearningAcceptanceTests(unittest.TestCase):
 
     def test_failed_log_write_preserves_pause_and_recovers_exactly_once(self):
         self.choose("unmastered")
-        self.advance()
         prior_log = self.service.log_path.read_text(encoding="utf-8")
         with mock.patch("graspmemoedu.service.os.replace", side_effect=OSError("Synthetic log disk unavailable")):
             state = self.service.pause({"request_id": str(uuid.uuid4())})

@@ -221,9 +221,7 @@ class MathAcademyTests(unittest.TestCase):
         }), encoding='utf-8')
 
         service = create_learning_service(topic, self.data, DeterministicJudge())
-        service.choose(payload(service, choice='unmastered'))
-        service.advance(payload(service))
-        guidance = active(service.state())
+        guidance = active(service.choose(payload(service, choice='unmastered')))
         self.assertEqual(guidance['introduction_ids'], [intro['id'], extra['id']])
         self.assertIn('<p>第一段指导。</p>', guidance['html'])
         self.assertIn('<h3>下一节 &amp; 细节</h3><p>第二段指导。</p>', guidance['html'])

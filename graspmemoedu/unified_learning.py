@@ -204,6 +204,9 @@ class UnifiedLearningService(OrderedLearningService):
         state.setdefault('completed_at', now())
         self._add_step(state, kind='completion', phase='completed')
 
+    def _example_guidance_group(self, state):
+        return [self._current_section(state)['id']]
+
     def _advance_step(self, con, state):
         step = self._step(state)
         if step['kind'] == 'bank_question':
@@ -211,15 +214,19 @@ class UnifiedLearningService(OrderedLearningService):
             self._next_module(state)
         elif step['kind'] == 'introduction':
             step['phase'] = 'completed'
-            self._attempt(state).update(status='completed', completed_at=now())
             ident = step['introduction_id']
             if ident not in state['read_introductions']:
                 state['read_introductions'].append(ident)
             state['introduction_read'] = len(state['read_introductions']) == len(self.sections)
             state.setdefault('started_at', now())
             self._event(con, state, 'introduction_read', introduction_id=ident)
-            if not self._atomic_next(state):
-                self._next_module(state)
+            attempt = self._attempt(state)
+            if attempt['module_index'] >= 0:
+                self._return_to_example(state)
+            else:
+                attempt.update(status='completed', completed_at=now())
+                if not self._atomic_next(state):
+                    self._next_module(state)
         else:
             LearningService._advance_step(self, con, state)
 

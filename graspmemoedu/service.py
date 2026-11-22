@@ -375,7 +375,7 @@ class LearningService:
                 step.update(title='Topic 完成', html='<p>本 Topic 的所有模块已完成。</p>', explanation_html=None)
             is_active = saved['id'] == state['active_step_id']
             is_current = saved['id'] == state['current_step_id']
-            visible = not (active['kind'] == 'introduction' and saved['module_id'] == active['module_id'] and saved['kind'] != 'introduction')
+            visible = not (active['kind'] == 'introduction' and saved['module_id'] == attempt['module_id'] and saved['kind'] != 'introduction')
             step.update(visited=True, unlocked=True, current=is_current, active=is_active, visible=visible, actions=[])
             if is_active and is_current and state['status'] == 'in_progress' and not state['pending_submission_id']:
                 if saved['phase'] == 'choice':
@@ -465,7 +465,7 @@ class LearningService:
                 choice = payload.get('choice')
                 if step['phase'] == 'guided_choice':
                     if choice not in ('attempt_example', 'view_solution'):
-                        raise DomainError('invalid_choice', '请选择尝试完成或修王子。', 422)
+                        raise DomainError('invalid_choice', '请选择尝试完成或展示答案。', 422)
                     if choice == 'attempt_example':
                         step['phase'] = 'answer'
                         attempt['learning_path'] = 'guided_example'
@@ -481,17 +481,17 @@ class LearningService:
                     if choice == 'unmastered':
                         attempt['learning_path'] = 'unmastered'
                     self._event(con, state, 'example_choice', choice=choice)
+                    if choice == 'unmastered':
+                        self._learn(state, open_guidance=True)
                 self._record_action(con, 'choose', payload, fingerprint)
                 self._save(con, state)
         self.flush_logs()
         return self._public(state)
 
-    def _learn(self, state):
-        if not state['introduction_read']:
+    def _learn(self, state, *, open_guidance=False):
+        if open_guidance or not state['introduction_read']:
             prior = next((s for s in state['steps'] if s['kind'] == 'introduction'), None)
             if prior:
-                prior['phase'] = 'reading'
-                prior['module_id'] = self._attempt(state)['module_id']
                 state['active_step_id'] = state['current_step_id'] = prior['id']
             else:
                 self._add_step(state, kind='introduction')

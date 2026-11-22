@@ -81,8 +81,7 @@ class GroupedReviewTests(unittest.TestCase):
         lesson_clock = patch('graspmemoedu.service.now', lambda: self.time.isoformat())
         lesson_clock.start(); self.addCleanup(lesson_clock.stop)
         self.learning.choose(lesson_payload(choice='unmastered'))
-        for _ in range(2):
-            self.learning.advance(lesson_payload())
+        self.learning.advance(lesson_payload())
         self.learning.choose(lesson_payload(choice='view_solution'))
         self.learning.advance(lesson_payload())
         for index in range(3):

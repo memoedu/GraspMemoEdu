@@ -67,8 +67,8 @@ class GroupedLessonTests(unittest.TestCase):
                 learner = f'guided-{grouped}-{correct}'
                 self.restart(learner)
                 example_id = module['example']['id']
-                self.service.choose(self.payload(choice='unmastered'))
-                self.advance()
+                guidance = self.service.choose(self.payload(choice='unmastered'))
+                self.assertEqual(self.active(guidance)['kind'], 'introduction')
                 choice = self.advance()
                 self.assertEqual(self.active(choice)['actions'], ['attempt_example', 'view_solution'])
                 self.assertIsNone(self.active(choice)['explanation_html'])

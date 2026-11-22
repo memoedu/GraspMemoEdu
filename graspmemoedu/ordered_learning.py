@@ -132,13 +132,16 @@ class OrderedLearningService(LearningService):
                            if item['kind'] == 'example' and item['id'] == module_id)
         return self._guidance_group(order_index)
 
-    def _learn(self, state):
+    def _example_guidance_group(self, state):
         group = self._guidance_group(state['order_index'])
-        introduction_id = group[0]
-        if any(i not in state['read_introductions'] for i in group):
+        return group[-1:] if authored_sequence(self.course) else group
+
+    def _learn(self, state, *, open_guidance=False):
+        group = self._example_guidance_group(state)
+        if open_guidance or any(i not in state['read_introductions'] for i in group):
+            introduction_id = group[0]
             prior = next((s for s in state['steps'] if s.get('introduction_id') == introduction_id), None)
             if prior:
-                prior.update(phase='reading', module_id=self._attempt(state)['module_id'])
                 state['active_step_id'] = state['current_step_id'] = prior['id']
             else:
                 self._add_step(state, kind='introduction').update(introduction_id=introduction_id, introduction_ids=group)
@@ -207,7 +210,9 @@ class OrderedLearningService(LearningService):
                     state['introduction_read'] = len(state['read_introductions']) == len(self.course['introductions'])
                     state.setdefault('started_at', now())
                     self._event(con, state, 'introduction_read', introduction_id=step['introduction_id'])
-                    if is_introduction(self.course) or authored_sequence(self.course) or state.get('trailing_reading'):
+                    if self._attempt(state)['module_index'] >= 0:
+                        self._return_to_example(state)
+                    elif is_introduction(self.course) or authored_sequence(self.course) or state.get('trailing_reading'):
                         self._attempt(state).update(status='completed', completed_at=now())
                         self._start_order(state, state['order_index'] + 1)
                         if state['status'] == 'completed' and state.get('trailing_reading'):

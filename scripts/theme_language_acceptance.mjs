@@ -70,7 +70,6 @@ try{
      if(lang==='zh-CN'){
        const choice=page.getByRole('button',{name:'未掌握，先学习',exact:true});
        if(await choice.isVisible())await choice.click();
-       if(await page.locator('#stepTitle').innerText()!=='指导')await page.getByRole('button',{name:'继续学习',exact:true}).click();
        await page.waitForFunction(()=>document.querySelector('#stepTitle')?.textContent==='指导');
        snapshots.set(id,await page.locator('#stepCard .courseContent').innerHTML());
      }else{

@@ -145,10 +145,9 @@ class GuestAccessAcceptanceTests(unittest.TestCase):
         return result
 
     def _study(self, identity):
-        self._mutate("choose", identity, choice="unmastered")
-        state = self._mutate("continue", identity)
-        if self._active(state)["kind"] == "introduction":
-            state = self._mutate("continue", identity)
+        state = self._mutate("choose", identity, choice="unmastered")
+        self.assertEqual(self._active(state)["kind"], "introduction")
+        self._mutate("continue", identity)
         state = self._mutate("choose", identity, choice="view_solution")
         self.assertEqual(self._active(state)["phase"], "reading")
         state = self._mutate("continue", identity)
@@ -408,8 +407,6 @@ class GuestAccessAcceptanceTests(unittest.TestCase):
         identity, _ = self._guest()
         self._assert_manual_pause_forbidden(identity)
         self._mutate("choose", identity, choice="unmastered")
-        self._assert_manual_pause_forbidden(identity)
-        self._mutate("continue", identity)
         self._assert_manual_pause_forbidden(identity)
         self._mutate("continue", identity)
         self._assert_manual_pause_forbidden(identity)
