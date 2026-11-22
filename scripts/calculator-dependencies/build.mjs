@@ -15,7 +15,7 @@ const files = {};
 const cleanNotice = text => text.replace(/\r\n/g, '\n').replace(/[ \t]+$/gm, '').trimEnd() + '\n';
 await mkdir(destination, {recursive: true});
 
-for (const name of ['core', 'advanced', 'symbolic', 'applied']) {
+for (const name of ['core', 'advanced', 'symbolic', 'applied', 'completion']) {
   const output = await build({
     absWorkingDir: directory,
     entryPoints: [name + '.mjs'],

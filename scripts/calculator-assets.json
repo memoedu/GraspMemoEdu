@@ -8,6 +8,7 @@
     "vendor/calculator/symbolic.mjs": "a65c8ae3a8d5ad5fed3e0c8320a5a2806b80ab1d4d280d5418c31cc4a5083fe4",
     "vendor/calculator/applied.mjs.LEGAL.txt": "e4522d215eaf75078532275cecc3b71903be312168394dc97a78041a88c3c320",
     "vendor/calculator/applied.mjs": "410d393c0ef65ca307709861425be36db19ee4a2dd8f658ddd73c8c68628e8f0",
-    "vendor/calculator/LICENSES.txt": "0104af34712e629e0cc72955ac48a578b2f1ca4a781fc9e13a97df51581c9e7c"
+    "vendor/calculator/completion.mjs": "7315358320765d89bf62b068049253e40116cbb96be7fe87b2d17500422ece45",
+    "vendor/calculator/LICENSES.txt": "644ca43d17276927bbc72c91bcd0ac0d5c5be127a52d66cf03946e89e74a8625"
   }
 }

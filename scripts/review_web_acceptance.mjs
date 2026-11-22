@@ -4,7 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
-const [base,out] = process.argv.slice(2);
+const [base,out,mode] = process.argv.slice(2);
+const autocompleteOnly=mode==='--autocomplete-only';
 assert.equal(new URL(base).hostname,'127.0.0.1');
 assert.ok(!['8765','8767',''].includes(new URL(base).port));
 const require=createRequire(path.join(os.homedir(),'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
@@ -54,6 +55,25 @@ try {
    if(name==='easy')pass('Chinese homepage labels due task 复习');
    let state=await begin(d);const questions=[];
    if(name==='easy'){
+     const answer=d.page.locator('#reviewAnswerInput');
+     await answer.fill('f');
+     await d.page.getByRole('option',{name:'floor',exact:true}).waitFor();
+     await answer.press('Tab');
+     assert.equal(await answer.inputValue(),'floor(');
+     await answer.fill('');
+     pass('Review answer completes from its first letter using Tab');
+     if(autocompleteOnly){
+       await d.page.goto(base+`/#/subjects/math/topic/${topic}`);
+       await d.page.getByRole('button',{name:'下一页',exact:true}).last().click();
+       await d.page.getByRole('button',{name:'已掌握，试着作答',exact:true}).click();
+       const lesson=d.page.locator('#answerInput');
+       await lesson.fill('f');
+       await d.page.getByRole('option',{name:'floor',exact:true}).waitFor();
+       await lesson.press('Tab');
+       assert.equal(await lesson.inputValue(),'floor(');
+       pass('Lesson answer completes from its first letter using Tab');
+       await d.context.close();break;
+     }
      await d.page.locator('#reviewPauseButton').click();
      await d.page.getByText('该功能需注册账号才能使用',{exact:false}).first().waitFor();
      const denied=await fetch(base+`/api/review/sessions/${state.session_id}/pause?topic_id=${topic}`,{method:'POST',headers:{Origin:base,'X-Learning-Session':session.session_token,'X-Learning-Identity':d.token,'Content-Type':'application/json'},body:JSON.stringify({request_id:crypto.randomUUID()})});
@@ -101,13 +121,15 @@ try {
    pass(`${name}: ${sequence.length} distinct practices, mastery ${mastery}, replay/refresh stable`);
    await d.context.close();
  }
- const d=await device();const upcoming=await seed(d,'module-1',8);
- await d.page.reload({waitUntil:'networkidle'});
- assert.equal(await d.page.locator('#dashboardTasks .portalTask').filter({hasText:'复习'}).count(),0);
- await d.page.locator('#dashboardTasks .portalTask').filter({hasText:'复习'}).first().waitFor({timeout:35000});
- assert.ok(Date.now()>=Date.parse(upcoming.due_at));pass('Homepage automatically reveals task at calculated due time');
- await d.page.screenshot({path:path.join(out,'review-homepage.png'),fullPage:true});
- await d.context.close();
+ if(!autocompleteOnly){
+   const d=await device();const upcoming=await seed(d,'module-1',8);
+   await d.page.reload({waitUntil:'networkidle'});
+   assert.equal(await d.page.locator('#dashboardTasks .portalTask').filter({hasText:'复习'}).count(),0);
+   await d.page.locator('#dashboardTasks .portalTask').filter({hasText:'复习'}).first().waitFor({timeout:35000});
+   assert.ok(Date.now()>=Date.parse(upcoming.due_at));pass('Homepage automatically reveals task at calculated due time');
+   await d.page.screenshot({path:path.join(out,'review-homepage.png'),fullPage:true});
+   await d.context.close();
+ }
  assert.deepEqual(report.errors,[]);report.status='passed';
 } catch(error){
  report.status='failed';report.failure=String(error);

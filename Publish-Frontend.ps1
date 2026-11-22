@@ -31,6 +31,7 @@ $expected += @('response-cache.js')
 $expected += @('question-tools.js','calculator.js','calculator-panel.js','calculator-inputs.js','calculator-policy.js','calculator-engine.js','calculator-worker.js','calculator.css')
 $expected += @('point-assessment.js','context-library.js','context-library.css','context-library-messages.js','training-audio.js')
 $expected += @('microphone-recorder.js','voice-input.js')
+$expected += @('autocomplete.js','autocomplete.css')
 $expected += @('download.html','install.css','pwa.css','pwa.js','sw.js','manifest.webmanifest','icon-180.png','icon-192.png','icon-512.png','icon-maskable-512.png')
 $vendor = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'scripts/topic-presentation-assets.json') -Raw | ConvertFrom-Json -AsHashtable
 foreach ($name in $vendor.files.Keys) {
@@ -55,7 +56,7 @@ foreach ($name in $bookFont.files.Keys) {
 $expected += @($bookFont.files.Keys)
 $calculator = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'scripts/calculator-assets.json') -Raw | ConvertFrom-Json -AsHashtable
 foreach ($name in $calculator.files.Keys) {
-    if ($name -notmatch '^vendor/calculator/((core|advanced|symbolic|applied)\.mjs(\.LEGAL\.txt)?|LICENSES\.txt)$') { throw 'Invalid calculator asset path.' }
+    if ($name -notmatch '^vendor/calculator/((core|advanced|symbolic|applied|completion)\.mjs(\.LEGAL\.txt)?|LICENSES\.txt)$') { throw 'Invalid calculator asset path.' }
     $actual = (Get-FileHash -LiteralPath (Join-Path $PSScriptRoot ('web/' + $name)) -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($actual -ne $calculator.files[$name]) { throw ('Calculator source differs from pinned build: ' + $name) }
 }
