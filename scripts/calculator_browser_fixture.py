@@ -42,8 +42,8 @@ def main():
         module['practices'] = module['practices'][:4]
     module['practices'][0]['calculate'] = {'level': 'advanced', 'enable_modules': ['machine_learning', 'modular'],
                                           'disable_keys': ['matrix_inverse']}
-    module['practices'][1]['calculate'] = 'basic'
-    module['practices'][2]['calculate'] = 'none'
+    module['practices'][1]['calculate'] = {'level': 'basic', 'override_ma_minimum': True}
+    module['practices'][2]['calculate'] = {'level': 'none', 'override_ma_minimum': True}
     if args.conversion:
         topic['availability']['trainable'] = True
         example = module['example']

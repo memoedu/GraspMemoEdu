@@ -31,14 +31,14 @@ class CalculatorSchemaTests(unittest.TestCase):
                          {'level': 'scientific', 'disable_modules': ['constants'], 'disable_keys': ['sin']})
         self.assertEqual(policy({}, {'calculate': 'basic'}), {'level': 'basic'})
         self.assertIsNone(policy({'calculate': 'none'}, {}))
-        self.assertIsNone(policy({}, {'constraints': 'None'}, mathacademy=True))
         self.assertIsNone(policy({}, {}, default_level='none'))
         self.assertEqual(policy({'calculate': 'basic'}, {}, default_level='none'), {'level': 'basic'})
 
     def test_invalid_configuration_cannot_silently_enable(self):
         for value in (True, 3, 'Scientific', {'level': 'no-limit'}, {},
                       {'enable_modules': ['symbolic']}, {'disable_modules': ['typo']},
-                      {'disable_keys': 'sin'}, {'disable_keys': ['sin', 'sin']}, {'foo': []}):
+                      {'disable_keys': 'sin'}, {'disable_keys': ['sin', 'sin']}, {'foo': []},
+                      {'override_ma_minimum': True}, {'level': 'none', 'override_ma_minimum': 1}):
             with self.subTest(value=value), self.assertRaises(ValueError):
                 normalize(value)
 
@@ -46,6 +46,7 @@ class CalculatorSchemaTests(unittest.TestCase):
         self.assertEqual(from_mathacademy('Graphing'), {'level': 'scientific', 'enable_modules': ['graph']})
         self.assertEqual(from_mathacademy('Standard'), {'level': 'basic'})
         self.assertEqual(from_mathacademy('unknown'), {'level': 'none'})
+        self.assertEqual(from_mathacademy({'level': 'none', 'override_ma_minimum': True}), {'level': 'none'})
 
         class Assets:
             def render(self, source, html, gaps):
@@ -57,6 +58,7 @@ class CalculatorSchemaTests(unittest.TestCase):
         step = question_model({'id': 2, 'question': 'Test', 'calculate': 'basic', 'calculator': 'Graphing'},
                               Assets(), [], example=True, step={'calculate': 'cas'})
         self.assertEqual(step['calculate'], {'level': 'basic'})
+        self.assertEqual(presentation({'source_adapter': 'mathacademy'}, step)['calculate'], {'level': 'scientific'})
         generated = '<aside class="inline-document-callout callout" data-callout="requirement"><strong>要求</strong><p>Calculator: Graphing</p></aside>'
         authored = '<aside class="inline-document-callout callout" data-callout="requirement"><strong>要求</strong><p>Explain your choice.</p></aside>'
         q.update(html=q['html'] + generated + authored)
@@ -70,21 +72,40 @@ class CalculatorSchemaTests(unittest.TestCase):
         self.assertEqual(policy({}, {'constraints': 'Graphing'}), {'level': 'scientific'})
 
     def test_legacy_calculator_callout_recovers_missing_permission(self):
-        topic = {'source_adapter': 'mathacademy', 'calculate': {'level': 'cas', 'disable_keys': ['cos']}}
+        topic = {'source_adapter': 'mathacademy', 'calculate': {'level': 'basic', 'disable_keys': ['cos']}}
         template = ('<aside class="inline-document-callout callout" data-callout="requirement">'
                     '<strong>要求</strong><p>{}</p></aside>')
         for label, mode in [('Calculator: standard', 'Standard'), ('计算器：科学计算器', 'Scientific'),
                             ('Calculator: Graphing', 'Graphing'), ('计算器：无', 'None')]:
             with self.subTest(label=label):
                 item = {'html': '<p>Test</p>' + template.format(label), 'constraints': '按题意作答。'}
-                expected = from_mathacademy(mode)
+                expected = from_mathacademy(mode) if mode == 'Graphing' else {'level': 'scientific'}
                 effective = presentation(topic, item)
                 self.assertEqual(effective['html'], '<p>Test</p>')
-                self.assertEqual(effective.get('calculate'),
-                                 {**expected, 'disable_keys': ['cos']} if mode != 'None' else None)
-                self.assertIsNone(presentation(topic, {**item, 'calculate': None}).get('calculate'))
-                self.assertEqual(presentation(topic, {**item, 'constraints': 'Standard'})['calculate']['level'], 'basic')
+                self.assertEqual(effective['calculate'], {**expected, 'disable_keys': ['cos']})
+                self.assertEqual(presentation(topic, {**item, 'calculate': None})['calculate'],
+                                 {'level': 'scientific', 'disable_keys': ['cos']})
+                self.assertEqual(presentation(topic, {**item, 'constraints': 'Standard'})['calculate']['level'], 'scientific')
                 self.assertEqual(presentation({}, item), {'html': item['html'], 'calculate': {'level': 'scientific'}})
+
+    def test_ma_ignores_low_source_levels_and_keeps_explicit_exceptions(self):
+        low = {'level': 'basic', 'disable_keys': ['sin']}
+        graph = {'level': 'scientific', 'enable_modules': ['graph']}
+        topic = {'calculate': {'level': 'cas', 'disable_keys': ['cos']}}
+        self.assertEqual(policy(topic, {'calculate': low}, mathacademy=True),
+                         {'level': 'cas', 'disable_keys': ['cos', 'sin']})
+        for question in ({}, {'calculate': 'none'}, {'calculate': 'basic'}, {'constraints': 'None'}):
+            with self.subTest(question=question):
+                self.assertEqual(policy({'calculate': 'none'}, question, mathacademy=True, default_level='none'),
+                                 {'level': 'scientific'})
+        disable = {'level': 'none', 'override_ma_minimum': True}
+        basic = {'level': 'basic', 'override_ma_minimum': True, 'disable_keys': ['add']}
+        self.assertIsNone(policy(topic, {'calculate': disable}, mathacademy=True))
+        self.assertIsNone(policy({'calculate': disable}, {'calculate': graph}, mathacademy=True))
+        self.assertEqual(policy({'calculate': disable}, {'calculate': basic}, mathacademy=True),
+                         {'level': 'basic', 'disable_keys': ['add']})
+        self.assertEqual(policy({'calculate': basic}, {'calculate': low}, mathacademy=True),
+                         {'level': 'basic', 'disable_keys': ['add', 'sin']})
 
     def test_topic_author_format_keeps_metadata_only_on_questions(self):
         original = {'topic_format_version': 2, 'title': 'Calculator', 'id': 'calculator-fixture',

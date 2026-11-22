@@ -10,6 +10,8 @@ MODULES = frozenset(('expression', 'constants', 'graph', 'integral', 'matrix', '
                      'statistics', 'modular', 'symbolic', 'machine_learning', 'physics', 'chemistry',
                      'signal', 'programmer', 'astronomy', 'geography', 'finance', 'optimization', 'ecology'))
 OPTIONS = ('enable_modules', 'disable_modules', 'disable_keys')
+MA_OVERRIDE = 'override_ma_minimum'
+MA_BELOW_MINIMUM = ('none', 'basic')
 IDENTIFIER = re.compile(r'[a-z][a-z0-9_]{0,47}\Z')
 LEGACY_CALLOUT = re.compile(
     r'<aside\b(?=[^>]*\bclass="inline-document-callout callout")'
@@ -23,11 +25,13 @@ def normalize(value):
         return {'level': 'none'}
     if isinstance(value, str):
         value = {'level': value}
-    if not isinstance(value, dict) or set(value) - {'level', *OPTIONS} or not value:
+    if not isinstance(value, dict) or set(value) - {'level', MA_OVERRIDE, *OPTIONS} or not value:
         raise ValueError('Invalid calculate configuration')
     result = dict(value)
     if 'level' in result and result['level'] not in LEVELS:
         raise ValueError('Unknown calculator level')
+    if MA_OVERRIDE in result and (result[MA_OVERRIDE] is not True or 'level' not in result):
+        raise ValueError(f'{MA_OVERRIDE} requires true and an explicit calculator level')
     for name in OPTIONS:
         if name not in result:
             continue
@@ -48,7 +52,10 @@ def validate(resource):
 
 
 def from_mathacademy(value):
-    if isinstance(value, (dict, str)) and (isinstance(value, dict) or value in LEVELS):
+    if isinstance(value, dict):
+        # Only site-authored configuration may make an exception to the minimum.
+        return normalize({key: item for key, item in value.items() if key != MA_OVERRIDE})
+    if isinstance(value, str) and value in LEVELS:
         return normalize(value)
     level = MA_LEVELS.get(value, 'none') if isinstance(value, str) else 'none'
     return {'level': level, **({'enable_modules': ['graph']} if value == 'Graphing' else {})}
@@ -72,6 +79,15 @@ def policy(parent, question, *, mathacademy=False, default_level='scientific'):
         local = from_mathacademy(mode)
     else:
         local = {}
+    if mathacademy:
+        if default_level in MA_BELOW_MINIMUM:
+            default_level = 'scientific'
+        if inherited.get(MA_OVERRIDE) and not local.get(MA_OVERRIDE):
+            # A site-authored Topic exception takes precedence over MA question metadata.
+            local.pop('level', None)
+        for config in (inherited, local):
+            if config.get('level') in MA_BELOW_MINIMUM and not config.get(MA_OVERRIDE):
+                config.pop('level')
     level = local.get('level', inherited.get('level', default_level))
     if level == 'none':
         return None
