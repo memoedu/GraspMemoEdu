@@ -1,5 +1,5 @@
-import {constants, keypad, levels, permitsConstant, permitsKey, permitsModule, tools} from './calculator-policy.js?v=0810407dcac5c0a6';
-import {toolInputs} from './calculator-inputs.js?v=0810407dcac5c0a6';
+import {constants, keypad, levels, permitsConstant, permitsKey, permitsModule, tools} from './calculator-policy.js?v=6756ebbe29d053ca';
+import {toolInputs} from './calculator-inputs.js?v=6756ebbe29d053ca';
 
 let active = null;
 let preferredLayout = 'side';
@@ -212,7 +212,7 @@ export function openCalculator(launch, config, english) {
     output.dataset.state = 'busy'; output.textContent = local('计算中…', 'Calculating…');
     const finish = () => { clearTimeout(timer); working = false; control.disabled = false; };
     try {
-      worker ||= new Worker(new URL('./calculator-worker.js?v=0810407dcac5c0a6', import.meta.url), {type: 'module'});
+      worker ||= new Worker(new URL('./calculator-worker.js?v=6756ebbe29d053ca', import.meta.url), {type: 'module'});
       worker.onmessage = ({data}) => {
         finish();
         if (!launch.isConnected || closed) return;

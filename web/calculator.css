@@ -196,6 +196,12 @@ body:has(.questionCalculator[open][data-layout="side"]) {
 .calculatorCompound legend { padding-inline: 5px; font-weight: 670; }
 .calculatorInputModes { gap: 4px; margin-block-end: 9px; }
 .calculatorInputModes .calculatorControl { padding-inline: 8px; min-height: 34px; font-size: .81rem; }
+.calculatorInputModes .calculatorControl[aria-pressed="true"] {
+  border-color: var(--calculator-accent);
+  box-shadow: inset 0 -2px var(--calculator-accent);
+}
+.calculatorToolKeyboard [data-columns="4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.calculatorToolKeyboard [data-columns="6"] { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 .calculatorGridControls { display: flex; gap: 8px; margin-block-end: 8px; flex-wrap: wrap; }
 .calculatorGridControls .calculatorField { min-inline-size: 62px; }
 .calculatorGridScroller { overflow: auto; max-block-size: 340px; }

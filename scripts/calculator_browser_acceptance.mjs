@@ -79,6 +79,9 @@ try {
   const cell = (row, column) => matrix.getByRole('textbox', {name: `矩阵 A ${row}, ${column}`, exact: true});
   await cell(1, 1).click();
   await dialog.getByText('屏幕键盘', {exact: true}).click();
+  const digitRow = await dialog.locator('.calculatorToolKeyboard .calculatorKey').evaluateAll(keys =>
+    keys.filter(key => key.offsetTop === keys[0].offsetTop).map(key => key.dataset.calculatorKey));
+  assert.deepEqual(digitRow, ['digit_7', 'digit_8', 'digit_9', 'backspace']);
   await dialog.locator('.calculatorToolKeyboard [data-calculator-key="digit_3"]').click();
   assert.equal(await cell(1, 1).inputValue(), '3');
   await cell(1, 2).fill('1'); await cell(2, 1).fill('2'); await cell(2, 2).fill('4');
@@ -91,6 +94,9 @@ try {
   await page.screenshot({path: path.join(output, 'desktop-matrix.png')});
   checks.push('Matrix cells accept keypad clicks and typing. Raw editing and grids round-trip, with the same engine.');
   await select('modular');
+  await dialog.getByText('屏幕键盘', {exact: true}).click();
+  assert.equal(await dialog.locator('.calculatorToolKeyboard [data-calculator-key="power"]').isVisible(), true);
+  assert.equal(await dialog.locator('.calculatorToolKeyboard [data-calculator-key="sin"]').count(), 0);
   await field('expression').fill('2^1000000000000000000000000000000000000000');
   await field('modulus').fill('7');
   await calculate(); await text('2');

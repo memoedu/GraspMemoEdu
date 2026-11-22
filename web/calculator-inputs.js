@@ -1,4 +1,4 @@
-import {constants, keypad, permitsConstant, permitsKey} from './calculator-policy.js?v=0810407dcac5c0a6';
+import {constants, keypad, permitsConstant, permitsKey} from './calculator-policy.js?v=6756ebbe29d053ca';
 
 const element = (tag, cls = '', text) => {
   const node = document.createElement(tag);
@@ -19,13 +19,22 @@ const caption = (text, control) => {
   return row;
 };
 const limit = 32;
+const numericKeys = ['digit_7', 'digit_8', 'digit_9', 'backspace', 'digit_4', 'digit_5', 'digit_6', 'exponent_notation',
+  'digit_1', 'digit_2', 'digit_3', 'subtract', 'digit_0', 'decimal'];
+const modularKeys = ['open', 'close', 'power', 'backspace', 'digit_7', 'digit_8', 'digit_9', 'multiply',
+  'digit_4', 'digit_5', 'digit_6', 'add', 'digit_1', 'digit_2', 'digit_3', 'subtract', 'digit_0'];
+const byKey = new Map(keypad.map(key => [key[0], key]));
 const units = ['m', 'cm', 'mm', 'km', 'in', 'ft', 'mi', 's', 'ms', 'min', 'h', 'kg', 'g', 'lb', 'm/s',
   'km/h', 'm/s^2', 'cm/s^2', 'L', 'mL', 'm^3', 'Pa', 'kPa', 'bar', 'atm', 'J', 'kJ', 'W', 'kW', 'V', 'A', 'ohm',
   'K', 'degC', 'degF', 'rad', 'deg', 'N', 'Hz'];
 const periodic = 'H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og'.split(' ');
 
 function typeFor(module, operation, field) {
-  if (field === 'expression') return operation === 'balance' ? 'chemistry' : 'formula';
+  if (field === 'expression') {
+    if (operation === 'balance') return 'chemistry';
+    if (operation === 'modular_power') return 'modular';
+    return 'formula';
+  }
   if (field === 'model') return 'model';
   if (field === 'date' || field === 'variable' || field === 'unit') return field;
   if (operation === 'convert_units') return 'quantity';
@@ -72,7 +81,7 @@ export function toolInputs(descriptors, {module, operation, local, config, get, 
   const outer = element('div', 'calculatorToolInputs');
   const form = element('div', 'calculatorFields');
   outer.append(form);
-  let target = null, currentKind = 'number';
+  let target = null, variableInput, currentKind, initialKind = 'number';
   const pad = element('details', 'calculatorToolKeyboard');
   const keypadLabel = element('summary', '', local('屏幕键盘', 'On-screen keypad'));
   const padKeys = element('div', 'calculatorKeys');
@@ -93,11 +102,14 @@ export function toolInputs(descriptors, {module, operation, local, config, get, 
   function showPad(kind) {
     if (currentKind === kind && padKeys.childElementCount) return;
     currentKind = kind;
-    const tokens = ['radix', 'labels'].includes(kind)
-      ? [...[...'0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'].map(char => [/\d/.test(char) ? 'digit_' + char : char.toLowerCase(), char, char]),
+    const alpha = ['radix', 'labels', 'variable'].includes(kind);
+    const alphabet = kind === 'variable' ? 'abcdefghijklmnopqrstuvwxyz_' : '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    padKeys.dataset.columns = kind === 'formula' ? '5' : alpha ? '6' : '4';
+    const tokens = alpha
+      ? [...[...alphabet].map(char => [/\d/.test(char) ? 'digit_' + char : char.toLowerCase(), char, char]),
         ['subtract', '−', '-'], ['backspace', '⌫', '']]
-      : keypad.filter(([id]) => ['formula', 'chemistry'].includes(kind) ? !['evaluate', 'clear', 'ans'].includes(id)
-        : ['decimal', 'subtract', 'backspace', 'exponent_notation'].includes(id) || id.startsWith('digit_'));
+      : kind === 'formula' ? keypad.filter(([id]) => !['evaluate', 'clear', 'ans'].includes(id))
+        : (kind === 'modular' ? modularKeys : numericKeys).map(id => byKey.get(id));
     padKeys.replaceChildren(...tokens.map(([id, label, value, tier]) => {
       const key = button(label, () => insert(id === 'backspace' ? null : value));
       key.className = 'calculatorKey'; key.dataset.calculatorKey = id;
@@ -109,7 +121,10 @@ export function toolInputs(descriptors, {module, operation, local, config, get, 
       const names = Object.keys(constants).filter(key => permitsConstant(config, key));
       if (names.length) addSymbols(names.map(key => [key, constants[key][0] + ' · ' + local(constants[key][1], constants[key][2])]),
         local('选择常数', 'Choose constant'));
-      for (const term of (operation === 'solve' ? ['x', 'y', '='] : ['x', 'y', 't'])) {
+      const variable = variableInput?.value.trim();
+      const terms = [/^[A-Za-z][A-Za-z_]{0,11}$/.test(variable || '') ? variable : 'x'];
+      if (operation === 'solve') terms.push('=');
+      for (const term of terms) {
         const key = button(term, () => insert(term));
         key.disabled = term === '=' && !permitsKey(config, 'solve');
         padOptions.append(key);
@@ -333,6 +348,7 @@ export function toolInputs(descriptors, {module, operation, local, config, get, 
     const input = editable(value, kind, value => set(id, value), title, example);
     input.name = id; input.required = true;
     if (kind === 'date') input.type = 'date';
+    if (kind === 'variable') variableInput = input;
     const row = caption(title, input);
     const choices = kind === 'base' ? Array.from({length: 35}, (_, i) => String(i + 2))
       : kind === 'variable' ? ['x', 'y', 't', 'n', 'a', 'b', 'z']
@@ -355,9 +371,11 @@ export function toolInputs(descriptors, {module, operation, local, config, get, 
     }
     form.append(row);
     refresh.push(() => { input.value = get(id); });
-    if (!target && ['formula', 'chemistry', 'radix', 'number'].includes(kind)) { target = input; showPad(kind); }
+    if (!target && ['formula', 'modular', 'chemistry', 'radix', 'number'].includes(kind)) {
+      target = input; initialKind = kind;
+    }
   }
-  if (!target) showPad('number');
+  showPad(initialKind);
   const fillExample = () => {
     for (const [id, , , value] of descriptors) set(id, value);
     for (const update of refresh) update();
