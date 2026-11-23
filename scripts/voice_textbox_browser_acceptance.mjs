@@ -26,7 +26,21 @@ assert.ok(['localhost','127.0.0.1'].includes(new URL(base).hostname));
 }
 const require = createRequire(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
 const {chromium} = require('playwright');
-const browser = await chromium.launch({headless: true, channel: 'chrome', args:['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream']});
+// Chromium's default fake microphone emits intermittent beeps. A continuous
+// fixture makes time to the first non-silent frame independent of beep timing.
+const rate = 16000, wav = Buffer.alloc(44 + 2 * rate);
+wav.write('RIFF', 0); wav.writeUInt32LE(wav.length - 8, 4); wav.write('WAVEfmt ', 8);
+wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22);
+wav.writeUInt32LE(rate, 24); wav.writeUInt32LE(2 * rate, 28); wav.writeUInt16LE(2, 32);
+wav.writeUInt16LE(16, 34); wav.write('data', 36); wav.writeUInt32LE(wav.length - 44, 40);
+for (let n=0; n<rate; n++) {
+  const t = n / rate;
+  wav.writeInt16LE(Math.round(10000 * Math.sin(2 * Math.PI * (220 * t + 40 * t * t))), 44 + 2 * n);
+}
+const signal = path.resolve(path.dirname(output), 'voice-acceptance-signal.wav');
+await writeFile(signal, wav);
+const browser = await chromium.launch({headless: true, channel: 'chrome',
+  args: ['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream','--use-file-for-fake-audio-capture='+signal]});
 const context = await browser.newContext({locale: 'zh-CN', viewport: {width: 390,height: 844}, permissions: ['microphone'], serviceWorkers: 'block'});
 const page = await context.newPage();
 page.setDefaultTimeout(12000);
@@ -34,8 +48,32 @@ const errors = [], evidence = [], uploads = [], replies = [];
 let totalMicPermissions = 0, streamingRequests = 0;
 await page.addInitScript(() => {
   const original = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
-  window.opens = 0;
-  navigator.mediaDevices.getUserMedia = opts => { window.opens++; return original(opts); };
+  window.opens = 0; window.audioSetups = 0; window.micMeasurements = [];
+  navigator.mediaDevices.getUserMedia = async opts => {
+    window.opens++;
+    const media = await original(opts);
+    window.micTrack = media.getAudioTracks()[0];
+    return media;
+  };
+  const Context = AudioContext, Processor = AudioWorkletNode;
+  window.AudioContext = class extends Context {
+    constructor(...args) { super(...args); window.audioSetups++; }
+  };
+  window.AudioWorkletNode = class extends Processor {
+    constructor(...args) {
+      super(...args);
+      const measurement = window.micMeasurements.at(-1);
+      const first = ({data}) => {
+        if (!(data instanceof ArrayBuffer) || !new Int16Array(data).some(value => value !== 0)) return;
+        measurement.firstPcmMs = performance.now() - measurement.click;
+        this.port.removeEventListener('message', first);
+      };
+      this.port.addEventListener('message', first);
+    }
+  };
+  document.addEventListener('click', event => {
+    if (event.target.closest('button[aria-label="录音输入"]')) window.micMeasurements.push({click: performance.now()});
+  }, true);
 });
 page.on('pageerror', error => errors.push(error.message));
 await page.route(/\/api\/voice-input\/stream(?:\?|$)/, route => { streamingRequests++; return route.abort(); });
@@ -79,10 +117,16 @@ try {
   await page.goto(base+'/#/settings');
 
   await begin('前旧后',[1,2]);
-  await page.waitForTimeout(350);
+  const edits = [];
+  await page.exposeFunction('captureSegmentEdit', value => edits.push(value));
+  await field.evaluate(node => node.addEventListener('input', () => window.captureSegmentEdit(node.value)));
+  await page.waitForTimeout(1080);
+  const timer = page.locator('.voiceDuration:visible');
+  assert.match(await timer.innerText(), /01 秒/);
   assert.equal(uploads.length,0);
   assert.equal(await field.inputValue(),'前旧后');
   await cut.click(); await upload(1);
+  assert.match(await timer.innerText(), /00 秒/);
   assert.deepEqual(uploads[0].context.textbox,{before:'前',selected:'旧',after:'后'});
   // Continue speaking while recognition of the first segment waits.
   await page.waitForTimeout(290); await cut.click();
@@ -90,6 +134,7 @@ try {
   assert.equal(uploads.length,1);
   await end.waitFor();
   reply(1,'甲'); await value('前甲后'); await upload(2);
+  assert.deepEqual(edits,['前甲后'], 'first completed segment emitted a real input event');
   assert.equal(uploads[1].context.textbox.before,'前甲');
   assert.ok(uploads[1].wav.length > 3200);
   replies[1]({status:502,json:{error:{code:'transcription_failed',message:'合成识别失败'}}});
@@ -98,6 +143,7 @@ try {
   await retry.click(); await upload(3);
   assert.ok(uploads[2].wav.equals(uploads[1].wav));
   reply(3,'乙'); await upload(4); reply(4,'丙'); await value('前甲乙丙后');
+  assert.deepEqual(edits,['前甲后','前甲乙后','前甲乙丙后']);
   await page.waitForTimeout(200);
   await end.click(); await upload(5); reply(5,''); await value('前甲乙丙后');
   await retry.waitFor({state:'hidden'});
@@ -109,9 +155,44 @@ try {
   await button('取消').click(); reply(6,'迟到结果'); await value('新旧末');
   evidence.push('cancellation and late result rejection');
   totalMicPermissions = await page.evaluate(()=>window.opens);
-  assert.equal(streamingRequests,totalMicPermissions,'only the failed connection attempt occurred on each take');
+  assert.equal(totalMicPermissions,1);
+  assert.equal(streamingRequests,2,'only the failed connection attempt occurred on each take');
+  assert.deepEqual(await page.evaluate(()=>[window.micTrack.enabled,window.audioSetups]),[false,1]);
+
+  async function changeHash(hash) {
+    const state = page.waitForResponse(response => new URL(response.url()).pathname.endsWith('/api/state') &&
+      new URL(response.url()).searchParams.get('topic_id') === 'calculator-fixture');
+    await page.evaluate(value => { location.hash = value; }, hash);
+    await state;
+    await button('下一页').last().waitFor();
+  }
+  await changeHash('#/subjects/math/topic/calculator-fixture');
+  await page.waitForFunction(() => window.micTrack.readyState === 'ended');
+  await page.evaluate(() => {
+    const field = document.createElement('textarea');
+    field.id = 'segment-topic-acceptance';
+    document.querySelector('#appLayout').append(field);
+  });
+  const topicField = page.locator('#segment-topic-acceptance');
+  const micTrials = [];
+  for (let take=0; take<6; take++) {
+    if (take === 3) {
+      await page.waitForTimeout(3400);
+      await changeHash('#/subjects/math/topic/calculator-fixture?node=canary');
+    }
+    await topicField.focus();
+    await mic.click();
+    await page.waitForFunction(() => Number.isFinite(window.micMeasurements.at(-1).firstPcmMs));
+    micTrials.push(await page.evaluate(() => window.micMeasurements.at(-1).firstPcmMs));
+    await button('取消').click();
+    await page.waitForFunction(() => window.micTrack.enabled === false);
+  }
+  assert.deepEqual(await page.evaluate(()=>[window.opens,window.audioSetups]),[2,2]);
+  assert.ok(micTrials.slice(1).every(ms => ms < 100), JSON.stringify(micTrials));
+  evidence.push('same Topic microphone reuse, release on navigation, click-to-first-PCM under 100 ms');
   assert.deepEqual(errors,[]);
-  await writeFile(output,JSON.stringify({checks:evidence,uploads:uploads.length,streamingRequests,devices:totalMicPermissions},null,2));
+  await writeFile(output,JSON.stringify({checks:evidence,uploads:uploads.length,streamingRequests,
+    devices:await page.evaluate(()=>window.opens), topicClickToFirstPcmMs:micTrials},null,2));
   console.log('PASS',evidence.join('; '));
 } finally {
   await browser.close();

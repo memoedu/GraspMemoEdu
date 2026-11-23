@@ -37,6 +37,7 @@ class Open(Message):
     context: VoiceContext = Field(default_factory=VoiceContext)
     live: bool = False
     manual: bool = False
+    independent: bool = False
 
 
 class Chunk(Message):
@@ -204,7 +205,7 @@ class SpeechBoundary:
 
 
 class Take:
-    def __init__(self, opened, factory, formatter, speculate):
+    def __init__(self, opened, factory, formatter, speculate, reserve):
         self.opened, self.factory, self.formatter, self.speculate = opened, factory, formatter, speculate
         self.lock, self.sentences_lock = Lock(), Lock()
         self.provider = self.timer = self.pending = None
@@ -218,11 +219,17 @@ class Take:
         self.preview_source = ''
         self.preview_text = ''
         self.closed = self.paused = False
+        self.independent = opened.manual and opened.independent
+        self.reserve = reserve
+        self.initialized = self.reserved = False
         self.used = self.started = monotonic()
 
     def start_segment(self):
         if self.segments - self.by_silence >= 24:
             raise DomainError('voice_pause_limit', '这段录音已多次暂停，请结束后再开始一段。', 422)
+        if not self.reserved:
+            self.reserve()
+            self.reserved = True
         self.segments += 1
         self.provider = self.factory(self.context, self.update, live=self.live or self.opened.manual,
                                      previous=self.prefix if self.live else '')
@@ -275,7 +282,8 @@ class Take:
     def end_segment(self):
         if self.provider is not None:
             try:
-                self.provider.finish()
+                if self.offset or not self.independent:
+                    self.provider.finish()
             finally:
                 self.provider.close()
                 self.provider = None
@@ -322,10 +330,16 @@ class Take:
     def advance(self, text):
         self.part += 1
         self.preroll = self.boundary = None
+        if self.independent:
+            self.offset = self.segments = self.by_silence = 0
+            self.started = monotonic()
+            self.reserved = False
         if text and self.opened.profile != 'answer_commands':
             original = self.opened.context.textbox
             self.history = (self.history + ' ' + text)[-4096:]
             textbox = original.model_dump() if original else {}
+            if self.independent:
+                textbox['selected'] = ''
             textbox['before'] = (textbox.get('before', '') + self.history)[-4096:]
             self.context = VoiceContext.model_validate({**self.opened.context.model_dump(), 'textbox': textbox})
 
@@ -335,7 +349,8 @@ class Take:
         if packet.offset != self.offset:
             raise DomainError('voice_offset', '录音片段顺序已改变，请重试。', 409)
         if ((packet.op == 'cut' and not self.opened.manual)
-                or (self.opened.manual and packet.op in ('cut', 'finish') and packet.part != self.part)):
+                or ((self.independent or self.opened.manual and packet.op in ('cut', 'finish'))
+                    and packet.part != self.part)):
             raise DomainError('voice_offset', '录音分段顺序已改变，请重试。', 409)
         if self.offset + len(pcm) > MAX_AUDIO or not pcm and packet.op == 'audio':
             raise DomainError('invalid_recording', '录音片段为空或超过时长。', 422)
@@ -464,7 +479,7 @@ class Sessions:
                     raise DomainError('voice_not_found', '录音连接已结束，请重试转写。', 404)
                 if any(owner == scope for owner, _ in self.active) or not self.slots.acquire(blocking=False):
                     raise DomainError('transcription_busy', '语音转写繁忙，请稍后重试。', 429)
-                take = Take(packet, self.factory, self.formatter, self.speculate)
+                take = Take(packet, self.factory, self.formatter, self.speculate, lambda: self.reserve(account))
                 self.active[key] = take
         with take.lock:
             if take.closed:
@@ -476,15 +491,15 @@ class Sessions:
                 if isinstance(packet, Open):
                     if packet != take.opened:
                         raise DomainError('voice_context_changed', '录音目标已改变。', 409)
-                    if not take.segments:
-                        self.reserve(account)
+                    if not take.initialized:
                         take.start_segment()
+                        take.initialized = True
                         self.schedule(key, take)
                     return {'offset': take.offset}
                 if isinstance(packet, Cancel):
                     self.retire(key, take)
                     return {}
-                if not take.segments:
+                if not take.initialized:
                     raise DomainError('voice_opening', '录音连接尚在建立。', 409)
                 result = take.consume(packet, pcm, signature)
                 if packet.op == 'finish':

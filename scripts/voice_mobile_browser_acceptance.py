@@ -42,7 +42,7 @@ MICROPHONE = """
     window.micCalls++;
     if (window.fixtureRecorder && mp4Fixture) {
       const track = Object.assign(new EventTarget(), {stop() {}});
-      return {getTracks: () => [track], getAudioTracks: () => [track]};
+      return {active: true, getTracks: () => [track], getAudioTracks: () => [track]};
     }
     const audio = new AudioContext();
     window.testAudio = audio;
@@ -68,19 +68,19 @@ def exercise(context, base, invitation, fallback, force_mp4, mp4_fixture, *, use
     page = context.new_page()
     opened, uploads, errors = [], [], []
     frames = bytearray()
-    offset = 0
+    offset = part = 0
     page.on('pageerror', lambda error: errors.append(str(error)))
 
     def stream(route):
-        nonlocal offset
+        nonlocal offset, part
         packet = route.request.post_data_json
         operation = packet['op']
         opened.append(operation)
         if operation == 'open':
-            assert packet['manual']
+            assert packet['manual'] and packet['independent']
             route.fulfill(json={'offset': 0})
             return
-        assert packet['offset'] == offset
+        assert packet['offset'] == offset and packet['part'] == part
         pcm = base64.b64decode(packet['pcm'])
         frames.extend(pcm)
         offset += len(pcm)
@@ -89,6 +89,8 @@ def exercise(context, base, invitation, fallback, force_mp4, mp4_fixture, *, use
             frames.clear()
             uploads.append('audio/wav')
             route.fulfill(json={'offset': offset, 'text': '第一段' if len(uploads) == 1 else '第二段'})
+            offset = 0
+            part += 1
         else:
             route.fulfill(json={'offset': offset})
 
@@ -142,8 +144,9 @@ def exercise(context, base, invitation, fallback, force_mp4, mp4_fixture, *, use
     assert not uploads
     button('转写').tap()
     expect(field).to_have_value('第一段')
+    expect(timer).to_have_text('00 分钟: 00 秒 / 2 分钟')
     button('继续录音').click()
-    expect(timer).to_have_text('00 分钟: 02 秒 / 2 分钟')
+    expect(timer).to_have_text('00 分钟: 01 秒 / 2 分钟')
     if use_limit:
         page.evaluate('window.clockAdvance += 120000')
         button('结束录音').wait_for(state='hidden')

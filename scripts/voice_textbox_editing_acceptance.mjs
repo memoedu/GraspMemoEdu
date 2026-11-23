@@ -1,4 +1,4 @@
-/** Deterministic revision, rollback and undo checks using the site's real editing surfaces. */
+/** Verify independent commits and undo with the site's real editing surfaces. */
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {createRequire} from 'node:module';
@@ -59,31 +59,25 @@ try {
   await math.focus(); await math.evaluate(m=>{m.position=m.lastOffset;});
   const before=await source.inputValue(), latex=await math.evaluate(m=>m.value);
   await start(math); await cut('+4');
-  const mirror=root.locator('math-field[aria-hidden="true"]');
-  await mirror.waitFor();
+  await page.waitForFunction(el=>el.value.endsWith('+4'),await source.elementHandle());
   assert.equal(began.context.textbox.before,latex);
   assert.equal(began.context.textbox.selected,'');
   assert.equal(began.context.textbox.after,'');
-  assert.ok((await mirror.evaluate(m=>m.value)).includes('4'));
-  assert.equal(await source.inputValue(),before);
+  await cut('+5');
+  await page.waitForFunction(el=>el.value.endsWith('+4+5'),await source.elementHandle());
   await button('取消').click();
-  assert.equal(await math.evaluate(m=>m.value),latex);
-  assert.equal(await source.inputValue(),before);
-  await math.focus(); await math.evaluate(m=>{m.position=m.lastOffset;});
-  await start(math); await cut('+5'); await mirror.waitFor();
-  transcript=''; await button('结束录音').click();
-  await page.waitForFunction(el=>el.value.includes('5'),await source.elementHandle());
-  await math.focus(); await math.press('Control+z'); await hasValue(source,before);
+  await math.focus();
+  await math.press('Control+z'); await hasValue(source,before+'+4');
+  await math.press('Control+z'); await hasValue(source,before);
   await root.focus(); await root.press('Control+End');
   await start(root); await cut('定稿');
-  await root.getByText('定稿',{exact:true}).waitFor();
+  await hasValue(source,before+'定稿');
   assert.equal(began.context.textbox.before,before);
-  assert.equal(await source.inputValue(),before);
   transcript=''; await button('结束录音').click();
-  await page.waitForFunction(el=>el.value.endsWith('定稿'),await source.elementHandle());
+  await button('结束录音').waitFor({state:'hidden'});
   await root.focus(); await root.press('Control+z');
   await hasValue(source,before);
-  console.log('PASS MathLive atom positions, ProseMirror revisions and one-step undo');
+  console.log('PASS MathLive atom positions, separate commits, ProseMirror insertion and undo');
   await page.goto(base+'/#/settings');
   await page.locator('#profileDisplayName').waitFor();
   // Mount the same optional Markdown composer used by portal.js, with its normal formula adapter.
@@ -100,11 +94,10 @@ try {
   });
   const chat=page.locator('.cm-content:visible'), chatSource=page.locator('#voice-test-chat');
   await chat.focus(); await chat.press('Home'); await chat.press('ArrowRight');
-  await start(chat); await cut('定稿'); await chat.getByText('定稿',{exact:true}).waitFor();
+  await start(chat); await cut('定稿'); await hasValue(chatSource,'首定稿尾');
   assert.deepEqual(began.context.textbox,{before:'首',selected:'',after:'尾'});
-  assert.equal(await chatSource.inputValue(),'首尾');
-  transcript=''; await button('结束录音').click(); await hasValue(chatSource,'首定稿尾');
+  transcript=''; await button('结束录音').click(); await button('结束录音').waitFor({state:'hidden'});
   await chat.focus(); await chat.press('Control+z'); await hasValue(chatSource,'首尾');
-  console.log('PASS CodeMirror inline preview, preserved source and single-step undo');
+  console.log('PASS CodeMirror committed insertion and single-step undo');
   assert.deepEqual(errors,[]);
 } finally {await browser.close();}
