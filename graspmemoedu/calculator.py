@@ -9,6 +9,7 @@ MA_CALLOUT_LABELS = {**{name.casefold(): name for name in MA_LEVELS}, '无': 'No
 MODULES = frozenset(('expression', 'constants', 'graph', 'integral', 'matrix', 'probability',
                      'statistics', 'modular', 'symbolic', 'machine_learning', 'physics', 'chemistry',
                      'signal', 'programmer', 'astronomy', 'geography', 'finance', 'optimization', 'ecology'))
+ENABLABLE_MODULES = MODULES - {'expression', 'symbolic'}
 OPTIONS = ('enable_modules', 'disable_modules', 'disable_keys')
 MA_OVERRIDE = 'override_ma_minimum'
 MA_BELOW_MINIMUM = ('none', 'basic')
@@ -40,8 +41,8 @@ def normalize(value):
                 or any(not isinstance(item, str) or not IDENTIFIER.fullmatch(item) for item in items)
                 or len(set(items)) != len(items)):
             raise ValueError(f'Invalid calculate.{name}')
-        if name.endswith('modules') and (set(items) - MODULES or
-                (name == 'enable_modules' and set(items) & {'expression', 'symbolic'})):
+        if (name == 'enable_modules' and set(items) - ENABLABLE_MODULES
+                or name == 'disable_modules' and set(items) - MODULES):
             raise ValueError(f'Invalid calculator module in {name}')
     return result
 
@@ -72,6 +73,8 @@ def legacy_mathacademy_mode(question):
 
 
 def policy(parent, question, *, mathacademy=False, default_level='scientific'):
+    if parent.get('_unrestricted_calculator') is True:
+        return {'level': 'cas', 'enable_modules': sorted(ENABLABLE_MODULES)}
     inherited = normalize(parent['calculate']) if 'calculate' in parent else {}
     if 'calculate' in question:
         local = normalize(question['calculate'])

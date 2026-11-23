@@ -20,6 +20,15 @@ class Catalog:
         self.topic_paths = topic_paths
         self.topic_courses = {tid: frozenset(c['id'] for c in courses
                              if any(t['id'] == tid for t in c['topics'])) for tid in topics}
+        from .mathacademy_formula_audit import ML_COURSES
+        ml_courses = ML_COURSES | {
+            course['id'] for course in courses if course['id'].startswith('ma-course-')
+            and re.match(r'^Machine Learning\b', course.get('title', ''), re.I)
+        }
+        self._unrestricted_calculator_topics = {
+            tid for tid, topic in topics.items() if topic.get('source_adapter') == 'mathacademy'
+            and self.topic_courses[tid] & ml_courses
+        }
         from .mathacademy_layout import ML1_COURSE, source_ordered_topic
         self.reader_topics = {
             tid: source_ordered_topic(topic) for tid, topic in topics.items()
@@ -213,7 +222,10 @@ class Catalog:
     def topic(self, topic_id):
         if topic_id not in self.topics:
             raise DomainError('unknown_topic', '未找到此 Topic。', 404)
-        return self.reader_topics.get(topic_id, self.topics[topic_id])
+        topic = self.reader_topics.get(topic_id, self.topics[topic_id])
+        if topic_id in self._unrestricted_calculator_topics:
+            return {**topic, '_unrestricted_calculator': True}
+        return topic
 
     def course(self, course_id):
         if course_id not in self.courses:
