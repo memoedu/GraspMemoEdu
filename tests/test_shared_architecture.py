@@ -12,6 +12,7 @@ from graspmemoedu.api import create_app
 from graspmemoedu.config import Settings
 from graspmemoedu.service import LearningService
 from graspmemoedu.review_cards import attach_training_variant, load_paper_types, point_id
+from graspmemoedu.review import ReviewBackend
 from graspmemoedu.subject_registry import DEFAULTS, SUBJECT_IDS
 from graspmemoedu.test_materials import validate as validate_test_policy
 from graspmemoedu.training import TrainingService
@@ -43,6 +44,56 @@ class SharedArchitectureTests(unittest.TestCase):
                                        **({'json': body} if body is not None else {}))
         self.assertEqual(response.status_code, status, response.text)
         return response.json()
+
+    def test_free_study_filters_each_subject_and_isolates_preferences(self):
+        self.assertEqual(self.call('GET', '/api/free-study'), {'subjects': []})
+        for subject, *_ in DEFAULTS:
+            with self.subTest(subject=subject):
+                bank = {'id': 'bank-' + subject, 'title': 'Matrix bank'}
+                market = self.call('GET', '/api/free-study/banks?subject_id=' + subject)
+                self.assertEqual(market['banks'], [bank])
+                self.call('POST', '/api/catalog/select?subject_id=' + subject, {'course_id': 'course-' + subject})
+                result = self.call('POST', '/api/free-study',
+                                   {'subject_id': subject, 'enabled': True, 'bank_ids': [bank['id'], bank['id']],
+                                    'show_reviews': subject == 'math'})
+                entry = next(row for row in result['subjects'] if row['subject_id'] == subject)
+                self.assertEqual(entry, {'subject_id': subject, 'banks': [bank], 'show_reviews': subject == 'math',
+                                         'course': {'id': 'course-' + subject, 'title': 'Matrix course'}})
+
+        self.call('POST', '/api/free-study', {'subject_id': 'math', 'enabled': True, 'bank_ids': ['bank-physics']}, status=403)
+        self.call('POST', '/api/free-study',
+                  {'subject_id': 'physics', 'enabled': False, 'learner_id': self.learner}, status=422)
+        saved = self.call('GET', '/api/free-study')['subjects']
+        self.assertEqual(len(saved), len(SUBJECT_IDS))
+        self.assertEqual(saved[0]['banks'][0]['id'], 'bank-' + saved[0]['subject_id'])
+        identity = self.headers.pop('X-Learning-Identity')
+        self.call('GET', '/api/free-study', status=401)
+        other = self.call('POST', '/api/access/guest', {})['identity_token']
+        self.headers['X-Learning-Identity'] = other
+        self.assertEqual(self.call('GET', '/api/free-study')['subjects'], [])
+        self.headers['X-Learning-Identity'] = identity
+        self.assertEqual(self.call('GET', '/api/free-study')['subjects'], saved)
+        result = self.call('POST', '/api/free-study', {'subject_id': 'math', 'enabled': False})
+        self.assertNotIn('math', {row['subject_id'] for row in result['subjects']})
+        self.assertEqual(self.call('GET', '/api/catalog?subject_id=math')['selected_course_id'], 'course-math')
+
+    def test_free_study_shows_due_and_active_course_reviews_in_their_subject(self):
+        # Schedule a legacy course review using the same FSRS enrollment as a completed module.
+        topic = self.topics['lesson-physics']
+        learning = LearningService(topic, self.root, DeterministicJudge(), learner_id=self.learner)
+        review = ReviewBackend(learning)
+        module = topic['modules'][0]['id']
+        review.record_module_result(module_id=module, mastery=4, result_id=str(uuid.uuid4()),
+                                    completed_at=datetime.now(timezone.utc) - timedelta(days=30))
+        path = '/api/free-study/course-reviews?subject_id='
+        due = self.call('GET', path + 'physics')['tasks']
+        self.assertEqual([(task['topic_id'], task['module_id'], task['started']) for task in due],
+                         [(topic['id'], module, False)])
+        self.assertEqual(self.call('GET', path + 'math')['tasks'], [])
+        session = review.begin(module, request_id=str(uuid.uuid4()))
+        active, = self.call('GET', path + 'physics')['tasks']
+        self.assertEqual(active['session_id'], session['session_id'])
+        self.assertIn('?session=', active['start_href'])
 
     def test_same_pages_and_learning_runtimes_for_every_subject(self):
         shapes, runtimes = {}, {}

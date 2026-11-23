@@ -33,6 +33,7 @@ class PublicExportTests(unittest.TestCase):
             pwa_files.add('beginner-hints.js')
             pwa_files.update({'microphone-recorder.js', 'voice-input.js', 'voice-stream.js', 'voice-pcm.js', 'voice-context.js', 'answer-conversion.js'})
             pwa_files.update({'autocomplete.js', 'autocomplete.css'})
+            pwa_files.add('free-study.js')
             self.assertTrue((output / 'vendor/calculator/completion.mjs').is_file())
             pwa_files.update({'formula-input.js', 'formula-catalog.js', 'formula-input.css'})
             formula_assets = Path(__file__).resolve().parents[1] / 'scripts/formula-assets.json'
