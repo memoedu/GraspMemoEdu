@@ -105,9 +105,11 @@ try{
   const guidedState=state;
   const finalFeedback={...example,kind:'practice',phase:'feedback',answer:'{"selected":"oA"}',
     feedback:{correct:true},actions:['continue']};
+  const trailing={...introStep,id:'trailing-introduction',title:'最后一页阅读',module_id:null,actions:['continue']};
   const completion={id:'lesson-completion',kind:'completion',phase:'completed',visited:true,unlocked:true,actions:[]};
-  state={...state,current_step_id:finalFeedback.id,active_step_id:finalFeedback.id,steps:[finalFeedback,completion],
-    modules:['module-b','module-c','module-a'].map(id=>({...state.modules[0],id,status:'completed'}))};
+  state={...state,current_step_id:finalFeedback.id,active_step_id:finalFeedback.id,steps:[finalFeedback,trailing,completion],
+    modules:[['module-b',1],['module-a',3],['module-c',2]].map(([id,day])=>({...state.modules[0],id,status:'completed',
+      completed_at:`2026-10-0${day}T00:00:00+00:00`}))};
   await page.reload({waitUntil:'networkidle'});
   const progress=page.locator('#lessonProgress');
   const caption=page.locator('#progressCaption span').first();
@@ -116,11 +118,17 @@ try{
   assert.equal(await progress.getAttribute('aria-valuenow'),'67');
   assert.equal(await progress.locator('.progressSegment.in_progress').count(),1);
   await page.getByRole('button',{name:'继续学习',exact:true}).click();
+  await page.getByRole('heading',{name:'最后一页阅读',exact:true}).waitFor();
+  assert.equal(await caption.textContent(),'已完成 2 / 3 个模块');
+  assert.equal(await progress.getAttribute('aria-valuenow'),'67');
+  assert.equal(await progress.locator('.progressSegment').nth(1).getAttribute('class'),'progressSegment in_progress');
+  await page.getByRole('button',{name:'继续学习',exact:true}).click();
+  await page.getByRole('button',{name:'完成学习，返回主页',exact:true}).waitFor();
   await page.locator('.completionHeading').waitFor();
   assert.equal(await caption.textContent(),'已完成 3 / 3 个模块');
   assert.equal(await progress.getAttribute('aria-valuenow'),'100');
   assert.equal(await progress.locator('.progressSegment.completed').count(),3);
-  check('final feedback keeps the last module in progress until Continue');
+  check('final feedback and trailing reading keep the last module in progress until the completion page');
   state=guidedState;
   await page.goto(origin+'/#/subjects/math/courses/'+course.id,{waitUntil:'networkidle'});
   for (const [task, label] of [[pure,'引论'],[history,'学习任务'],[review,'复习任务']]) {
