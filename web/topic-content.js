@@ -1,7 +1,7 @@
-import {mountMermaid} from './vendor/mermaid/index.js?v=a9d56b88c5ca1fa2';
-import {renderBacklinks} from './vendor/document-backlinks.mjs?v=a9d56b88c5ca1fa2';
-import {t} from './i18n.js?v=a9d56b88c5ca1fa2';
-import {prepareMathContent} from './math-presentation.js?v=a9d56b88c5ca1fa2';
+import {mountMermaid} from './vendor/mermaid/index.js?v=b733c23b452c82d3';
+import {renderBacklinks} from './vendor/document-backlinks.mjs?v=b733c23b452c82d3';
+import {t} from './i18n.js?v=b733c23b452c82d3';
+import {prepareMathContent} from './math-presentation.js?v=b733c23b452c82d3';
 
 export function referenceHref(target) {
   const base = `#/subjects/${encodeURIComponent(target.subject_id)}/topic/${encodeURIComponent(target.topic_id)}`;
