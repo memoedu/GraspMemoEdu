@@ -30,7 +30,21 @@ assert.ok(['localhost','127.0.0.1'].includes(new URL(base).hostname));
 }
 const require = createRequire(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
 const {chromium} = require('playwright');
-const browser = await chromium.launch({headless: true, channel: 'chrome', args:['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream']});
+// Chromium's default fake microphone emits intermittent beeps. A continuous
+// fixture makes time to the first non-silent frame independent of beep timing.
+const rate = 16000, wav = Buffer.alloc(44 + 2 * rate);
+wav.write('RIFF', 0); wav.writeUInt32LE(wav.length - 8, 4); wav.write('WAVEfmt ', 8);
+wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22);
+wav.writeUInt32LE(rate, 24); wav.writeUInt32LE(2 * rate, 28); wav.writeUInt16LE(2, 32);
+wav.writeUInt16LE(16, 34); wav.write('data', 36); wav.writeUInt32LE(wav.length - 44, 40);
+for (let n=0; n<rate; n++) {
+  const t = n / rate;
+  wav.writeInt16LE(Math.round(10000 * Math.sin(2 * Math.PI * (220 * t + 40 * t * t))), 44 + 2 * n);
+}
+const signal = path.resolve(path.dirname(output), 'voice-acceptance-signal.wav');
+await writeFile(signal, wav);
+const browser = await chromium.launch({headless: true, channel: 'chrome',
+  args: ['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream','--use-file-for-fake-audio-capture='+signal]});
 const context = await browser.newContext({locale: 'zh-CN', viewport: {width: 390,height: 844}, permissions: ['microphone'], serviceWorkers: 'block'});
 const page = await context.newPage();
 page.setDefaultTimeout(12000);
