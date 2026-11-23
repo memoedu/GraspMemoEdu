@@ -38,13 +38,14 @@ def validate_bank(bank, course):
     originals = source_questions(course)
     for qid, variant in bank['questions'].items():
         if (qid not in originals or not isinstance(variant, dict)
-                or set(variant) not in (VARIANT_FIELDS, VARIANT_FIELDS | CORRECTION_FIELDS)
+                or set(variant) not in (VARIANT_FIELDS, VARIANT_FIELDS | CORRECTION_FIELDS,
+                                        (VARIANT_FIELDS - {'interaction'}) | CORRECTION_FIELDS)
                 or variant['source_sha256'] != digest(originals[qid])
                 or not all(isinstance(variant[k], str) and variant[k].strip()
                            for k in {'question', 'html'} | (variant.keys() & CORRECTION_FIELDS))
-                or not isinstance(variant['interaction'], dict)):
+                or ('interaction' in variant and not isinstance(variant['interaction'], dict))):
             raise ValueError('Question bank must bind each variant to an unchanged source question')
-        validate_interaction(variant['interaction'], variant['question'])
+        validate_interaction(variant.get('interaction', originals[qid].get('interaction')), variant['question'])
     return digest(bank)
 
 
