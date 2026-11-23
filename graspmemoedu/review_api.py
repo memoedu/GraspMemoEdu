@@ -6,11 +6,11 @@ from fastapi import Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from .service import DomainError
-from .public_limits import PublicLimitError
 from .question_types import public_interaction, display_answer, demo_answer
 from .self_assessment import enabled as self_rating_enabled, protect as protect_assessment
 from .reference_answers import reference_fields
 from .lesson_display import LessonDisplay
+from .response_content import learning_response
 
 
 def review_route_feature(path, method):
@@ -48,7 +48,7 @@ class ReviewAnswer(ReviewAction):
     self_rating: int | None = Field(default=None, strict=True, ge=1, le=4)
 
 
-def register_review_routes(app, identity, admission_lock, limits, schedule, outstanding_count, dependency_policy=None, references_for=None):
+def register_review_routes(app, identity, admit_submission, finish_pending, dependency_policy=None, references_for=None):
     def public_state(state, access, learner):
         with closing(learner._connect()) as con:
             state['cooldown_until'] = (learner._load(con).get('cooldown') or {}).get('resume_at')
@@ -137,30 +137,12 @@ def register_review_routes(app, identity, admission_lock, limits, schedule, outs
             if data.get('self_rating') is not None and not self_rating_enabled(access, con):
                 raise DomainError('feature_forbidden', '自主评分仅对高阶学习者开放。', 403)
         backend = learner.review_backend
-        with admission_lock:
-            with closing(learner._connect()) as con:
-                old = con.execute('SELECT * FROM review_submissions WHERE id=?', (data['request_id'],)).fetchone()
-                outstanding = outstanding_count(con)
-            fingerprint = learner._fingerprint('review_submit', {**data, 'session_id': session_id})
-            replay_or_conflict = old and (old['status'] != 'error' or
-                (old['learner'], old['topic'], old['session'], old['fingerprint']) !=
-                (learner.learner_id, learner.topic_id, session_id, fingerprint))
-            if replay_or_conflict:
-                result = backend.submit(session_id, data)
-            else:
-                if outstanding >= limits.max_pending:
-                    raise PublicLimitError('judge_capacity', '当前判题队列已满，请稍后重试；本次未计入作答。', 2)
-                quota_key = 'submit:' + learner.learner_id
-                if request.state.public_transport:
-                    limits.check(quota_key, limits.submissions_per_minute)
-                with limits.daily.reserve(learner.learner_id, access['role']):
-                    result = backend.submit(session_id, data)
-                if request.state.public_transport:
-                    limits.record(quota_key)
-            if result['status'] == 'pending':
-                schedule(learner, result['submission_id'], review=True)
-                result = backend.submission(result['submission_id'])
-        return public_submission(result, access, learner)
+        result = admit_submission(request, learner, access,
+                                  lambda require: backend.submit(session_id, data, require_judge=require))
+        if result['status'] == 'pending':
+            finish_pending(learner, result['submission_id'], review=True)
+            result = backend.submission(result['submission_id'])
+        return learning_response(request, public_submission(result, access, learner))
 
     @app.post('/api/review/sessions/{session_id}/reveal')
     def reveal(session_id: str, payload: ReviewAction, request: Request):

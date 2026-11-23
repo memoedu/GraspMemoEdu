@@ -59,14 +59,17 @@ try {
   const before = requests.length;
   report.timings.topic = await page.evaluate(async () => {
     const times = [];
+    const history = document.querySelector('#historyPanel');
+    const firstGroup = history.firstElementChild;
     for (let i = 0; i < 30; i++) {
-      const buttons = [...document.querySelectorAll('#historyPanel .historyItem')];
+      const buttons = [...history.querySelectorAll('.historyItem')];
       const target = buttons[i % 2];
       const start = performance.now();
       target.click();
       await new Promise(requestAnimationFrame);
       times.push(performance.now() - start);
     }
+    if (history.firstElementChild !== firstGroup) throw Error('Topic navigation rebuilt the history sidebar');
     return times;
   });
   assert.equal(requests.slice(before).filter(r => r.path === '/api/select').length, 0);
