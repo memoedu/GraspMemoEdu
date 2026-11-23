@@ -246,7 +246,7 @@
 | Viewing previously studied content | 正在回看已学内容 |
 | Return to current step | 返回当前步骤 |
 | Syncing lesson content | 正在同步学习内容 |
-| Previous attempt | 历史作答 |
+| Past answer | 历史作答 |
 | Read | 阅读 |
 | View submitted answer | 查看已提交答案 |
 | Correct | 回答正确 |
@@ -291,7 +291,7 @@
 | {completed} / {total} modules completed | 已完成 {completed} / {total} 个模块 |
 | Completed · Mastery {score} | 已完成 · 熟练度 {score} |
 | History · Attempt {attempt} | 历史 · 第 {attempt} 轮 |
-| {completed} / {total} practice questions completed | 已完成 {completed} / {total} 道练习 |
+| Question {current}/{total} | 当前是 {current}/{total} 道题 |
 | {label}: {title} | {label}：{title} |
 | Mastery {score} out of 4 | 熟练度 {score}，满分 4 |
 | Completed {completed} practice questions, with {errors} incorrect. | 已完成 {completed} 道练习，其中 {errors} 道有误。 |
