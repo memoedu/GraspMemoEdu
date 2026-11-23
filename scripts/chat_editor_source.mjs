@@ -1,7 +1,7 @@
 // This module is bundled with pinned open-source dependencies for offline use.
-import {EditorView, keymap} from '@codemirror/view';
-import {EditorState, Compartment} from '@codemirror/state';
-import {defaultKeymap, history, historyKeymap, indentWithTab, temporarilySetTabFocusMode} from '@codemirror/commands';
+import {Decoration, EditorView, WidgetType, keymap} from '@codemirror/view';
+import {EditorState, Compartment, StateEffect, StateField} from '@codemirror/state';
+import {defaultKeymap, history, historyKeymap, indentWithTab, isolateHistory, temporarilySetTabFocusMode} from '@codemirror/commands';
 import {markdown} from '@codemirror/lang-markdown';
 import {indentUnit, syntaxHighlighting, defaultHighlightStyle} from '@codemirror/language';
 import {Marked} from 'marked';
@@ -59,6 +59,20 @@ export function renderChatMarkdown(element, text) {
   return element;
 }
 
+const setVoicePreview = StateEffect.define();
+const voicePreview = StateField.define({
+  create: () => Decoration.none,
+  update(value, tr) {
+    for (const effect of tr.effects) if (effect.is(setVoicePreview)) return effect.value;
+    return tr.docChanged || tr.selection ? Decoration.none : value;
+  },
+  provide: field => EditorView.decorations.from(field),
+});
+class DictatedText extends WidgetType {
+  constructor(text) { super(); this.text = text; }
+  toDOM() { const span = document.createElement('span'); span.textContent = this.text; return span; }
+}
+
 export function attachChatEditor(input, labels, options = {}) {
   input.hidden = true; input.required = false;
   const host = document.createElement('div'); host.className = 'chatEditor';
@@ -74,7 +88,7 @@ export function attachChatEditor(input, labels, options = {}) {
   const uploadStatus = document.createElement('p'); uploadStatus.className = 'feedbackStatus';
   uploadStatus.setAttribute('role', 'status'); host.append(uploadStatus);
   const view = new EditorView({parent: mount, state: EditorState.create({doc: input.value, extensions: [
-    history(), markdown(), syntaxHighlighting(defaultHighlightStyle), indentUnit.of('  '),
+    history(), voicePreview, markdown(), syntaxHighlighting(defaultHighlightStyle), indentUnit.of('  '),
     keymap.of([{key: 'Escape', run: temporarilySetTabFocusMode}, ...defaultKeymap, ...historyKeymap, indentWithTab]), EditorView.lineWrapping,
     editable.of(EditorView.editable.of(true)),
     EditorView.contentAttributes.of({'aria-label': labels.editor, 'aria-labelledby': input.id + '-label', 'spellcheck': 'true'}),
@@ -97,6 +111,27 @@ export function attachChatEditor(input, labels, options = {}) {
   }
   formula = options.attachFormula?.(input, {
     source: mount, launch: false, sourceField: view.contentDOM, onValue: setValue,
+    voiceAnchor() {
+      const {doc, selection} = view.state, {from, to} = selection.main;
+      const valid = () => !disabled && !uploading && !destroyed && !view.composing && preview.hidden
+        && !formula?.visible && view.state.doc === doc && view.state.selection.eq(selection);
+      const show = marks => view.dispatch({effects: setVoicePreview.of(marks)});
+      return {
+        clear() { if (!destroyed && view.state.field(voicePreview).size) show(Decoration.none); },
+        preview(text) {
+          if (!valid()) return false;
+          const widget = new DictatedText(text);
+          const range = from === to ? Decoration.widget({widget}).range(from) : Decoration.replace({widget}).range(from,to);
+          show(text ? Decoration.set([range]) : Decoration.none);
+          return true;
+        },
+        insert(text) {
+          if (!valid() || doc.length+text.length-(to-from)>input.maxLength) return false;
+          view.dispatch({changes:{from,to,insert:text},selection:{anchor:from+text.length},annotations:isolateHistory.of('full')});
+          return true;
+        },
+      };
+    },
     readSource() {
       if (view.composing) return null;
       const state = view.state, {from, to} = state.selection.main;

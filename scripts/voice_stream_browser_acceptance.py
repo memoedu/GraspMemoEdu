@@ -9,7 +9,7 @@ from playwright.sync_api import sync_playwright
 MIC = """
 () => {
   Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {value: async () => {
-    const clock = new AudioContext({sampleRate: 16000});
+    const clock = new AudioContext({sampleRate: 16000, latencyHint: 'interactive', sinkId: {type: 'none'}});
     await clock.resume();
     const sink = clock.createMediaStreamDestination();
     window.testMicrophone = {clock, sink};

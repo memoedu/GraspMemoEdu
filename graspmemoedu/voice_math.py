@@ -2,6 +2,7 @@
 import re
 import unicodedata
 from functools import lru_cache
+from difflib import SequenceMatcher
 from importlib.resources import files
 from typing import Annotated, Literal
 
@@ -26,11 +27,16 @@ class VoiceContext(BaseModel):
                  'geometry': '几何', 'functions': '函数', 'sequences': '数列'}
         return '、'.join([*(names[key] for key in self.domains), *self.symbols])[:400]
 
-    def asr_input(self):
+    def asr_input(self, previous=''):
         # Fun-ASR accepts five user messages of at most 400 characters each.
         text = '\n'.join(filter(None, (self.hints(), self.stem)))
-        if len(text) > 2000:
-            text = text[:999] + '…' + text[-1000:]
+        previous = previous[-240:]
+        limit = 2000 - len(previous) - bool(previous)
+        if len(text) > limit:
+            tail = limit // 2
+            text = text[:limit - tail - 1] + '…' + text[-tail:]
+        if previous:
+            text = (text + '\n' + previous).strip()
         return {'context': [{'role': 'user', 'content': [{'type': 'input_text', 'text': text[i:i + 400]}]}
                             for i in range(0, len(text), 400)]} if text else {}
 
@@ -106,6 +112,43 @@ def named_quantity(label, context):
                 or re.search(r'(?<![a-zA-Z0-9])' + item + r'(?:表示|代表)' + name, stem)):
             matches.append(symbol)
     return matches[0] if len(matches) == 1 else None
+
+
+REPAIR = re.compile(r'(?:[，,。；;！!？?]\s*|(?<=[\d零一二两三四五六七八九十]))'
+                    r'(?:不对|(?:我)?说错了|口误|更正一下)(?=$|[，,。；;\s]|应该|应为|是)'
+                    r'[，,。；;\s]*(?:应该(?:是|说)|应为|是)?[，,。\s]*')
+
+
+def direct_dictation(text, *, partial=False):
+    """Resolve explicit restatements inside this recording. Leave ambiguous repairs for refinement."""
+    if any(mark in text for mark in '“”「」"'):
+        return text, False
+    if partial:
+        text = re.sub(r'[，,。；;]\s*不$', '', text)
+    if not REPAIR.search(text):
+        return text, False
+    previous, *repairs = REPAIR.split(text)
+    for replacement in repairs:
+        body = replacement.strip('，,。！？!? ')
+        if not body or partial and body in ('因', '应', '应该', '我说'):
+            return previous, True
+        # Only the clause being corrected may change. Earlier statements stay in place.
+        start = max(previous.rfind(mark) for mark in '。！？!?；;') + 1
+        clause = previous[start:]
+        if re.fullmatch(NUMBER, body):
+            last = re.search(NUMBER + r'$', clause)
+            if last:
+                previous = previous[:start + last.start()] + replacement
+                continue
+        # A repeated phrase anchors the replacement, e.g. a repeated variable, weekday or noun.
+        if len(clause) > 256 or len(body) > 256:
+            return text, True
+        match = SequenceMatcher(None, clause, body, autojunk=False).find_longest_match()
+        if match.size and match.b == 0:
+            previous = previous[:start + match.a] + replacement
+            continue
+        return text, True
+    return previous, False
 
 
 def quick_math(transcript, profile, context):

@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from .judge import independent_settings
 from .service import DomainError
 from .training_audio import decode_recording
-from .voice_math import VoiceContext, quick_math
+from .voice_math import VoiceContext, direct_dictation, quick_math
 
 
 VOICE_PATH = '/api/voice-input/transcribe'
@@ -32,6 +32,7 @@ class VoiceRecording(BaseModel):
     data_base64: str = Field(min_length=1, max_length=5592408)
     profile: Literal['general', 'answer', 'calculator', 'answer_commands']
     context: VoiceContext | None = None
+    live: bool = False
 
 
 def recorded_wave(payload):
@@ -98,7 +99,8 @@ def refine_voice(text, profile, generate=complete, *, context=None):
         if profile == 'calculator':
             value = generate('这是非写作语音输入。仅把录音转成原话指定的可输入计算器的算式或算式片段。'
                              '使用 0-9、ASCII 运算符、括号、英文数学函数与变量。保留原式和运算顺序，不计算、不补写。'
-                             '沿用题目记号，未指定时以小写字母表示一般变量。只输出一行算式，不输出空格、制表符、自然语言、结果、Markdown 或 LaTeX。无法辨认时输出空字符串。', source)
+                             '沿用题目记号，未指定时以小写字母表示一般变量。遇到明确改口时只保留改正后的部分，其余运算项照录。'
+                             '只输出一行算式，不输出空格、制表符、自然语言、结果、Markdown 或 LaTeX。无法辨认时输出空字符串。', source)
             value = value.strip(' ')
             if (not FORMULA.fullmatch(value) or len(value) > 4096 or
                     any(len(word) > 1 and word not in FUNCTIONS for word in re.findall(r'[A-Za-z_]+', value))):
@@ -121,7 +123,22 @@ def refine_voice(text, profile, generate=complete, *, context=None):
         raise DomainError('voice_refinement_failed', '录音文字整理未完成，请重试或直接输入。', 502) from None
 
 
-def format_voice(text, profile, context):
+def live_text(text, profile, context, *, partial=False):
+    text, needs_refinement = direct_dictation(text, partial=partial)
+    if profile == 'general':
+        return text, not needs_refinement
+    formula = quick_math(text, profile, context)
+    return formula or text, formula is not None and not needs_refinement
+
+
+def format_voice(text, profile, context, *, live=False, refiner=refine_voice):
     if profile == 'answer_commands':
         return text
-    return quick_math(text, profile, context) or refine_voice(text, profile, context=context)
+    if live:
+        rendered, complete = live_text(text, profile, context or VoiceContext())
+        if complete:
+            return rendered
+        text, _ = direct_dictation(text)
+    if context is None:
+        return refiner(text, profile)
+    return quick_math(text, profile, context) or refiner(text, profile, context=context)

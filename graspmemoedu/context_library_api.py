@@ -11,8 +11,7 @@ from .context_library import ContextLibraryStore, find_material, lookup_context,
 from .learning_storage import MemoryLearningStore
 from .service import DomainError
 from .training_audio import FunASRTranscriber, audio_question, decode_recording, read_audio
-from .voice_input import VOICE_PATH, VoiceRecording, recorded_wave, refine_voice
-from .voice_math import quick_math
+from .voice_input import VOICE_PATH, VoiceRecording, format_voice, recorded_wave, refine_voice
 from .voice_stream import STREAM_PATH, register_voice_stream
 
 PUBLIC_PATHS = {'/api/context-library', '/api/context-library/material', '/api/context-library/lookup',
@@ -204,13 +203,7 @@ def register_context_library_routes(app, catalog, access_store, subjects, *, act
             raise DomainError('transcription_busy', '语音转写正在处理其他录音，请稍后重试。', 429)
         try:
             result = recorded_text(access, lambda: recorded_wave(payload))
-            if payload.profile == 'answer_commands':
-                # The command interpreter takes the original ASR text, including ordinals and corrections.
-                return {'text': result['text']}
-            text = result['text']
-            if payload.context is not None:
-                value = quick_math(text, payload.profile, payload.context)
-                return {'text': value or voice_refiner(text, payload.profile, context=payload.context)}
-            return {'text': voice_refiner(text, payload.profile)}
+            return {'text': format_voice(result['text'], payload.profile, payload.context,
+                                         live=payload.live, refiner=voice_refiner)}
         finally:
             voice_slots.release()

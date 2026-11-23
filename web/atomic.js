@@ -1,20 +1,20 @@
-import {t, translateMessage} from './i18n.js?v=6a7af7ba0045af91';
-import {attachFormulaEditing} from './formula-input.js?v=6a7af7ba0045af91';
-import {setQuestionTools} from './question-tools.js?v=6a7af7ba0045af91';
-import {enableVoiceAnswer, voiceAnswerPending} from './voice-input.js?v=6a7af7ba0045af91';
-import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=6a7af7ba0045af91';
-import {mountAnswerConversion} from './answer-conversion.js?v=6a7af7ba0045af91';
-import {selfAssessment, referenceAnswer, prepareAnswerContent, ratingChoices} from './self-assessment.js?v=6a7af7ba0045af91';
-import {reportableContent} from './content-report.js?v=6a7af7ba0045af91';
-import {createLearningCache} from './learning-cache.js?v=6a7af7ba0045af91';
-import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=6a7af7ba0045af91';
-import {enhanceSourceContent} from './topic-content.js?v=6a7af7ba0045af91';
-import {memoryChunk, chunkPeek, sourceAttributions} from './memory-chunk.js?v=6a7af7ba0045af91';
-import {topicProgress, topicHistory, readingFields, readingSectionHeading} from './learning-ui.js?v=6a7af7ba0045af91';
-import {pointAssessment} from './point-assessment.js?v=6a7af7ba0045af91';
-import {trainingAudio} from './training-audio.js?v=6a7af7ba0045af91';
-import {ideaSetupHash, ideaSetupLink} from './idea-setup.js?v=6a7af7ba0045af91';
-import {learningHint} from './beginner-hints.js?v=6a7af7ba0045af91';
+import {t, translateMessage} from './i18n.js?v=63d1f3b86dd72db4';
+import {attachFormulaEditing} from './formula-input.js?v=63d1f3b86dd72db4';
+import {setQuestionTools} from './question-tools.js?v=63d1f3b86dd72db4';
+import {enableVoiceAnswer, voiceAnswerPending} from './voice-input.js?v=63d1f3b86dd72db4';
+import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=63d1f3b86dd72db4';
+import {mountAnswerConversion} from './answer-conversion.js?v=63d1f3b86dd72db4';
+import {selfAssessment, referenceAnswer, prepareAnswerContent, ratingChoices} from './self-assessment.js?v=63d1f3b86dd72db4';
+import {reportableContent} from './content-report.js?v=63d1f3b86dd72db4';
+import {createLearningCache} from './learning-cache.js?v=63d1f3b86dd72db4';
+import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=63d1f3b86dd72db4';
+import {enhanceSourceContent} from './topic-content.js?v=63d1f3b86dd72db4';
+import {memoryChunk, chunkPeek, sourceAttributions} from './memory-chunk.js?v=63d1f3b86dd72db4';
+import {topicProgress, topicHistory, readingFields, readingSectionHeading} from './learning-ui.js?v=63d1f3b86dd72db4';
+import {pointAssessment} from './point-assessment.js?v=63d1f3b86dd72db4';
+import {trainingAudio} from './training-audio.js?v=63d1f3b86dd72db4';
+import {ideaSetupHash, ideaSetupLink} from './idea-setup.js?v=63d1f3b86dd72db4';
+import {learningHint} from './beginner-hints.js?v=63d1f3b86dd72db4';
 
 const node = (tag, cls = '', text) => {
   const el = document.createElement(tag); el.className = cls;
