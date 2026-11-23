@@ -16,6 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from .judge import independent_settings
 from .service import DomainError
 from .training_audio import decode_recording
+from .voice_math import VoiceContext, quick_math
 
 
 VOICE_PATH = '/api/voice-input/transcribe'
@@ -30,6 +31,7 @@ class VoiceRecording(BaseModel):
     mime_type: Literal['audio/mp4', 'audio/webm', 'audio/ogg', 'audio/wav']
     data_base64: str = Field(min_length=1, max_length=5592408)
     profile: Literal['general', 'answer', 'calculator', 'answer_commands']
+    context: VoiceContext | None = None
 
 
 def recorded_wave(payload):
@@ -89,28 +91,37 @@ def complete(instructions, source, *, input_key='recording_transcript', max_toke
     return choice['message']['content']
 
 
-def refine_voice(text, profile, generate=complete):
+def refine_voice(text, profile, generate=complete, *, context=None):
     try:
+        context = context or VoiceContext()
+        source = {'transcript': text, 'notation': context.model_dump()} if context.stem or context.hints() or context.style != 'mixed' else text
         if profile == 'calculator':
             value = generate('这是非写作语音输入。仅把录音转成原话指定的可输入计算器的算式或算式片段。'
                              '使用 0-9、ASCII 运算符、括号、英文数学函数与变量。保留原式和运算顺序，不计算、不补写。'
-                             '只输出一行算式，不输出空格、制表符、自然语言、结果、Markdown 或 LaTeX。无法辨认时输出空字符串。', text)
+                             '沿用题目记号，未指定时以小写字母表示一般变量。只输出一行算式，不输出空格、制表符、自然语言、结果、Markdown 或 LaTeX。无法辨认时输出空字符串。', source)
             value = value.strip(' ')
             if (not FORMULA.fullmatch(value) or len(value) > 4096 or
                     any(len(word) > 1 and word not in FUNCTIONS for word in re.findall(r'[A-Za-z_]+', value))):
                 raise DomainError('voice_formula_invalid', '没有获得可输入的算式，请重试。', 422)
             return value
-        route = 'non_writing' if profile == 'answer' else generate(
+        if profile == 'answer':
+            value = generate(prompt('math-answer.md'), source).strip()
+            if not value or len(value) > 16000 or value.startswith(chr(96) * 3):
+                raise ValueError('Invalid answer transcription')
+            return value
+        route = generate(
             prompt('decide-writing.md') + '\n只返回 writing、non_writing 或 uncertain 中的一个，省略其他字符。', text).strip()
         name = 'refine-dictation-non-writing.md' if route == 'non_writing' else 'refine-writing.md'
-        formatting = ('这是学生当前作答的片段。只转写已经说出的内容，保留口述的事实、公式、结论和步骤，包括可能错误的答案。'
-                      '明确保留每个空的序号、对应值、口述顺序，以及跳过、留空或改填等指令。'
-                      '即使只说第二、第三空，也不要删去空号、按顺序重新编号或补写第一空。'
-                      '不纠错、不解题、不添加标题、列表符号、解释或 Markdown。公式用适合原位插入的纯文本。'
-                      if profile == 'answer' else '只输出可直接插入当前光标的正文。保留自然段，不加标题、大纲标记或说明。')
+        formatting = '只输出可直接插入当前光标的正文。保留自然段，不加标题、大纲标记或说明。'
         value = generate(prompt(name) + '\n\n' + prompt('refine-quotation-style.md') + '\n\n' + formatting, text).strip()
         if not value or len(value) > 16000:
             raise ValueError('Invalid refinement')
         return value
     except (OSError, ValueError, KeyError, AttributeError, TypeError, IndexError):
         raise DomainError('voice_refinement_failed', '录音文字整理未完成，请重试或直接输入。', 502) from None
+
+
+def format_voice(text, profile, context):
+    if profile == 'answer_commands':
+        return text
+    return quick_math(text, profile, context) or refine_voice(text, profile, context=context)

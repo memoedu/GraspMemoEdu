@@ -671,7 +671,7 @@ class PublicAccessAcceptanceTests(unittest.TestCase):
         allowed.update(('/api/academy/training/launch', '/api/academy/training/finish'))
         allowed.update({'/api/context-library', '/api/context-library/material', '/api/context-library/lookup',
                         '/api/context-library/marks', '/api/training-audio', '/api/training-audio/status',
-                        '/api/training-audio/transcribe', '/api/voice-input/transcribe', '/api/answer-conversion'})
+                        '/api/training-audio/transcribe', '/api/voice-input/transcribe', '/api/voice-input/stream', '/api/answer-conversion'})
         self.assertLessEqual({route.path for route in self.app.routes}, allowed)
         atomic_route = next(route for route in self.app.routes if route.path == '/api/atomic/reviews')
         self.assertEqual(atomic_route.methods, {'GET'})

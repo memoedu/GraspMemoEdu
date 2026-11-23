@@ -10,6 +10,8 @@ const {chromium} = require('playwright');
 const browser = await chromium.launch({headless: true, channel: 'chrome',
   args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream']});
 const context = await browser.newContext({viewport: {width: 390, height: 844}, locale: 'zh-CN', permissions: ['microphone']});
+// Exercise the retained MediaRecorder route, including deferred-submit retry.
+await context.addInitScript(() => { globalThis.AudioWorkletNode = undefined; });
 const page = await context.newPage();
 const errors = [], calls = [], submissions = [];
 let release;
