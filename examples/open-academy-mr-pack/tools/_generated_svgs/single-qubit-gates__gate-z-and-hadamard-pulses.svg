@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" role="img" aria-label="(Omega, delta) 参数控制平面：水平共振 X/Y 门射线、垂直失谐 T/S/Z 门射线与 45 度 Hadamard 门射线">
+  <defs>
+    <marker id="u2l1hz-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981"/>
+    </marker>
+    <marker id="u2l1hz-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#3b82f6"/>
+    </marker>
+    <marker id="u2l1hz-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="640" height="300" fill="#ffffff"/>
+  <text x="20" y="24" font-size="14" font-weight="700" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">(Ω, δ) 控制平面与三类脉冲门射线</text>
+  <text x="20" y="42" font-size="11.5" fill="#737373" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">有效旋转角 θ = Ω_eff t，其中 Ω_eff = √(Ω² + δ²)，倾角满足 cos α = δ / Ω_eff</text>
+  <line x1="216" y1="140" x2="216" y2="244" stroke="#d4d4d4" stroke-width="1.4" stroke-dasharray="4 3"/>
+  <line x1="112" y1="140" x2="216" y2="140" stroke="#d4d4d4" stroke-width="1.4" stroke-dasharray="4 3"/>
+  <line x1="112" y1="244" x2="348" y2="244" stroke="#10b981" stroke-width="2.8" marker-end="url(#u2l1hz-green)"/>
+  <line x1="112" y1="244" x2="112" y2="66" stroke="#3b82f6" stroke-width="2.8" marker-end="url(#u2l1hz-blue)"/>
+  <line x1="112" y1="244" x2="256" y2="100" stroke="#f59e0b" stroke-width="2.8" marker-end="url(#u2l1hz-amber)"/>
+  <path d="M143.11 212.89 A44 44 0 0 0 112.0 200.0" fill="#ffffff" fill-opacity="0" stroke="#f59e0b" stroke-width="1.6"/>
+  <text x="133.89" y="183.86" text-anchor="middle" font-size="11" font-weight="700" fill="#f59e0b" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">α=45°</text>
+  <text x="274" y="264" font-size="12" font-weight="700" fill="#10b981" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">Ω (δ = 0)</text>
+  <text x="150" y="264" font-size="11" fill="#10b981" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">共振 x/y 门</text>
+  <circle cx="216" cy="244" r="3.8" fill="#10b981"/>
+  <text x="216" y="282" text-anchor="middle" font-size="10.5" fill="#737373" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">(π/2)_β, (π)_β</text>
+  <text x="122" y="78" font-size="12" font-weight="700" fill="#3b82f6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">δ (Ω = 0, 自由演化)</text>
+  <circle cx="112" cy="204" r="3.8" fill="#3b82f6"/>
+  <circle cx="112" cy="164" r="3.8" fill="#3b82f6"/>
+  <circle cx="112" cy="114" r="3.8" fill="#3b82f6"/>
+  <text x="102" y="208" text-anchor="end" font-size="10.5" fill="#3b82f6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">T (δt=π/4)</text>
+  <text x="102" y="168" text-anchor="end" font-size="10.5" fill="#3b82f6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">S (δt=π/2)</text>
+  <text x="102" y="118" text-anchor="end" font-size="10.5" fill="#3b82f6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">Z_MR (δt=π)</text>
+  <circle cx="216" cy="140" r="4.2" fill="#f59e0b"/>
+  <text x="220" y="92" font-size="12" font-weight="700" fill="#f59e0b" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">H_MR (Ω = δ, β = 0)</text>
+  <text x="224" y="144" font-size="11" fill="#f59e0b" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">Ω_eff = √2 Ω, θ = π</text>
+  <circle cx="112" cy="244" r="3.5" fill="#171717"/>
+  <rect x="370" y="64" width="252" height="214" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/>
+  <text x="384" y="87" font-size="12" font-weight="700" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">控制射线与门对应关系</text>
+  <circle cx="390" cy="113" r="4.5" fill="#10b981"/>
+  <text x="402" y="117" font-size="11.5" font-weight="700" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">水平轴 δ = 0 (n 在赤道面)</text>
+  <text x="402" y="134" font-size="11" fill="#737373" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">θ = Ωt → (π/2)_x,y, (π)_x,y</text>
+  <circle cx="390" cy="162" r="4.5" fill="#3b82f6"/>
+  <text x="402" y="166" font-size="11.5" font-weight="700" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">垂直轴 Ω = 0 (n = (0,0,1))</text>
+  <text x="402" y="183" font-size="11" fill="#737373" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">θ = δt → T, S, Z_MR (对角相移)</text>
+  <circle cx="390" cy="211" r="4.5" fill="#f59e0b"/>
+  <text x="402" y="215" font-size="11.5" font-weight="700" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">45° 射线 Ω = δ, β = 0</text>
+  <text x="402" y="232" font-size="10.8" fill="#737373" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">θ = √2 Ωt = π → H_MR = -i(σ_x+σ_z)/√2</text>
+  <text x="384" y="263" font-size="11" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">全部物理脉冲均满足 det(U) = +1 ∈ SU(2)</text>
+</svg>

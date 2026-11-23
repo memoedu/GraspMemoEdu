@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="左图为第一重旋转系下 x-z 平面自旋量化轴倾斜几何图：竖直分量 (omega_0 - omega') S_z 与水平微扰分量 Omega' S_x 合成为沿新量化轴 S'_z、倾角为 theta 的蓝色有效场③，其模长 sqrt((omega_0 - omega')^2 + Omega'^2) 超出原虚线圆弧，从而使有效能隙拉伸；右图总结轴旋转公式与教材式 (1.19)、(1.20) 的两处勘误修正。">
+<defs>
+<marker id="bs1-dark" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#171717"/></marker>
+<marker id="bs1-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
+<marker id="bs1-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker>
+</defs>
+<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#171717">
+<line x1="364" y1="20" x2="364" y2="282" stroke="#d4d4d4" stroke-width="1"/>
+<text x="182" y="24" text-anchor="middle" font-size="14" font-weight="600">自旋轴倾斜与模长拉伸 (x-z 平面)</text>
+<line x1="82" y1="238.0" x2="306" y2="238.0" stroke="#d4d4d4" stroke-width="1.5" marker-end="url(#bs1-dark)"/>
+<line x1="118.0" y1="264" x2="118.0" y2="42" stroke="#d4d4d4" stroke-width="1.5" marker-end="url(#bs1-dark)"/>
+<text x="312" y="242.0" fill="#737373">x (S_x)</text>
+<text x="126.0" y="48" fill="#737373">z (S_z)</text>
+<text x="104.0" y="254.0" fill="#737373">O</text>
+<path d="M118.0 76.0 A162.0 162.0 0 0 1 200.73 98.72" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="1.5" stroke-dasharray="4 3"/>
+<line x1="118.0" y1="76.0" x2="196.0" y2="76.0" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="4 3"/>
+<line x1="196.0" y1="238.0" x2="196.0" y2="76.0" stroke="#d4d4d4" stroke-width="1.2" stroke-dasharray="4 3"/>
+<line x1="118.0" y1="238.0" x2="118.0" y2="79.0" stroke="#171717" stroke-width="2.5" marker-end="url(#bs1-dark)"/>
+<line x1="118.0" y1="238.0" x2="193.0" y2="238.0" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#bs1-amber)"/>
+<line x1="118.0" y1="238.0" x2="215.31" y2="284.85" stroke="#3b82f6" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#bs1-blue)"/>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="221.31" y="288.85" fill="#3b82f6">x' (S'_x)</text>
+<line x1="118.0" y1="238.0" x2="196.0" y2="76.0" stroke="#3b82f6" stroke-width="3" marker-end="url(#bs1-blue)"/>
+<circle cx="188.28" cy="92.04" r="4" fill="#10b981"/>
+<path d="M118.0 182.0 A56.0 56.0 0 0 1 142.29 187.54" fill="#ffffff" fill-opacity="0" stroke="#f59e0b" stroke-width="2"/>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="135.57" y="167.75" fill="#f59e0b" font-weight="600">θ</text>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="110.0" y="156" text-anchor="end">(ω₀ - ω') S_z</text>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="157.0" y="228.0" text-anchor="middle" fill="#f59e0b" font-weight="600">Ω' S_x</text>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="204.0" y="60.0" fill="#3b82f6" font-weight="600">有效轴 ③: S'_z</text>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="204.0" y="78.0" fill="#3b82f6">√((ω₀ - ω')² + Ω'²)</text>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="212.0" y="118.0" fill="#10b981" font-size="12">超出原半径 |ω₀ - ω'|</text>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="212.0" y="136.0" fill="#10b981" font-size="12">伸长量 ≈ |Δ_BS|</text>
+<text x="500" y="24" text-anchor="middle" font-size="14" font-weight="600">轴旋转变换与教材两处勘误</text>
+<rect x="374" y="38" width="256" height="114" rx="6" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.2"/>
+<text x="384" y="59" font-weight="600">绕 y 轴旋转 θ 对角化 ③ (式 1.19)</text>
+<text x="384" y="80" fill="#737373" font-size="12">S'_z = cosθ S_z + sinθ S_x,  S'_y = S_y</text>
+<text x="384" y="100" fill="#737373" font-size="12">S_x = cosθ S'_x + sinθ S'_z</text>
+<text x="384" y="121" fill="#3b82f6" font-size="12">cosθ = |ω₀ - ω'| / √((ω₀ - ω')² + Ω'²)</text>
+<text x="384" y="141" fill="#ef4444" font-size="12">勘误1: 根号内须保留平方 (ω₀ - ω')²</text>
+<rect x="374" y="164" width="256" height="118" rx="6" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.2"/>
+<text x="384" y="185" font-weight="600">弱微扰展开 (|Ω'| ≪ |ω₀ - ω'|)</text>
+<text x="384" y="206" fill="#737373" font-size="12">tanθ = Ω' / (ω₀ - ω')  (图中放大了 θ)</text>
+<text x="384" y="226" fill="#10b981" font-size="12">cosθ ≈ 1 - ½[Ω'/(ω₀-ω')]²</text>
+<text x="384" y="247" fill="#ef4444" font-size="12">勘误2: 分母是 ω₀ - ω' (非 ω - ω')</text>
+<text x="384" y="268" fill="#10b981" font-size="12">cos²(θ/2) ≈ 1 - ¼[Ω'/(ω₀-ω')]² ≈ 1</text>
+</g>
+</svg>

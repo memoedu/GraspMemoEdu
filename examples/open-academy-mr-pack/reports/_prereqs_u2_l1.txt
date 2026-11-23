@@ -1,0 +1,86 @@
+﻿# What a learner starting 磁共振实现单比特量子门 (single-qubit-gates) has been taught
+
+## Required topics (hard prerequisites, direct or through a chain), prerequisites first
+
+### 量子力学与数学预备基础 (qm-spin-and-operators-foundation)
+默认前置的大学物理与数学基础：复数（$i^2 = -1$）与欧拉公式、偏导数与二阶常系数线性微分方程 $\ddot{y}+a\dot{y}+by=0$、偶极势能 $H=-\vec{\boldsymbol{\mu}}\cdot\boldsymbol{B}$ 与 $-\hat{\boldsymbol{d}}\cdot\boldsymbol{E}$；狄拉克左右矢（$|\psi\rangle$、$\langle\phi|$）、正交归一基（$|m_S = \pm 1/2\rangle$）与线性叠加原理；本征态与本征值（$S_z |m_S = \pm 1/2\rangle = \pm\frac{1}{2}|m_S = \pm 1/2\rangle$）；厄米共轭、幺正算符（$U^\dagger U = \mathbb{1}$）、对易子 $[A,B] = AB - BA$ 与泡利矩阵指数公式 $e^{-i(\theta/2)\vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{\sigma}}} = \cos(\theta/2)\mathbb{1} - i\sin(\theta/2)\vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{\sigma}}$（由 $(\vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{\sigma}})^2=\mathbb{1}$ 展开）；自然单位（$\hbar = 1$）与国际单位下的薛定谔方程；以及绕 $+z$ 轴逆时针（右旋）与顺时针（左旋）旋转的圆偏振光子分别携带角动量 $+1$ 与 $-1$ 的物理事实。
+(no lesson yet; prereq contract from concept definition & objectives)
+- [math] 运用幺正变换、对易子、泡利矩阵指数展开 $(\vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{\sigma}})^2=\mathbb{1}$、二阶线性常微分方程与自旋 $1/2$ 本征方程推导量子演化恒等式
+- [conceptual] 从经典磁偶极与电偶极相互作用以及含时薛定谔方程出发理解二能级耦合与圆偏振光子角动量 $+1/-1$
+
+### 自旋磁矩与驱动哈密顿量 (spin-zeeman-and-drive)
+介绍自旋磁矩与角动量的关系 $\vec{\boldsymbol{\mu}} = \gamma\vec{\boldsymbol{S}}$、电子自旋（自由电子 $\gamma_e \approx -2\pi\times 2.8025\text{ MHz/G}$，金刚石 NV 色心 $\gamma_e \approx -2\pi\times 2.8033\text{ MHz/G}$）与核自旋（如自由质子 $\gamma_n = 2\pi\times 4.2577\text{ kHz/G}$）的旋磁比差异，导出在静磁场与横向余弦驱动场作用下的无量纲磁共振哈密顿量 $H = \omega_0 S_z + 2\Omega\cos(\omega t+\varphi)S_x$（对电子自旋 $2\Omega = -\gamma_e B_x$），并建立与《量子光学》二能级原子电偶极相互作用 $-\hat{\boldsymbol{d}}\cdot\boldsymbol{E}(t)$（$|g\rangle/|e\rangle$、$\hat{\sigma}_3$、$\hat{\sigma}_\pm$）的同构字典。
+- Step: 用旋磁比确定塞曼分裂与能级顺序
+- 自旋磁矩满足 $\vec{\boldsymbol{\mu}} = \gamma\vec{\boldsymbol{S}}$，静磁场中相互作用为 $H_0 = -\gamma B_0 S_z$（$\hbar = 1$）。
+- 电子旋磁比 $\gamma_e < 0$（约 $-2\pi\times 2.8\text{ MHz/G}$），使 $|m_S = -1/2\rangle$ 成为下能级、$|m_S = +1/2\rangle$ 成为上能级。
+- 质子等核自旋 $\gamma_n > 0$（$\text{kHz/G}$ 量级，比电子小约 $10^3$ 倍），能级上下顺序恰好反转。
+- Step: 推导横向交变驱动的标准哈密顿量
+- 实验室总磁场由静磁场 $B_0\vec{\boldsymbol{e}}_z$ 与含时驱动场 $(B_x\vec{\boldsymbol{e}}_x + B_z\vec{\boldsymbol{e}}_z)\cos(\omega t+\varphi)$ 构成。
+- 线圈与 $z$ 轴垂直（$\theta_B = 90^\circ$）时纵向驱动 $B_z = 0$，只留横向项 $B_x\cos(\omega t+\varphi)S_x$。
+- 对电子自旋令 $2\Omega = -\gamma_e B_x$（注意是磁场幅值 $B_x$ 而非算符 $S_x$），得到 $H = \omega_0 S_z + 2\Omega\cos(\omega t+\varphi)S_x$。
+- Step: 将磁共振哈密顿量映射至量子光学二能级原子
+- 激光场满足电偶极近似 $k\cdot r \ll 1$ 后，相互作用简化为 $H_{\text{int}} = -\hat{\boldsymbol{d}}\cdot\boldsymbol{E}(t)$。
+- 二能级原子引入跃迁算符 $\hat{\sigma}_+ = |e\rangle\langle g|$、$\hat{\sigma}_- = |g\rangle\langle e|$ 与反转算符 $\hat{\sigma}_3 = |e\rangle\langle e| - |g\rangle\langle g|$。
+- 两套模型严格对应：$2S_z \leftrightarrow \hat{\sigma}_3$、$2S_x \leftrightarrow \hat{\sigma}_+ + \hat{\sigma}_-$、磁驱动参数 $\Omega \leftrightarrow V/\hbar$。
+- **静态塞曼能级与旋磁比**：由 $H_0 = -\gamma B_0 S_z$，电子因 $\gamma_e < 0$（约 $-2\pi\times 2.8\text{ MHz/G}$）使 $|m_S = -1/2\rangle$ 成为下能级且 $\omega_0 = -\gamma_e B_0 > 0$；质子等核自旋 $\gamma_n > 0$（$\text{kHz/G}$ 量级），上下能级颠倒且分裂小约 $10^3$ 倍。
+- **标准横向驱动哈密顿量**：当驱动场垂直静磁场（$\theta_B = 90^\circ$，$B_z = 0$）时，令 $2\Omega = -\gamma_e B_x$ 即得 $H = \omega_0 S_z + 2\Omega\cos(\omega t+\varphi)S_x$。
+- **量子光学电偶极同构**：在 $\{|g\rangle\leftrightarrow|m_S=-1/2\rangle,\; |e\rangle\leftrightarrow|m_S=+1/2\rangle\}$ 对应下，$\frac{1}{2}\hat{\sigma}_3\leftrightarrow S_z$、$\hat{\sigma}_+ + \hat{\sigma}_-\leftrightarrow 2S_x$，电偶极矩阵元给出 $\Omega \leftrightarrow V/\hbar$。
+**Next:** 下一课「旋波近似与相互作用图像」将把带有时间 $t$ 的横向余弦项 $2\Omega\cos(\omega t+\varphi)S_x$ 拆解为旋转分量，并在旋转参考系下把时间依赖彻底消去。
+
+### 旋波近似与相互作用图像 (rotating-wave-and-frame)
+把横向线偏振驱动场拆分为逆时针（右旋圆偏振）与顺时针（左旋圆偏振）两个旋转分量，利用角动量守恒解释旋波近似（RWA）为何忽略反向旋转项（并对照量子光学能量不守恒与反旋快变项），再分别用三维旋转公式与升降算符两种方法在相互作用图像 $U_i = e^{-i\omega t S_z}$ 下消去时间依赖，得到不含时有效哈密顿量 $H_I = (\omega_0 - \omega)S_z + \Omega[\cos(\varphi)S_x + \sin(\varphi)S_y]$，并与 Jaynes–Cummings 模型的旋波近似建立连接。
+- Step: 拆开驱动场并舍去反向项
+- 线偏振场可拆成正反两个等幅度旋转场。
+- 电子自旋跃迁匹配逆时针 $+1$ 光子分量，反向分量在弱驱动下可舍去。
+- 若驱动太强使 $\Omega$ 可比拟能隙 $\omega_0$，旋波近似不再适用，反向项引起共振频移。
+- Step: 跳进旋转坐标系消去时间
+- 相互作用图像变换相当于坐上与驱动场同频逆时针旋转的转盘去观察系统。
+- 在转盘上看，旋转的驱动矢量变成只由初相位决定的固定矢量，不再随时间变化。
+- 变换后整个哈密顿量成为常系数形式，由频率差与固定初相位共同决定。
+- Step: 用算符代数消去时间
+- 把横向自旋算符改写成专门负责升高和降低能级的两个升降算符。
+- 在相互作用图像下，上升算符乘出一个与驱动相位恰好相消的时间因子。
+- 这套纯代数推导不仅适用于高自旋，还能直接推广到光场玻色子系统。
+- **旋波近似（RWA）与适用界限**：把沿 $x$ 轴的线性驱动拆成幅值同为 $\Omega$ 的正反两个圆偏振分量后，由于电子自旋向上跃迁要求 $\Delta m_S = +1$，舍去角动量不守恒且方向反向的分量，保留 $H \approx \omega_0 S_z + \Omega[\cos(\omega t+\varphi)S_x + \sin(\omega t+\varphi)S_y]$；当强驱动使 $\Omega$ 可比拟能隙 $\omega_0$ 时近似失效，反向项会引起共振频率偏移。
+- **相互作用图像**：作幺正变换 $U_i = e^{-i\omega t S_z}$，无论是用三维旋转公式 $e^{-i\theta \vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{S}}}(\vec{\boldsymbol{r}}\cdot\vec{\boldsymbol{S}})e^{i\theta \vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{S}}} = R_{\vec{\boldsymbol{n}}\cdot\theta}(\vec{\boldsymbol{r}})\cdot\vec{\boldsymbol{S}}$，还是用升降算符恒等式 $U_i^\dagger S^+ U_i = e^{i\omega t} S^+$（可推广至高自旋与玻色子产生湮灭算符 $a^\dagger, a$），都能消去时间 $t$。
+- **不含时有效哈密顿量**：变换后得到常系数哈密顿量 $H_I = (\omega_0 - \omega)S_z + \Omega[\cos(\varphi)S_x + \sin(\varphi)S_y]$。
+**Next:** 下一节「有效场演化与拉比跃迁概率」将对刚求出的常系数哈密顿量 $H_I$ 直接作演化计算，导出自旋二能级系统的跃迁概率公式。
+
+### 有效场演化与拉比跃迁概率 (su2-evolution-and-rabi-prob)
+引入偏共振 $\delta = \omega_0 - \omega$ 与有效拉比频率 $\Omega_{\text{eff}} = \sqrt{\Omega^2 + \delta^2}$，将不含时哈密顿量写成 $H_I = \Omega_{\text{eff}}\vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{S}}$，导出 $SU(2)$ 演化算符 $U_I = \cos(\theta/2)\mathbb{1} - i\sin(\theta/2)\vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{\sigma}}$（$\vec{\boldsymbol{\sigma}}=2\vec{\boldsymbol{S}}$）及拉比跃迁概率公式，并与《量子光学》耦合概率幅微分方程推导、粒子数反转 $W(t)$、共振 $\pi$ / $(\pi/2)$ 脉冲以及全量子 Jaynes–Cummings 模型的量子化拉比频率 $\Omega(n) = 2\lambda\sqrt{n+1}$（含真空拉比振荡）对照验证。
+- Step: 构造有效转轴与 SU(2) 演化算符
+- 定义偏共振 $\delta = \omega_0 - \omega$ 与有效拉比频率 $\Omega_{\text{eff}} = \sqrt{\Omega^2 + \delta^2}$，把 $H_I$ 写成 $\Omega_{\text{eff}}\vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{S}}$。
+- 有效转轴 $\vec{\boldsymbol{n}} = (\sin\theta'\cos\varphi,\; \sin\theta'\sin\varphi,\; \cos\theta')$ 在共振（$\delta=0$）时倒在赤道 $x\text{-}y$ 平面内。
+- 引入泡利矩阵矢量 $\vec{\boldsymbol{\sigma}} = 2\vec{\boldsymbol{S}}$ 与转角 $\theta = \Omega_{\text{eff}}t$，演化算符成为 $U_I = \cos(\theta/2)\mathbb{1} - i\sin(\theta/2)\vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{\sigma}}$。
+- Step: 双路导出拉比跃迁概率公式
+- 记 $|1\rangle \stackrel{\text{def}}{=} |m_S=-1/2\rangle \leftrightarrow |g\rangle$、$|0\rangle \stackrel{\text{def}}{=} |m_S=+1/2\rangle \leftrightarrow |e\rangle$，直接由 $U_I|1\rangle$ 读出上态振幅。
+- 拉比跃迁概率为 $P(t) = \frac{\Omega^2}{\Omega^2+\delta^2}\sin^2\left(\frac{\sqrt{\Omega^2+\delta^2}\,t}{2}\right)$（展开 $U_I|1\rangle$ 时须把 $n_z$ 留在 $\sin$ 项内）。
+- 《量子光学》用耦合概率幅二阶常微分方程导出完全一致的闭合概率公式。
+- Step: 分析粒子数反转、共振脉冲与量子化拉比振荡
+- 粒子数反转定义为 $W(t) = P_e(t) - P_g(t) = 2P(t) - 1$，共振（$\delta=0$）时从 $|1\rangle$ 出发有 $W(t) = -\cos(\Omega t)$。
+- 当 $\Omega t = \pi$ 称作 **$\pi$ 脉冲**（$P=1, W=+1$ 完全反转）；当 $\Omega t = \pi/2$ 称作 **$\pi/2$ 脉冲**（$P=0.5, W=0$ 等权叠加）。
+- 在全量子 Jaynes–Cummings 模型中，$n$ 光子数态给出量子化拉比频率 $\Omega(n) = 2\lambda\sqrt{n+1}$，即使真空 $n=0$ 仍发生**真空拉比振荡**。
+- **$SU(2)$ 有效场演化**：定义失谐 $\delta = \omega_0 - \omega$、有效拉比频率 $\Omega_{\text{eff}} = \sqrt{\Omega^2+\delta^2}$ 与有效轴 $\vec{\boldsymbol{n}}$，利用 $\vec{\boldsymbol{\sigma}}=2\vec{\boldsymbol{S}}$ 将旋转系演化写成 $U_I = \cos(\theta/2)\mathbb{1} - i\sin(\theta/2)\vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{\sigma}}$（$\theta = \Omega_{\text{eff}}t$）。
+- **双路等价拉比公式**：无论从 $U_I|1\rangle$（展开末态时须将 $n_z$ 留在 $\sin(\theta/2)$ 项内）还是从《量子光学》二阶概率幅方程出发，都给出 $P(t) = \frac{\Omega^2}{\Omega^2+\delta^2}\sin^2\left(\frac{\Omega_{\text{eff}} t}{2}\right)$——失谐越大会同时压低峰值并加快振荡。
+- **反转度、脉冲与 JC 推广**：粒子数反转 $W(t)=2P(t)-1$ 在共振 $\pi$ 脉冲处达 $+1$、$\pi/2$ 脉冲处为 $0$；在全量子 Jaynes–Cummings 模型中则变为 $\Omega(n) = 2\lambda\sqrt{n+1}$，并在 $n=0$ 时给出纯量子的真空拉比振荡。
+**Next:** 完成 Unit 1 的所有演化推导后，Unit 2 第一课「磁共振实现单比特量子门」将利用任意相角 $\varphi$ 与脉冲参数实现具体的 $(\pi/2)_\beta$、$(\pi)_\beta$、Pauli 及 Hadamard 量子门。
+
+## Notation and ideas already taught
+- 旋磁比 γ / γ_e / γ_n (introduced by spin-zeeman-and-drive)
+- 无量纲自旋算符 S_x, S_y, S_z (introduced by spin-zeeman-and-drive)
+- 共振频率 ω_0 与驱动幅值 Ω (introduced by spin-zeeman-and-drive)
+- 相互作用图像变换 U_i 与有效哈密顿量 H_I (introduced by rotating-wave-and-frame)
+- 自旋升降算符 S^+ / S^- (introduced by rotating-wave-and-frame)
+- 三维矢量旋转算符 R_{n·θ} (introduced by rotating-wave-and-frame)
+- 偏共振 δ 与有效拉比频率 Ω_eff (introduced by su2-evolution-and-rabi-prob)
+- 泡利矩阵矢量 σ (σ = 2S) (introduced by su2-evolution-and-rabi-prob)
+
+## Soft links (helpful background, NOT guaranteed; anything only taught here counts as untaught)
+
+## Not yet taught at this point
+- Bloch-Siegert 平移 Δ_BS (introduced by bloch-siegert-shift)
+- 贝塞尔函数边带强度 J_n(χ) (introduced by longitudinal-sideband-excitation)
+- 密度矩阵 ρ 与迹 Tr(ρσ) (introduced by bloch-sphere-representation)
+- 退相干时间 T_2^*、半高全宽 FWHM 与磁涨落 σ_b (introduced by rabi-and-ramsey-spectroscopy)
+- 回波相干时间 T_2、关联时间 τ_c 与噪声函数 η(t) (introduced by spin-echo-and-noise-correlation)
+- 门保真度 F_{XY4} / F_{CPMG} (introduced by dynamical-decoupling-and-xy4)

@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="单比特幺正门与 Bloch 矢量三维旋转同构图：左侧为交换同构图，密度矩阵经幺正演化 rho_f 等于 U rho_0 U dagger 等价于先映射为 Bloch 矢量 n_0，再绕单位轴 n 旋转角度 theta 得到 n_f，最后映射回 rho_f；右侧展示 U_x(pi/2) 作用在南极 |1⟩（n_0=(0,0,-1)）时，按右手定则绕 +x 轴转过 +90° 到达赤道 +y（n_f=(0,+1,0)），几何上与态矢 (|1⟩-i|0⟩)/√2 完全一致。">
+<defs>
+<marker id="bloch2-dark" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#171717"/></marker>
+<marker id="bloch2-gray" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#737373"/></marker>
+<marker id="bloch2-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
+<marker id="bloch2-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker>
+<marker id="bloch2-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker>
+<marker id="bloch2-red" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#ef4444"/></marker>
+</defs>
+<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#171717">
+<line x1="336" y1="18" x2="336" y2="282" stroke="#d4d4d4" stroke-width="1"/>
+<text x="168" y="23" text-anchor="middle" font-size="14" font-weight="600">幺正门与三维旋转同构框图</text>
+<rect x="18" y="48" width="56" height="36" rx="6" fill="#ffffff" fill-opacity="0" stroke="#171717" stroke-width="1.5"/>
+<text x="46" y="71" text-anchor="middle" font-size="14" font-weight="600">ρ₀</text>
+<rect x="200" y="48" width="56" height="36" rx="6" fill="#ffffff" fill-opacity="0" stroke="#3b82f6" stroke-width="1.5"/>
+<text x="228" y="71" text-anchor="middle" font-size="14" font-weight="600" fill="#3b82f6">ρ_f</text>
+<line x1="76" y1="66" x2="196" y2="66" stroke="#ef4444" stroke-width="2.2" marker-end="url(#bloch2-red)"/>
+<text x="136" y="57" text-anchor="middle" fill="#ef4444" font-weight="600">U = exp(-i θ n⃗·S⃗)</text>
+<text x="136" y="83" text-anchor="middle" fill="#737373" font-size="11.5">ρ_f = U ρ₀ U†</text>
+<rect x="18" y="150" width="56" height="36" rx="6" fill="#ffffff" fill-opacity="0" stroke="#171717" stroke-width="1.5"/>
+<text x="46" y="173" text-anchor="middle" font-size="14" font-weight="600">n⃗₀</text>
+<rect x="200" y="150" width="56" height="36" rx="6" fill="#ffffff" fill-opacity="0" stroke="#3b82f6" stroke-width="1.5"/>
+<text x="228" y="173" text-anchor="middle" font-size="14" font-weight="600" fill="#3b82f6">n⃗_f</text>
+<line x1="76" y1="168" x2="196" y2="168" stroke="#3b82f6" stroke-width="2.4" marker-end="url(#bloch2-blue)"/>
+<text x="136" y="158" text-anchor="middle" fill="#3b82f6" font-weight="600">三维旋转 R_(n⃗·θ)</text>
+<text x="136" y="185" text-anchor="middle" fill="#737373" font-size="11.5">n⃗_f = R_(n⃗·θ)(n⃗₀)</text>
+<line x1="46" y1="87" x2="46" y2="146" stroke="#737373" stroke-width="1.8" marker-end="url(#bloch2-gray)"/>
+<line x1="228" y1="147" x2="228" y2="88" stroke="#737373" stroke-width="1.8" marker-end="url(#bloch2-gray)"/>
+<text x="52" y="121" fill="#737373" font-size="11">Tr(ρ₀σ⃗)</text>
+<text x="235" y="121" fill="#737373" font-size="11">(𝟙+n⃗_f·σ⃗)/2</text>
+<rect x="16" y="206" width="298" height="74" rx="6" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.3"/>
+<text x="28" y="227" font-weight="600">实例验证：U_x(π/2) 作用在初态 |1⟩</text>
+<text x="28" y="248" fill="#737373">代数演化：(|1⟩ - i|0⟩)/√2 = -i|+y⟩</text>
+<text x="28" y="269" fill="#3b82f6" font-weight="600">几何旋转：R_(x·π/2)(0,0,-1) = (0,+1,0)</text>
+<text x="480" y="23" text-anchor="middle" font-size="14" font-weight="600">右手定则轨迹：绕 +x 转 +90°</text>
+<circle cx="446.0" cy="156.0" r="86.0" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.4"/>
+<polyline points="531.95,155.07 531.67,153.68 531.16,152.3 530.42,150.93 529.45,149.57 528.24,148.23 526.81,146.91 525.16,145.62 523.3,144.35 521.22,143.12 518.93,141.92 516.45,140.76 513.77,139.64 510.91,138.56 507.86,137.54 504.65,136.56 501.28,135.64 497.76,134.78 494.09,133.97 490.29,133.22 486.37,132.54 482.35,131.91 478.22,131.36 474.0,130.87 469.7,130.45 465.35,130.11 460.93,129.83 456.48,129.62 452.0,129.49 447.5,129.43 443.0,129.44 438.5,129.53 434.03,129.68 429.59,129.91 425.19,130.21 420.86,130.59 416.59,131.03 412.4,131.54 408.3,132.11 404.31,132.76 400.43,133.46 396.67,134.23 393.05,135.06 389.58,135.94 386.26,136.88 383.1,137.88 380.12,138.92 377.32,140.01 374.7,141.14 372.28,142.31 370.07,143.52 368.06,144.77 366.26,146.04 364.69,147.35 363.33,148.67 362.2,150.02 361.31,151.39 360.64,152.76 360.21,154.15 360.01,155.54" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.3" stroke-dasharray="4 4"/>
+<line x1="446.0" y1="156.0" x2="446.0" y2="250.88" stroke="#d4d4d4" stroke-width="1.3" stroke-dasharray="3 3"/>
+<line x1="446.0" y1="156.0" x2="446.0" y2="54.58" stroke="#737373" stroke-width="1.4" marker-end="url(#bloch2-gray)"/>
+<line x1="446.0" y1="156.0" x2="530.13" y2="173.54" stroke="#737373" stroke-width="1.4" marker-end="url(#bloch2-gray)"/>
+<polyline points="397.91,178.03 401.71,178.78 405.63,179.46 409.65,180.09 413.78,180.64 418.0,181.13 422.3,181.55 426.65,181.89 431.07,182.17 435.52,182.38 440.0,182.51 444.5,182.57 449.0,182.56 453.5,182.47 457.97,182.32 462.41,182.09 466.81,181.79 471.14,181.41 475.41,180.97 479.6,180.46 483.7,179.89 487.69,179.24 491.57,178.54 495.33,177.77 498.95,176.94 502.42,176.06 505.74,175.12 508.9,174.12 511.88,173.08 514.68,171.99 517.3,170.86 519.72,169.69 521.93,168.48 523.94,167.23 525.74,165.96 527.31,164.65 528.67,163.33 529.8,161.98 530.69,160.61 531.36,159.24 531.79,157.85 531.99,156.46 531.95,155.07" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.3"/>
+<polyline points="360.01,155.54 360.05,156.93 360.33,158.32 360.84,159.7 361.58,161.07 362.55,162.43 363.76,163.77 365.19,165.09 366.84,166.38 368.7,167.65 370.78,168.88 373.07,170.08 375.55,171.24 378.23,172.36 381.09,173.44 384.14,174.46 387.35,175.44 390.72,176.36 394.24,177.22 397.91,178.03" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.3"/>
+<line x1="446.0" y1="156.0" x2="386.37" y2="183.32" stroke="#10b981" stroke-width="2.4" marker-end="url(#bloch2-green)"/>
+<polyline points="422.81,187.35 425.18,186.27 427.28,184.7 429.03,182.66 430.4,180.23 431.33,177.48 431.81,174.49 431.81,171.35 431.33,168.16 430.4,165.02 429.03,162.02 427.28,159.25 425.18,156.8 422.81,154.73 420.24,153.13 417.55,152.02 414.82,151.45 412.12,151.43 409.55,151.97 407.19,153.04 405.09,154.62 403.34,156.66 401.97,159.09 401.03,161.84 400.56,164.83" fill="#ffffff" fill-opacity="0" stroke="#10b981" stroke-width="2" marker-end="url(#bloch2-green)"/>
+<polyline points="446.0,237.79 449.11,238.36 452.21,238.77 455.31,239.03 458.38,239.13 461.43,239.07 464.45,238.85 467.44,238.47 470.39,237.94 473.28,237.25 476.13,236.41 478.92,235.41 481.65,234.26 484.31,232.97 486.89,231.52 489.4,229.94 491.83,228.21 494.17,226.34 496.41,224.34 498.57,222.21 500.62,219.96 502.56,217.58 504.4,215.09 506.13,212.48 507.75,209.77 509.24,206.95 510.62,204.03 511.87,201.03 513.0,197.94 514.0,194.77 514.87,191.52 515.61,188.21 516.21,184.84 516.69,181.41 517.03,177.93 517.23,174.41 517.3,170.86" fill="#ffffff" fill-opacity="0" stroke="#f59e0b" stroke-width="2.8" marker-end="url(#bloch2-amber)"/>
+<line x1="446.0" y1="156.0" x2="446.0" y2="237.79" stroke="#171717" stroke-width="2.8" marker-end="url(#bloch2-dark)"/>
+<line x1="446.0" y1="156.0" x2="517.3" y2="170.86" stroke="#3b82f6" stroke-width="2.8" marker-end="url(#bloch2-blue)"/>
+<circle cx="446.0" cy="156.0" r="3" fill="#171717"/>
+<circle cx="446.0" cy="74.21" r="3.8" fill="#737373"/>
+<circle cx="446.0" cy="237.79" r="4.5" fill="#171717"/>
+<circle cx="517.3" cy="170.86" r="4.5" fill="#3b82f6"/>
+<text x="456.0" y="58.58" fill="#737373">+z (|0⟩)</text>
+<text x="380.37" y="199.32" text-anchor="middle" fill="#10b981" font-weight="600">转轴 +x</text>
+<text x="454.0" y="255.79" font-weight="600">n⃗₀ = (0,0,-1) |1⟩</text>
+<text x="535.3" y="142.86" fill="#3b82f6" font-weight="600">n⃗_f = (0,+1,0)</text>
+<text x="535.3" y="158.86" fill="#3b82f6" font-size="11.5">(|1⟩-i|0⟩)/√2</text>
+<text x="520" y="214" fill="#f59e0b" font-weight="600">+90°</text>
+</g>
+</svg>

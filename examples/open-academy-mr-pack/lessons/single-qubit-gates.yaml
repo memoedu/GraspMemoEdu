@@ -1,0 +1,269 @@
+concept: single-qubit-gates
+version: 1
+sources:
+  - source: ch1-magnetic-resonance
+    section: "1.3 节, pp. 7–8, 式 (1.33) 及单比特门表"
+  - source: introductory-quantum-optics
+    section: "Chapter 11, §11.10, pp. 281–283, Eqs. (11.24)–(11.29)"
+objective: |
+  **Goal:** 能够把一般旋转算符 $U = e^{-i\theta\vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{S}}} = \cos(\theta/2)\mathbb{1} - i\sin(\theta/2)\vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{\sigma}}$ 专门化为共振赤道脉冲门 $(\pi/2)_\beta$、$(\pi)_\beta$、失谐自由演化 $z$ 相位门（$T$、$S$、$Z_{\text{MR}}$）与倾斜轴 Hadamard 门 $H_{\text{MR}}$，区分物理 $SU(2)$ 旋转与计算 $U(2)$ 门约定之间的全局相位，并推导 Gerry–Knight 四门任意叠加态合成电路。
+recap:
+  - concept: su2-evolution-and-rabi-prob
+    text: "旋转系有效哈密顿量给出 $SU(2)$ 演化 $U_I = \\cos(\\theta/2)\\mathbb{1} - i\\sin(\\theta/2)\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}$，其中转角 $\\theta = \\Omega_{\\text{eff}}t$、$\\Omega_{\\text{eff}} = \\sqrt{\\Omega^2+\\delta^2}$。"
+where_this_fits: |
+  ### 从跃迁概率曲线走向可编程量子逻辑门
+
+  在 Unit 1 最后一课，我们利用演化算符 $U_I$ 计算了上下能级之间的跃迁概率。本课把视角切换为**量子门设计**：不再只关心终态布居数，而是把 $U_I$ 本身作为作用于计算基 $|0\rangle = (1,0)^T$、$|1\rangle = (0,1)^T$ 的单比特幺正门。
+
+  通过独立调节脉冲共振失谐 $\delta$、驱动幅度 $\Omega$、驱动相位 $\beta$ 与脉宽 $t$，我们将分别构造赤道 $X/Y$ 旋转门、对角 $T/S/Z$ 相位门与 Hadamard 门，并进一步衔接量子光学课程中标准的 $U(2)$ 电路记号。
+knowledge_points:
+  - id: gate-resonant-xy-pulses
+    title: "共振赤道面脉冲门：相控 X/Y 旋转"
+    tldr: |
+      - 共振条件 $\delta = 0$ 使极角 $\alpha = \pi/2$，有效转轴 $\vec{\boldsymbol{n}} = (\cos\beta, \sin\beta, 0)$ 落在赤道平面，转角 $\theta = \Omega t$。
+      - 代入一般旋转公式即得 $(\pi/2)_\beta$ 与 $(\pi)_\beta$：令 $\beta=0$ 对应 $x$ 轴门，令 $\beta=\pi/2$ 对应 $y$ 轴门。
+      - 磁共振中 $(\pi)_x = -i\sigma_x$、$(\pi)_y = -i\sigma_y$（注：原讲义第 7 页将 $\beta=0$ 的矩阵误印为 $(\pi)_\pi$，实为 $(\pi)_x$）。
+    explain: |
+      ### 从一般有效转轴到共振赤道平面
+
+      在《磁共振基础》第 1.3 节中（对应上单元记号 $\varphi \mapsto \beta$、$\theta' \mapsto \alpha$），旋转坐标系内任意常参脉冲的演化算符记为式 (1.33)：
+      $$U = e^{-i\theta\,\vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{S}}} = \cos\left(\frac{\theta}{2}\right)\mathbb{1} - i\sin\left(\frac{\theta}{2}\right)\vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{\sigma}}$$
+      其中有效转角 $\theta = \Omega_{\text{eff}}t$，有效拉比频率 $\Omega_{\text{eff}} = \sqrt{\Omega^2 + \delta^2}$，转轴 $\vec{\boldsymbol{n}} = (\sin\alpha\cos\beta,\; \sin\alpha\sin\beta,\; \cos\alpha)$ 满足 $\cos\alpha = \delta/\Omega_{\text{eff}}$，$\beta$ 为驱动微波或激光的初始相位。
+
+      当满足**精确共振** $\delta = \omega_0 - \omega = 0$ 时，有 $\Omega_{\text{eff}} = \Omega$、$\cos\alpha = 0$（即 $\alpha = \pi/2$），因此转角简化为 $\theta = \Omega t$，而有效转轴完全躺在 $x\text{-}y$ 赤道平面内：
+      $$\vec{\boldsymbol{n}} = (\cos\beta,\; \sin\beta,\; 0),\qquad \vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{\sigma}} = \cos\beta\,\sigma_x + \sin\beta\,\sigma_y = \begin{pmatrix}0 & e^{-i\beta}\\ e^{i\beta} & 0\end{pmatrix}.$$
+
+      ### $(\pi/2)_\beta$、$(\pi)_\beta$ 与 Pauli-X/Y 门家族
+
+      将上式代回 $U$ 的矩阵展开式，立刻得到由驱动相位 $\beta$ 连续调控的两类核心赤道脉冲门：
+      $$\left(\frac{\pi}{2}\right)_\beta = \frac{1}{\sqrt{2}}\begin{pmatrix}1 & -i e^{-i\beta}\\ -i e^{i\beta} & 1\end{pmatrix},\qquad (\pi)_\beta = \begin{pmatrix}0 & -i e^{-i\beta}\\ -i e^{i\beta} & 0\end{pmatrix}.$$
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" role="img" aria-label="共振赤道面控制几何：脉冲相位 beta 选择旋转轴 n_beta 与 X/Y 系列门矩阵">
+        <defs>
+          <marker id="u2l1xy-axis" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="#737373"/>
+          </marker>
+          <marker id="u2l1xy-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b"/>
+          </marker>
+        </defs>
+        <rect x="0" y="0" width="640" height="300" fill="#ffffff"/>
+        <text x="20" y="24" font-size="14" font-weight="700" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">共振赤道面脉冲门 (δ = 0, θ = Ωt)</text>
+        <text x="20" y="42" font-size="11.5" fill="#737373" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">驱动相位 β 决定赤道旋转轴 n_β = (cos β, sin β, 0)，脉宽决定转角 θ</text>
+        <circle cx="152" cy="170" r="82" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.5" stroke-dasharray="4 3"/>
+        <line x1="52" y1="170" x2="254" y2="170" stroke="#737373" stroke-width="1.6" marker-end="url(#u2l1xy-axis)"/>
+        <line x1="152" y1="268" x2="152" y2="68" stroke="#737373" stroke-width="1.6" marker-end="url(#u2l1xy-axis)"/>
+        <text x="258" y="174" font-size="11.5" font-weight="700" fill="#10b981" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">x (β=0)</text>
+        <text x="160" y="74" font-size="11.5" font-weight="700" fill="#3b82f6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">y (β=π/2)</text>
+        <path d="M182.0 170.0 A30 30 0 0 0 175.64 151.53" fill="#ffffff" fill-opacity="0" stroke="#f59e0b" stroke-width="1.8"/>
+        <line x1="152" y1="170" x2="216.62" y2="119.52" stroke="#f59e0b" stroke-width="2.8" marker-end="url(#u2l1xy-amber)"/>
+        <text x="193.6" y="155.68" font-size="12" font-weight="700" fill="#f59e0b" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">β</text>
+        <text x="227.65" y="110.9" font-size="12" font-weight="700" fill="#f59e0b" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">n_β</text>
+        <circle cx="234.0" cy="170.0" r="4.5" fill="#10b981"/>
+        <circle cx="152.0" cy="88.0" r="4.5" fill="#3b82f6"/>
+        <circle cx="152" cy="170" r="3" fill="#171717"/>
+        <text x="202.0" y="188.0" font-size="11" fill="#10b981" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">(π/2)_x, (π)_x</text>
+        <text x="58.0" y="94.0" font-size="11" fill="#3b82f6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">(π/2)_y, (π)_y</text>
+        <text x="152" y="286" text-anchor="middle" font-size="11" fill="#737373" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">(θ)_β = cos(θ/2)I − i sin(θ/2) n_β·σ</text>
+        <rect x="322" y="54" width="298" height="68" rx="8" fill="#ffffff" stroke="#10b981" stroke-width="1.6"/>
+        <text x="334" y="73" font-size="12" font-weight="700" fill="#10b981" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">(π/2)_x   [β = 0, θ = π/2]</text>
+        <text x="334" y="99" font-size="12" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">1/√2</text>
+        <path d="M 374 80 L 368 80 L 368 112 L 374 112" fill="#ffffff" fill-opacity="0" stroke="#171717" stroke-width="1.4"/>
+        <path d="M 434 80 L 440 80 L 440 112 L 434 112" fill="#ffffff" fill-opacity="0" stroke="#171717" stroke-width="1.4"/>
+        <text x="386" y="92" text-anchor="middle" font-size="11.5" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">1</text>
+        <text x="420" y="92" text-anchor="middle" font-size="11.5" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">-i</text>
+        <text x="386" y="108" text-anchor="middle" font-size="11.5" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">-i</text>
+        <text x="420" y="108" text-anchor="middle" font-size="11.5" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">1</text>
+        <text x="452" y="99" font-size="11" fill="#737373" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">→ 复相干等权叠加</text>
+        <rect x="322" y="132" width="298" height="68" rx="8" fill="#ffffff" stroke="#3b82f6" stroke-width="1.6"/>
+        <text x="334" y="151" font-size="12" font-weight="700" fill="#3b82f6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">(π/2)_y   [β = π/2, θ = π/2]</text>
+        <text x="334" y="177" font-size="12" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">1/√2</text>
+        <path d="M 374 158 L 368 158 L 368 190 L 374 190" fill="#ffffff" fill-opacity="0" stroke="#171717" stroke-width="1.4"/>
+        <path d="M 434 158 L 440 158 L 440 190 L 434 190" fill="#ffffff" fill-opacity="0" stroke="#171717" stroke-width="1.4"/>
+        <text x="386" y="170" text-anchor="middle" font-size="11.5" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">1</text>
+        <text x="420" y="170" text-anchor="middle" font-size="11.5" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">-1</text>
+        <text x="386" y="186" text-anchor="middle" font-size="11.5" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">1</text>
+        <text x="420" y="186" text-anchor="middle" font-size="11.5" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">1</text>
+        <text x="452" y="177" font-size="11" fill="#737373" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">→ 实系数等权叠加</text>
+        <rect x="322" y="210" width="298" height="72" rx="8" fill="#ffffff" stroke="#ef4444" stroke-width="1.6"/>
+        <text x="334" y="229" font-size="12" font-weight="700" fill="#ef4444" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">(π)_x = -i σ_x   [β = 0, θ = π]</text>
+        <path d="M 352 237 L 346 237 L 346 271 L 352 271" fill="#ffffff" fill-opacity="0" stroke="#171717" stroke-width="1.4"/>
+        <path d="M 412 237 L 418 237 L 418 271 L 412 271" fill="#ffffff" fill-opacity="0" stroke="#171717" stroke-width="1.4"/>
+        <text x="364" y="250" text-anchor="middle" font-size="11.5" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">0</text>
+        <text x="398" y="250" text-anchor="middle" font-size="11.5" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">-i</text>
+        <text x="364" y="266" text-anchor="middle" font-size="11.5" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">-i</text>
+        <text x="398" y="266" text-anchor="middle" font-size="11.5" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">0</text>
+        <text x="430" y="251" font-size="11" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">比特翻转 (|0⟩ ↔ -i|1⟩)</text>
+        <text x="430" y="268" font-size="10.5" fill="#ef4444" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">勘误: 讲义 p.7 误印为 (π)_π</text>
+      </svg>
+      ```
+
+      分别取驱动相位 $\beta = 0$（$x$ 轴）与 $\beta = \pi/2$（$y$ 轴，此时 $e^{\pm i\pi/2} = \pm i$），即得实验最常用的四个基本门：
+      $$\left(\frac{\pi}{2}\right)_x = \frac{1}{\sqrt{2}}\begin{pmatrix}1 & -i\\ -i & 1\end{pmatrix},\qquad \left(\frac{\pi}{2}\right)_y = \frac{1}{\sqrt{2}}\begin{pmatrix}1 & -1\\ 1 & 1\end{pmatrix}$$
+      $$(\pi)_x = \begin{pmatrix}0 & -i\\ -i & 0\end{pmatrix} = -i\sigma_x,\qquad (\pi)_y = \begin{pmatrix}0 & -1\\ 1 & 0\end{pmatrix} = -i\sigma_y.$$
+      需要特别留意一处教材勘误：原讲义第 7 页将 $\beta = 0$、$\theta = \pi$ 对应的矩阵错印成 $(\pi)_\pi$，按轴下标规则该处应为 $(\pi)_x$（代表物理 Pauli-X 翻转门，相对纯泡利矩阵 $\sigma_x$ 多一个 $-i$ 因子）。同理，$(\pi)_y$ 对应物理 Pauli-Y 门。
+    worked: |
+      设自旋在精确共振下（$\delta = 0$）受到拉比频率为 $\Omega/(2\pi) = 10\text{ MHz}$ 的横向驱动脉冲作用。
+
+      1. **求 $\pi/2$ 脉冲与 $\pi$ 脉冲的持续时间。**
+         共振时 $\theta = \Omega t$，因此
+         $$t_{\pi/2} = \frac{\pi/2}{\Omega} = \frac{1}{4(\Omega/2\pi)} = \frac{1}{40\text{ MHz}} = 25\text{ ns},\qquad t_\pi = \frac{\pi}{\Omega} = 50\text{ ns}.$$
+
+      2. **计算初态 $|1\rangle = (0, 1)^T$ 经 $(\pi/2)_y$（$t = 25\text{ ns}, \beta = \pi/2$）后的末态。**
+         $$\left(\frac{\pi}{2}\right)_y |1\rangle = \frac{1}{\sqrt{2}}\begin{pmatrix}1 & -1\\ 1 & 1\end{pmatrix}\begin{pmatrix}0\\ 1\end{pmatrix} = \frac{1}{\sqrt{2}}\begin{pmatrix}-1\\ 1\end{pmatrix} = \frac{1}{\sqrt{2}}\left(-|0\rangle + |1\rangle\right).$$
+         两基矢 $|0\rangle$ 与 $|1\rangle$ 的测量概率均为 $|\pm 1/\sqrt{2}|^2 = 1/2$，且形成实系数等权叠加。
+
+      3. **计算初态 $|1\rangle$ 经 $(\pi)_x$（$t = 50\text{ ns}, \beta = 0$）后的末态。**
+         $$(\pi)_x |1\rangle = \begin{pmatrix}0 & -i\\ -i & 0\end{pmatrix}\begin{pmatrix}0\\ 1\end{pmatrix} = \begin{pmatrix}-i\\ 0\end{pmatrix} = -i|0\rangle,$$
+         实现了自旋从 $|1\rangle$ 到 $|0\rangle$ 的完全比特翻转（仅带整体相位 $-i$）。
+    problems:
+      - u2-l1-xy-basics
+      - u2-l1-xy-self-explain
+      - u2-l1-xy-duration-template
+      - u2-l1-xy-spot-mistake
+      - u2-l1-xy-phase-transfer
+
+  - id: gate-z-and-hadamard-pulses
+    title: "自由演化 z 相位门与倾斜轴 Hadamard 门"
+    tldr: |
+      - 关闭驱动（$\Omega=0$）时转轴竖直朝 $+z$，演化角 $\theta = \delta t$ 产生对角相移门 $T$（$\pi/4$）、$S$（$\pi/2$）与 $Z_{\text{MR}} = -i\sigma_z$（$\pi$）。
+      - 令驱动与失谐相等（$\Omega = \delta$）且相位 $\beta = 0$，有效拉比频率增大至 $\Omega_{\text{eff}} = \sqrt{2}\Omega$，转轴倾角为 $45^\circ$。
+      - 持续作用 $\theta = \sqrt{2}\Omega t = \pi$ 即实现磁共振 Hadamard 门 $H_{\text{MR}} = -i(\sigma_x+\sigma_z)/\sqrt{2}$。
+    explain: |
+      ### 零驱动失谐自由演化：$T$、$S$ 与 $Z_{\text{MR}}$ 相位门
+
+      若完全关闭横向驱动场（$\Omega = 0$）而保留频率失谐 $\delta > 0$，则 $\Omega_{\text{eff}} = \delta$、$\cos\alpha = 1$（$\alpha = 0$），有效转轴直指 $+z$ 方向：$\vec{\boldsymbol{n}} = (0, 0, 1)$。此时演化算符成为纯对角相移矩阵：
+      $$U|_{\Omega=0} = e^{-i\delta t S_z} = \cos\left(\frac{\delta t}{2}\right)\mathbb{1} - i\sin\left(\frac{\delta t}{2}\right)\sigma_z = \begin{pmatrix}e^{-i\delta t/2} & 0\\ 0 & e^{i\delta t/2}\end{pmatrix}.$$
+      调节自由演化时间使积累相位 $\theta = \delta t$ 分别取 $\pi/4$、$\pi/2$ 与 $\pi$，便无须额外驱动脉冲而直接获得三类标准 $z$ 旋转门：
+      $$T_{\text{MR}} = \begin{pmatrix}e^{-i\pi/8} & 0\\ 0 & e^{i\pi/8}\end{pmatrix},\qquad S_{\text{MR}} = \begin{pmatrix}e^{-i\pi/4} & 0\\ 0 & e^{i\pi/4}\end{pmatrix},\qquad Z_{\text{MR}} = \begin{pmatrix}-i & 0\\ 0 & i\end{pmatrix} = -i\sigma_z.$$
+      它们依次对应量子电路中的 $\pi/8$ 门（$T$ 门）、相位门（$S$ 门）与磁共振 Pauli-Z 门。
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" role="img" aria-label="(Omega, delta) 参数控制平面：水平共振 X/Y 门射线、垂直失谐 T/S/Z 门射线与 45 度 Hadamard 门射线">
+        <defs>
+          <marker id="u2l1hz-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981"/>
+          </marker>
+          <marker id="u2l1hz-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="#3b82f6"/>
+          </marker>
+          <marker id="u2l1hz-amber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="#f59e0b"/>
+          </marker>
+        </defs>
+        <rect x="0" y="0" width="640" height="300" fill="#ffffff"/>
+        <text x="20" y="24" font-size="14" font-weight="700" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">(Ω, δ) 控制平面与三类脉冲门射线</text>
+        <text x="20" y="42" font-size="11.5" fill="#737373" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">有效旋转角 θ = Ω_eff t，其中 Ω_eff = √(Ω² + δ²)，倾角满足 cos α = δ / Ω_eff</text>
+        <line x1="216" y1="140" x2="216" y2="244" stroke="#d4d4d4" stroke-width="1.4" stroke-dasharray="4 3"/>
+        <line x1="112" y1="140" x2="216" y2="140" stroke="#d4d4d4" stroke-width="1.4" stroke-dasharray="4 3"/>
+        <line x1="112" y1="244" x2="348" y2="244" stroke="#10b981" stroke-width="2.8" marker-end="url(#u2l1hz-green)"/>
+        <line x1="112" y1="244" x2="112" y2="66" stroke="#3b82f6" stroke-width="2.8" marker-end="url(#u2l1hz-blue)"/>
+        <line x1="112" y1="244" x2="256" y2="100" stroke="#f59e0b" stroke-width="2.8" marker-end="url(#u2l1hz-amber)"/>
+        <path d="M143.11 212.89 A44 44 0 0 0 112.0 200.0" fill="#ffffff" fill-opacity="0" stroke="#f59e0b" stroke-width="1.6"/>
+        <text x="133.89" y="183.86" text-anchor="middle" font-size="11" font-weight="700" fill="#f59e0b" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">α=45°</text>
+        <text x="274" y="264" font-size="12" font-weight="700" fill="#10b981" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">Ω (δ = 0)</text>
+        <text x="150" y="264" font-size="11" fill="#10b981" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">共振 x/y 门</text>
+        <circle cx="216" cy="244" r="3.8" fill="#10b981"/>
+        <text x="216" y="282" text-anchor="middle" font-size="10.5" fill="#737373" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">(π/2)_β, (π)_β</text>
+        <text x="122" y="78" font-size="12" font-weight="700" fill="#3b82f6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">δ (Ω = 0, 自由演化)</text>
+        <circle cx="112" cy="204" r="3.8" fill="#3b82f6"/>
+        <circle cx="112" cy="164" r="3.8" fill="#3b82f6"/>
+        <circle cx="112" cy="114" r="3.8" fill="#3b82f6"/>
+        <text x="102" y="208" text-anchor="end" font-size="10.5" fill="#3b82f6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">T (δt=π/4)</text>
+        <text x="102" y="168" text-anchor="end" font-size="10.5" fill="#3b82f6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">S (δt=π/2)</text>
+        <text x="102" y="118" text-anchor="end" font-size="10.5" fill="#3b82f6" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">Z_MR (δt=π)</text>
+        <circle cx="216" cy="140" r="4.2" fill="#f59e0b"/>
+        <text x="220" y="92" font-size="12" font-weight="700" fill="#f59e0b" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">H_MR (Ω = δ, β = 0)</text>
+        <text x="224" y="144" font-size="11" fill="#f59e0b" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">Ω_eff = √2 Ω, θ = π</text>
+        <circle cx="112" cy="244" r="3.5" fill="#171717"/>
+        <rect x="370" y="64" width="252" height="214" rx="8" fill="#ffffff" stroke="#d4d4d4" stroke-width="1.5"/>
+        <text x="384" y="87" font-size="12" font-weight="700" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">控制射线与门对应关系</text>
+        <circle cx="390" cy="113" r="4.5" fill="#10b981"/>
+        <text x="402" y="117" font-size="11.5" font-weight="700" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">水平轴 δ = 0 (n 在赤道面)</text>
+        <text x="402" y="134" font-size="11" fill="#737373" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">θ = Ωt → (π/2)_x,y, (π)_x,y</text>
+        <circle cx="390" cy="162" r="4.5" fill="#3b82f6"/>
+        <text x="402" y="166" font-size="11.5" font-weight="700" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">垂直轴 Ω = 0 (n = (0,0,1))</text>
+        <text x="402" y="183" font-size="11" fill="#737373" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">θ = δt → T, S, Z_MR (对角相移)</text>
+        <circle cx="390" cy="211" r="4.5" fill="#f59e0b"/>
+        <text x="402" y="215" font-size="11.5" font-weight="700" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">45° 射线 Ω = δ, β = 0</text>
+        <text x="402" y="232" font-size="10.8" fill="#737373" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">θ = √2 Ωt = π → H_MR = -i(σ_x+σ_z)/√2</text>
+        <text x="384" y="263" font-size="11" fill="#171717" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">全部物理脉冲均满足 det(U) = +1 ∈ SU(2)</text>
+      </svg>
+      ```
+
+      ### 倾斜有效轴（$\Omega=\delta, \beta=0$）合成 Hadamard 门
+
+      为了把 $|0\rangle$ 与 $|1\rangle$ 对称地旋转到彼此的等权叠加态，只需同时打开横向驱动与纵向失谐：令 $\Omega = \delta > 0$ 且取驱动相位 $\beta = 0$。此时有效拉比频率 $\Omega_{\text{eff}} = \sqrt{\Omega^2 + \delta^2} = \sqrt{2}\Omega$，转轴极角满足 $\cos\alpha = \sin\alpha = 1/\sqrt{2}$（$\alpha = 45^\circ$），因此单位转轴精确指向 $x\text{-}z$ 平面 $45^\circ$ 角平分线：
+      $$\vec{\boldsymbol{n}} = \left(\frac{1}{\sqrt{2}},\; 0,\; \frac{1}{\sqrt{2}}\right),\qquad \vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{\sigma}} = \frac{\sigma_x + \sigma_z}{\sqrt{2}} = \frac{1}{\sqrt{2}}\begin{pmatrix}1 & 1\\ 1 & -1\end{pmatrix}.$$
+      控制脉宽使总转角 $\theta = \Omega_{\text{eff}}t = \sqrt{2}\Omega t = \pi$，由于 $\cos(\pi/2) = 0$、$\sin(\pi/2) = 1$，立刻得到磁共振物理实现的 **Hadamard 门**：
+      $$H_{\text{MR}} = -i\,\frac{\sigma_x + \sigma_z}{\sqrt{2}} = -\frac{i}{\sqrt{2}}\begin{pmatrix}1 & 1\\ 1 & -1\end{pmatrix}.$$
+      与标准 Hadamard 矩阵 $\frac{1}{\sqrt{2}}\begin{pmatrix}1 & 1\\ 1 & -1\end{pmatrix}$ 相比，$H_{\text{MR}}$ 仅相差全局相位因子 $-i$。把两者的计算基作用同共振 $(\pi/2)_y$ 门对比可见：$(\pi/2)_y$ 将 $|0\rangle \to \frac{1}{\sqrt{2}}(|0\rangle+|1\rangle)$、$|1\rangle \to \frac{1}{\sqrt{2}}(-|0\rangle+|1\rangle)$，且平方 $(\pi/2)_y^2 = (\pi)_y$ 翻转基态；而 $H_{\text{MR}}$ 分别给出 $H_{\text{MR}}|0\rangle = -\frac{i}{\sqrt{2}}(|0\rangle+|1\rangle)$ 与 $H_{\text{MR}}|1\rangle = -\frac{i}{\sqrt{2}}(|0\rangle-|1\rangle)$（即 $H_{\text{MR}}|0\rangle = -i(\pi/2)_y|0\rangle$，而 $H_{\text{MR}}|1\rangle = +i(\pi/2)_y|1\rangle$），且平方满足 $H_{\text{MR}}^2 = -\mathbb{1}$。
+    worked: |
+      某电子自旋量子比特实验设定驱动拉比频率为 $\Omega/(2\pi) = 5\text{ MHz}$。
+
+      1. **求单脉冲实现 Hadamard 门 $H_{\text{MR}}$ 所需的失谐与脉宽 $t_H$。**
+         取 $\delta/(2\pi) = \Omega/(2\pi) = 5\text{ MHz}$ 且相位 $\beta = 0$，有效拉比频率提高至
+         $$\frac{\Omega_{\text{eff}}}{2\pi} = \sqrt{5^2 + 5^2} = 5\sqrt{2}\text{ MHz}.$$
+         令 $\theta = \Omega_{\text{eff}}t_H = \pi$，所需脉宽为
+         $$t_H = \frac{\pi}{\Omega_{\text{eff}}} = \frac{1}{2 \cdot 5\sqrt{2}\text{ MHz}} = \frac{100}{\sqrt{2}}\text{ ns} \approx 70.71\text{ ns}.$$
+
+      2. **对比同一失谐 $\delta/(2\pi) = 5\text{ MHz}$ 下自由演化（$\Omega = 0$）实现 $S_{\text{MR}}$ 与 $T_{\text{MR}}$ 门的时间。**
+         在 $\Omega = 0$ 时 $\theta = \delta t$，故
+         $$t_S = \frac{\pi/2}{\delta} = \frac{1}{4 \cdot 5\text{ MHz}} = 50\text{ ns},\qquad t_T = \frac{\pi/4}{\delta} = \frac{1}{8 \cdot 5\text{ MHz}} = 25\text{ ns}.$$
+         顺便可见，若纯失谐实现 $Z_{\text{MR}}$（$\delta t = \pi$）需 $t_Z = 100\text{ ns}$，而 $t_H \approx 70.71\text{ ns}$ 更快完成 $\pi$ 转角，正是因为打开驱动后 $\Omega_{\text{eff}} = \sqrt{2}\delta$ 放大了矢量模长。
+    problems:
+      - u2-l1-hz-basics
+      - u2-l1-hz-self-explain
+      - u2-l1-hz-timing-template
+      - u2-l1-hz-spot-mistake
+      - u2-l1-hz-detuning-transfer
+
+  - id: gate-su2-global-phase-and-circuits
+    title: "SU(2) 全局相位差异与任意单比特门合成"
+    tldr: |
+      - 物理脉冲演化属于 $SU(2)$ 群，恒满足 $U^\dagger U = \mathbb{1}$ 且 $\det(U) = +1$；计算机门约定通常归入 $U(2)$（如 $\det(\hat{U}_{\text{H}}) = -1$）。
+      - 全局相位因子 $e^{i\gamma}$ 不改变单比特测量概率与基矢相对相位，因此 $H_{\text{MR}} = -i\hat{U}_{\text{H}}$ 在单比特意义下完全等价，尽管 $H_{\text{MR}}^2 = -\mathbb{1}$。
+      - 四门电路 $\hat{U}_{\text{PG}}(\varphi+\pi/2)\hat{U}_{\text{H}}\hat{U}_{\text{PG}}(2\theta)\hat{U}_{\text{H}}|0\rangle$ 精准输出任意叠加态（含全局相位 $e^{i\theta}$）。
+    explain: |
+      ### 物理 $SU(2)$ 脉冲门与计算 $U(2)$ 门约定对比
+
+      对比第 1、2 知识点的脉冲矩阵与《Introductory Quantum Optics》§11.10 式 (11.27)–(11.28) 定义的计算量子门，会发现两者总是相差一个复相位因子：
+      $$\hat{U}_{\text{H}} = \frac{1}{\sqrt{2}}\begin{pmatrix}1 & 1\\ 1 & -1\end{pmatrix} \implies H_{\text{MR}} = -i\,\hat{U}_{\text{H}},$$
+      $$\hat{U}_{\text{PG}}(\varphi) = \begin{pmatrix}1 & 0\\ 0 & e^{i\varphi}\end{pmatrix} = e^{i\varphi/2} e^{-i\varphi S_z} \implies \hat{U}_{\text{PG}}\!\left(\frac{\pi}{4}\right) = e^{i\pi/8}T_{\text{MR}},\quad \hat{U}_{\text{PG}}\!\left(\frac{\pi}{2}\right) = e^{i\pi/4}S_{\text{MR}},\quad \hat{U}_{\text{PG}}(\pi) = i Z_{\text{MR}}.$$
+      这一系统性差异根源于群论约束：所有由 $e^{-i\theta\vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{S}}}$ 生成的物理脉冲门都满足幺正性 $U^\dagger U = \mathbb{1}$ 与单位行列式 $\det(U) = +1$，属于**特殊幺正群 $SU(2)$**——直接验算即知 $\det(H_{\text{MR}}) = (-i/\sqrt{2})^2(-1-1) = +1$、$\det(Z_{\text{MR}}) = (-i)(i) = +1$。相反，教科书计算门为了把矩阵元简化为实数或让 $|0\rangle$ 分量取 $1$，放弃了 $\det = 1$ 而落在一般幺正群 $U(2)$ 中：例如 $\det(\hat{U}_{\text{H}}) = -1$、$\det(\hat{U}_{\text{PG}}(\varphi)) = e^{i\varphi}$。
+
+      ### 全局相位不可观测性与四门任意态合成电路
+
+      对任意单比特末态 $|\psi'\rangle = e^{i\gamma}(c_0|0\rangle + c_1|1\rangle)$，全局相位 $e^{i\gamma}$ 不具备物理可观测量：测量 $|0\rangle$、$|1\rangle$ 的概率为 $|e^{i\gamma}c_k|^2 = |c_k|^2$，两分量之间的相对相位比 $(e^{i\gamma}c_1)/(e^{i\gamma}c_0) = c_1/c_0$ 也完全消去 $e^{i\gamma}$。但作平方运算时须留神：$H_{\text{MR}}^2 = (-i)^2 \hat{U}_{\text{H}}^2 = -\mathbb{1}$，而 $\hat{U}_{\text{H}}^2 = +\mathbb{1}$（这一 $-1$ 符号正是自旋 $1/2$ 旋转 $2\pi$ 的特征整体相位）。
+
+      利用 $\hat{U}_{\text{H}}$ 门与相位门 $\hat{U}_{\text{PG}}$ 的交替级联，可将任意单比特叠加态合成为四步通用电路（《量子光学》式 11.29）：
+      $$\hat{U}_{\text{PG}}\!\left(\varphi + \frac{\pi}{2}\right)\,\hat{U}_{\text{H}}\,\hat{U}_{\text{PG}}(2\theta)\,\hat{U}_{\text{H}}|0\rangle = e^{i\theta}\left(\cos\theta\,|0\rangle + e^{i\varphi}\sin\theta\,|1\rangle\right).$$
+      一般参数 $(\theta,\varphi)$ 下的三步矩阵推导十分直接：先由 $\hat{U}_{\text{H}}|0\rangle = \frac{1}{\sqrt{2}}(|0\rangle+|1\rangle)$，再经 $\hat{U}_{\text{PG}}(2\theta)$ 并提取公共相位 $e^{i\theta}$ 得 $e^{i\theta}\frac{1}{\sqrt{2}}(e^{-i\theta}|0\rangle + e^{i\theta}|1\rangle)$；随后第二次 $\hat{U}_{\text{H}}$ 借助欧拉公式 $\frac{e^{-i\theta}\pm e^{i\theta}}{2}$ 将其化为 $e^{i\theta}(\cos\theta\,|0\rangle - i\sin\theta\,|1\rangle)$，最后 $\hat{U}_{\text{PG}}(\varphi+\pi/2)$ 将 $-i = e^{-i\pi/2}$ 调相为 $e^{i\varphi}$。严格矩阵乘法给出前方的整体因子 $e^{i\theta}$；Gerry 与 Knight 在式 (11.29) 中略去了该不可观测全局相位，两者表示同一个单比特物理量子态。
+    worked: |
+      1. **验证 $H_{\text{MR}}^2$ 与 $\hat{U}_{\text{H}}^2$ 的全局相位差异。**
+         $$H_{\text{MR}}^2 = \left[-\frac{i}{\sqrt{2}}\begin{pmatrix}1 & 1\\ 1 & -1\end{pmatrix}\right]^2 = -\frac{1}{2}\begin{pmatrix}2 & 0\\ 0 & 2\end{pmatrix} = -\mathbb{1},\qquad \hat{U}_{\text{H}}^2 = +\mathbb{1}.$$
+         物理上两次 Hadamard 脉冲等效于绕倾斜轴 $\vec{\boldsymbol{n}}$ 旋转 $2\pi$，给出标志性的自旋半整数整体负号 $-\mathbb{1}$。
+
+      2. **逐步追踪 $\theta = \pi/6$、$\varphi = \pi/2$ 时的 Gerry–Knight 四门合成电路。**
+         初态取 $|0\rangle = (1, 0)^T$：
+         - 第一步 $\hat{U}_{\text{H}}|0\rangle = \frac{1}{\sqrt{2}}(|0\rangle + |1\rangle)$；
+         - 第二步施加 $\hat{U}_{\text{PG}}(2\theta) = \hat{U}_{\text{PG}}(\pi/3)$，提公因子 $e^{i\pi/6}$：
+           $$\frac{1}{\sqrt{2}}\left(|0\rangle + e^{i\pi/3}|1\rangle\right) = e^{i\pi/6}\,\frac{1}{\sqrt{2}}\left(e^{-i\pi/6}|0\rangle + e^{i\pi/6}|1\rangle\right);$$
+         - 第三步再施加 $\hat{U}_{\text{H}}$：利用 $\frac{e^{-i\pi/6}+e^{i\pi/6}}{2} = \cos\frac{\pi}{6} = \frac{\sqrt{3}}{2}$ 与 $\frac{e^{-i\pi/6}-e^{i\pi/6}}{2} = -i\sin\frac{\pi}{6} = -\frac{i}{2}$，得到
+           $$e^{i\pi/6}\left(\frac{\sqrt{3}}{2}|0\rangle - \frac{i}{2}|1\rangle\right);$$
+         - 第四步施加 $\hat{U}_{\text{PG}}(\varphi + \pi/2) = \hat{U}_{\text{PG}}(\pi) = \text{diag}(1, -1)$，把 $|1\rangle$ 前的负号翻正：
+           $$e^{i\pi/6}\left(\frac{\sqrt{3}}{2}|0\rangle + \frac{i}{2}|1\rangle\right) = e^{i\pi/6}\left(\cos\frac{\pi}{6}|0\rangle + e^{i\pi/2}\sin\frac{\pi}{6}|1\rangle\right).$$
+         略去整体相位 $e^{i\pi/6}$ 即匹配式 (11.29) 的目标叠加态，且布居概率为 $P_0 = 3/4$、$P_1 = 1/4$。
+    problems:
+      - u2-l1-su2-basics
+      - u2-l1-su2-self-explain
+      - u2-l1-su2-circuit-template
+      - u2-l1-su2-spot-mistake
+      - u2-l1-su2-phase-transfer
+final: u2-l1-final-explain
+summary: |
+  - **共振赤道 $X/Y$ 门**：$\delta=0$ 时有效转轴落在赤道面 $\vec{\boldsymbol{n}} = (\cos\beta, \sin\beta, 0)$，脉冲 $(\pi/2)_\beta$ 与 $(\pi)_\beta$ 由相位 $\beta$ 切换 $x$、$y$ 轴旋转；原讲义 $\beta=0$ 的 $(\pi)_x = -i\sigma_x$ 误印为 $(\pi)_\pi$ 须予以纠正。
+  - **失谐 $z$ 门与倾斜 Hadamard 门**：纯失谐自由演化（$\Omega=0, \theta=\delta t$）给出对角相移门 $T$、$S$ 与 $Z_{\text{MR}}$；令 $\Omega=\delta$、$\beta=0$ 并在 $\theta=\sqrt{2}\Omega t = \pi$ 截断即得 $H_{\text{MR}} = -i(\sigma_x+\sigma_z)/\sqrt{2}$。
+  - **$SU(2)$ 全局相位与四门电路**：物理脉冲门恒满足 $\det(U) = +1 \in SU(2)$，与计算 $U(2)$ 门（如 $\hat{U}_{\text{H}}$、$\hat{U}_{\text{PG}}$）仅差不可观测的全局相位；通过 $\hat{U}_{\text{PG}}(\varphi+\pi/2)\hat{U}_{\text{H}}\hat{U}_{\text{PG}}(2\theta)\hat{U}_{\text{H}}|0\rangle$ 可合成任意单比特叠加态。
+  **Next:** 下一课「态与门的 Bloch 球表示」将把本课构造的单比特叠加态与 $SU(2)$ 量子门映射为三维单位球面上的几何矢量与空间旋转操作，建立起完整的几何直观。

@@ -1,0 +1,635 @@
+concept: single-qubit-gates
+exercises:
+  # ==========================================================================
+  # Step 1: gate-resonant-xy-pulses (5 题课堂 + 3 题 recall)
+  # ==========================================================================
+  - id: u2-l1-xy-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "在共振条件下（$\\delta = 0$），驱动脉冲演化算符 $U = e^{-i\\theta\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}}$ 中的转角 $\\theta$ 与赤道转轴 $\\vec{\\boldsymbol{n}}$ 分别由哪两个实验参数直接控制？"
+    options:
+      - id: a
+        text: "转角 $\\theta = \\Omega t$ 由驱动幅度 $\\Omega$ 与脉冲持续时间 $t$ 决定；赤道轴 $\\vec{\\boldsymbol{n}} = (\\cos\\beta, \\sin\\beta, 0)$ 的方位完全由驱动相位 $\\beta$ 决定。"
+        correct: true
+        feedback: "准确无误！$\\delta = 0$ 使极角 $\\alpha = \\pi/2$、$\\Omega_{\\text{eff}} = \\Omega$，从而实现脉宽定转角、相位定转轴的解耦控制。"
+      - id: b
+        text: "转角 $\\theta$ 仅由驱动相位 $\\beta$ 决定，而赤道转轴方向则随脉冲持续时间 $t$ 连续旋转。"
+        correct: false
+        feedback: "正好把两个角色颠倒了：恒定相位 $\\beta$ 在整个脉冲期间锁定一条固定的赤道转轴 $\\vec{\\boldsymbol{n}}$，而作用时间 $t$ 只累积绕该轴旋转的角度 $\\theta = \\Omega t$。"
+      - id: c
+        text: "当 $\\delta = 0$ 时转轴固定沿 $+z$ 轴 $(0, 0, 1)$，与驱动相位 $\\beta$ 无关。"
+        correct: false
+        feedback: "只有关闭驱动（$\\Omega = 0$）而保留失谐 $\\delta \\neq 0$ 时，转轴才沿着 $z$ 轴；共振驱动的转轴躺在 $x\\text{-}y$ 赤道面内。"
+      - id: d
+        text: "当 $\\delta = 0$ 时 $(\\pi/2)_\\beta$ 与 $(\\pi)_\\beta$ 只能取 $\\beta = 0$，其他相位都会产生非幺正演化。"
+        correct: false
+        feedback: "任何实数值相位 $\\beta$ 都给出完全幺正的赤道 $SU(2)$ 旋转，$\\beta = 0$ 与 $\\beta = \\pi/2$ 只是其中的 $x$ 轴与 $y$ 轴特例。"
+    solution: "共振时 $\\delta = 0$ 给出 $\\Omega_{\\text{eff}} = \\Omega$ 与 $\\alpha = \\pi/2$，故旋转角为 $\\theta = \\Omega t$，而赤道面单位转轴为 $\\vec{\\boldsymbol{n}} = (\\cos\\beta, \\sin\\beta, 0)$，由驱动相位 $\\beta$ 唯一确定。"
+
+  - id: u2-l1-xy-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "在刚刚推导出共振 $\\pi$ 脉冲 $(\\pi)_x = \\begin{pmatrix}0 & -i\\\\ -i & 0\\end{pmatrix}$ 时，为什么它的矩阵表达式比纯泡利矩阵 $\\sigma_x$ 多出一个 $-i$ 因子，且该如何纠正原讲义第 7 页在 $\\beta = 0$ 处的印刷记号？"
+    options:
+      - id: a
+        text: "因为当 $\\theta = \\pi$、$\\beta = 0$ 时 $\\cos(\\pi/2) = 0$、$-i\\sin(\\pi/2) = -i$，所以 $e^{-i\\pi S_x} = -i\\sigma_x$；原讲义把 $\\beta = 0$ 的这一矩阵误印成了 $(\\pi)_\\pi$，按转轴下标应当写作 $(\\pi)_x$。"
+        correct: true
+        feedback: "非常精准！$-i$ 是由指数算符在 $\\theta/2 = \\pi/2$ 处展开自然生成的物理相位，而 $(\\pi)_\\pi$ 是仅在 $\\beta = 0$ 位置出现的下标印刷笔误。"
+      - id: b
+        text: "因为 $\\sigma_x$ 的矩阵元写错了符号，实际磁共振翻转门应当去掉 $-i$ 直接写作 $\\sigma_x$；讲义下标 $(\\pi)_\\pi$ 代表反转了 $\\pi$ 弧度，无需修改。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "直接写 $\\sigma_x$ 漏掉了演化算符在 $\\theta=\\pi$ 处展开的非对角相位 $-i$（正确矩阵元为 $-i$ 而非 $+1$）；而且脉冲下标标示的是转轴方向（$x$、$y$ 或方位角 $\\beta$），$(\\pi)_\\pi$ 处本意正是 $\\beta = 0$ 的 $x$ 轴门。"
+      - id: c
+        text: "$-i$ 来自作用时间 $t$ 取了复数虚时间，而 $(\\pi)_\\pi$ 特指 $\\beta = \\pi/2$ 对应的 $y$ 轴门。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "演化时间 $t$ 与驱动参数均为实数，$-i$ 来源于量子演化算符 $e^{-i H_I t}$ 中的虚数单位 $i$；$\\beta = \\pi/2$ 的矩阵是 $(\\pi)_y$，并非讲义 $\\beta = 0$ 处误印的 $(\\pi)_\\pi$。"
+      - id: d
+        text: "$-i$ 来源于把 $|0\\rangle$ 与 $|1\\rangle$ 顺序颠倒定义；如果按 $|1\\rangle=(1,0)^T$ 排序就不会出现 $-i$。"
+        correct: false
+        category: math_error
+        feedback: "即便交换计算基顺序，$-i\\sin(\\pi/2)\\sigma_x = -i\\sigma_x$ 的整体前置因子 $-i$ 依然保持不变。"
+    solution: "将 $\\theta = \\pi, \\beta = 0$ 代入 $\\cos(\\theta/2)\\mathbb{1} - i\\sin(\\theta/2)(\\cos\\beta\\,\\sigma_x + \\sin\\beta\\,\\sigma_y)$ 直接给出 $-i\\sigma_x$，对应 $x$ 轴 $\\pi$ 旋转 $(\\pi)_x$，原讲义第 7 页所印 $(\\pi)_\\pi$ 为下标笔误。"
+
+  - id: u2-l1-xy-duration-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    params:
+      Om_mhz:
+        min: 4
+        max: 20
+        step: 4
+    prompt: "设某自旋比特处于精确共振（$\\delta = 0$），施加拉比频率为 $\\Omega/(2\\pi) = {{=Om_mhz}}\\text{ MHz}$ 的横向微波驱动。实现单比特 $(\\pi/2)_\\beta$ 门所需的脉冲持续时间 $t_{\\pi/2}$ 是多少纳秒（$\\text{ns}$，保留两位小数）？"
+    answer_expr: "250 / Om_mhz"
+    tolerance:
+      abs: 0.05
+    common_wrong:
+      - answer_expr: "500 / Om_mhz"
+        category: math_error
+        feedback: "你计算的是完整翻转角 $\\theta = \\pi$ 对应的 $\\pi$ 脉冲时长 $t_\\pi = \\frac{1}{2(\\Omega/2\\pi)}$；本题要求的是 $(\\pi/2)_\\beta$ 门，只需一半时间。"
+      - answer_expr: "1000 / Om_mhz"
+        category: math_error
+        feedback: "$1/(\\Omega/2\\pi)$ 对应的是转过一整圈 $\\theta = 2\\pi$ 的完整周期；实现 $\\theta = \\pi/2$ 只需周期的四分之一。"
+      - answer_expr: "125 / Om_mhz"
+        category: math_error
+        feedback: "多除以了一次 $2$（相当于把转角算成了 $\\pi/4$）。请核对 $\\theta = \\Omega t = 2\\pi(\\Omega/2\\pi)t = \\pi/2$。"
+    hints:
+      - "共振时旋转角 $\\theta = \\Omega t = 2\\pi(\\Omega/2\\pi)t$。"
+      - "令 $\\theta = \\pi/2$，注意 $1\\text{ MHz}^{-1} = 1000\\text{ ns}$。"
+    solution: "由 $2\\pi(\\Omega/2\\pi)t_{\\pi/2} = \\pi/2$ 得 $t_{\\pi/2} = \\frac{1000\\text{ ns}}{4 \\times {{=Om_mhz}}} = {{=round(250 / Om_mhz, 2)}}\\text{ ns}$。"
+
+  - id: u2-l1-xy-spot-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "某同学在计算 $(\\pi/2)_y |1\\rangle$ 时写道：「因为 $(\\pi/2)_\\beta$ 的右上矩阵元是 $-i e^{-i\\beta}$，而 $y$ 轴对应 $\\beta = \\pi/2$，所以 $e^{-i\\beta} = +i$，从而得到右上矩阵元 $+1$，最终输出 $\\frac{1}{\\sqrt{2}}(|0\\rangle + |1\\rangle)$。」请指出这一推导中的核心错误："
+    options:
+      - id: a
+        text: "符号算反了：$e^{-i\\pi/2} = -i$ 而非 $+i$，因此右上矩阵元为 $-i(-i) = -1$，正确输出应为 $\\frac{1}{\\sqrt{2}}(-|0\\rangle + |1\\rangle)$。"
+        correct: true
+        feedback: "抓得非常准！记住 $e^{-i\\pi/2} = -i$、$e^{i\\pi/2} = +i$，从而 $(\\pi/2)_y = \\frac{1}{\\sqrt{2}}\\begin{pmatrix}1 & -1\\\\ 1 & 1\\end{pmatrix}$，作用在 $|1\\rangle$ 上给出负号的 $|0\\rangle$ 分量。"
+      - id: b
+        text: "$y$ 轴脉冲对应的驱动相位应当取 $\\beta = \\pi$ 而非 $\\beta = \\pi/2$。"
+        correct: false
+        feedback: "$\\beta = \\pi$ 对应的是沿 $-x$ 轴的反转轴 $(-1, 0, 0)$；$y$ 轴单位矢量 $(0, 1, 0)$ 确实要求 $\\beta = \\pi/2$。"
+      - id: c
+        text: "右上矩阵元应该使用 $e^{+i\\beta}$ 而左下矩阵元使用 $e^{-i\\beta}$。"
+        correct: false
+        feedback: "由 $\\sigma_y = \\begin{pmatrix}0 & -i\\\\ i & 0\\end{pmatrix}$ 可验证，右上角确为 $-i e^{-i\\beta}$（当 $\\beta = \\pi/2$ 时 $(-i)e^{-i\\pi/2} = (-i)(-i\\sin(\\pi/2)) = -1$ 再乘以总因子 $\\frac{1}{\\sqrt{2}}$），原公式的指数符号没有错。"
+      - id: d
+        text: "$(\\pi/2)_y$ 只能把 $|1\\rangle$ 变成虚系数叠加态，结果中不应出现实数系数。"
+        correct: false
+        feedback: "恰恰相反，由于 $-i\\sigma_y = \\begin{pmatrix}0 & -1\\\\ 1 & 0\\end{pmatrix}$ 为全实矩阵，$(\\pi/2)_y$ 正是生成实系数叠加态的基本操作。"
+    solution: "将 $\\beta = \\pi/2$ 正确代入通用表达式得 $e^{-i\\pi/2} = -i$、$e^{i\\pi/2} = +i$，于是 $(\\pi/2)_y = \\frac{1}{\\sqrt{2}}\\begin{pmatrix}1 & -1\\\\ 1 & 1\\end{pmatrix}$，作用于 $|1\\rangle$ 得到 $\\frac{1}{\\sqrt{2}}(-|0\\rangle + |1\\rangle)$。"
+
+  - id: u2-l1-xy-phase-transfer
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "假设实验先对初态 $|0\\rangle$ 施加一个共振 $(\\pi/2)_y$ 门，紧接着想仅靠调整下一段共振 $\\pi/2$ 脉冲的驱动相位 $\\beta$ 把量子态精确拉回初态 $|0\\rangle$（不改作用轴所在直线、仅反向旋转）。第二段脉冲应采用哪个驱动相位，其矩阵与作用结果是什么？"
+    options:
+      - id: a
+        text: "将第二段脉冲的相位反转至 $\\beta = -\\pi/2$，此时 $(\\pi/2)_{-\\pi/2} = \\frac{1}{\\sqrt{2}}\\begin{pmatrix}1 & 1\\\\ -1 & 1\\end{pmatrix} = (\\pi/2)_y^\\dagger$，连续作用正好精确回到 $|0\\rangle$。"
+        correct: true
+        feedback: "迁移得极好！把相位移动 $\\pi$（从 $\\pi/2$ 变为 $-\\pi/2$）会把转轴 $\\vec{\\boldsymbol{n}}$ 反向为 $-\\vec{\\boldsymbol{n}}$，从而生成逆门 $(\\pi/2)_y^\\dagger$，一步抵消前序旋转。"
+      - id: b
+        text: "保持 $\\beta = +\\pi/2$ 再施加一次 $(\\pi/2)_y$ 就能直接回到 $|0\\rangle$。"
+        correct: false
+        feedback: "沿同一方向连续两次 $\\pi/2$ 旋转相当于一次 $(\\pi)_y$ 门，会把 $|0\\rangle$ 彻底翻转到 $|1\\rangle$，而不是回到 $|0\\rangle$。"
+      - id: c
+        text: "将相位改为 $\\beta = 0$ 施加 $(\\pi/2)_x$ 门即可抵消 $(\\pi/2)_y$ 的旋转。"
+        correct: false
+        feedback: "$(\\pi/2)_y |0\\rangle = \\frac{1}{\\sqrt{2}}(|0\\rangle+|1\\rangle)$ 经过 $(\\pi/2)_x$ 后变为 $\\frac{1-i}{2}(|0\\rangle+|1\\rangle)$，仍留在等权叠加态上。"
+      - id: d
+        text: "必须在第二段施加 $(\\pi)_y$ 门（脉宽加倍）才能从叠加态正交退回到 $|0\\rangle$。"
+        correct: false
+        feedback: "$(\\pi)_y$ 作用于 $\\frac{1}{\\sqrt{2}}(|0\\rangle+|1\\rangle)$ 会将其送至 $\\frac{1}{\\sqrt{2}}(-|0\\rangle+|1\\rangle)$（绕 $y$ 轴多转了 $\\pi$），无法回到 $|0\\rangle$。"
+    solution: "当 $\\beta = -\\pi/2$ 时，转轴 $\\vec{\\boldsymbol{n}} = (0, -1, 0)$ 与 $(\\pi/2)_y$ 的转轴相反，给出 $e^{-i(-\\pi/2)} = +i$、$e^{i(-\\pi/2)} = -i$，即 $(\\pi/2)_{-\\pi/2} = \\frac{1}{\\sqrt{2}}\\begin{pmatrix}1 & 1\\\\ -1 & 1\\end{pmatrix} = (\\pi/2)_y^\\dagger$，与 $(\\pi/2)_y$ 相乘恒等于 $\\mathbb{1}$。"
+
+  - id: u2-l1-recall-xy-explain
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: gate-resonant-xy-pulses
+    difficulty: 1
+    est_minutes: 1
+    prompt: "简述共振（$\\delta=0$）时有效转轴与转角如何化简，并写出由相位 $\\beta$ 切换 $(\\pi)_x$ 与 $(\\pi)_y$ 门的核心公式。"
+    rubric:
+      - id: r1
+        criterion: "说明 $\\delta=0$ 时极角 $\\alpha=\\pi/2$，有效轴 $\\vec{\\boldsymbol{n}}=(\\cos\\beta,\\sin\\beta,0)$ 处于赤道面且转角 $\\theta=\\Omega t$。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "给出 $(\\pi)_\\beta = \\begin{pmatrix}0 & -i e^{-i\\beta}\\\\ -i e^{i\\beta} & 0\\end{pmatrix}$，并指出 $\\beta=0$ 为 $(\\pi)_x=-i\\sigma_x$、$\\beta=\\pi/2$ 为 $(\\pi)_y=-i\\sigma_y$。"
+        weight: 1
+        required: true
+    exemplar: "共振条件下 $\\delta = 0$ 使有效转轴倾角 $\\alpha = \\pi/2$、单位轴 $\\vec{\\boldsymbol{n}} = (\\cos\\beta, \\sin\\beta, 0)$ 落在赤道平面且转角 $\\theta = \\Omega t$。令 $\\theta = \\pi$ 得通用 $\\pi$ 脉冲门 $(\\pi)_\\beta = \\begin{pmatrix}0 & -i e^{-i\\beta}\\\\ -i e^{i\\beta} & 0\\end{pmatrix}$：取 $\\beta = 0$ 为 $(\\pi)_x = -i\\sigma_x$，取 $\\beta = \\pi/2$ 为 $(\\pi)_y = -i\\sigma_y$。"
+
+  - id: u2-l1-recall-xy-mc
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: gate-resonant-xy-pulses
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "下列哪一个脉冲参数组合对应共振门 $(\\pi/2)_y = \\frac{1}{\\sqrt{2}}\\begin{pmatrix}1 & -1\\\\ 1 & 1\\end{pmatrix}$？"
+    options:
+      - id: a
+        text: "$\\delta = 0$，$\\theta = \\Omega t = \\pi/2$，$\\beta = \\pi/2$"
+        correct: true
+        feedback: "正确！$\\beta = \\pi/2$ 选定 $y$ 轴，$\\theta = \\pi/2$ 给出 $1/\\sqrt{2}$ 矩阵元。"
+      - id: b
+        text: "$\\delta = 0$，$\\theta = \\Omega t = \\pi/2$，$\\beta = 0$"
+        correct: false
+        feedback: "$\\beta = 0$ 选定 $x$ 轴，得到的是带虚数非对角元的 $(\\pi/2)_x = \\frac{1}{\\sqrt{2}}\\begin{pmatrix}1 & -i\\\\ -i & 1\\end{pmatrix}$。"
+      - id: c
+        text: "$\\delta = 0$，$\\theta = \\Omega t = \\pi$，$\\beta = \\pi/2$"
+        correct: false
+        feedback: "$\\theta = \\pi$ 对应完整翻转门 $(\\pi)_y = \\begin{pmatrix}0 & -1\\\\ 1 & 0\\end{pmatrix}$，对角元已变为零。"
+      - id: d
+        text: "$\\Omega = 0$，$\\theta = \\delta t = \\pi/2$，$\\beta = \\pi/2$"
+        correct: false
+        feedback: "关闭驱动（$\\Omega = 0$）时转轴在 $+z$ 轴，只能产生对角相位门 $S_{\\text{MR}}$。"
+    solution: "由 $(\\pi/2)_\\beta = \\frac{1}{\\sqrt{2}}\\begin{pmatrix}1 & -i e^{-i\\beta}\\\\ -i e^{i\\beta} & 1\\end{pmatrix}$ 取 $\\beta = \\pi/2$，得 $e^{-i\\pi/2}=-i$、$e^{i\\pi/2}=i$，正是 $(\\pi/2)_y$。"
+
+  - id: u2-l1-recall-xy-expr
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: gate-resonant-xy-pulses
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "在共振（$\\delta = 0$）且横向角拉比频率为 $\\Omega$ 时，写出实现 $(\\pi/2)_\\beta$ 门所需的脉冲时间 $t_{\\pi/2}$ 表达式（用 `Om` 表示角频率 $\\Omega$，圆周率用 `pi` 表示）。"
+    answer: "pi / (2 * Om)"
+    variables:
+      Om: [1, 20]
+    solution: "由共振旋转角公式 $\\theta = \\Omega t = \\pi/2$，解得 $t_{\\pi/2} = \\frac{\\pi}{2\\Omega}$。"
+
+  # ==========================================================================
+  # Step 2: gate-z-and-hadamard-pulses (5 题课堂 + 3 题 recall)
+  # ==========================================================================
+  - id: u2-l1-hz-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "在控制参数平面 $(\\Omega, \\delta)$ 上，通过自由演化 $z$ 门（$T$、$S$、$Z_{\\text{MR}}$）与通过单脉冲实现磁共振 Hadamard 门 $H_{\\text{MR}}$ 分别需要满足什么参数条件？"
+    options:
+      - id: a
+        text: "$z$ 门令驱动关闭（$\\Omega = 0$）并利用失谐 $\\delta t$ 分别取 $\\pi/4, \\pi/2, \\pi$；$H_{\\text{MR}}$ 令 $\\Omega = \\delta$、$\\beta = 0$（$45^\\circ$ 倾斜转轴）且总转角 $\\theta = \\sqrt{2}\\Omega t = \\pi$。"
+        correct: true
+        feedback: "非常清晰！自由演化沿着纵轴（$\\Omega=0$）积累 $z$ 相移，而 $H_{\\text{MR}}$ 则位于 $\\Omega = \\delta$ 的 $45^\\circ$ 角平分线上完成一次 $\\pi$ 旋转。"
+      - id: b
+        text: "$z$ 门要求精确共振（$\\delta = 0$）且相位 $\\beta = \\pi$；$H_{\\text{MR}}$ 则要求关闭驱动（$\\Omega = 0$）令 $\\delta t = \\pi/2$。"
+        correct: false
+        feedback: "$\\delta = 0$ 只能得到赤道面内的 $x/y$ 门，无法得到纯 $z$ 轴相移门；而 $\\Omega=0$ 时无法把 $|0\\rangle$ 与 $|1\\rangle$ 耦合到叠加态，不能产生 Hadamard 门。"
+      - id: c
+        text: "$H_{\\text{MR}}$ 需要令 $\\Omega = \\delta$、$\\beta = \\pi/2$ 且转角 $\\theta = \\pi/2$。"
+        correct: false
+        feedback: "$H_{\\text{MR}} = -i(\\sigma_x + \\sigma_z)/\\sqrt{2}$ 需要转轴在 $x\\text{-}z$ 平面内（$\\beta = 0$）并且转足 $\\theta = \\pi$，才能令 $\\cos(\\theta/2)=0$。"
+      - id: d
+        text: "$T$、$S$、$Z_{\\text{MR}}$ 门和 $H_{\\text{MR}}$ 门都在 $\\Omega = \\delta$ 的条件线上实现，仅通过脉冲时间区分。"
+        correct: false
+        feedback: "当 $\\Omega = \\delta \\neq 0$ 时转轴有横向 $\\sigma_x$ 分量，不同时长一般产生非对角矩阵，不能得到纯对角相位门 $T, S, Z_{\\text{MR}}$。"
+    solution: "关闭驱动（$\\Omega=0$）得到纯对角相移门 $e^{-i\\delta t S_z}$，对应 $T(\\pi/4)$、$S(\\pi/2)$、$Z_{\\text{MR}}(\\pi)$；令 $\\Omega=\\delta$、$\\beta=0$ 使 $\\vec{\\boldsymbol{n}}=(1/\\sqrt{2}, 0, 1/\\sqrt{2})$，在 $\\theta=\\sqrt{2}\\Omega t = \\pi$ 时得 $H_{\\text{MR}}$。"
+
+  - id: u2-l1-hz-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "刚才我们推导出 $\\Omega = 0$ 时演化算符是 $U|_{\\Omega=0} = \\begin{pmatrix}e^{-i\\delta t/2} & 0\\\\ 0 & e^{i\\delta t/2}\\end{pmatrix}$。如果一个叠加态 $c_0|0\\rangle + c_1|1\\rangle$ 经过任意失谐 $z$ 门（$T$、$S$ 或 $Z_{\\text{MR}}$）作用，它的基矢布居概率 $|c_0|^2$、$|c_1|^2$ 与两分量相对相位各自会怎样变化？"
+    options:
+      - id: a
+        text: "布居概率 $|c_0|^2$ 与 $|c_1|^2$ 完全保持不变，因为矩阵只有对角元；但 $|1\\rangle$ 相对 $|0\\rangle$ 会额外积累相对相移 $\\delta t$（即 $e^{i\\delta t}$ 因子）。"
+        correct: true
+        feedback: "完全正确！提取公因子 $e^{-i\\delta t/2}$ 即得 $e^{-i\\delta t/2}\\text{diag}(1, e^{i\\delta t})$，清晰展示出对角演化不改布居、只推前相对相位。"
+      - id: b
+        text: "布居概率 $|c_0|^2$ 与 $|c_1|^2$ 会以角频率 $\\delta$ 来回振荡交换，而相对相位保持为零。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "没有非对角耦合元时，$|0\\rangle$ 与 $|1\\rangle$ 之间不会发生任何跃迁，布居概率严格守恒。"
+      - id: c
+        text: "只有整个态矢量乘以一个统一的全局相位 $e^{-i\\delta t/2}$，基矢之间的相对相位也不改变。"
+        correct: false
+        category: math_error
+        feedback: "对角线上两个元素符号相反（$e^{-i\\delta t/2}$ 与 $e^{+i\\delta t/2}$），所以 $|1\\rangle$ 相对 $|0\\rangle$ 产生的是 $e^{+i\\delta t}$ 的真实可观测相对相移。"
+      - id: d
+        text: "只有在 $Z_{\\text{MR}}$（$\\delta t = \\pi$）时布居才守恒，$T$ 与 $S$ 门会让布居部分转移到另一能级。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "只要 $\\Omega = 0$，演化算符在任意时间 $t$ 都是对角矩阵，所有 $z$ 相位门都保持 $|c_0|^2, |c_1|^2$ 不变。"
+    solution: "由于 $U|_{\\Omega=0} = e^{-i\\delta t/2}\\begin{pmatrix}1 & 0\\\\ 0 & e^{i\\delta t}\\end{pmatrix}$ 仅含对角矩阵元，末态为 $e^{-i\\delta t/2}(c_0|0\\rangle + c_1 e^{i\\delta t}|1\\rangle)$，因此布居数 $|c_k|^2$ 不变而相对相位增加 $\\delta t$。"
+
+  - id: u2-l1-hz-timing-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    params:
+      Om_mhz:
+        min: 2
+        max: 10
+        step: 2
+    prompt: "为了用单脉冲合成磁共振 Hadamard 门 $H_{\\text{MR}}$，设定横向拉比频率与失谐相等：$\\Omega/(2\\pi) = \\delta/(2\\pi) = {{=Om_mhz}}\\text{ MHz}$，且驱动相位 $\\beta = 0$。求满足 $\\theta = \\Omega_{\\text{eff}}t_H = \\pi$ 所需的脉宽 $t_H$（单位：$\\text{ns}$，保留至 $0.1\\text{ ns}$ 精度）。"
+    answer_expr: "500 / (sqrt(2) * Om_mhz)"
+    tolerance:
+      abs: 0.1
+    common_wrong:
+      - answer_expr: "500 / Om_mhz"
+        category: math_error
+        feedback: "忘记计算失谐与驱动的合成有效频率 $\\Omega_{\\text{eff}} = \\sqrt{\\Omega^2 + \\delta^2} = \\sqrt{2}\\Omega$，误按 $\\theta = \\Omega t$ 求解使结果偏大了 $\\sqrt{2}$ 倍。"
+      - answer_expr: "250 / (sqrt(2) * Om_mhz)"
+        category: math_error
+        feedback: "这是转角 $\\theta = \\pi/2$ 的时长；沿着 $45^\\circ$ 倾斜轴必须转过完整 $\\theta = \\pi$ 才能消去 $\\cos(\\theta/2)\\mathbb{1}$ 项并得到 $H_{\\text{MR}}$。"
+      - answer_expr: "1000 / (sqrt(2) * Om_mhz)"
+        category: math_error
+        feedback: "使用了 $\\theta = 2\\pi$ 整周期而不是 $\\theta = \\pi$ 半周期，脉宽大了一倍。"
+    hints:
+      - "先求有效拉比频率 $\\Omega_{\\text{eff}}/(2\\pi) = \\sqrt{(\\Omega/2\\pi)^2 + (\\delta/2\\pi)^2} = \\sqrt{2}\\times {{=Om_mhz}}\\text{ MHz}$。"
+      - "再令 $t_H = \\frac{1000\\text{ ns}}{2(\\Omega_{\\text{eff}}/2\\pi)}$。"
+    solution: "由 $\\Omega_{\\text{eff}}/(2\\pi) = {{=Om_mhz}}\\sqrt{2}\\text{ MHz}$，令 $\\Omega_{\\text{eff}}t_H = \\pi$ 得 $t_H = \\frac{500}{\\sqrt{2}\\times {{=Om_mhz}}} \\approx {{=round(500 / (sqrt(2) * Om_mhz), 2)}}\\text{ ns}$。"
+
+  - id: u2-l1-hz-spot-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "一位同学听说「Hadamard 门能把基态变成等权叠加态」，于是类比共振 $(\\pi/2)_y$ 脉冲写道：「在 $\\Omega = \\delta$、$\\beta = 0$ 时，只需作用转角 $\\theta = \\Omega_{\\text{eff}}t = \\pi/2$ 就能实现 $H_{\\text{MR}}$ 门。」请指出这段类比为什么出错："
+    options:
+      - id: a
+        text: "沿 $45^\\circ$ 倾斜轴 $\\vec{\\boldsymbol{n}} = (1,0,1)/\\sqrt{2}$ 必须转过 $\\theta = \\pi$ 才能令 $\\cos(\\theta/2) = 0$，从而得到纯粹的 $-i(\\sigma_x+\\sigma_z)/\\sqrt{2}$；若只转 $\\pi/2$，还会残留 $\\frac{1}{\\sqrt{2}}\\mathbb{1}$ 对角偏置，不再是 $H_{\\text{MR}}$。"
+        correct: true
+        feedback: "指出了本质差别！$(\\pi/2)_y$ 沿 $y$ 轴旋转 $\\pi/2$ 即可使 $|0\\rangle$ 变为等权叠加态，而沿倾斜 $45^\\circ$ 轴 $\\vec{\\boldsymbol{n}}$ 则必须转足 $\\pi$ 才能消去 $\\cos(\\theta/2)\\mathbb{1}$ 项并把基矢混合成对称叠加。"
+      - id: b
+        text: "应当将驱动相位改为 $\\beta = \\pi/2$ 并转过 $\\theta = \\pi/2$ 才能实现 $H_{\\text{MR}}$。"
+        correct: false
+        feedback: "$\\beta = \\pi/2$ 会引入虚部矩阵元 $\\sigma_y$，不再是实比例矩阵 $-i(\\sigma_x+\\sigma_z)/\\sqrt{2}$。"
+      - id: c
+        text: "当 $\\Omega = \\delta$ 时有效拉比频率变为零，根本无法实现任何角度的旋转。"
+        correct: false
+        feedback: "$\\Omega_{\\text{eff}} = \\sqrt{\\Omega^2+\\delta^2} = \\sqrt{2}\\Omega$ 比单轴驱动更快，并不为零。"
+      - id: d
+        text: "只要转过 $\\theta = 2\\pi$ 就能得到 $H_{\\text{MR}}$ 门。"
+        correct: false
+        feedback: "转过 $\\theta = 2\\pi$ 时 $\\cos(\\pi) = -1, \\sin(\\pi) = 0$，演化算符直接等于 $-\\mathbb{1}$。"
+    solution: "在 $\\vec{\\boldsymbol{n}} = (\\sigma_x+\\sigma_z)/\\sqrt{2}$ 时，只有 $\\theta = \\pi$ 使 $\\cos(\\theta/2) = 0$、$\\sin(\\theta/2) = 1$，才能给出 $H_{\\text{MR}} = -i(\\sigma_x+\\sigma_z)/\\sqrt{2}$；取 $\\theta = \\pi/2$ 会保留 $\\frac{1}{\\sqrt{2}}\\mathbb{1}$ 而破坏目标门结构。"
+
+  - id: u2-l1-hz-detuning-transfer
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "如果在倾斜轴构造实验中仍保持幅值相等 $\\Omega = \\delta > 0$ 与总转角 $\\theta = \\sqrt{2}\\Omega t = \\pi$，但把驱动相位从 $\\beta = 0$ 改设为 $\\beta = \\pi$，所实现的单比特门矩阵变成什么？"
+    options:
+      - id: a
+        text: "$-\\frac{i}{\\sqrt{2}}\\begin{pmatrix}1 & -1\\\\ -1 & -1\\end{pmatrix} = -i\\frac{-\\sigma_x + \\sigma_z}{\\sqrt{2}}$"
+        correct: true
+        feedback: "非常稳健！$\\beta = \\pi$ 仅把水平分量 $\\cos\\beta$ 反号（$n_x \\to -1/\\sqrt{2}$），保留 $n_z = +1/\\sqrt{2}$，故只翻转非对角元的符号。"
+      - id: b
+        text: "$-\\frac{i}{\\sqrt{2}}\\begin{pmatrix}-1 & 1\\\\ 1 & 1\\end{pmatrix}$"
+        correct: false
+        feedback: "该矩阵对应 $\\sigma_z$ 分量反号（即失谐变为 $\\delta = -\\Omega < 0$ 而 $\\beta = 0$ 仍不变的情况）。"
+      - id: c
+        text: "$-i\\begin{pmatrix}1 & 0\\\\ 0 & -1\\end{pmatrix}$"
+        correct: false
+        feedback: "这是纯失谐 $\\Omega = 0$、$\\delta t = \\pi$ 的 $Z_{\\text{MR}}$ 门；只要 $\\Omega \\neq 0$，非对角元在 $\\theta = \\pi$ 处就不会为零。"
+      - id: d
+        text: "$+\\frac{i}{\\sqrt{2}}\\begin{pmatrix}1 & 1\\\\ 1 & -1\\end{pmatrix} = -H_{\\text{MR}}$"
+        correct: false
+        feedback: "同时改变整体正负号要求 $\\vec{\\boldsymbol{n}} \\to -\\vec{\\boldsymbol{n}}$，这需要 $\\beta=\\pi$ 且 $\\delta$ 也一起反号，仅改 $\\beta$ 不会把 $z$ 分量反号。"
+    solution: "当 $\\beta = \\pi$ 时 $\\vec{\\boldsymbol{n}} = (-1/\\sqrt{2}, 0, 1/\\sqrt{2})$，在 $\\theta = \\pi$ 处 $U = -i\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}} = -\\frac{i}{\\sqrt{2}}(-\\sigma_x + \\sigma_z) = -\\frac{i}{\\sqrt{2}}\\begin{pmatrix}1 & -1\\\\ -1 & -1\\end{pmatrix}$。"
+
+  - id: u2-l1-recall-hz-explain
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: gate-z-and-hadamard-pulses
+    difficulty: 1
+    est_minutes: 1
+    prompt: "用简练的话比较实现磁共振 $T/S/Z_{\\text{MR}}$ 相位门与 Hadamard 门 $H_{\\text{MR}}$ 所需的控制参数（$\\Omega, \\delta, \\beta, \\theta$）及对应矩阵形式。"
+    rubric:
+      - id: r1
+        criterion: "说明 $T/S/Z_{\\text{MR}}$ 门令 $\\Omega = 0$ 依靠自由演化 $\\theta = \\delta t$（取 $\\pi/4, \\pi/2, \\pi$）获得对角矩阵 $\\text{diag}(e^{-i\\delta t/2}, e^{i\\delta t/2})$。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "说明 $H_{\\text{MR}}$ 令 $\\Omega = \\delta$、$\\beta = 0$，且在 $\\theta = \\sqrt{2}\\Omega t = \\pi$ 时得到 $-\\frac{i}{\\sqrt{2}}\\begin{pmatrix}1 & 1\\\\ 1 & -1\\end{pmatrix}$。"
+        weight: 1
+        required: true
+    exemplar: "当关闭驱动 $\\Omega = 0$ 时，自由演化仅沿 $+z$ 轴累积相移 $\\theta = \\delta t$，给出对角矩阵 $\\text{diag}(e^{-i\\delta t/2}, e^{i\\delta t/2})$，取 $\\delta t = \\pi/4, \\pi/2, \\pi$ 即分别实现 $T_{\\text{MR}}$、$S_{\\text{MR}}$ 与 $Z_{\\text{MR}} = -i\\sigma_z$。而实现 $H_{\\text{MR}}$ 须使 $\\Omega = \\delta$、$\\beta = 0$（转轴倾角 $45^\\circ$），并持续作用至 $\\theta = \\sqrt{2}\\Omega t = \\pi$，得到 $H_{\\text{MR}} = -\\frac{i}{\\sqrt{2}}\\begin{pmatrix}1 & 1\\\\ 1 & -1\\end{pmatrix}$。"
+
+  - id: u2-l1-recall-hz-mc
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: gate-z-and-hadamard-pulses
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "在同一失谐 $\\delta > 0$（关闭驱动 $\\Omega = 0$）的自由演化下，实现 $S_{\\text{MR}}$ 门所需时间 $t_S$ 与实现 $T_{\\text{MR}}$ 门所需时间 $t_T$ 满足什么关系？"
+    options:
+      - id: a
+        text: "$t_S = 2 t_T$（分别对应 $\\delta t_S = \\pi/2$ 与 $\\delta t_T = \\pi/4$）"
+        correct: true
+        feedback: "完全正确！$S$ 门的 $z$ 旋转角是 $T$ 门的两倍，故时间精确翻倍。"
+      - id: b
+        text: "$t_S = \\frac{1}{2} t_T$"
+        correct: false
+        feedback: "$T$ 门又叫 $\\pi/8$ 门（旋转角 $\\pi/4$），$S$ 门旋转角 $\\pi/2$ 更大，因此 $t_S$ 应大于 $t_T$。"
+      - id: c
+        text: "$t_S = \\sqrt{2}\\,t_T$"
+        correct: false
+        feedback: "$\\sqrt{2}$ 因子来自 $\\Omega = \\delta$ 合成有效频率 $\\Omega_{\\text{eff}}$ 时的 Hadamard 门，自由演化时间与角 $\\delta t$ 呈线性正比。"
+      - id: d
+        text: "$t_S = 4 t_T$"
+        correct: false
+        feedback: "$4 t_T$ 对应 $\\delta t = \\pi$ 的 $Z_{\\text{MR}}$ 门，而不是 $S_{\\text{MR}}$ 门。"
+    solution: "因 $\\theta = \\delta t$ 在 $T_{\\text{MR}}$ 与 $S_{\\text{MR}}$ 中分别取 $\\pi/4$ 与 $\\pi/2$，故在同一 $\\delta$ 下恒有 $t_S = 2 t_T$。"
+
+  - id: u2-l1-recall-hz-expr
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: gate-z-and-hadamard-pulses
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "在构造 Hadamard 门 $H_{\\text{MR}}$ 的条件 $\\Omega = \\delta > 0$ 下，写出有效拉比频率 $\\Omega_{\\text{eff}}$ 的简化表达式（用 `Om` 表示驱动幅度 $\\Omega$，平方根写成 `sqrt(...)`）。"
+    answer: "sqrt(2) * Om"
+    variables:
+      Om: [1, 20]
+    solution: "将 $\\delta = \\Omega$ 代入 $\\Omega_{\\text{eff}} = \\sqrt{\\Omega^2 + \\delta^2}$，直接得到 $\\Omega_{\\text{eff}} = \\sqrt{2}\\Omega$。"
+
+  # ==========================================================================
+  # Step 3: gate-su2-global-phase-and-circuits (5 题课堂 + 3 题 recall)
+  # ==========================================================================
+  - id: u2-l1-su2-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "物理脉冲实现的 $H_{\\text{MR}} = -i\\hat{U}_{\\text{H}}$ 与量子光学教科书中的计算 Hadamard 门 $\\hat{U}_{\\text{H}} = \\frac{1}{\\sqrt{2}}\\begin{pmatrix}1 & 1\\\\ 1 & -1\\end{pmatrix}$ 在群论属性与单比特物理观测量上有何异同？"
+    options:
+      - id: a
+        text: "两者行列式不同（$\\det(H_{\\text{MR}}) = +1 \\in SU(2)$ 而 $\\det(\\hat{U}_{\\text{H}}) = -1 \\in U(2)$），但两者仅差不可观测的全局相位 $-i$，故对单比特初态给出的测量概率分布和分量间相对相位完全一致。"
+        correct: true
+        feedback: "非常透彻！$SU(2)$ 是物理脉冲演化的天然群结构，而计算门通过剥离全局相位将矩阵简化为实对称或首行归一形式。"
+      - id: b
+        text: "因相差因子 $-i$，作用在 $|0\\rangle$ 上后测量 $|1\\rangle$ 的概率会从 $1/2$ 变成 $-1/2$。"
+        correct: false
+        feedback: "概率等于复概率幅的模平方，$|(-i)(1/\\sqrt{2})|^2 = |-i|^2 / 2 = 1/2$，全局相位的模恒为 $1$。"
+      - id: c
+        text: "$H_{\\text{MR}}$ 与 $\\hat{U}_{\\text{H}}$ 都满足 $\\det = +1$，两者唯一的区别在于基矢 $|0\\rangle$ 与 $|1\\rangle$ 的能量高低排序相反。"
+        correct: false
+        feedback: "直接计算行列式即可知 $\\det(\\hat{U}_{\\text{H}}) = \\frac{1}{2}(-1-1) = -1 \\neq +1$，该差异源于整体前置因子 $-i$，与基矢排序无关。"
+      - id: d
+        text: "$\\hat{U}_{\\text{H}}$ 是幺正算符而 $H_{\\text{MR}}$ 因含 $-i$ 因子不再满足 $U^\\dagger U = \\mathbb{1}$。"
+        correct: false
+        feedback: "$(-i\\hat{U}_{\\text{H}})^\\dagger(-i\\hat{U}_{\\text{H}}) = (+i)(-i)\\hat{U}_{\\text{H}}^2 = \\mathbb{1}$，$H_{\\text{MR}}$ 严格幺正。"
+    solution: "所有由 $e^{-i\\theta\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}}$ 生成的脉冲门都满足 $\\det(U)=+1$ 与 $U^\\dagger U = \\mathbb{1}$（属于 $SU(2)$）；$\\hat{U}_{\\text{H}}$ 属于 $U(2)$（$\\det = -1$），两者之差 $-i$ 对任意单比特末态的概率幅比和模平方均无影响。"
+
+  - id: u2-l1-su2-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "按照 Gerry–Knight §11.10 式 (11.29) 的四门电路 $\\hat{U}_{\\text{PG}}(\\varphi+\\pi/2)\\hat{U}_{\\text{H}}\\hat{U}_{\\text{PG}}(2\\theta)\\hat{U}_{\\text{H}}|0\\rangle$ 直接乘出矩阵，结果其实是 $e^{i\\theta}(\\cos\\theta\\,|0\\rangle + e^{i\\varphi}\\sin\\theta\\,|1\\rangle)$，而原书略去了 $e^{i\\theta}$。为什么略去 $e^{i\\theta}$ 在单比特态制备上是完全合理的？"
+    options:
+      - id: a
+        text: "因为 $e^{i\\theta}$ 同等地乘在 $|0\\rangle$ 与 $|1\\rangle$ 两个分量前面，对单比特来说属于全局相位，在测量投影概率和两个分量的相对相位比 $c_1/c_0$ 中完全消掉。"
+        correct: true
+        feedback: "完全正确！全局相位 $e^{i\\theta}$ 不含在量子态的物理可观测量中，提取公因子后两分量之间的相对相位才真正表征 $\\varphi$ 与 $\\theta$。"
+      - id: b
+        text: "因为只有在 $\\theta = 0$ 时才需要该回路，此时 $e^{i\\theta} = 1$ 恰好消失。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "式 (11.29) 是用于制备任意振幅角 $\\theta$ 与相对相位 $\\varphi$ 叠加态的通用电路，对任意 $\\theta$ 全局因子 $e^{i\\theta}$ 都不可观测。"
+      - id: c
+        text: "因为最后一个相位门 $\\hat{U}_{\\text{PG}}(\\varphi+\\pi/2)$ 作用在 $|0\\rangle$ 分量上会乘以 $e^{-i\\theta}$，把 $e^{i\\theta}$ 自动消掉了。"
+        correct: false
+        category: math_error
+        feedback: "计算相位门 $\\hat{U}_{\\text{PG}}(\\alpha) = \\text{diag}(1, e^{i\\alpha})$ 对 $|0\\rangle$ 的对角元恒为 $1$，并不会引入 $e^{-i\\theta}$ 因子；$e^{i\\theta}$ 是通过将 $\\frac{1}{\\sqrt{2}}(|0\\rangle + e^{i2\\theta}|1\\rangle)$ 提取公因子而产生的。"
+      - id: d
+        text: "因为单比特量子态的测量概率直接取实部而不取模平方，虚部相位自动忽略。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "测量概率始终是复振幅的模平方 $|c_k|^2$（而非实部），正因 $|e^{i\\theta}|^2 = 1$ 才使得全局相位不改概率。"
+    solution: "对第二门后出现的 $e^{i2\\theta}$ 提取公共相位 $e^{i\\theta}$，最终矢量严格等于 $e^{i\\theta}(\\cos\\theta\\,|0\\rangle + e^{i\\varphi}\\sin\\theta\\,|1\\rangle)$；因 $|e^{i\\theta}| = 1$ 且分子分母可约去，全局因子 $e^{i\\theta}$ 对单比特可观测量毫无影响。"
+
+  - id: u2-l1-su2-circuit-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    params:
+      theta_deg:
+        min: 15
+        max: 35
+        step: 5
+      phi_deg:
+        min: 30
+        max: 120
+        step: 30
+    prompt: "用四门电路 $\\hat{U}_{\\text{PG}}(\\varphi+\\pi/2)\\hat{U}_{\\text{H}}\\hat{U}_{\\text{PG}}(2\\theta)\\hat{U}_{\\text{H}}|0\\rangle$ 从 $|0\\rangle$ 制备目标叠加态，其中参数角取 $\\theta = {{=theta_deg}}^\\circ$、$\\varphi = {{=phi_deg}}^\\circ$。电路完成后测得量子比特处于 $|1\\rangle$ 态的概率 $P_1$ 是多少（填 $0$ 到 $1$ 之间的小数，保留三位小数）？"
+    answer_expr: "sin(theta_deg * pi / 180)^2"
+    tolerance:
+      abs: 0.005
+    common_wrong:
+      - answer_expr: "cos(theta_deg * pi / 180)^2"
+        category: math_error
+        feedback: "你计算的是留在初态 $|0\\rangle$ 的概率 $\\cos^2\\theta$；注意电路输出为 $e^{i\\theta}(\\cos\\theta\\,|0\\rangle + e^{i\\varphi}\\sin\\theta\\,|1\\rangle)$，$|1\\rangle$ 的振幅模长为 $\\sin\\theta$。"
+      - answer_expr: "sin((theta_deg / 2) * pi / 180)^2"
+        category: math_error
+        feedback: "误把角度再折半成 $\\theta/2$；注意第一门 $\\hat{U}_{\\text{PG}}(2\\theta)$ 里的 $2\\theta$ 经后续干涉与公因子提取后，进入最终叠加态振幅的正是 $\\theta$ 而非 $\\theta/2$。"
+      - answer_expr: "sin(theta_deg * pi / 180)"
+        category: math_error
+        feedback: "忘记把概率幅 $\\sin\\theta$ 取模平方！量子力学中测量概率为 $P_1 = |e^{i\\theta}e^{i\\varphi}\\sin\\theta|^2 = \\sin^2\\theta$。"
+    hints:
+      - "由 Gerry–Knight 式 (11.29)，电路输出为 $e^{i\\theta}(\\cos\\theta\\,|0\\rangle + e^{i\\varphi}\\sin\\theta\\,|1\\rangle)$。"
+      - "$|1\\rangle$ 分量上的概率为 $P_1 = |e^{i(\\theta+\\varphi)}\\sin\\theta|^2 = \\sin^2\\theta$，与 $\\varphi$ 无关。"
+    solution: "最终输出态为 $e^{i\\theta}(\\cos{{=theta_deg}}^\\circ\\,|0\\rangle + e^{i{{=phi_deg}}^\\circ}\\sin{{=theta_deg}}^\\circ\\,|1\\rangle)$，因此 $P_1 = \\sin^2({{=theta_deg}}^\\circ) \\approx {{=round(sin(theta_deg * pi / 180)^2, 3)}}$。"
+
+  - id: u2-l1-su2-spot-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "某同学在计算两步物理脉冲的乘积时这样推理：「既然物理门 $H_{\\text{MR}}$ 和教科书门 $\\hat{U}_{\\text{H}}$ 在单比特测量上物理等价，而 $\\hat{U}_{\\text{H}}^2 = \\mathbb{1}$，所以连续施加两次磁共振 Hadamard 脉冲同样满足 $H_{\\text{MR}}^2 = +\\mathbb{1}$。」下列哪种修正最精准？"
+    options:
+      - id: a
+        text: "矩阵平方时必须把前置因子一起平方：$H_{\\text{MR}}^2 = (-i\\hat{U}_{\\text{H}})^2 = (-i)^2\\hat{U}_{\\text{H}}^2 = -\\mathbb{1}$；虽然单独作用于单比特时 $-\\mathbb{1}$ 与 $+\\mathbb{1}$ 测量效果相同，但作为算符恒等式符号严格取负。"
+        correct: true
+        feedback: "严密准确！自旋 $1/2$ 绕任意固定轴转 $2\\pi$ 会带来 $-1$ 的全局相因子，正是 $SU(2)$ 与三维空间旋转差异的集中体现。"
+      - id: b
+        text: "实际上 $\\hat{U}_{\\text{H}}^2 = -\\mathbb{1}$ 而 $H_{\\text{MR}}^2 = +\\mathbb{1}$，因为 $-i$ 的平方正好把负号消成正号。"
+        correct: false
+        feedback: "恰好弄反了：实对称矩阵 $\\hat{U}_{\\text{H}}$ 满足 $\\hat{U}_{\\text{H}}^2 = +\\mathbb{1}$，而 $(-i)^2 = -1$ 才让 $H_{\\text{MR}}^2 = -\\mathbb{1}$。"
+      - id: c
+        text: "$H_{\\text{MR}}$ 并非自逆门，平方之后会变成泡利矩阵 $Z_{\\text{MR}}$ 而不是单位矩阵的倍数。"
+        correct: false
+        feedback: "计算 $(-i\\hat{U}_{\\text{H}})^2$ 可知其结果是 $-\\mathbb{1}$，仍是单位矩阵的纯相位倍数，并非 $Z_{\\text{MR}}$。"
+      - id: d
+        text: "只有在施加到 $|1\\rangle$ 上时才得 $-1$，施加到 $|0\\rangle$ 上仍得 $+1$。"
+        correct: false
+        feedback: "$H_{\\text{MR}}^2 = -\\mathbb{1}$ 是整张矩阵的等式，无论作用在 $|0\\rangle$ 还是 $|1\\rangle$ 上都会统一乘上 $-1$。"
+    solution: "因 $H_{\\text{MR}} = -i\\hat{U}_{\\text{H}}$ 且 $(-i)^2 = -1$、$\\hat{U}_{\\text{H}}^2 = +\\mathbb{1}$，直接相乘即得 $H_{\\text{MR}}^2 = -\\mathbb{1}$（对应自旋 $1/2$ 旋转 $2\\pi$ 积累的 $-1$ 相位）。"
+
+  - id: u2-l1-su2-phase-transfer
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "在真实磁共振硬件上执行 Gerry–Knight 四门电路时，只能直接运行 $SU(2)$ 脉冲门 $H_{\\text{MR}} = -i\\hat{U}_{\\text{H}}$ 与自由演化 $z$ 相位门 $U_z(\\alpha) = e^{-i\\alpha S_z} = e^{-i\\alpha/2}\\hat{U}_{\\text{PG}}(\\alpha)$。若直接用 $U_z(\\varphi+\\pi/2)\\,H_{\\text{MR}}\\,U_z(2\\theta)\\,H_{\\text{MR}}|0\\rangle$ 替换原 $U(2)$ 电路，输出末态会如何变化？"
+    options:
+      - id: a
+        text: "整体矩阵乘积依然保持在 $SU(2)$ 内（$\\det = +1$），输出矢量相对于原四门精确矩阵乘积仅多出一个纯全局相位因子 $e^{-i(\\theta+\\varphi/2+5\\pi/4)}$，任意单比特测量概率 $|c_0|^2, |c_1|^2$ 与相对相位 $\\varphi$ 完全不变。"
+        correct: true
+        feedback: "迁移非常彻底！由于每次门替换都只是乘以常数标量相位（$-i$ 与 $e^{-i\\alpha/2}$），标量可直接移出全部矩阵乘积之外并汇成统一的不可观测全局相位。"
+      - id: b
+        text: "由于每次换门都要修改相对相位，最终 $|1\\rangle$ 分量上的相对相位不再等于 $\\varphi$，而是变成 $\\varphi - \\theta$。"
+        correct: false
+        feedback: "全局前置标量相位对矩阵的每一行每一列一视同仁，从矩阵乘法中提出公因子后绝对不会改变 $|0\\rangle$ 与 $|1\\rangle$ 之间的相对相位。"
+      - id: c
+        text: "两个 $H_{\\text{MR}}$ 带来的 $-i$ 相乘变为 $-1$，会把原本制备在 $|0\\rangle$ 与 $|1\\rangle$ 上的布居完全反转过来。"
+        correct: false
+        feedback: "全局负号 $-1$ 不改变 $|0\\rangle$ 或 $|1\\rangle$ 的任何测量概率，与布居交换（比特翻转）完全是两回事。"
+      - id: d
+        text: "替换后演化算符不再属于 $SU(2)$，行列式不再等于 $+1$。"
+        correct: false
+        feedback: "$SU(2)$ 对矩阵乘法封闭：两个及以上 $\\det = +1$ 的矩阵相乘，乘积的行列式恒等于 $+1$。"
+    solution: "因 $H_{\\text{MR}} = -i\\hat{U}_{\\text{H}}$ 与 $U_z(\\alpha) = e^{-i\\alpha/2}\\hat{U}_{\\text{PG}}(\\alpha)$ 都与计算门仅差纯标量全局相位，四门连乘只会在原式基础上多出常数整体相因子（具体为 $(-i)^2 e^{-i\\theta} e^{-i(\\varphi+\\pi/2)/2}$），既保持 $\\det = +1$ 又完全不改变物理态的测量概率与相对相位。"
+
+  - id: u2-l1-recall-su2-explain
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: gate-su2-global-phase-and-circuits
+    difficulty: 1
+    est_minutes: 1
+    prompt: "解释物理脉冲门（$SU(2)$）与计算量子门（$U(2)$）的区别，并说明为什么全局相位在单比特态中不可观测。"
+    rubric:
+      - id: r1
+        criterion: "指出物理自旋脉冲门满足 $U^\\dagger U = \\mathbb{1}$ 且 $\\det(U)=+1$（属于 $SU(2)$），而 $\\hat{U}_{\\text{H}}, \\hat{U}_{\\text{PG}}$ 等计算门因约定原因属于 $U(2)$（如 $\\det(\\hat{U}_{\\text{H}})=-1$），两者仅差整体相位因子。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "说明整体相因子 $e^{i\\gamma}$ 在基矢测量概率 $|e^{i\\gamma}c_k|^2 = |c_k|^2$ 与分量间相对相位 $(e^{i\\gamma}c_1)/(e^{i\\gamma}c_0)$ 中均完全消去。"
+        weight: 1
+        required: true
+    exemplar: "磁共振物理脉冲门均满足幺正性且行列式 $\\det(U)=+1$，严格属于 $SU(2)$ 群；而 $\\hat{U}_{\\text{H}}$（$\\det=-1$）、$\\hat{U}_{\\text{PG}}(\\varphi)$（$\\det=e^{i\\varphi}$）等计算门属于 $U(2)$，两者仅差一个全局相位因子（例如 $H_{\\text{MR}} = -i\\hat{U}_{\\text{H}}$）。对单比特而言，全局相因子 $e^{i\\gamma}$ 在任何概率测量 $|e^{i\\gamma}c_k|^2=|c_k|^2$ 及分量相对相位比值中都会完全抵消，因此不产生可观测差异。"
+
+  - id: u2-l1-recall-su2-mc
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: gate-su2-global-phase-and-circuits
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "在 Gerry–Knight 式 (11.29) 的四门电路中，要从 $|0\\rangle$ 合成出目标态（忽略全局相位）$\\cos\\theta\\,|0\\rangle + e^{i\\varphi}\\sin\\theta\\,|1\\rangle$，由右向左依次作用的四个门应当是哪一组？"
+    options:
+      - id: a
+        text: "$\\hat{U}_{\\text{PG}}(\\varphi + \\pi/2)\\,\\hat{U}_{\\text{H}}\\,\\hat{U}_{\\text{PG}}(2\\theta)\\,\\hat{U}_{\\text{H}}|0\\rangle$"
+        correct: true
+        feedback: "准确无误！中间的 $\\hat{U}_{\\text{PG}}(2\\theta)$ 决定最终计算基振幅 $\\cos\\theta$、$\\sin\\theta$，末尾的 $\\hat{U}_{\\text{PG}}(\\varphi+\\pi/2)$ 再把 $-i$ 调整到相对相位 $e^{i\\varphi}$。"
+      - id: b
+        text: "$\\hat{U}_{\\text{PG}}(\\varphi)\\,\\hat{U}_{\\text{H}}\\,\\hat{U}_{\\text{PG}}(\\theta)\\,\\hat{U}_{\\text{H}}|0\\rangle$"
+        correct: false
+        feedback: "若中间相位门仅放 $\\theta$，最终振幅将变成 $\\cos(\\theta/2)$ 与 $\\sin(\\theta/2)$，而且末尾少了 $\\pi/2$ 补偿会遗留额外的 $-i$ 相对相位。"
+      - id: c
+        text: "$\\hat{U}_{\\text{H}}\\,\\hat{U}_{\\text{PG}}(\\varphi + \\pi/2)\\,\\hat{U}_{\\text{H}}\\,\\hat{U}_{\\text{PG}}(2\\theta)|0\\rangle$"
+        correct: false
+        feedback: "第一个门必须是 $\\hat{U}_{\\text{H}}$ 以把 $|0\\rangle$ 展开为等权叠加；若先对 $|0\\rangle$ 作用 $\\hat{U}_{\\text{PG}}(2\\theta)$ 只能得到不变的 $|0\\rangle$。"
+      - id: d
+        text: "$\\hat{U}_{\\text{PG}}(2\\theta)\\,\\hat{U}_{\\text{H}}\\,\\hat{U}_{\\text{PG}}(\\varphi + \\pi/2)\\,\\hat{U}_{\\text{H}}|0\\rangle$"
+        correct: false
+        feedback: "决定布居比例的参数 $\\theta$ 必须位于两次 $\\hat{U}_{\\text{H}}$ 的干涉内侧，最外层的相位门无法再改变 $|0\\rangle$ 与 $|1\\rangle$ 的布居比例。"
+    solution: "由右向左依次经 $\\hat{U}_{\\text{H}}$ 展平、$\\hat{U}_{\\text{PG}}(2\\theta)$ 引入相位差 $2\\theta$、第二次 $\\hat{U}_{\\text{H}}$ 干涉成 $e^{i\\theta}(\\cos\\theta|0\\rangle - i\\sin\\theta|1\\rangle)$，最后由 $\\hat{U}_{\\text{PG}}(\\varphi + \\pi/2)$ 将 $-i = e^{-i\\pi/2}$ 调为 $e^{i\\varphi}$。"
+
+  - id: u2-l1-recall-su2-text
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: gate-su2-global-phase-and-circuits
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "任何由自旋脉冲演化 $U = e^{-i\\theta\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}}$ 实现的物理单比特门（例如 $(\\pi)_x$、$Z_{\\text{MR}}$ 与 $H_{\\text{MR}}$）都属于 $SU(2)$ 群，其矩阵行列式 $\\det(U)$ 恒等于哪一个实数？"
+    accept:
+      - "1"
+      - "+1"
+    regex: "^\\+?1$"
+    solution: "所有 $SU(2)$ 物理脉冲演化矩阵都严格满足 $\\det(U) = +1$。"
+
+  # ==========================================================================
+  # Lesson Final: Explain it 自评总结题
+  # ==========================================================================
+  - id: u2-l1-final-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "请用自己的话系统梳理磁共振单比特量子门构造与电路合成的三大支柱：（1）共振赤道面内如何通过脉冲时间与相位 $\\beta$ 构造 $(\\pi/2)_\\beta$、$(\\pi)_\\beta$ 及 Pauli-X/Y 门，并说明原讲义 $(\\pi)_\\pi$ 笔误如何纠正；（2）如何在 $(\\Omega,\\delta)$ 平面上分别构造自由演化 $T/S/Z_{\\text{MR}}$ 门与倾斜轴 Hadamard 门 $H_{\\text{MR}}$；（3）物理 $SU(2)$ 脉冲门与计算 $U(2)$ 门的全局相位差异为何不影响单比特物理观测，以及 Gerry–Knight 四门电路如何合成任意叠加态。"
+    rubric:
+      - id: r1
+        criterion: "说清 $\\delta=0$ 时 $\\vec{\\boldsymbol{n}}=(\\cos\\beta,\\sin\\beta,0)$、$\\theta=\\Omega t$，给出 $(\\pi/2)_\\beta, (\\pi)_\\beta$ 与 $(\\pi)_x=-i\\sigma_x, (\\pi)_y=-i\\sigma_y$，并指明讲义第 7 页 $\\beta=0$ 处误印为 $(\\pi)_\\pi$ 实为 $(\\pi)_x$。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "说明关闭驱动 $\\Omega=0$ 靠 $\\theta=\\delta t$ 依次取 $\\pi/4, \\pi/2, \\pi$ 得 $T, S, Z_{\\text{MR}}$；令 $\\Omega=\\delta, \\beta=0$ 且 $\\theta=\\sqrt{2}\\Omega t = \\pi$ 得 $H_{\\text{MR}} = -i(\\sigma_x+\\sigma_z)/\\sqrt{2}$。"
+        weight: 1
+        required: true
+      - id: r3
+        criterion: "对比物理 $SU(2)$（$\\det U = +1$, $H_{\\text{MR}}^2 = -\\mathbb{1}$）与计算 $U(2)$（$\\det\\hat{U}_{\\text{H}} = -1$）的全局相位差，解释单比特不可观测性并写出四门电路 $\\hat{U}_{\\text{PG}}(\\varphi+\\pi/2)\\hat{U}_{\\text{H}}\\hat{U}_{\\text{PG}}(2\\theta)\\hat{U}_{\\text{H}}|0\\rangle$。"
+        weight: 1
+        required: true
+      - id: r4
+        criterion: "补充指出四门电路严格乘积带有不可观测公因子 $e^{i\\theta}$，而原式 (11.29) 为简洁起见将其略去。"
+        weight: 1
+        required: false
+    exemplar: "从一般旋转 $U = \\cos(\\theta/2)\\mathbb{1} - i\\sin(\\theta/2)\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}$ 出发：（1）当精确共振 $\\delta=0$ 时，转角 $\\theta=\\Omega t$ 而转轴 $\\vec{\\boldsymbol{n}}=(\\cos\\beta,\\sin\\beta,0)$ 处于赤道平面，由相位 $\\beta$ 连续切换旋转轴；取 $\\beta=0$ 与 $\\pi/2$ 即得 $(\\pi/2)_x, (\\pi/2)_y$ 与 $(\\pi)_x=-i\\sigma_x, (\\pi)_y=-i\\sigma_y$，同时须修正原讲义第 7 页将 $\\beta=0$ 处 $(\\pi)_x$ 错印为 $(\\pi)_\\pi$ 的笔误。（2）若关闭驱动 $\\Omega=0$ 而让自旋自由演化，则 $\\theta=\\delta t$ 沿 $+z$ 轴产生对角相移门 $T(\\pi/4)$、$S(\\pi/2)$ 与 $Z_{\\text{MR}}(\\pi)$；若令 $\\Omega=\\delta$ 且 $\\beta=0$，有效轴倾角为 $45^\\circ$、$\\Omega_{\\text{eff}}=\\sqrt{2}\\Omega$，作用至 $\\theta=\\pi$ 即得 $H_{\\text{MR}} = -\\frac{i}{\\sqrt{2}}\\begin{pmatrix}1 & 1\\\\ 1 & -1\\end{pmatrix}$。（3）所有物理脉冲演化都属于 $SU(2)$ 群（$\\det(U)=+1$，且 $H_{\\text{MR}}^2=-\\mathbb{1}$），与计算 $U(2)$ 门 $\\hat{U}_{\\text{H}}$（$\\det=-1$）、$\\hat{U}_{\\text{PG}}(\\varphi)$ 仅差不可观测的全局相位因子，不会改变任何基测量概率和相对相位；交替级联两次 $\\hat{U}_{\\text{H}}$ 与相位门组成四门电路 $\\hat{U}_{\\text{PG}}(\\varphi+\\pi/2)\\hat{U}_{\\text{H}}\\hat{U}_{\\text{PG}}(2\\theta)\\hat{U}_{\\text{H}}|0\\rangle$，准确生成任意单比特叠加态 $e^{i\\theta}(\\cos\\theta|0\\rangle + e^{i\\varphi}\\sin\\theta|1\\rangle)$（Gerry–Knight 式 11.29 略去了整体因子 $e^{i\\theta}$）。"

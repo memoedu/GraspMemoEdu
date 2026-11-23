@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="左图为包含反向旋转项后自旋共振峰向高频蓝移的示意图，实际共振频率 omega_res = omega_0 + Delta_BS；右图为定量平方标度曲线 Delta_BS / omega_0 = 1/4 (Omega / omega_0)^2，标出弱驱动安全区 Omega / omega_0 小于等于 0.05（绿色）以及强驱动下平方增长的显著频移。">
+<defs>
+<marker id="bs2-dark" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#171717"/></marker>
+<marker id="bs2-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker>
+</defs>
+<g font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" fill="#171717">
+<line x1="316" y1="20" x2="316" y2="282" stroke="#d4d4d4" stroke-width="1"/>
+<text x="160" y="24" text-anchor="middle" font-size="14" font-weight="600">反向项引起的共振峰蓝移</text>
+<line x1="42" y1="240.0" x2="294" y2="240.0" stroke="#171717" stroke-width="1.5" marker-end="url(#bs2-dark)"/>
+<line x1="50" y1="250.0" x2="50" y2="48" stroke="#171717" stroke-width="1.5" marker-end="url(#bs2-dark)"/>
+<text x="298" y="244.0">ω</text>
+<text x="58" y="54" fill="#737373" font-size="12">跃迁响应</text>
+<polyline points="62,230.03 65,229.13 68,228.11 71,226.94 74,225.6 77,224.05 80,222.25 83,220.14 86,217.66 89,214.71 92,211.2 95,206.98 98,201.88 101,195.69 104,188.16 107,179.01 110,168.0 113,155.02 116,140.31 119,124.8 122,110.4 125,99.89 128,96.0 131,99.89 134,110.4 137,124.8 140,140.31 143,155.02 146,168.0 149,179.01 152,188.16 155,195.69 158,201.88 161,206.98 164,211.2 167,214.71 170,217.66 173,220.14 176,222.25 179,224.05 182,225.6 185,226.94 188,228.11 191,229.13 194,230.03 197,230.82 200,231.53 203,232.16 206,232.72 209,233.22 212,233.68 215,234.09 218,234.46 221,234.8 224,235.11 227,235.39 230,235.65 233,235.89 236,236.11 239,236.31 242,236.5 245,236.67 248,236.83 251,236.98 254,237.12 257,237.25 260,237.37 263,237.48 266,237.59 269,237.69 272,237.78 275,237.87 278,237.96" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="2" stroke-dasharray="5 3"/>
+<polyline points="62,237.52 65,237.41 68,237.29 71,237.16 74,237.03 77,236.88 80,236.73 83,236.56 86,236.37 89,236.18 92,235.96 95,235.73 98,235.48 101,235.21 104,234.91 107,234.58 110,234.22 113,233.82 116,233.38 119,232.89 122,232.35 125,231.75 128,231.07 131,230.31 134,229.44 137,228.47 140,227.35 143,226.07 146,224.59 149,222.88 152,220.88 155,218.53 158,215.75 161,212.44 164,208.48 167,203.69 170,197.89 173,190.84 176,182.26 179,171.89 182,159.56 185,145.36 188,129.96 191,114.92 194,102.78 197,96.44 200,97.76 203,106.32 206,119.75 209,135.16 212,150.28 215,163.89 218,175.56 221,185.3 224,193.34 227,199.95 230,205.39 233,209.88 236,213.61 239,216.73 242,219.36 245,221.58 248,223.48 251,225.11 254,226.52 257,227.74 260,228.81 263,229.74 266,230.57 269,231.3 272,231.96 275,232.54 278,233.06" fill="#ffffff" fill-opacity="0" stroke="#3b82f6" stroke-width="2.5"/>
+<line x1="128.0" y1="96.0" x2="128.0" y2="240.0" stroke="#737373" stroke-width="1.2" stroke-dasharray="3 3"/>
+<line x1="198.0" y1="96.0" x2="198.0" y2="240.0" stroke="#3b82f6" stroke-width="1.2" stroke-dasharray="3 3"/>
+<text x="128.0" y="258.0" text-anchor="middle" fill="#737373">ω₀</text>
+<text x="212.0" y="258.0" text-anchor="middle" fill="#3b82f6" font-weight="600">ω_res = ω₀ + Δ_BS</text>
+<line x1="131.0" y1="78" x2="195.0" y2="78" stroke="#f59e0b" stroke-width="2.5" marker-end="url(#bs2-amber)"/>
+<text x="163.0" y="68" text-anchor="middle" fill="#f59e0b" font-weight="600">+Δ_BS</text>
+<text x="104" y="122" text-anchor="end" fill="#737373" font-size="12">RWA 预测</text>
+<text x="224" y="122" fill="#3b82f6" font-size="12">含反向项</text>
+<text x="168" y="280" text-anchor="middle" fill="#737373" font-size="12">反向项把真实共振峰推高 Ω² / [2(ω₀+ω)]</text>
+<text x="482" y="24" text-anchor="middle" font-size="14" font-weight="600">二阶标度律 Δ_BS / ω₀ = ¼(Ω / ω₀)²</text>
+<line x1="378.0" y1="240.0" x2="622.0" y2="240.0" stroke="#171717" stroke-width="1.5" marker-end="url(#bs2-dark)"/>
+<line x1="378.0" y1="240.0" x2="378.0" y2="48" stroke="#171717" stroke-width="1.5" marker-end="url(#bs2-dark)"/>
+<line x1="424.0" y1="240.0" x2="424.0" y2="245.0" stroke="#737373" stroke-width="1.2"/><text x="424.0" y="258.0" text-anchor="middle" font-size="11" fill="#737373">0.1</text><line x1="470.0" y1="240.0" x2="470.0" y2="245.0" stroke="#737373" stroke-width="1.2"/><text x="470.0" y="258.0" text-anchor="middle" font-size="11" fill="#737373">0.2</text><line x1="516.0" y1="240.0" x2="516.0" y2="245.0" stroke="#737373" stroke-width="1.2"/><text x="516.0" y="258.0" text-anchor="middle" font-size="11" fill="#737373">0.3</text><line x1="562.0" y1="240.0" x2="562.0" y2="245.0" stroke="#737373" stroke-width="1.2"/><text x="562.0" y="258.0" text-anchor="middle" font-size="11" fill="#737373">0.4</text><line x1="608.0" y1="240.0" x2="608.0" y2="245.0" stroke="#737373" stroke-width="1.2"/><text x="608.0" y="258.0" text-anchor="middle" font-size="11" fill="#737373">0.5</text>
+<line x1="373.0" y1="182.4" x2="378.0" y2="182.4" stroke="#737373" stroke-width="1.2"/><text x="370.0" y="186.4" text-anchor="end" font-size="11" fill="#737373">2%</text><line x1="373.0" y1="124.8" x2="378.0" y2="124.8" stroke="#737373" stroke-width="1.2"/><text x="370.0" y="128.8" text-anchor="end" font-size="11" fill="#737373">4%</text><line x1="373.0" y1="67.2" x2="378.0" y2="67.2" stroke="#737373" stroke-width="1.2"/><text x="370.0" y="71.2" text-anchor="end" font-size="11" fill="#737373">6%</text>
+<text x="370.0" y="258.0" text-anchor="end" font-size="11" fill="#737373">0</text>
+<text x="493" y="282" text-anchor="middle" font-size="12">Ω / ω₀</text>
+<text x="386.0" y="52" text-anchor="start" font-size="12" fill="#737373">Δ_BS / ω₀</text>
+<line x1="401.0" y1="240.0" x2="401.0" y2="96" stroke="#10b981" stroke-width="1.8" stroke-dasharray="4 3"/>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="407.0" y="106" fill="#10b981" font-size="12">RWA 适用区 Ω/ω₀ ≤ 0.05</text>
+<polyline points="378.0,240.0 382.6,239.93 387.2,239.71 391.8,239.35 396.4,238.85 401.0,238.2 405.6,237.41 410.2,236.47 414.8,235.39 419.4,234.17 424.0,232.8 428.6,231.29 433.2,229.63 437.8,227.83 442.4,225.89 447.0,223.8 451.6,221.57 456.2,219.19 460.8,216.67 465.4,214.01 470.0,211.2 474.6,208.25 479.2,205.15 483.8,201.91 488.4,198.53 493.0,195.0 497.6,191.33 502.2,187.51 506.8,183.55 511.4,179.45 516.0,175.2 520.6,170.81 525.2,166.27 529.8,161.59 534.4,156.77 539.0,151.8 543.6,146.69 548.2,141.43 552.8,136.03 557.4,130.49 562.0,124.8 566.6,118.97 571.2,112.99 575.8,106.87 580.4,100.61 585.0,94.2 589.6,87.65 594.2,80.95 598.8,74.11 603.4,67.13 608.0,60.0" fill="#ffffff" fill-opacity="0" stroke="#ef4444" stroke-width="2.5"/>
+<circle cx="470.0" cy="211.2" r="4" fill="#ef4444"/>
+<circle cx="562.0" cy="124.8" r="4" fill="#ef4444"/>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="478.0" y="227.2" fill="#ef4444" font-size="12">(0.2, 1.0%)</text>
+<text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="568.0" y="140.8" text-anchor="start" fill="#ef4444" font-size="12">(0.4, 4.0%)</text>
+</g>
+</svg>

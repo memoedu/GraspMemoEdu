@@ -1,0 +1,693 @@
+concept: bloch-siegert-shift
+exercises:
+  # ==========================================================================
+  # Step 1: bs-first-frame-and-axis-tilt (5 题课堂/测验题 + 3 题 FSRS recall)
+  # ==========================================================================
+  - id: bs-tilt-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "在存在主驱动 $\\Omega$ 与远失谐横向驱动 $\\Omega'[\\cos(\\omega' t+\\varphi')S_x + \\sin(\\omega' t+\\varphi')S_y]$ 时，第一重相互作用图像变换 $U_i' = e^{-i(\\omega' t+\\varphi')S_z}$ 之后为什么还要绕 $y$ 轴旋转一个小角 $\\theta$？"
+    options:
+      - id: a
+        text: "为了对角化第一重旋转系下的不含时静态块 $(\\omega_0-\\omega')S_z + \\Omega' S_x$，让它变成沿新量化轴 $S_z'$ 的纯对角项。"
+        correct: true
+        feedback: "完全正确。变换 $U_i'$ 虽然消去了 $\\Omega'$ 项里的含时振荡，但留下了静态横向分量 $\\Omega' S_x$；绕 $y$ 轴旋转 $\\theta$ 后即可将其并入新轴 $\\pm\\sqrt{(\\omega_0-\\omega')^2+\\Omega'^2}\\,S_z'$，同时读出能隙的二阶拉伸。"
+      - id: b
+        text: "为了直接把主驱动相角 $(\\omega-\\omega')t + (\\varphi-\\varphi')$ 里的时间变量 $t$ 消去。"
+        correct: false
+        feedback: "消去主驱动时间依赖 $t$ 是第二重旋转系变换 $U_i''$ 的任务；绕 $y$ 轴旋转角 $\\theta$ 不含时间，只用来对角化不含时块 ③。"
+      - id: c
+        text: "因为绕 $y$ 轴旋转后能把远失谐驱动幅值 $\\Omega'$ 严格变为零，从而完全消除非共振项的物理影响。"
+        correct: false
+        feedback: "绕 $y$ 轴旋转并没有消掉 $\\Omega'$ 的效应，而是把横向分量 $\\Omega' S_x$ 吸收进了斜边模长 $\\sqrt{(\\omega_0-\\omega')^2+\\Omega'^2}$ 中，这正是共振频移的几何来源。"
+      - id: d
+        text: "因为第一重变换把自旋算符的维度改变了，必须再做一次 $y$ 轴旋转才能恢复自旋 $1/2$ 矩阵。"
+        correct: false
+        feedback: "幺正变换和三维坐标轴旋转都严格保持自旋 $1/2$ 对易代数 $[S_x', S_y'] = i S_z'$，不会改变算符维度。"
+    solution: "第一重变换 $U_i' = e^{-i(\\omega' t+\\varphi')S_z}$ 定格了非共振驱动项，但静态部分 $(\\omega_0-\\omega')S_z + \\Omega' S_x$ 在 $x\\text{-}z$ 平面倾斜了一个角 $\\theta$；绕 $y$ 轴旋转 $\\theta$ 正是为了对齐新量化轴 $S_z'$、将该静态块严格对角化。"
+
+  - id: bs-tilt-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "在刚才反旋项 ① 的数值估算里，被舍去的快变纵向项 $\\Omega\\sin\\theta\\cos\\alpha(t)\\,S_z'$ 幅度达 $20\\text{ kHz}$，比块 ③ 斜边的恒定拉伸 $10\\text{ kHz}$ 还大；同时我们也换用回实验室符号 $S_{x,y,z}$ 并取 $\\cos^2(\\theta/2)\\approx 1$（误差仅 $10^{-6}$）。为什么能舍掉幅度更大的 $20\\text{ kHz}$ 振荡项，且换用 $S_{x,y,z}$ 表象时却不能丢掉 $10\\text{ kHz}$ 的能隙拉伸？"
+    options:
+      - id: a
+        text: "因为 $20\\text{ kHz}$ 项以 $5\\text{ GHz}$ 快速振荡且平均为零，积分相角误差上限仅 $4\\times 10^{-6}\\text{ rad}$，而 $10\\text{ kHz}$ 拉伸是恒定能隙移动、会随时间线性累加；同时 $(S'_x,S'_y,S'_z)$ 与 $(S_x,S_y,S_z)$ 构成严格幺正等价的自旋 $1/2$ 代数，基态重叠偏差 $\\sin^2(\\theta/2) \\approx 10^{-6}$ 极微。"
+        correct: true
+        feedback: "理解到位！能否舍去一项不能只看瞬时幅度，而要看积分效应：高频零均值抖动很快自我抵消，而恒定静态移动会按 $\\Delta_{\\text{BS}} t$ 不断累加；至于算符写法，旋转后的 $(S'_x,S'_y,S'_z)$ 与 $(S_x,S_y,S_z)$ 代数完全等价，只是态基重叠有百万分之一差异，因此沿用 $S_{x,y,z}$ 并保持 $10\\text{ kHz}$ 能隙修正即可。"
+      - id: b
+        text: "因为 $\\sqrt{(\\omega_0-\\omega')^2+\\Omega'^2}$ 的拉伸是一阶小量而 $20\\text{ kHz}$ 纵向项是四阶小量，而且因为斜边长度比倾斜角更重要，我们把算符矩阵元素都直接近似掉了。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "事实上纵向振荡项是 $\\Omega\\sin\\theta \\propto \\Omega'$ 的一阶量，而能隙拉长 $\\approx \\Omega'^2/[2(\\omega_0-\\omega')]$ 反而是二阶量；它之所以能压倒前者，靠的是零均值快速振荡自抵消与静态项线性累加的差别。另外 $(S'_x,S'_y,S'_z)$ 是基于严格幺正等价代数换写表象，并非丢掉算符差异后硬凑近似。"
+      - id: c
+        text: "因为绕 $y$ 轴旋转后新算符 $S'_z$ 与 $S_z$ 正交，必须先把斜边常数变回零才能换用 $S_z$ 符号。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "这里倾角仅约 $2\\times 10^{-3}\\text{ rad}$，新旧态基重叠非常接近 $1$，根本不正交；并且我们正是保留着斜边拉伸后的静态常数，只在严格幺正等价的自旋代数下改写基矢符号。"
+      - id: d
+        text: "因为如果把斜边也近似回 $\\omega_0-\\omega'$，后续就无法把 $\\varphi'$ 从第二重变换里消去了。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "相位 $\\varphi'$ 的抵消只取决于 $U_i''$ 里的相角参数，与斜边长度里保留或舍去 $10\\text{ kHz}$ 拉伸毫无关系。"
+    solution: "$20\\text{ kHz}$ 纵向项以 $|\\omega-\\omega'|/(2\\pi) \\approx 5\\text{ GHz}$ 快速振荡，累积相角上限仅 $4\\times 10^{-6}\\text{ rad}$；而 $10\\text{ kHz}$ 拉伸在第二重旋转系中恒定不变，随时间线性累积。由于 $(S'_x,S'_y,S'_z)$ 与 $(S_x,S_y,S_z)$ 幺正等价且态基重叠偏差 $\\sin^2(\\theta/2)\\approx 10^{-6}$ 极微，沿用 $S_{x,y,z}$ 表象时仍须保留这 $10\\text{ kHz}$ 能隙平移。"
+
+  - id: bs-tilt-angle-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    params:
+      det_ghz:
+        min: 2
+        max: 4
+        step: 2
+      om_mhz:
+        min: 12
+        max: 36
+        step: 12
+    prompt: "在第一重旋转系下，设电子自旋与远失谐横向驱动之间的频率差满足 $|\\omega_0 - \\omega'|/(2\\pi) = {{=det_ghz}}\\text{ GHz} = {{=det_ghz*1000}}\\text{ MHz}$，该非共振横向驱动的幅值为 $\\Omega'/(2\\pi) = {{=om_mhz}}\\text{ MHz}$。试用微扰展开计算自旋量化轴倾斜带来的余弦偏离量 $(1 - \\cos\\theta) \\times 10^6$（即以 $10^{-6}$ 为单位写出的 $1 - \\cos\\theta$ 数值）。"
+    answer_expr: "0.5 * (om_mhz / det_ghz)^2"
+    tolerance:
+      abs: 0.15
+    common_wrong:
+      - answer_expr: "(om_mhz / det_ghz)^2"
+        category: math_error
+        feedback: "余弦展开 $\\cos\\theta \\approx 1 - \\frac{1}{2}\\theta^2$ 前面有一个因子 $\\frac{1}{2}$，你漏掉了除以 $2$，结果偏大一倍。"
+      - answer_expr: "om_mhz / det_ghz"
+        category: misapplied_technique
+        feedback: "你算出的 $\\Omega'/|\\omega_0-\\omega'|$ 是一阶量 $\\tan\\theta \\approx \\theta$（单位为 $10^{-3}$），而不是二阶偏差 $1 - \\cos\\theta \\approx \\frac{1}{2}\\theta^2$。"
+      - answer_expr: "0.25 * (om_mhz / det_ghz)^2"
+        category: math_error
+        feedback: "展开 $1 - \\cos\\theta$ 的系数是 $\\frac{1}{2}$ 而非 $\\frac{1}{4}$；$\\frac{1}{4}$ 对应的是 $1 - \\cos^2(\\theta/2) = \\sin^2(\\theta/2)$。"
+    hints:
+      - "先求出比值 $\\Omega'/|\\omega_0-\\omega'| = {{=om_mhz}}/{{=det_ghz*1000}}$（单位为无量纲小量）。"
+      - "再代入小角二阶展开 $1 - \\cos\\theta \\approx \\frac{1}{2}\\left(\\frac{\\Omega'}{\\omega_0-\\omega'}\\right)^2$，并换算成 $10^{-6}$ 的倍数。"
+    solution: "首先 $\\frac{\\Omega'}{|\\omega_0-\\omega'|} = \\frac{{{=om_mhz}}\\text{ MHz}}{{{=det_ghz*1000}}\\text{ MHz}} = {{=om_mhz/det_ghz}} \\times 10^{-3}$。代入展开式得 $1 - \\cos\\theta \\approx \\frac{1}{2}({{=om_mhz/det_ghz}} \\times 10^{-3})^2 = {{=0.5*(om_mhz/det_ghz)^2}} \\times 10^{-6}$，因此题面所问数值为 ${{=0.5*(om_mhz/det_ghz)^2}}$。"
+
+  - id: bs-tilt-spot-erratum
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "在 $\\omega_0 > \\omega'$ 条件下，一位同学在整理第一重旋转系的轴倾斜推导笔记时写下了两条公式：（甲）$\\cos\\theta = \\frac{\\omega_0 - \\omega'}{\\sqrt{(\\omega_0 - \\omega') + \\Omega'^2}}$；（乙）当 $|\\Omega'| \\ll |\\omega_0 - \\omega'|$ 时，$\\cos\\theta \\approx 1 - \\frac{1}{2}\\left(\\frac{\\Omega'}{\\omega - \\omega'}\\right)^2$。对照严谨代数与量纲检验，这两条式子各犯了什么错？"
+    options:
+      - id: a
+        text: "（甲）式根号内漏掉了 $(\\omega_0 - \\omega')$ 的平方，导致两项频率量纲不同；（乙）式分母误把静态能隙 $\\omega_0$ 写成了主驱动频率 $\\omega$。"
+        correct: true
+        feedback: "火眼金睛！用最简单的量纲和极限检查就能抓出这两个经典印刷/笔误：（甲）式里 $\\omega_0-\\omega'$ 是频率一次方而 $\\Omega'^2$ 是二次方，必须写成 $(\\omega_0-\\omega')^2$；（乙）式来源于块 ③ 中 $\\omega_0-\\omega'$ 与 $\\Omega'$ 的比值，分母只能是 $\\omega_0-\\omega'$ 而绝非 $\\omega-\\omega'$（若按 $\\omega=\\omega'$ 还会人为发散）。"
+      - id: b
+        text: "（甲）式完全正确；（乙）式只是把系数 $1/2$ 漏掉了一个负号，应该写成 $1 + \\frac{1}{2}[\\Omega'/(\\omega - \\omega')]^2$。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "首先 $\\cos\\theta \\le 1$ 决定展式一定是减号而非加号；其次（甲）式量纲就已经不匹配，（乙）式分母的 $\\omega$ 也漏掉了下标 $0$。"
+      - id: c
+        text: "（甲）式分子应该写为 $\\omega_0 + \\omega'$；（乙）式虽然分母写成了 $\\omega - \\omega'$，但在 $\\omega \\approx \\omega_0$ 时无需修改。"
+        correct: false
+        category: misapplied_technique
+        feedback: "第一重变换只消除了 $\\omega'$ 频率，静态 $S_z$ 系数明确是 $\\omega_0 - \\omega'$；而且当主驱动和寄生驱动靠近（$\\omega \\to \\omega'$）但远低于 $\\omega_0$ 时，$\\omega-\\omega'$ 错成零而 $\\omega_0-\\omega'$ 依然很大，两者物理意义完全不同。"
+      - id: d
+        text: "（甲）式和（乙）式的问题都只是把 $\\cos\\theta$ 与 $\\sin\\theta$ 写反了，根号和下标本身没有问题。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "在 $\\omega_0 > \\omega'$ 情形下，直角三角形邻边对应 $\\omega_0-\\omega'>0$、斜边对应 $\\sqrt{(\\omega_0-\\omega')^2+\\Omega'^2}$，因此 $\\cos\\theta$ 分子取 $\\omega_0-\\omega'$ 是对的，真正出错的是根号缺平方以及展开式漏下标 $0$。"
+    solution: "量纲与代数核对表明：（甲）式根号内必须保留平方 $(\\omega_0 - \\omega')^2$；（乙）式在小角展开中涉及静态块 ③ 的纵向分量与横向分量之比，分母必须是 $\\omega_0 - \\omega'$ 而非 $\\omega - \\omega'$。"
+
+  - id: bs-tilt-rwa-counter-map
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "在旋波近似中被舍去的反向旋转项形式为 $\\Omega[\\cos(\\omega t+\\varphi)S_x - \\sin(\\omega t+\\varphi)S_y]$。为了把它直接套入一般远失谐横向驱动模板 $\\Omega'[\\cos(\\omega' t+\\varphi')S_x + \\sin(\\omega' t+\\varphi')S_y]$ 并套用第一重旋转系公式，参数 $(\\Omega', \\omega', \\varphi')$ 应分别取什么？"
+    options:
+      - id: a
+        text: "$\\Omega' = \\Omega,\\; \\omega' = -\\omega,\\; \\varphi' = -\\varphi$"
+        correct: true
+        feedback: "准确无误！由于 $\\cos(-\\alpha) = \\cos\\alpha$ 而 $\\sin(-\\alpha) = -\\sin\\alpha$，取 $\\omega' = -\\omega$ 且 $\\varphi' = -\\varphi$ 恰好把正弦前面的负号收入相角 $(-\\omega t - \\varphi)$ 中，让旋转方向从逆时针变成顺时针。"
+      - id: b
+        text: "$\\Omega' = -\\Omega,\\; \\omega' = \\omega,\\; \\varphi' = \\varphi$"
+        correct: false
+        category: sign_error
+        feedback: "把 $\\Omega'$ 取负号会同时把 $S_x$ 和 $S_y$ 前面都添上负号，不能只给 $S_y$ 翻号，也不能把旋转方向反过来。"
+      - id: c
+        text: "$\\Omega' = \\Omega,\\; \\omega' = -\\omega,\\; \\varphi' = \\varphi$"
+        correct: false
+        category: sign_error
+        feedback: "若 $\\omega' = -\\omega$ 但 $\\varphi' = +\\varphi$，相角变成 $-\\omega t + \\varphi = -(\\omega t - \\varphi)$，对应 $\\cos(\\omega t-\\varphi)S_x - \\sin(\\omega t-\\varphi)S_y$，初相位符号与原反旋项不吻合。"
+      - id: d
+        text: "$\\Omega' = 2\\Omega,\\; \\omega' = \\omega,\\; \\varphi' = -\\varphi$"
+        correct: false
+        category: misunderstood_definition
+        feedback: "拆分线性驱动时单圆偏振分量的幅值是 $\\Omega$ 而不是 $2\\Omega$，且反向项频率的符号必须为 $-\\omega$ 才能改变绕 $+z$ 轴的转向。"
+    solution: "利用奇偶对称性 $\\cos(-\\omega t - \\varphi) = \\cos(\\omega t + \\varphi)$ 与 $\\sin(-\\omega t - \\varphi) = -\\sin(\\omega t + \\varphi)$，立即确定反向旋转项在一般横向驱动模板中对应 $\\Omega' = \\Omega$、$\\omega' = -\\omega$、$\\varphi' = -\\varphi$。"
+
+  - id: bs-recall-tilt-explain
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: bs-first-frame-and-axis-tilt
+    difficulty: 2
+    est_minutes: 2
+    prompt: "简述为什么加入远失谐横向驱动 $\\Omega'$ 后，需要在第一重旋转系 $U_i' = e^{-i(\\omega' t+\\varphi')S_z}$ 下绕 $y$ 轴微倾自旋量化轴；并说明为何可舍去快变纵向振荡项且改回 $S_{x,y,z}$ 表象符号，但必须保留斜边能隙拉伸。"
+    rubric:
+      - id: r1
+        criterion: "说明 $U_i'$ 消去了 $\\Omega'$ 驱动的时间依赖，留下静态块 $(\\omega_0-\\omega')S_z + \\Omega' S_x$，须绕 $y$ 轴旋转小角 $\\theta$ 将其对角化为沿新轴 $S_z'$、模长为 $\\sqrt{(\\omega_0-\\omega')^2+\\Omega'^2}$ 的项。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "说明舍去的纵向振荡项 $\\Omega\\sin\\theta\\cos\\alpha(t)\\,S_z'$ 以高频 $|\\omega-\\omega'|$ 快速振荡且平均为零（积分相角上限仅 $\\frac{\\Omega\\sin\\theta}{|\\omega-\\omega'|}\\ll 1$），同时 $\\cos^2(\\theta/2)\\approx 1$、态基重叠偏差 $\\sin^2(\\theta/2) = \\frac{1-\\cos\\theta}{2} \\sim 10^{-6}\\text{--}10^{-4}$，且 $(S'_x,S'_y,S'_z)$ 与 $(S_x,S_y,S_z)$ 满足幺正等价的自旋 $1/2$ 代数。"
+        weight: 1
+        required: true
+      - id: r3
+        criterion: "指出斜边 $\\sqrt{(\\omega_0-\\omega')^2+\\Omega'^2}$ 相对于 $|\\omega_0-\\omega'|$ 的拉伸是静态项，在第二重旋转系中随时间线性累积相移，直接决定共振频移。"
+        weight: 1
+        required: false
+    exemplar: "作第一重变换 $U_i' = e^{-i(\\omega' t+\\varphi')S_z}$ 后，非共振驱动化为常数项 $\\Omega' S_x$，与 $(\\omega_0-\\omega')S_z$ 合成倾斜静态块，绕 $y$ 轴旋转小角 $\\theta$ 即可将其精确对角化为 $\\operatorname{sgn}(\\omega_0-\\omega')\\sqrt{(\\omega_0-\\omega')^2+\\Omega'^2}\\,S_z'$。在远失谐弱微扰区，主驱动里的 $\\Omega\\sin\\theta\\cos\\alpha(t)\\,S_z'$ 虽有幅度但以高频 $|\\omega-\\omega'|$ 零均值振荡（累积相角上限仅 $\\frac{\\Omega\\Omega'}{(\\omega_0-\\omega')^2} \\ll 1$），与 $\\sin^2(\\theta/2)$ 反向项一并舍去；又因 $(S'_x,S'_y,S'_z)$ 与 $(S_x,S_y,S_z)$ 构成严格幺正等价的自旋 $1/2$ 代数且态基重叠偏差 $\\sin^2(\\theta/2)\\sim 10^{-6}\\text{--}10^{-4}$ 极微、$\\cos^2(\\theta/2)\\approx 1$，故可在 $S_{x,y,z}$ 表象下写作等效哈密顿量，而把静态累加的斜边能隙拉伸保留下来以导出二阶频移。"
+
+  - id: bs-recall-tilt-axis-mc
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: bs-first-frame-and-axis-tilt
+    difficulty: 1
+    est_minutes: 1
+    prompt: "将主驱动 $\\Omega[\\cos\\alpha(t)\\,S_x + \\sin\\alpha(t)\\,S_y]$ 投影到倾斜后的新轴 $(S_x', S_y', S_z')$ 时，最终形式为什么写成了 $\\Omega\\cos^2(\\theta/2)[\\cos\\alpha(t)\\,S_x' + \\sin\\alpha(t)\\,S_y']$ 而不是包含 $S_z'$ 与 $\\sin^2(\\theta/2)$ 项？"
+    options:
+      - id: a
+        text: "因为纵向项 $\\sin\\theta\\cos\\alpha(t)\\,S_z'$ 与反向项 $-\\sin^2(\\theta/2)[\\cos\\alpha(t)\\,S_x' - \\sin\\alpha(t)\\,S_y']$ 既微弱又以高频 $\\omega-\\omega'$ 快速振荡，平均效应可忽略。"
+        correct: true
+        feedback: "正确！$\\cos\\theta\\cos\\alpha\\,S_x' + \\sin\\alpha\\,S_y'$ 恰好利用半角公式精确拆出同向旋转的 $\\cos^2(\\theta/2)$ 项和反向旋转的 $-\\sin^2(\\theta/2)$ 项；后者与纵向快变 $\\sin\\theta\\,S_z'$ 项在弱微扰近似下都可舍去。"
+      - id: b
+        text: "因为绕 $y$ 轴旋转变换时，$S_x$ 严格等于 $\\cos\\theta\\,S_x'$，根本不会出现 $S_z'$ 分量。"
+        correct: false
+        feedback: "由逆变换可知 $S_x = \\cos\\theta\\,S_x' + \\sin\\theta\\,S_z'$，确实含有 $\\sin\\theta\\,S_z'$ 项，只是它随 $\\alpha(t)$ 快速振荡且幅值小而被略去。"
+      - id: c
+        text: "因为 $\\cos\\theta$ 恒等于 $\\cos^2(\\theta/2)$，所以直接把 $\\cos\\theta$ 改写成 $\\cos^2(\\theta/2)$ 即可。"
+        correct: false
+        feedback: "三角恒等式是 $\\cos\\theta = \\cos^2(\\theta/2) - \\sin^2(\\theta/2)$，而不是 $\\cos^2(\\theta/2)$；系数里留下 $\\cos^2(\\theta/2)$ 是为了对称地分出主旋转分量与可舍去的 $\\sin^2(\\theta/2)$ 反向分量。"
+      - id: d
+        text: "因为 $S_y'$ 在绕 $y$ 轴旋转下也乘上了一个 $\\cos\\theta$ 因子，正好提出公因子。"
+        correct: false
+        feedback: "绕 $y$ 轴旋转时 $y$ 轴自身不动，因此 $S_y' = S_y$ 并没有乘 $\\cos\\theta$，而是用 $1 = \\cos^2(\\theta/2) + \\sin^2(\\theta/2)$ 把两部分配平拆开。"
+    solution: "代入 $S_x = \\cos\\theta\\,S_x' + \\sin\\theta\\,S_z'$ 后，先忽略快变小项 $\\Omega\\sin\\theta\\cos\\alpha(t)\\,S_z'$，再用 $\\cos\\theta = \\cos^2(\\theta/2) - \\sin^2(\\theta/2)$ 与 $1 = \\cos^2(\\theta/2) + \\sin^2(\\theta/2)$ 把横向驱动拆为同向的 $\\cos^2(\\theta/2)$ 项与可略去的反向 $-\\sin^2(\\theta/2)$ 项。"
+
+  - id: bs-recall-tilt-cos-expr
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: bs-first-frame-and-axis-tilt
+    difficulty: 1
+    est_minutes: 1
+    prompt: "在 $\\omega_0 > \\omega'$ 情形下，写出第一重旋转系对角化静态块 $(\\omega_0-\\omega')S_z + \\Omega' S_x$ 时轴倾角余弦 $\\cos\\theta$ 的严格符号表达式（用 `w0` 表示 $\\omega_0$、`w_p` 表示 $\\omega'$、`Om_p` 表示 $\\Omega'$，平方根用 `sqrt(...)`、乘方用 `^`）：$\\cos\\theta = \\text{___}$。"
+    variables:
+      w0: "静态自旋共振角频率 $\\omega_0$"
+      w_p: "非共振横向驱动角频率 $\\omega'$"
+      Om_p: "非共振横向驱动幅值 $\\Omega'$"
+    answer: "(w0 - w_p) / sqrt((w0 - w_p)^2 + Om_p^2)"
+    hints:
+      - "由斜边模长与纵向分量 $(\\omega_0 - \\omega')$ 的直角三角形比例直接写出比值。"
+      - "记得修正教材的印刷遗漏：根号内部对 $(\\omega_0 - \\omega')$ 必须加平方。"
+    solution: "在直角三角形中邻边为 $\\omega_0 - \\omega'$（$>0$）、斜边为 $\\sqrt{(\\omega_0 - \\omega')^2 + \\Omega'^2}$，因此 $\\cos\\theta = \\frac{\\omega_0 - \\omega'}{\\sqrt{(\\omega_0 - \\omega')^2 + \\Omega'^2}}$。"
+
+  # ==========================================================================
+  # Step 2: bs-second-frame-and-shift-formula (5 题课堂/测验题 + 3 题 FSRS recall)
+  # ==========================================================================
+  - id: bs-shift-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "完成了第一重旋转系变换与量化轴微倾近似后，为什么要紧接着再做第二重相互作用图像变换 $U_i'' = e^{-i[(\\omega-\\omega')t - \\varphi']S_z}$？"
+    options:
+      - id: a
+        text: "为了进入追踪主驱动相对转角 $(\\omega-\\omega')t - \\varphi'$ 的旋转系，消去主驱动中残留的时间 $t$ 与相位偏置 $-\\varphi'$，得到完全不含时的 $H_I$。"
+        correct: true
+        feedback: "完全正确。第一重旋转系把主驱动变成了以拍频 $\\omega-\\omega'$ 旋转且带着额外相移 $-\\varphi'$ 的项；第二重变换精确转掉这个拍频和偏置，露出被拉长的有效失谐 $(\\omega_0 + \\Delta_{\\text{BS}} - \\omega)S_z$ 与纯常系数驱动 $\\Omega(\\cos\\varphi\\,S_x + \\sin\\varphi\\,S_y)$。"
+      - id: b
+        text: "为了重新把刚才在旋转里略去的高阶反向项彻底消除到零，使结果不带任何微扰修正。"
+        correct: false
+        feedback: "反向/非共振项带来的二阶能级拉伸已经在第一重旋转系的平方根斜边 $\\sqrt{(\\omega_0-\\omega')^2+\\Omega'^2}$ 中固定下来；$U_i''$ 只是在时间上定格主驱动并提取出这个频移。"
+      - id: c
+        text: "因为只有经过两次变换，才能把斜边平方根 $\\sqrt{(\\omega_0-\\omega')^2+\\Omega'^2}$ 改写成和的形式 $(\\omega_0-\\omega') + \\Omega'$。"
+        correct: false
+        feedback: "平方根在弱微扰下泰勒展开后出现的是二阶项 $\\frac{\\Omega'^2}{2(\\omega_0-\\omega')}$，而不是一阶线性相加 $\\Omega'$。"
+      - id: d
+        text: "为了使最终有效哈密顿量 $H_I$ 回到与静态项 $\\omega_0 S_z$ 完全相同的零初相位驱动形式。"
+        correct: false
+        feedback: "最终哈密顿量中的横向驱动依然保留着主驱动自身的初相位 $\\varphi$，即 $\\Omega(\\cos\\varphi\\,S_x + \\sin\\varphi\\,S_y)$，$U_i''$ 消去的只是时间 $t$ 和寄生相角 $-\\varphi'$。"
+    solution: "第二重变换 $U_i'' = e^{-i[(\\omega-\\omega')t - \\varphi']S_z}$ 坐进主驱动相对转盘，既消去了 $(\\omega-\\omega')t$ 的含时旋转，又抵消了第一重变换带来的 $-\\varphi'$ 偏移，最终直接读出 $\\Delta_{\\text{BS}}$ 与常系数驱动。"
+
+  - id: bs-shift-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "仔细看第二重变换算符 $U_i'' = e^{-i[(\\omega-\\omega')t - \\varphi']S_z}$ 的指数：里面为什么专门放了一个常数项 $-\\varphi'$，而且它为什么不会影响对时间求导所产生的 $S_z$ 修正项？"
+    options:
+      - id: a
+        text: "常数 $-\\varphi'$ 对时间 $t$ 求偏导为零，故不影响 $S_z$ 系数中的 $-(\\omega-\\omega')$；同时绕 $z$ 轴多转回 $-\\varphi'$ 恰好把主驱动相角里的 $(\\varphi-\\varphi')$ 抵消成纯 $\\varphi$。"
+        correct: true
+        feedback: "通透极了！求导项 $-U_i''^\\dagger i\\frac{\\partial}{\\partial t}U_i''$ 只对随时间变化的 $(\\omega-\\omega')t$ 敏感；而三维旋转公式会把 $(\\omega-\\omega')t-\\varphi'$ 整个从主驱动相角里减掉，$(\\varphi-\\varphi')-(-\\varphi')=\\varphi$，干干净净恢复出初相位 $\\varphi$！"
+      - id: b
+        text: "因为指数里的 $-\\varphi'$ 随时间求导后正好能把 $\\Delta_{\\text{BS}}$ 里的平方根消掉。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "$\\varphi'$ 是不随时间变化的初相位常数，对 $t$ 的导数恒等于零，与 $\\Delta_{\\text{BS}}$ 的导数修正毫无关系。"
+      - id: c
+        text: "因为指数中必须写成 $-\\varphi'$ 才能满足 $U_i''^\\dagger U_i'' = \\mathbb{1}$ 的幺正性条件。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "对任何实数相角（哪怕去掉 $-\\varphi'$），$e^{-i\\alpha S_z}$ 都严格满足幺正性；加进 $-\\varphi'$ 完全是为了对齐横轴的初相位方向。"
+      - id: d
+        text: "如果不写 $-\\varphi'$，时间求导项就会变成 $-(\\omega+\\omega')S_z$ 而无法与 $(\\omega_0-\\omega')$ 抵消出 $\\omega_0-\\omega$。"
+        correct: false
+        category: math_error
+        feedback: "求导项的频率是 $-(\\omega-\\omega')$，它只由含 $t$ 的那一项决定，与是否附带常数 $-\\varphi'$ 无关。"
+    solution: "因为 $\\varphi'$ 不含时间，$-U_i''^\\dagger i\\partial_t U_i'' = -(\\omega-\\omega')S_z$ 不受其影响；在 $x\\text{-}y$ 平面转动相角时，$[(\\omega-\\omega')t+\\varphi-\\varphi'] - [(\\omega-\\omega')t-\\varphi'] = \\varphi$，正好消除了第一重旋转系留下的 $-\\varphi'$ 相位偏移。"
+
+  - id: bs-shift-numeric-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    params:
+      w0_ghz:
+        min: 2
+        max: 6
+        step: 2
+      om_mhz:
+        min: 200
+        max: 600
+        step: 200
+    prompt: "设自旋共振频率为 $\\omega_0/(2\\pi) = {{=w0_ghz}}\\text{ GHz} = {{=w0_ghz*1000}}\\text{ MHz}$。现施加很强的横向线偏振交变驱动，使拆分后的单个圆偏振分量幅值达到 $\\Omega/(2\\pi) = {{=om_mhz}}\\text{ MHz}$，驱动频率在共振附近（$\\omega \\approx \\omega_0$）。求反向旋转项引起的二阶 Bloch-Siegert 共振蓝移 $\\Delta_{\\text{BS}}/(2\\pi)$（以 $\\text{MHz}$ 为单位）。"
+    answer_expr: "om_mhz^2 / (4 * w0_ghz * 1000)"
+    tolerance:
+      abs: 0.05
+    common_wrong:
+      - answer_expr: "om_mhz^2 / (2 * w0_ghz * 1000)"
+        category: math_error
+        feedback: "反向旋转项的频率是 $\\omega' = -\\omega \\approx -\\omega_0$，因此 $\\omega_0 - \\omega' \\approx 2\\omega_0$，代回公式 $2(\\omega_0-\\omega')$ 分母应为 $4\\omega_0$ 而非 $2\\omega_0$。"
+      - answer_expr: "-om_mhz^2 / (4 * w0_ghz * 1000)"
+        category: sign_error
+        feedback: "反向项对应的等效失谐 $\\omega_0 - (-\\omega) = \\omega_0 + \\omega > 0$，能级排斥把共振点向上推，频移为正值（蓝移）而非负值。"
+      - answer_expr: "om_mhz^2 / (8 * w0_ghz * 1000)"
+        category: misunderstood_definition
+        feedback: "题面已经给出拆分后的单分量幅值 $\\Omega$，代入公式 $\\Omega^2/(4\\omega_0)$ 时无需再除以 $2$（只有题目给的是线性总幅值 $2\\Omega$ 时才需要先折半）。"
+    hints:
+      - "反向旋转项对应 $\\Omega'=\\Omega$ 且 $\\omega' = -\\omega \\approx -\\omega_0$，代入通用公式 $\\Delta_{\\text{BS}} = \\frac{\\Omega'^2}{2(\\omega_0-\\omega')}$。"
+      - "化简为近共振估计式 $\\frac{\\Delta_{\\text{BS}}}{2\\pi} \\approx \\frac{(\\Omega/2\\pi)^2}{4\\cdot (\\omega_0/2\\pi)}$ 后代入具体数字（注意 $\\text{GHz}$ 化为 $\\text{MHz}$）。"
+    solution: "对于线偏振反向旋转分量（$\\Omega'=\\Omega$，$\\omega'=-\\omega\\approx -\\omega_0$），分母 $\\omega_0-\\omega' \\approx 2\\omega_0$，故 $\\frac{\\Delta_{\\text{BS}}}{2\\pi} \\approx \\frac{\\Omega^2/(2\\pi)^2}{4\\omega_0/(2\\pi)} = \\frac{{{=om_mhz}}^2}{4 \\times {{=w0_ghz*1000}}} \\approx {{=round(om_mhz^2 / (4 * w0_ghz * 1000), 3)}}\\text{ MHz}$。"
+
+  - id: bs-shift-phase-spot-mistake
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "一位同学在估算强线性驱动（$\\omega\\approx\\omega_0$）下的 Bloch-Siegert 效应时写道：「反向旋转项对应 $\\omega'=-\\omega$，所以 $\\Delta_{\\text{BS}} = \\frac{\\Omega^2}{2\\omega_0}$，真实共振条件应该把频率调低到 $\\omega_{\\text{res}} = \\omega_0 - \\Delta_{\\text{BS}}$。」这段结论哪里写错了？"
+    options:
+      - id: a
+        text: "既错在分母漏算了 $\\omega_0-(-\\omega)\\approx 2\\omega_0$ 的因子 $2$（应为 $\\frac{\\Omega^2}{4\\omega_0}$），又错在把共振频移方向写反（有效能隙变大，应上移至 $\\omega_0 + \\Delta_{\\text{BS}}$）。"
+        correct: true
+        feedback: "抓住了两个常见重灾区！第一，反向项离主跃迁的距离是 $\\omega_0 - (-\\omega) = \\omega_0 + \\omega \\approx 2\\omega_0$，乘上公式里的 $2$ 后分母是 $4\\omega_0$；第二，有效 $S_z$ 系数变为 $(\\omega_0 + \\Delta_{\\text{BS}} - \\omega)$，令它为零得到的共振频率是 $\\omega_{\\text{res}} = \\omega_0 + \\Delta_{\\text{BS}}$（向上蓝移）。"
+      - id: b
+        text: "公式 $\\frac{\\Omega^2}{2\\omega_0}$ 正确，但因为线偏振驱动的幅值是 $\\Omega$ 而不是 $2\\Omega$，应当再把系数乘以 $4$ 才对。"
+        correct: false
+        category: math_error
+        feedback: "分母漏掉了 $\\omega_0 - (-\\omega) = 2\\omega_0$ 里的因子 $2$，所以正确的公式系数要除以 $2$ 变成 $\\frac{\\Omega^2}{4\\omega_0}$，而不是乘以 $4$。"
+      - id: c
+        text: "共振频率方向写得没错，只是反向项带来的实际共振频移是一阶量 $\\Omega/(2\\omega_0)$ 而不是二阶量。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "反向项对角化静态块 ③ 后按斜边 $\\sqrt{(2\\omega_0)^2 + \\Omega^2} - 2\\omega_0$ 展开，没有 $\\Omega$ 的一次方项，严格从二阶 $\\Omega^2/(4\\omega_0)$ 开始。"
+      - id: d
+        text: "只要选对作用图像旋转方向，反向旋转项引起的频移就可以为零，不需要修正 $\\omega_{\\text{res}}$。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "参考系变换只是描述视角改变，不会改变真实实验室共振峰的位置；当强驱动不能略去反向项时，实验谱线峰值确实会发生实实在在的蓝移。"
+    solution: "把 $\\Omega'=\\Omega$、$\\omega'=-\\omega\\approx -\\omega_0$ 代入 $\\Delta_{\\text{BS}} = \\frac{\\Omega'^2}{2(\\omega_0-\\omega')}$ 得 $\\frac{\\Omega^2}{4\\omega_0}$；同时第二重旋转系的纵向项为 $(\\omega_0 + \\Delta_{\\text{BS}} - \\omega)S_z$，令其为零得真实共振上移至 $\\omega_{\\text{res}} = \\omega_0 + \\Delta_{\\text{BS}}$。"
+
+  - id: bs-shift-rwa-boundary-transfer
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "某自旋谱仪的能隙为 $\\omega_0/(2\\pi) = 2.5\\text{ GHz}$，线性微波单分量幅值 $\\Omega/(2\\pi) = 25\\text{ MHz}$（即 $\\Omega/\\omega_0 = 0.01$）。若实验上分别做两组操作：操作甲用持续 $t_{\\text{p}} = 20\\text{ ns}$ 的短共振反转脉冲；操作乙做持续 $t_{\\text{p}} = 10\\;\\mu\\text{s}$ 的高分辨长脉冲精密测频。下面关于旋波近似（RWA）是否够用的判断哪项最合理？"
+    options:
+      - id: a
+        text: "由 $\\Delta_{\\text{BS}}/(2\\pi) \\approx 62.5\\text{ kHz}$ 且 $\\Delta_{\\text{BS}}/\\Omega = 2.5\\times 10^{-3} \\ll 1$：操作甲中累积失谐相角 $\\Delta_{\\text{BS}} t_{\\text{p}} \\approx 0.008\\text{ rad} \\ll 1$，RWA 很准确；但操作乙中 $\\Delta_{\\text{BS}} t_{\\text{p}} \\approx 3.9\\text{ rad}$，若需 $\\text{kHz}$ 级频率定标则不可忽略，须按 $\\Delta_{\\text{BS}}$ 修正。"
+        correct: true
+        feedback: "定量评估精准极了！按公式算出 $\\Delta_{\\text{BS}}/(2\\pi) = 25^2 / (4 \\times 2500) = 0.0625\\text{ MHz} = 62.5\\text{ kHz}$。对比横向驱动耦合强度 $\\Omega/(2\\pi)=25\\text{ MHz}$，比值仅 $0.25\\%$，短脉冲演化的失谐偏差极微；可一旦脉冲长达 $10\\;\\mu\\text{s}$，频率分辨率窄到 $\\text{kHz}$ 量级，积累相位误差接近 $\\pi$，必须计入 Bloch-Siegert 修正！"
+      - id: b
+        text: "因为 $\\Omega/\\omega_0 = 0.01 \\le 0.05$，所以在任何脉冲时长下旋波近似都完全精确，绝不需要考虑 $62.5\\text{ kHz}$ 的偏移。"
+        correct: false
+        category: misapplied_technique
+        feedback: "$\\Omega/\\omega_0 \\lesssim 0.05$ 保证的是相对耦合强度 $\\Delta_{\\text{BS}}/\\Omega \\ll 1$；但长脉冲或精密测频看的是绝对积累相位 $|\\Delta_{\\text{BS}}| t_{\\text{p}}$ 以及相对于频率分辨能力的偏移。"
+      - id: c
+        text: "操作甲和操作乙中旋波近似全都彻底失效，因为这里 $\\Omega/(2\\pi) = 25\\text{ MHz}$ 已经超过 $1\\text{ MHz}$ 阈值。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "判断旋波近似失效与否看的是无量纲比值 $\\Delta_{\\text{BS}}/\\Omega \\approx \\Omega/(4\\omega_0)$（与积累相角 $\\Delta_{\\text{BS}} t_{\\text{p}}$），而不是看 $\\Omega$ 的绝对兆赫数值。"
+      - id: d
+        text: "只有操作甲中短脉冲受 $\\Delta_{\\text{BS}}$ 影响最大，因为短脉冲的频谱更宽，会把反向项包含进来。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "恰好相反：短脉冲的倒数时间频谱展宽（$\\sim 1/t_{\\text{p}} = 50\\text{ MHz}$）远宽于 $62.5\\text{ kHz}$ 的微弱中心偏移，对共振峰微移反而不敏感；长脉冲频率分辨变窄后才会敏锐察觉 $\\text{kHz}$ 级频移。"
+    solution: "先算 $\\Delta_{\\text{BS}}/(2\\pi) \\approx 25^2/(4\\times 2500) = 62.5\\text{ kHz}$。对 $20\\text{ ns}$ 短脉冲，$\\Delta_{\\text{BS}} t_{\\text{p}} = 2\\pi\\times 62.5\\times 10^3 \\times 2\\times 10^{-8} \\approx 0.0079\\text{ rad} \\ll 1$，RWA 足够精准；对 $10\\;\\mu\\text{s}$ 长脉冲，$\\Delta_{\\text{BS}} t_{\\text{p}} \\approx 3.93\\text{ rad}$，积累相位误差不可忽略，必须修正。"
+
+  - id: bs-recall-shift-explain
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: bs-second-frame-and-shift-formula
+    difficulty: 2
+    est_minutes: 2
+    prompt: "简述如何从第二重旋转系哈密顿量 $H_I$ 导出 Bloch-Siegert 平移 $\\Delta_{\\text{BS}}$，并写出衡量线性驱动下旋波近似（RWA）能否成立的无量纲定量判据。"
+    rubric:
+      - id: r1
+        criterion: "说明作第二重变换 $U_i'' = e^{-i[(\\omega-\\omega')t-\\varphi']S_z}$ 后得到纵向系数 $\\pm\\sqrt{(\\omega_0-\\omega')^2+\\Omega'^2}-(\\omega-\\omega')$，在 $|\\Omega'|\\ll|\\omega_0-\\omega'|$ 下二阶展开得 $(\\omega_0+\\Delta_{\\text{BS}}-\\omega)S_z$，其中 $\\Delta_{\\text{BS}} = \\frac{\\Omega'^2}{2(\\omega_0-\\omega')}$。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "代入反旋项 $\\Omega'=\\Omega, \\omega'=-\\omega\\approx-\\omega_0$ 得到 $\\Delta_{\\text{BS}} \\approx \\frac{\\Omega^2}{4\\omega_0}$，从而给出无量纲相对频移判据 $\\Delta_{\\text{BS}}/\\Omega \\approx \\frac{\\Omega}{4\\omega_0} \\ll 1$。"
+        weight: 1
+        required: true
+      - id: r3
+        criterion: "补充指出对长脉冲或精密测频还需满足绝对累积相位条件 $|\\Delta_{\\text{BS}}| t_{\\text{p}} \\ll 1$。"
+        weight: 1
+        required: false
+    exemplar: "第二重变换 $U_i'' = e^{-i[(\\omega-\\omega')t-\\varphi']S_z}$ 消去残余含时性与 $-\\varphi'$ 偏置，将斜边能量间隔与 $-(\\omega-\\omega')$ 合并。在弱微扰下把 $\\sqrt{(\\omega_0-\\omega')^2+\\Omega'^2}$ 展开到 $\\Omega'^2$ 阶，即得真实共振频率向上移动 $\\Delta_{\\text{BS}} = \\frac{\\Omega'^2}{2(\\omega_0-\\omega')}$。对旋波近似舍去的反向旋转项（$\\Omega'=\\Omega, \\omega'=-\\omega$），近共振时有 $\\Delta_{\\text{BS}} \\approx \\frac{\\Omega^2}{4\\omega_0}$，将其与横向驱动耦合强度 $\\Omega$ 比较即得 RWA 定量判据 $\\frac{\\Delta_{\\text{BS}}}{\\Omega} \\approx \\frac{\\Omega}{4\\omega_0} \\ll 1$（且精密长脉冲另须 $|\\Delta_{\\text{BS}}|t_{\\text{p}} \\ll 1$）。"
+
+  - id: bs-recall-shift-erratum-mc
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: bs-second-frame-and-shift-formula
+    difficulty: 1
+    est_minutes: 1
+    prompt: "在单色线性强驱动（$\\omega$ 在 $\\omega_0$ 附近，忽略反旋项时会失效的情形）中，包含反向旋转项后的真实共振条件与频移标度关系是怎样的？"
+    options:
+      - id: a
+        text: "真实共振频率向高频移动至 $\\omega_{\\text{res}} = \\omega_0 + \\frac{\\Omega^2}{2(\\omega_0+\\omega)} \\approx \\omega_0 + \\frac{\\Omega^2}{4\\omega_0}$，频移与驱动幅值 $\\Omega$ 成平方正比。"
+        correct: true
+        feedback: "准确！由于反向项频率为 $-\\omega$，真实共振上移并与 $\\Omega^2$ 成正比；例如在 $\\omega_0/(2\\pi)=5\\text{ GHz}$ 上施加 $\\Omega/(2\\pi)=1\\text{ GHz}$ 的超强驱动，真实共振会蓝移整整 $50\\text{ MHz}$。"
+      - id: b
+        text: "真实共振频率向低频移动 $\\omega_0 - \\frac{\\Omega^2}{4\\omega_0}$，且与驱动幅值 $\\Omega$ 成平方关系。"
+        correct: false
+        feedback: "反向项位于负频 $\\omega'=-\\omega < \\omega_0$ 处，因此 $\\omega_0-\\omega' > 0$，造成的是向上蓝移（加号）而非向下红移。"
+      - id: c
+        text: "真实共振频率随 $\\Omega$ 线性增大：$\\omega_{\\text{res}} = \\omega_0 + \\frac{\\Omega}{2}$。"
+        correct: false
+        feedback: "非共振横向耦合对能隙的移动始于二阶 $\\Omega^2$，没有一阶线性项。"
+      - id: d
+        text: "当驱动增强使 $\\Omega$ 不可忽略时，频移标度反而随 $\\Omega$ 增大而快速缩小，即 $\\Delta_{\\text{BS}} \\propto 1/\\Omega^2$。"
+        correct: false
+        feedback: "刚好相反：驱动越强，分子 $\\Omega^2$ 越大，Bloch-Siegert 平移随之按平方迅速放大。"
+    solution: "对线性驱动的反向旋转分量（$\\Omega'=\\Omega, \\omega'=-\\omega$），二阶频移为 $\\Delta_{\\text{BS}} = \\frac{\\Omega^2}{2(\\omega_0+\\omega)} \\approx \\frac{\\Omega^2}{4\\omega_0} > 0$，使真实共振随 $\\Omega^2$ 向上蓝移。"
+
+  - id: bs-recall-shift-expr
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: bs-second-frame-and-shift-formula
+    difficulty: 1
+    est_minutes: 1
+    prompt: "写出一般远失谐横向驱动（幅值 $\\Omega'$、角频率 $\\omega'$）对角频率为 $\\omega_0$ 的自旋引起的二阶 Bloch-Siegert 共振频移公式（以 `Om_p` 表示 $\\Omega'$、`w0` 表示 $\\omega_0$、`w_p` 表示 $\\omega'$，乘方用 `^`）：$\\Delta_{\\text{BS}} = \\text{___}$。"
+    variables:
+      Om_p: "非共振横向驱动幅值 $\\Omega'$"
+      w0: "未微扰自旋共振角频率 $\\omega_0$"
+      w_p: "非共振横向驱动角频率 $\\omega'$"
+    answer: "Om_p^2 / (2 * (w0 - w_p))"
+    hints:
+      - "展开 $\\pm\\sqrt{(\\omega_0 - \\omega')^2 + \\Omega'^2}$ 相对于 $(\\omega_0 - \\omega')$ 的二阶修正项。"
+      - "注意符号由分母 $(\\omega_0 - \\omega')$ 自动决定，分母里还带有因子 $2$。"
+    solution: "展开至 $\\Omega'^2$ 阶给出通用 Bloch-Siegert 平移公式 $\\Delta_{\\text{BS}} = \\frac{\\Omega'^2}{2(\\omega_0 - \\omega')}$。"
+
+  # ==========================================================================
+  # Step 3: bs-sign-level-repulsion-and-optical-stark (5 题课堂/测验题 + 3 题 FSRS recall)
+  # ==========================================================================
+  - id: bs-sign-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "根据普适公式 $\\Delta_{\\text{BS}} = \\frac{\\Omega'^2}{2(\\omega_0 - \\omega')}$，当另一路寄生横向驱动的频率 $\\omega'$ 分别位于自旋共振 $\\omega_0$ 下方（$\\omega' < \\omega_0$）与上方（$\\omega' > \\omega_0$）时，自旋真实共振频率如何移动？"
+    options:
+      - id: a
+        text: "寄生音低于共振（$\\omega' < \\omega_0$）时共振频率上移（蓝移，$\\Delta_{\\text{BS}} > 0$）；高于共振（$\\omega' > \\omega_0$）时共振频率下移（红移，$\\Delta_{\\text{BS}} < 0$），两者共同体现能级排斥规律。"
+        correct: true
+        feedback: "准确到位！无论寄生音在下方还是上方，扰动总是把共振点朝远离寄生音频率 $\\omega'$ 的方向推开——这就是典型的二阶能级排斥效应。"
+      - id: b
+        text: "无论 $\\omega'$ 低于还是高于 $\\omega_0$，由于分子 $\\Omega'^2 > 0$，自旋共振频率总是向上蓝移。"
+        correct: false
+        feedback: "公式的分母是 $\\omega_0 - \\omega'$（带正负号），并不带绝对值；当 $\\omega' > \\omega_0$ 时分母为负，会导致向下红移。"
+      - id: c
+        text: "寄生音低于共振（$\\omega' < \\omega_0$）时发生红移，高于共振（$\\omega' > \\omega_0$）时发生蓝移，共振峰总是被吸向寄生驱动频率。"
+        correct: false
+        feedback: "这把物理图像弄反了！能级排斥把跃迁频率从干扰音频率 $\\omega'$ 推开，而不是吸引过去。"
+      - id: d
+        text: "只有 $\\omega' < 0$ 的反向旋转项才会移动共振频率；只要 $\\omega' > 0$，非共振项就不改变共振位置。"
+        correct: false
+        feedback: "公式 $\\Delta_{\\text{BS}} = \\frac{\\Omega'^2}{2(\\omega_0 - \\omega')}$ 对一切非共振横向耦合（不论 $\\omega'$ 正负）一律适用。"
+    solution: "分子 $\\Omega'^2 \\ge 0$ 恒正，故移频符号由分母 $\\omega_0 - \\omega'$ 决定：$\\omega' < \\omega_0$（红失谐）使共振上移蓝移；$\\omega' > \\omega_0$（蓝失谐）使共振下移红移，总是将共振推离干扰音。"
+
+  - id: bs-sign-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "为什么在第一重旋转系里斜边长度 $\\sqrt{(\\omega_0-\\omega')^2 + \\Omega'^2}$ 总是比 $|\\omega_0-\\omega'|$ 大，但换回实验室坐标系后，当 $\\omega' > \\omega_0$ 时目标共振频率 $\\omega_0 + \\Delta_{\\text{BS}}$ 反而变小了？"
+    options:
+      - id: a
+        text: "因为当 $\\omega' > \\omega_0$ 时，旋转系中的静态能级 $(\\omega_0-\\omega')S_z$ 上下顺序发生反转，把负值的能量差往外进一步拉伸成更负的数值后，再加回 $+\\omega'$ 等于从实验室能隙 $\\omega_0$ 上扣掉了一个正数。"
+        correct: true
+        feedback: "抓住了物理和代数的统一性！用公式一眼看穿：当 $\\omega_0-\\omega' < 0$ 时，带符号的斜边特征值是 $-\\sqrt{(\\omega_0-\\omega')^2+\\Omega'^2} \\approx (\\omega_0-\\omega') - \\frac{\\Omega'^2}{2(\\omega'-\\omega_0)}$；加回 $\\omega'$ 后恰好变为 $\\omega_0 - \\frac{\\Omega'^2}{2(\\omega'-\\omega_0)} < \\omega_0$。"
+      - id: b
+        text: "因为在 $\\omega' > \\omega_0$ 时，绕 $y$ 轴旋转不再保持斜边大于直角边，必须改用双曲函数才能对角化。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "静态块 ③ 依然是实对称（厄米）的自旋算符矩阵，旋转依然遵循普通三角函数与勾股定理，斜边模长依然大于直角边，改变的只是纵向本征值顺序的符号。"
+      - id: c
+        text: "因为在 $\\omega' > \\omega_0$ 时，第二重变换里的求导项改变符号变成了 $+(\\omega-\\omega')S_z$。"
+        correct: false
+        category: sign_error
+        feedback: "求导项总是 $-(\\omega-\\omega')S_z$，不因 $\\omega'$ 与 $\\omega_0$ 大小关系而改变形式；真正的符号来源是旋转系中静态项 $(\\omega_0-\\omega')$ 为负导致能级次序颠倒。"
+      - id: d
+        text: "因为此时 $\\Omega'$ 在第一重旋转系里变成了虚数，平方后给公式带来了负号。"
+        correct: false
+        category: math_error
+        feedback: "$\\Omega'$ 始终是实正幅值，$\\Omega'^2$ 永远为正，负号纯粹来自旋转系基矢顺序反转所产生的 $\\text{sgn}(\\omega_0-\\omega') = -1$。"
+    solution: "在第一重旋转系下，当 $\\omega' > \\omega_0$ 时 $\\omega_0-\\omega' < 0$，两态上下次序反转。旋转系间隔向外拉大等价于 $-|\\omega_0-\\omega'| - \\frac{\\Omega'^2}{2|\\omega_0-\\omega'|}$，加回参考系偏移 $+\\omega'$ 后便把实验室共振能隙压缩成 $\\omega_0 - \\frac{\\Omega'^2}{2(\\omega'-\\omega_0)}$。"
+
+  - id: bs-sign-spectator-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    params:
+      w_p_mhz:
+        min: 2600
+        max: 3400
+        step: 200
+      om_p_mhz:
+        min: 20
+        max: 40
+        step: 20
+    constraints:
+      - "w_p_mhz != 3000"
+    prompt: "某量子比特自旋未微扰跃迁频率为 $\\omega_0/(2\\pi) = 3.0\\text{ GHz} = 3000\\text{ MHz}$。由于芯片串扰，该自旋旁存在一路寄生连续微波，其频率为 $\\omega'/(2\\pi) = {{=w_p_mhz}}\\text{ MHz}$，横向耦合幅值为 $\\Omega'/(2\\pi) = {{=om_p_mhz}}\\text{ MHz}$。利用二阶公式计算该寄生微波在目标跃迁上造成的带符号共振频移 $\\Delta_{\\text{BS}}/(2\\pi)$（蓝移为正、红移为负，单位 $\\text{MHz}$）。"
+    answer_expr: "om_p_mhz^2 / (2 * (3000 - w_p_mhz))"
+    tolerance:
+      abs: 0.02
+    common_wrong:
+      - answer_expr: "-om_p_mhz^2 / (2 * (3000 - w_p_mhz))"
+        category: sign_error
+        feedback: "频移符号刚好反了！应当记住 $\\Delta_{\\text{BS}} = \\frac{\\Omega'^2}{2(\\omega_0-\\omega')}$，当 $\\omega' < \\omega_0$ 时移位为正（蓝移），$\\omega' > \\omega_0$ 时为负（红移）。"
+      - answer_expr: "om_p_mhz^2 / (3000 - w_p_mhz)"
+        category: math_error
+        feedback: "公式 $\\Delta_{\\text{BS}} = \\frac{\\Omega'^2}{2(\\omega_0-\\omega')}$ 的分母有因子 $2$，漏掉 $2$ 会让绝对值大出一倍。"
+      - answer_expr: "om_p_mhz^2 / (2 * (3000 + w_p_mhz))"
+        category: misapplied_technique
+        feedback: "$\\omega_0 + \\omega'$ 只在求主驱动自己的反向旋转项（频率 $-\\omega'$）时才出现；这里寄生同向音的频率本身就是 $+{{=w_p_mhz}}\\text{ MHz}$，与 $\\omega_0$ 相减得到 $\\omega_0 - \\omega'$。"
+    hints:
+      - "先算出带正负号的失谐 $(\\omega_0 - \\omega')/(2\\pi) = (3000 - {{=w_p_mhz}})\\text{ MHz}$。"
+      - "再代入通式 $\\frac{\\Delta_{\\text{BS}}}{2\\pi} = \\frac{(\\Omega'/2\\pi)^2}{2\\,[(\\omega_0-\\omega')/2\\pi]}$。"
+    solution: "这里 $(\\omega_0 - \\omega')/(2\\pi) = 3000 - {{=w_p_mhz}} = {{=3000 - w_p_mhz}}\\text{ MHz}$。代入二阶公式得 $\\frac{\\Delta_{\\text{BS}}}{2\\pi} = \\frac{{{=om_p_mhz}}^2}{2 \\times ({{=3000 - w_p_mhz}})} = {{=round(om_p_mhz^2 / (2 * (3000 - w_p_mhz)), 3)}}\\text{ MHz}$。"
+
+  - id: bs-sign-spot-blue-red
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "在操控金刚石 NV 色心等三能级自旋体系时，实验人员常把“用强微波驱动 $-1 \\leftrightarrow 0$ 旁支跃迁对 $0 \\leftrightarrow +1$ 目标跃迁产生的影响”当成寄生串扰误差源分析。下面哪条分析存在物理错误？"
+    options:
+      - id: a
+        text: "只要旁支横向耦合幅值 $\\Omega' > 0$，不管旁支微波频率 $\\omega'$ 高于还是低于目标跃迁频率 $\\omega_0$，它引起的频移 $\\Delta_{\\text{BS}}$ 都必定使目标共振频率向上蓝移，且平移大小与 $\\Omega'$ 成一次正比。"
+        correct: true
+        feedback: "挑错精准！这里同时犯了两个错误：首先，当旁支频率高于目标跃迁（$\\omega' > \\omega_0$）时，分母 $\\omega_0-\\omega' < 0$ 使 $\\Delta_{\\text{BS}} < 0$（红移而非蓝移）；其次，非共振横向项引起的 Bloch-Siegert 平移是二阶效应，严格正比于 $\\Omega'^2$（微波功率）而非 $\\Omega'$ 的一次方。"
+      - id: b
+        text: "若旁支微波频率高于目标跃迁频率，则寄生横向耦合会把目标跃迁频率向下压低（红移），且红移幅度与旁支微波功率成正比（即与 $\\Omega'^2$ 成正比）。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "这条判断完全正确：$\\omega' > \\omega_0$ 导致 $\\Delta_{\\text{BS}} < 0$，且幅值正比于 $\\Omega'^2$（微波功率）。"
+      - id: c
+        text: "为了降低该旁支驱动引起的多音串扰相位误差，可以按测得的 $\\Delta_{\\text{BS}}$ 提前对目标驱动的微波频率作补偿校准。"
+        correct: false
+        category: misapplied_technique
+        feedback: "这条策略正确且在量子控制中十分常用：已知相干移频 $\\Delta_{\\text{BS}}$ 后，可以通过动态失谐补偿消除累积相位误差。"
+      - id: d
+        text: "如果能把旁支驱动与目标跃迁之间的失谐 $|\\omega_0 - \\omega'|$ 增大到原来的 $2$ 倍而保持 $\\Omega'$ 不变，寄生移峰 $|\\Delta_{\\text{BS}}|$ 将减半。"
+        correct: false
+        category: math_error
+        feedback: "这条估算正确：由 $\\Delta_{\\text{BS}} \\propto 1/(\\omega_0-\\omega')$，失谐加倍确实使寄生频移减半。"
+    solution: "横向上施加的远失谐寄生微波通过二阶能级排斥引发 $\\Delta_{\\text{BS}} = \\frac{\\Omega'^2}{2(\\omega_0-\\omega')}$ 频移：既依赖于失谐符号（$\\omega'>\\omega_0$ 时红移而非蓝移），又正比于 $\\Omega'^2$ 而非一次方。"
+
+  - id: bs-sign-optical-stark-transfer
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "在《量子光学》色散 Jaynes–Cummings（JC）极限（$|\\omega_0 - \\omega_c| \\gg \\lambda\\sqrt{n+1}$）下，二阶有效哈密顿量为 $\\hat{H}_{\\text{eff}} = \\Delta_{\\text{disp}}(|e\\rangle\\langle e| + 2\\hat{a}^\\dagger\\hat{a}\\,S_z)$，其中 $\\Delta_{\\text{disp}} = \\frac{\\lambda^2}{\\omega_0 - \\omega_c}$，腔场含 $n$ 个光子时的受激 **AC Stark 频移**为 $2n\\,\\Delta_{\\text{disp}}$。若将其与磁共振一般 Bloch-Siegert 公式 $\\frac{\\Omega'^2}{2(\\omega_0-\\omega_c)}$ 相对应，下面关于该光学系统与磁共振的对比哪项完全正确？"
+    options:
+      - id: a
+        text: "受激 AC Stark 频移 $2n\\frac{\\lambda^2}{\\omega_0-\\omega_c}$ 在代数上严格等于 $\\frac{\\Omega'^2}{2(\\omega_0-\\omega_c)}$；此外若腔模频率比原子高（$\\omega_c > \\omega_0$），原子跃迁频率会随腔内光子数 $n$ 增加而向红端下移，而 $n=0$ 时还存在一份纯量子真空频移 $\\Delta_{\\text{disp}}$。"
+        correct: true
+        feedback: "无懈可击！把 $\\Omega' = 2\\lambda\\sqrt{n}$ 代入 $\\frac{\\Omega'^2}{2(\\omega_0-\\omega_c)}$ 立刻还原出 $2n\\frac{\\lambda^2}{\\omega_0-\\omega_c}$；当 $\\omega_c > \\omega_0$ 时 $\\Delta_{\\text{disp}} < 0$，产生每个光子 $2|\\Delta_{\\text{disp}}|$ 的线性红移；至于 $n=0$ 时 $|e\\rangle\\langle e|$ 前面的单份 $\\Delta_{\\text{disp}}$ 则来自零点真空涨落，这是经典场模板里没有的纯量子效应。"
+      - id: b
+        text: "要把磁共振公式套进色散 JC 系统，必须取 $\\Omega' = \\lambda\\sqrt{n}$，才能得出总频移 $(2n+1)\\Delta_{\\text{disp}}$。"
+        correct: false
+        category: math_error
+        feedback: "仔细核对旋转耦合系数：经典横向圆偏振分量对升降算符的耦合强度为 $\\frac{1}{2}\\Omega'$，与 JC 模型里的 $\\lambda\\sqrt{n}$ 对应，故应取 $\\Omega' = 2\\lambda\\sqrt{n}$；而且经典场只对应受激部分 $2n\\Delta_{\\text{disp}}$，不含真空的 $+1$。"
+      - id: c
+        text: "在 $\\omega_c > \\omega_0$ 的蓝失谐腔场中，因为光子能量比原子高，光子会把原子能隙“顶高”，使原子跃迁发生蓝移。"
+        correct: false
+        category: sign_error
+        feedback: "当 $\\omega_c > \\omega_0$ 时，$(|g,n+1\\rangle)$ 高于 $(|e,n\\rangle)$，能级排斥向下推压 $|e,n\\rangle$ 而向上托起 $|g,n\\rangle$，因此原子跃迁间隔变窄，发生的是红移（$\\Delta_{\\text{disp}} < 0$）。"
+      - id: d
+        text: "JC 色散频移只针对同向旋转的 $\\lambda(S^+\\hat{a} + S^-\\hat{a}^\\dagger)$，所以它的大小不随光子数 $n$ 变化。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "跃迁频移里有显式的 $2n\\Delta_{\\text{disp}}$ 项，正比于腔内光子数 $n$（也就是正比于光强 $\\propto \\Omega'^2$）。"
+    solution: "由 $\\frac{1}{2}\\Omega' \\leftrightarrow \\lambda\\sqrt{n}$（即 $\\Omega' = 2\\lambda\\sqrt{n}$），受激 AC Stark 频移 $2n\\frac{\\lambda^2}{\\omega_0-\\omega_c}$ 与磁共振 $\\frac{\\Omega'^2}{2(\\omega_0-\\omega_c)}$ 严格等同；蓝失谐 $\\omega_c > \\omega_0$ 产生红移，且 $\\hat{H}_{\\text{eff}}$ 额外揭示出 $n=0$ 时的真空兰姆移位 $\\Delta_{\\text{disp}}$。"
+
+  - id: bs-recall-sign-explain
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: bs-sign-level-repulsion-and-optical-stark
+    difficulty: 2
+    est_minutes: 2
+    prompt: "用能级排斥解释：为什么 $\\omega' < \\omega_0$ 时 $\\Delta_{\\text{BS}} > 0$ 而 $\\omega' > \\omega_0$ 时 $\\Delta_{\\text{BS}} < 0$？并说明该规律与《量子光学》色散 Jaynes–Cummings AC Stark 频移之间如何对应。"
+    rubric:
+      - id: r1
+        criterion: "说明在 $\\Delta_{\\text{BS}} = \\frac{\\Omega'^2}{2(\\omega_0-\\omega')}$ 中，红失谐 $\\omega' < \\omega_0$ 产生正频移（蓝移），蓝失谐 $\\omega' > \\omega_0$ 产生负频移（红移），总效果是微扰把共振频率推离 $\\omega'$（能级排斥）。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "说明在色散 JC 有效哈密顿量 $\\hat{H}_{\\text{eff}} = \\Delta_{\\text{disp}}(|e\\rangle\\langle e| + 2\\hat{a}^\\dagger\\hat{a}\\,S_z)$（$\\Delta_{\\text{disp}} = \\frac{\\lambda^2}{\\omega_0-\\omega_c}$）中，受激 AC Stark 频移 $2n\\frac{\\lambda^2}{\\omega_0-\\omega_c}$ 在 $\\Omega'=2\\lambda\\sqrt{n}$ 对应下正是 $\\Delta_{\\text{BS}}$。"
+        weight: 1
+        required: true
+      - id: r3
+        criterion: "指出色散 JC 模型在 $n=0$ 时还额外给出单份真空频移 $\\Delta_{\\text{disp}}$。"
+        weight: 1
+        required: false
+    exemplar: "二阶平移 $\\Delta_{\\text{BS}} = \\frac{\\Omega'^2}{2(\\omega_0-\\omega')}$ 的正负完全由分母 $\\omega_0-\\omega'$ 决定：干扰频 $\\omega'$ 低于 $\\omega_0$（含反向项 $\\omega'=-\\omega$）时 $\\Delta_{\\text{BS}}>0$ 发生蓝移；高于 $\\omega_0$ 时 $\\Delta_{\\text{BS}}<0$ 发生红移，本质都是二阶能级排斥把跃迁间隔推离干扰频率。在《量子光学》大失谐色散 JC 极限下，虚光子交换导出 $\\hat{H}_{\\text{eff}} = \\Delta_{\\text{disp}}(|e\\rangle\\langle e| + 2\\hat{a}^\\dagger\\hat{a}\\,S_z)$（$\\Delta_{\\text{disp}}=\\frac{\\lambda^2}{\\omega_0-\\omega_c}$），取半经典幅值对应 $\\Omega'=2\\lambda\\sqrt{n}$ 后，受激 AC Stark 频移 $2n\\frac{\\lambda^2}{\\omega_0-\\omega_c}$ 严格化作 $\\frac{\\Omega'^2}{2(\\omega_0-\\omega_c)} = \\Delta_{\\text{BS}}$，仅比经典结果多出一份 $n=0$ 的真空频移。"
+
+  - id: bs-recall-stark-mc
+    dimension: transfer
+    type: mc
+    role: recall
+    knowledge_point: bs-sign-level-repulsion-and-optical-stark
+    difficulty: 1
+    est_minutes: 1
+    prompt: "在对比磁共振中由远失谐横向驱动 $\\Omega'$ 导致的 Bloch-Siegert 平移与《量子光学》色散 Jaynes–Cummings（JC）模型的 AC Stark 频移时，下面哪一项物理判断准确？"
+    options:
+      - id: a
+        text: "两者都源自二阶能级排斥，受激频移在 $\\Omega' = 2\\lambda\\sqrt{n}$ 对应下完全等同并遵从红失谐蓝移、蓝失谐红移；但色散 JC 模型在 $n=0$ 时还多出一份纯量子真空频移 $\\Delta_{\\text{disp}}$。"
+        correct: true
+        feedback: "非常精确！半经典幅值对应 $\\Omega' = 2\\lambda\\sqrt{n}$ 使 $2n\\frac{\\lambda^2}{\\omega_0-\\omega_c}$ 严格化作 $\\frac{\\Omega'^2}{2(\\omega_0-\\omega_c)}$，揭示两者同根同源，同时辨清了量子真空零点能的额外贡献。"
+      - id: b
+        text: "红失谐（$\\omega' < \\omega_0$）在磁共振中导致蓝移，但在量子光学色散 JC 模型里因为虚光子吸收机制不同而导致红移。"
+        correct: false
+        feedback: "两者遵循完全相同的符号律：只要腔频 $\\omega_c < \\omega_0$（红失谐），$\\Delta_{\\text{disp}} = \\frac{\\lambda^2}{\\omega_0-\\omega_c} > 0$，同样向上蓝移。"
+      - id: c
+        text: "古典交变场对应的 Bloch-Siegert 公式也能在零驱动 $\\Omega'=0$ 时给出与色散 JC 模型相同的真空能级移动 $\\Delta_{\\text{disp}}$。"
+        correct: false
+        feedback: "当经典驱动幅值 $\\Omega'=0$ 时，经典 Bloch-Siegert 平移 $\\frac{\\Omega'^2}{2(\\omega_0-\\omega')}$ 严格为零，无法产生量子化光场的 $n=0$ 真空频移。"
+      - id: d
+        text: "只有当腔场与原子严格共振（$\\omega_c = \\omega_0$）时，色散公式 $\\Delta_{\\text{disp}} = \\frac{\\lambda^2}{\\omega_0-\\omega_c}$ 才最为精确。"
+        correct: false
+        feedback: "公式成立的前提恰恰是大失谐色散区 $|\\omega_0-\\omega_c| \\gg \\lambda\\sqrt{n+1}$；当 $\\omega_c \\to \\omega_0$ 时分母趋零，微扰色散展开直接失效。"
+    solution: "两者均体现红失谐蓝移、蓝失谐红移的二阶能级排斥规律，且在 $\\Omega'=2\\lambda\\sqrt{n}$ 下受激 AC Stark 频移严格等于 $\\Delta_{\\text{BS}}$；差别在于全量子色散 JC 哈密顿量还给出 $n=0$ 的真空频移 $\\Delta_{\\text{disp}}$。"
+
+  - id: bs-recall-stark-text
+    dimension: math
+    type: text
+    role: recall
+    knowledge_point: bs-sign-level-repulsion-and-optical-stark
+    difficulty: 2
+    est_minutes: 1
+    prompt: "为了使色散 Jaynes–Cummings 模型的受激 AC Stark 频移 $2n\\frac{\\lambda^2}{\\omega_0 - \\omega_c}$ 与一般 Bloch-Siegert 公式 $\\frac{\\Omega'^2}{2(\\omega_0 - \\omega_c)}$ 严格相等，等效经典横向驱动幅值应取 $\\Omega' = \\text{___}$（用 `lambda` 表示 $\\lambda$、`sqrt(n)` 表示 $\\sqrt{n}$，乘法用 `*` 连接）。"
+    accept:
+      - "2*lambda*sqrt(n)"
+      - "2 * lambda * sqrt(n)"
+      - "2*sqrt(n)*lambda"
+      - "2 * sqrt(n) * lambda"
+      - "2\\lambda\\sqrt{n}"
+      - "2\\sqrt{n}\\lambda"
+      - "2λ√n"
+      - "2√nλ"
+      - "2*λ*sqrt(n)"
+      - "2*sqrt(n)*λ"
+    regex: "^2\\s*\\*?\\s*(?:(?:lambda|\\\\lambda|λ)\\s*\\*?\\s*(?:\\\\?sqrt\\s*[({]\\s*n\\s*[)}]|√\\s*n)|(?:\\\\?sqrt\\s*[({]\\s*n\\s*[)}]|√\\s*n)\\s*\\*?\\s*(?:lambda|\\\\lambda|λ))$"
+    solution: "由旋转耦合系数 $\\frac{1}{2}\\Omega' \\leftrightarrow \\lambda\\sqrt{n}$，得 $\\Omega' = 2\\lambda\\sqrt{n}$，代入 $\\frac{\\Omega'^2}{2(\\omega_0-\\omega_c)}$ 恰好等于 $2n\\frac{\\lambda^2}{\\omega_0-\\omega_c}$。"
+
+  # ==========================================================================
+  # Lesson Final: Explain it 自评总结题
+  # ==========================================================================
+  - id: bs-final-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 5
+    prompt: "请系统梳理一般横向非共振项与 Bloch-Siegert 平移的完整图景：（1）如何用两次旋转系变换和一次自旋量化轴倾斜处理非共振横向项，为什么既能舍去快变纵向项、改回 $S_{x,y,z}$ 表象符号，却要保留斜边能隙拉伸？（2）如何导出普适公式 $\\Delta_{\\text{BS}}$、反旋项极限以及旋波近似的定量边界？（3）能级排斥的符号律是什么，它如何与量子光学色散 AC Stark 频移及多音寄生驱动误差统一起来？"
+    rubric:
+      - id: r1
+        criterion: "说明先用 $U_i'=e^{-i(\\omega' t+\\varphi')S_z}$ 定格非共振项并绕 $y$ 轴微倾 $\\theta$ 对角化静态块为 $\\operatorname{sgn}(\\omega_0-\\omega')\\sqrt{(\\omega_0-\\omega')^2+\\Omega'^2}\\,S_z'$；说明因快变纵向项零均值抖动相角极微（$\\ll 1$）、$(S'_x,S'_y,S'_z)$ 与 $(S_x,S_y,S_z)$ 幺正等价且态重叠偏差 $\\sin^2(\\theta/2)\\ll 1$、$\\cos^2(\\theta/2)\\approx 1$，可沿用 $S_{x,y,z}$ 表象而保留静态线性累加的斜边能隙拉伸。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "说明作第二重变换 $U_i''=e^{-i[(\\omega-\\omega')t-\\varphi']S_z}$ 消去时间与 $-\\varphi'$ 偏置，二阶展开导出 $\\Delta_{\\text{BS}} = \\frac{\\Omega'^2}{2(\\omega_0-\\omega')}$；代入反旋项 $\\omega'=-\\omega$ 得 $\\Delta_{\\text{BS}} \\approx \\frac{\\Omega^2}{4\\omega_0}$ 及 RWA 边界 $\\frac{\\Omega}{4\\omega_0}\\ll 1$。"
+        weight: 1
+        required: true
+      - id: r3
+        criterion: "阐明能级排斥符号律（红失谐 $\\omega'<\\omega_0$ 蓝移、蓝失谐 $\\omega'>\\omega_0$ 红移），并通过 $\\Omega'=2\\lambda\\sqrt{n}$ 精确对接色散 JC 的受激 AC Stark 频移 $2n\\frac{\\lambda^2}{\\omega_0-\\omega_c}$ 及多音寄生串扰。"
+        weight: 1
+        required: true
+      - id: r4
+        criterion: "补充点出教材在式 (1.19)、(1.20) 与式 (1.23) 中的关键勘误修正，或分析全量子模型在 $n=0$ 时多出的真空频移。"
+        weight: 1
+        required: false
+    exemplar: "（1）加入远失谐横向驱动 $\\Omega'$ 后，先作 $U_i'=e^{-i(\\omega' t+\\varphi')S_z}$ 定格非共振驱动，再绕 $y$ 轴微倾角 $\\theta$（$\\cos\\theta=|\\omega_0-\\omega'|/\\sqrt{(\\omega_0-\\omega')^2+\\Omega'^2}$）对角化静态块 ③ 为 $\\operatorname{sgn}(\\omega_0-\\omega')\\sqrt{(\\omega_0-\\omega')^2+\\Omega'^2}\\,S_z'$。在 $|\\Omega'|\\ll|\\omega_0-\\omega'|$ 时，高频振荡的 $S_z'$ 纵向项平均为零（相角上限 $\\frac{\\Omega\\sin\\theta}{|\\omega-\\omega'|}\\ll 1$），连同 $\\sin^2(\\theta/2)$ 反向项一并舍去；又因 $(S'_x,S'_y,S'_z)$ 与 $(S_x,S_y,S_z)$ 满足严格幺正等价的自旋 $1/2$ 代数、态基重叠偏差 $\\sin^2(\\theta/2)\\sim 10^{-6}\\text{--}10^{-4}$ 且 $\\cos^2(\\theta/2)\\approx 1$，可继续在 $S_{x,y,z}$ 表象写作等效哈密顿量，而把静态累加的斜边能隙拉伸完整保留。（2）再作第二重变换 $U_i''=e^{-i[(\\omega-\\omega')t-\\varphi']S_z}$ 抵消时间依赖与 $-\\varphi'$ 相位偏移，斜边二阶展开即得 $\\Delta_{\\text{BS}} = \\frac{\\Omega'^2}{2(\\omega_0-\\omega')}$；对反旋项 $\\Omega'=\\Omega,\\omega'=-\\omega$ 得 $\\frac{\\Omega^2}{2(\\omega_0+\\omega)}\\approx\\frac{\\Omega^2}{4\\omega_0}$，从而给出 RWA 定量判据 $\\frac{\\Delta_{\\text{BS}}}{\\Omega}\\approx\\frac{\\Omega}{4\\omega_0}\\ll 1$（长脉冲另须 $|\\Delta_{\\text{BS}}|t_{\\text{p}}\\ll 1$）。（3）公式分母 $\\omega_0-\\omega'$ 统一了能级排斥符号律：红失谐（含反旋项）蓝移、蓝失谐红移；在色散 JC 有效哈密顿量 $\\hat{H}_{\\text{eff}} = \\Delta_{\\text{disp}}(|e\\rangle\\langle e|+2\\hat{a}^\\dagger\\hat{a}S_z)$（$\\Delta_{\\text{disp}}=\\frac{\\lambda^2}{\\omega_0-\\omega_c}$）中，取 $\\Omega'=2\\lambda\\sqrt{n}$ 后受激 AC Stark 频移与 $\\Delta_{\\text{BS}}$ 完全重合（全量子模型在 $n=0$ 时另给出真空频移 $\\Delta_{\\text{disp}}$），该规律同样解释了多音旁支微波引起的串扰移峰误差。"

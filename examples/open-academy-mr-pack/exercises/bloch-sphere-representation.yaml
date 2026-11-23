@@ -1,0 +1,662 @@
+concept: bloch-sphere-representation
+exercises:
+  # ==========================================================================
+  # Step 1: bloch-pure-state-mapping (5 题课堂 + 3 题 recall)
+  # ==========================================================================
+  - id: bloch-pure-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "在单比特态的 Bloch 球几何表示中，纯态 $\\rho = |\\psi\\rangle\\langle\\psi| = \\frac{\\mathbb{1}+\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}}{2}$ 的长度 $|\\vec{\\boldsymbol{n}}|$ 以及球面上互为对跖点（$+\\vec{\\boldsymbol{n}}$ 与 $-\\vec{\\boldsymbol{n}}$）的两点分别代表什么物理意义？"
+    options:
+      - id: a
+        text: "纯态的 Bloch 矢量长度为 $|\\vec{\\boldsymbol{n}}|=1$（端点全落在单位球面上），整体相位在 $\\rho$ 中自动消去；球面上相距 $180^\\circ$ 的对跖点 $\\pm\\vec{\\boldsymbol{n}}$ 对应希尔伯特空间中相互正交的两态。"
+        correct: true
+        feedback: "准确无误！纯态铺满单位球面，且半角参数 $\\theta/2$ 让希尔伯特空间的 $90^\\circ$ 正交对应 Bloch 球上 $180^\\circ$ 的反向对跖矢量。"
+      - id: b
+        text: "只有像 $|0\\rangle$ 与 $|+x\\rangle$ 这样夹角为 $90^\\circ$ 的两个 Bloch 矢量才对应相互正交的量子态，而相距 $180^\\circ$ 的对跖点只差一个负号因而表示完全相同的量子态。"
+        correct: false
+        feedback: "别被三维空间误导！$|0\\rangle$ 与 $|+x\\rangle$ 在球上夹 $90^\\circ$，内积模方为 $|\\langle 0|+x\\rangle|^2=1/2$ 并不正交；真正正交的是相距 $180^\\circ$ 的对跖点（如 $+z$ 对应 $|0\\rangle$ 与 $-z$ 对应 $|1\\rangle$）。"
+      - id: c
+        text: "纯态矢量长度 $|\\vec{\\boldsymbol{n}}|$ 等于 $|0\\rangle$ 态布居概率 $\\cos^2(\\theta/2)$，随极角 $\\theta$ 在 $[0,1]$ 间连续缩长，仅在北极 $|0\\rangle$ 处才刚好达到单位长度 $1$。"
+        correct: false
+        feedback: "归一化条件 $\\cos^2(\\theta/2)+\\sin^2(\\theta/2)=1$ 保证了任意纯态的矢量模长 $\\sqrt{\\sin^2\\theta+\\cos^2\\theta}$ 恒等于 $1$。"
+      - id: d
+        text: "改变态矢量的不可观测整体相位 $e^{i\\alpha}|\\psi\\rangle$ 仍会保留在 $\\rho$ 的非对角元中，从而使 Bloch 矢量在赤道 $x\\text{-}y$ 平面内额外旋转角度 $\\alpha$。"
+        correct: false
+        feedback: "整体相位在外积 $|\\psi\\rangle\\langle\\psi|$ 中因 $e^{i\\alpha}e^{-i\\alpha}=1$ 而完全消去；方位角 $\\varphi$ 反映的是 $|0\\rangle$ 与 $|1\\rangle$ 之间的相对相位。"
+    solution: "任意纯态 $|\\psi\\rangle = \\cos(\\theta/2)|0\\rangle + \\sin(\\theta/2)e^{i\\varphi}|1\\rangle$ 给出 $|\\vec{\\boldsymbol{n}}|=1$ 的球面矢量；整体相位在 $\\rho=|\\psi\\rangle\\langle\\psi|$ 中抵消，对跖点 $\\pm\\vec{\\boldsymbol{n}}$ 满足 $\\operatorname{Tr}(\\rho_+\\rho_-)=0$ 即相互正交。"
+
+  - id: bloch-pure-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "为什么非对称写法 $|\\psi\\rangle = \\cos(\\theta/2)|0\\rangle + \\sin(\\theta/2)e^{i\\varphi}|1\\rangle$ 与 Gerry–Knight 附录 A 式 (A26) 的对称相位写法 $|\\Psi\\rangle = \\cos(\\theta/2)e^{-i\\varphi/2}|0\\rangle + \\sin(\\theta/2)e^{i\\varphi/2}|1\\rangle$ 下，计算出的密度矩阵 $\\rho$ 和 Bloch 矢量 $\\vec{\\boldsymbol{n}}$ 却完全一模一样？"
+    options:
+      - id: a
+        text: "因为 $|\\Psi\\rangle = e^{-i\\varphi/2}|\\psi\\rangle$ 两者只差一个整体相位因子 $e^{-i\\varphi/2}$，而构造投影算符 $\\rho = |\\Psi\\rangle\\langle\\Psi|$ 时左矢自带共轭 $e^{+i\\varphi/2}$，两者乘积恒等于 $1$ 而彻底消去。"
+        correct: true
+        feedback: "点中要害！密度矩阵 $\\rho = |\\psi\\rangle\\langle\\psi|$ 天然对整体相位免疫，这也是 Bloch 球能唯一几何表示物理纯态的原因。"
+      - id: b
+        text: "因为两种写法只在赤道与极点交界且 $\\varphi=0$ 的特殊情形下才刚好相等，一旦出现非零相位 $\\varphi\\ne 0$ 就会分别指向 Bloch 球上的不同象限。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "算一下 $|\\Psi\\rangle\\langle\\Psi|$ 的非对角项即可发现 $(e^{-i\\varphi/2})(e^{i\\varphi/2})^* = e^{-i\\varphi}$，对任意 $\\varphi$ 都完全重合。"
+      - id: c
+        text: "因为对称相位写法把 $|0\\rangle$ 与 $|1\\rangle$ 的相位都各拆走了一半 $\\varphi/2$，使得 Bloch 球上表示同一纯态的方位角坐标也随之减半为 $\\varphi/2$。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "外积会把 $|0\\rangle$ 与 $|1\\rangle$ 之间的相位差 $\\varphi/2 - (-\\varphi/2) = \\varphi$ 完整保留下来，Bloch 球方位角仍然是 $\\varphi$。"
+      - id: d
+        text: "因为对称相位写法把两分量的相干干涉拆成了互不干涉的成分，实际上描述的是单位球体内部非相干混态而非单位球面上的纯态。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "$|\\Psi\\rangle$ 是一个归一化纯态矢量，其 Bloch 矢量长度同样严格等于 $1$。"
+    solution: "因 $|\\Psi\\rangle = e^{-i\\varphi/2}|\\psi\\rangle$ 仅差整体相位，故 $|\\Psi\\rangle\\langle\\Psi| = e^{-i\\varphi/2}e^{i\\varphi/2}|\\psi\\rangle\\langle\\psi| = |\\psi\\rangle\\langle\\psi|$，在任意 $(\\theta,\\varphi)$ 下都对应同一个 Bloch 矢量。"
+
+  - id: bloch-pure-vec-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    params:
+      a:
+        min: 1
+        max: 3
+        step: 1
+      b:
+        min: 2
+        max: 7
+        step: 1
+    constraints:
+      - "(a == 1 and b == 2) or (a == 1 and b == 3) or (a == 3 and b == 4) or (a == 1 and b == 7)"
+    prompt: "已知单比特纯态为 $|\\psi\\rangle = \\frac{{{=a}}}{\\sqrt{{{=a*a+b*b}}}}|0\\rangle + \\frac{{{=b}}i}{\\sqrt{{{=a*a+b*b}}}}|1\\rangle$。在标准泡利矩阵（其中 $\\sigma_y = \\begin{pmatrix}0&-i\\\\i&0\\end{pmatrix}$）下写为 $\\rho = |\\psi\\rangle\\langle\\psi| = \\frac{\\mathbb{1} + \\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}}{2}$，求 Bloch 矢量的 $y$ 分量 $n_y$（用小数表示）。"
+    answer_expr: "2*a*b / (a*a + b*b)"
+    tolerance:
+      abs: 0.005
+    common_wrong:
+      - answer_expr: "a*b / (a*a + b*b)"
+        category: math_error
+        feedback: "注意密度矩阵非对角元等于 $\\frac{1}{2}(n_x - i n_y)$，别忘了把矩阵元虚部的绝对值乘以 $2$！"
+      - answer_expr: "-2*a*b / (a*a + b*b)"
+        category: math_error
+        feedback: "符号弄反了！$|0\\rangle\\langle 1|$ 矩阵元为 $-\\frac{{{=a*b}}}{{{=a*a+b*b}}}i = \\frac{0 - i n_y}{2}$，对应 $\\sigma_y = \\begin{pmatrix}0&-i\\\\i&0\\end{pmatrix}$ 可得 $n_y > 0$。"
+      - answer_expr: "(a*a - b*b) / (a*a + b*b)"
+        category: misapplied_technique
+        feedback: "你算出的是 $z$ 分量 $n_z = \\rho_{00} - \\rho_{11}$，本题要求的是虚部非对角元对应的 $y$ 分量 $n_y$。"
+    hints:
+      - "先算出非对角元 $\\rho_{01} = c_0 c_1^*$，注意对 $c_1$ 中的虚数单位 $i$ 取复共轭变成 $-i$。"
+      - "对照 $\\rho_{01} = \\frac{1}{2}(n_x - i n_y)$ 读出 $n_y = -2\\operatorname{Im}(\\rho_{01})$。"
+    solution: "外积非对角元 $\\rho_{01} = \\frac{{{=a}}(-{{=b}}i)}{{{=a*a+b*b}}} = -\\frac{{{=a*b}}}{{{=a*a+b*b}}}i$；对照 $\\frac{1}{2}(n_x - i n_y)$ 得 $n_y = \\frac{2\\times {{=a}}\\times {{=b}}}{{{=a*a+b*b}}} = {{=2*a*b/(a*a+b*b)}}$。"
+
+  - id: bloch-pure-spot-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "一位同学在核对标准计算基与 $\\sigma_y = \\begin{pmatrix}0&-i\\\\i&0\\end{pmatrix}$ 时，误用了某参考书带印刷笔误的矩阵展开式 $\\rho = \\frac{1}{2}\\begin{pmatrix}1+n_z & n_x+in_y\\\\ n_x-in_y & 1-n_z\\end{pmatrix}$，于是把纯态 $|+y\\rangle = \\frac{1}{\\sqrt{2}}(|0\\rangle + i|1\\rangle)$ 算成了指向 $-y$ 轴的 $(0,-1,0)$。错式违背了什么？"
+    options:
+      - id: a
+        text: "错式把右上角 $\\rho_{01}$ 与左下角 $\\rho_{10}$ 的 $\\pm i n_y$ 符号写反了；按 $\\sigma_y = \\begin{pmatrix}0&-i\\\\i&0\\end{pmatrix}$ 展开，右上角必须是 $\\frac{1}{2}(n_x - i n_y)$，左下角必须是 $\\frac{1}{2}(n_x + i n_y)$。"
+        correct: true
+        feedback: "火眼金睛！这也正是 Gerry–Knight 附录 A 式 (A25) 相对其自身式 (A24) 出现的著名符号笔误，务必用 $\\sigma_y$ 的 $\\rho_{01}$ 元 $-i$ 随时校验。"
+      - id: b
+        text: "错式把对角元 $1+n_z$ 与 $1-n_z$ 的正负号写反了，导致南北极互换。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "由 $\\sigma_z = \\operatorname{diag}(1,-1)$ 得对角元确实是 $(1+n_z)/2$ 与 $(1-n_z)/2$，出错的是非对角虚部的符号。"
+      - id: c
+        text: "问题不在矩阵公式，而是态 $|+y\\rangle = \\frac{1}{\\sqrt{2}}(|0\\rangle + i|1\\rangle)$ 本来就应该位于 $-y$ 轴。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "代算 $\\sigma_y|+y\\rangle = \\frac{1}{\\sqrt{2}}\\begin{pmatrix}0&-i\\\\i&0\\end{pmatrix}\\begin{pmatrix}1\\\\i\\end{pmatrix} = +|+y\\rangle$，它是 $\\sigma_y$ 的 $+1$ 本征态，毫无疑问在 $+y$ 轴。"
+      - id: d
+        text: "错在矩阵前面漏掉了虚数单位 $i$，实际应为 $\\frac{i}{2}(\\mathbb{1}+\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}})$。"
+        correct: false
+        category: math_error
+        feedback: "密度矩阵必须厄米且迹等于 $1$，乘上 $i$ 会破坏厄米性与概率实数性。"
+    solution: "因为 $\\sigma_y = \\begin{pmatrix}0&-i\\\\i&0\\end{pmatrix}$，所以 $\\frac{\\mathbb{1}+\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}}{2}$ 的右上角应为 $\\frac{1}{2}(n_x - i n_y)$，左下角为 $\\frac{1}{2}(n_x + i n_y)$；参考书式 (A25) 把这两个 $\\pm i n_y$ 符号印反了。"
+
+  - id: bloch-pure-antipodal-transfer
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "（跨系统几何迁移）无论在自旋 $1/2$、二能级原子还是单光子偏振态中，若两个纯态的单位 Bloch 矢量 $\\vec{\\boldsymbol{n}}$ 与 $\\vec{\\boldsymbol{m}}$ 在三维空间夹角为 $\\alpha$，则它们的态交叠概率 $|\\langle\\psi_{\\vec{\\boldsymbol{n}}}|\\psi_{\\vec{\\boldsymbol{m}}}\\rangle|^2$ 等于多少？"
+    options:
+      - id: a
+        text: "$\\frac{1 + \\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{m}}}{2} = \\cos^2(\\alpha/2)$：夹角 $\\alpha=0$ 时为 $1$，$\\alpha=90^\\circ$ 时为 $1/2$，$\\alpha=180^\\circ$（对跖点）时严格为 $0$。"
+        correct: true
+        feedback: "推导优雅而深刻！把 $\\vec{\\boldsymbol{n}}$ 取作 $+z$ 北极 $|0\\rangle$，与它夹角为 $\\alpha$ 的纯态即为 $\\cos(\\alpha/2)|0\\rangle + \\sin(\\alpha/2)e^{i\\varphi}|1\\rangle$，内积模方立刻给出 $\\cos^2(\\alpha/2) = \\frac{1+\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{m}}}{2}$。"
+      - id: b
+        text: "$\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{m}} = \\cos\\alpha$：因此在 Bloch 球上夹角 $90^\\circ$ 的两个态就已经正交，对跖点给出 $-1$。"
+        correct: false
+        category: math_error
+        feedback: "概率不可能取负值 $-1$！取 $\\vec{\\boldsymbol{n}}$ 为 $+z$ 北极 $|0\\rangle$ 可见夹角 $\\alpha$ 的纯态在 $|0\\rangle$ 上振幅为 $\\cos(\\alpha/2)$，模方为 $\\cos^2(\\alpha/2) = \\frac{1+\\cos\\alpha}{2} \\in [0,1]$。"
+      - id: c
+        text: "$\\sin^2(\\alpha/2)$：当两个 Bloch 矢量重合（$\\alpha=0$）时交叠概率反而为零。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "重合时 $\\vec{\\boldsymbol{n}}=\\vec{\\boldsymbol{m}}$ 是同一量子态，交叠概率应为 $1$ 而不是 $0$。"
+      - id: d
+        text: "恒等于 $1/2$，与两个 Bloch 矢量的空间夹角 $\\alpha$ 无关。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "只有垂直的赤道态与极点态（$\\alpha=90^\\circ$）交叠才是 $1/2$，一般情况随 $\\cos^2(\\alpha/2)$ 连续变化。"
+    solution: "选取坐标轴使 $\\vec{\\boldsymbol{n}}=(0,0,1)$ 对应北极纯态 $|0\\rangle$，则夹角为 $\\alpha$ 的纯态极角为 $\\theta=\\alpha$，即 $|\\psi_{\\vec{\\boldsymbol{m}}}\\rangle = \\cos(\\alpha/2)|0\\rangle + \\sin(\\alpha/2)e^{i\\varphi}|1\\rangle$；直接取内积模方得 $|\\langle\\psi_{\\vec{\\boldsymbol{n}}}|\\psi_{\\vec{\\boldsymbol{m}}}\\rangle|^2 = \\cos^2(\\alpha/2) = \\frac{1+\\cos\\alpha}{2} = \\frac{1+\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{m}}}{2}$。"
+
+  - id: bloch-recall-pure-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: bloch-pure-state-mapping
+    difficulty: 1
+    est_minutes: 1
+    prompt: "用一两句话说明任意单比特纯态 $|\\psi\\rangle = \\cos(\\theta/2)|0\\rangle + \\sin(\\theta/2)e^{i\\varphi}|1\\rangle$ 如何对应到 Bloch 球上的密度矩阵，并解释对跖点的含义。"
+    rubric:
+      - id: r1
+        criterion: "写出 $\\rho = \\frac{\\mathbb{1}+\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}}{2}$，其中 $\\vec{\\boldsymbol{n}} = (\\sin\\theta\\cos\\varphi, \\sin\\theta\\sin\\varphi, \\cos\\theta)$ 满足 $|\\vec{\\boldsymbol{n}}|=1$ 落在单位球面上，并说明整体相位在 $\\rho$ 中消去。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "指出 Bloch 球面上互为对跖点 $\\pm\\vec{\\boldsymbol{n}}$ 的两个状态在希尔伯特空间中相互正交。"
+        weight: 1
+        required: true
+    exemplar: "任意归一化纯态构造投影 $\\rho = |\\psi\\rangle\\langle\\psi| = \\frac{\\mathbb{1}+\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}}{2}$ 后会自动消去不可观测的整体相位，其 Bloch 矢量 $\\vec{\\boldsymbol{n}}=(\\sin\\theta\\cos\\varphi,\\sin\\theta\\sin\\varphi,\\cos\\theta)$ 长度恒为 $1$ 而位于单位球面上；球面上相距 $180^\\circ$ 的对跖点 $\\pm\\vec{\\boldsymbol{n}}$ 对应相互正交的纯态。"
+
+  - id: bloch-recall-pure-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: bloch-pure-state-mapping
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "在标准泡利矩阵 $\\sigma_y = \\begin{pmatrix}0&-i\\\\i&0\\end{pmatrix}$ 约定下，Bloch 矢量 $\\vec{\\boldsymbol{n}} = (0, +1, 0)$ 对应的纯态（忽略整体相位）是哪一个？"
+    options:
+      - id: a
+        text: "$\\frac{1}{\\sqrt{2}}(|0\\rangle + i|1\\rangle)$"
+        correct: true
+        feedback: "正确。代入 $\\theta=\\pi/2, \\varphi=\\pi/2$ 即得 $\\frac{1}{\\sqrt{2}}(|0\\rangle + i|1\\rangle)$，且其密度矩阵右上角为 $-i/2$。"
+      - id: b
+        text: "$\\frac{1}{\\sqrt{2}}(|0\\rangle - i|1\\rangle)$"
+        correct: false
+        feedback: "这是 $\\varphi=3\\pi/2$、对应 $-y$ 轴矢量 $(0,-1,0)$ 的纯态。"
+      - id: c
+        text: "$\\frac{1}{\\sqrt{2}}(|0\\rangle + |1\\rangle)$"
+        correct: false
+        feedback: "这是 $\\varphi=0$、对应 $+x$ 轴矢量 $(1,0,0)$ 的纯态。"
+      - id: d
+        text: "$|0\\rangle$"
+        correct: false
+        feedback: "$|0\\rangle$ 对应北极 $+z$ 轴矢量 $(0,0,1)$。"
+    solution: "$\\vec{\\boldsymbol{n}}=(0,+1,0)$ 对应极角 $\\theta=\\pi/2$、方位角 $\\varphi=\\pi/2$，代入 $|\\psi\\rangle = \\cos(\\theta/2)|0\\rangle + \\sin(\\theta/2)e^{i\\varphi}|1\\rangle$ 即得 $\\frac{1}{\\sqrt{2}}(|0\\rangle+i|1\\rangle)$。"
+
+  - id: bloch-recall-pure-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: bloch-pure-state-mapping
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "用 Bloch 极角 $\\theta$ 写出纯态 $|\\psi\\rangle = \\cos(\\theta/2)|0\\rangle + \\sin(\\theta/2)e^{i\\varphi}|1\\rangle$ 处于 $|0\\rangle$ 态的布居概率 $\\rho_{00}$（用 `th` 表示 $\\theta$）。"
+    answer: "(1 + cos(th)) / 2"
+    variables:
+      th: [0, 3.14159]
+    solution: "由 $\\rho = \\frac{\\mathbb{1}+\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}}{2}$ 的左上对角元或 $|\\cos(\\theta/2)|^2$，得 $\\rho_{00} = \\frac{1 + n_z}{2} = \\frac{1 + \\cos\\theta}{2}$。"
+
+  # ==========================================================================
+  # Step 2: bloch-mixed-density-and-trace (5 题课堂 + 3 题 recall)
+  # ==========================================================================
+  - id: bloch-mixed-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "对比等权相干叠加纯态 $|+x\\rangle = \\frac{1}{\\sqrt{2}}(|0\\rangle + |1\\rangle)$ 与等概率经典混合态 $\\rho_M = \\frac{1}{2}|0\\rangle\\langle 0| + \\frac{1}{2}|1\\rangle\\langle 1|$，两者在密度矩阵非对角元、Bloch 矢量长度 $|\\vec{\\boldsymbol{n}}|$ 与纯度 $\\operatorname{Tr}(\\rho^2)$ 上有何根本区别？"
+    options:
+      - id: a
+        text: "相干叠加态拥有非零非对角元 $1/2$、矢量落在赤道面 $|\\vec{\\boldsymbol{n}}|=1$ 且 $\\operatorname{Tr}(\\rho^2)=1$；经典混态的非对角相干元全为零、退缩到球心 $\\vec{\\boldsymbol{n}}=\\vec{\\boldsymbol{0}}$（$|\\vec{\\boldsymbol{n}}|=0$）且纯度降为最小值 $1/2$。"
+        correct: true
+        feedback: "抓住了相干性与统计混合的本质差异！非对角相干元决定态矢量在 $x\\text{-}y$ 平面上的横向投影。"
+      - id: b
+        text: "两者都给 $|0\\rangle$ 和 $|1\\rangle$ 分配了 $50\\%$ 概率，因此它们的完整密度矩阵完全相同、都退缩在球心 $\\vec{\\boldsymbol{n}}=\\vec{\\boldsymbol{0}}$ 处，且纯度也必然同时相等。"
+        correct: false
+        feedback: "布居概率只看对角元；$|+x\\rangle\\langle +x|$ 比 $\\rho_M$ 多出非对角相干项 $\\frac{1}{2}(|0\\rangle\\langle 1|+|1\\rangle\\langle 0|)$，对应在 $+x$ 方向上 $|\\vec{\\boldsymbol{n}}|=1$。"
+      - id: c
+        text: "经典混态的非对角元同样非零、矢量长度也是 $1$，只是它的 Bloch 矢量方向会在赤道 $x\\text{-}y$ 平面内随着统计抽样随机指向某个不确定的方位角。"
+        correct: false
+        feedback: "在密度矩阵描述下，对单一系综的统计无知会直接使 Bloch 矢量缩短为各成分的凸组合 $\\frac{1}{2}(0,0,1)+\\frac{1}{2}(0,0,-1)=(0,0,0)$。"
+      - id: d
+        text: "相干叠加纯态因布居分散在两能级而使纯度降到 $1/2$、落入球体内部；反而是经典等权混合态保留了完整的纯度 $1$ 并停留在单位球面上。"
+        correct: false
+        feedback: "纯度 $\\operatorname{Tr}(\\rho^2) = \\frac{1+|\\vec{\\boldsymbol{n}}|^2}{2}$ 对纯态取最大值 $1$，对完全混态取最小值 $1/2$。"
+    solution: "纯态 $|+x\\rangle$ 保留了非对角相干元 $\\frac{1}{2}$，$\\vec{\\boldsymbol{n}}=(1,0,0)$ 且 $\\operatorname{Tr}(\\rho^2)=1$；等概率混态 $\\rho_M = \\mathbb{1}/2$ 失去全部相干元，$\\vec{\\boldsymbol{n}}=\\vec{\\boldsymbol{0}}$ 且 $\\operatorname{Tr}(\\rho^2)=1/2$。"
+
+  - id: bloch-mixed-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "在混合 $|0\\rangle$（概率 $p_1 = 3/4$）与 $|+\\rangle = \\frac{1}{\\sqrt{2}}(|0\\rangle+|1\\rangle)$（概率 $p_2 = 1/4$）组成的系综中，为什么最终算得的纯度是 $\\operatorname{Tr}(\\rho^2) = \\frac{13}{16}$，而不是单纯把经典概率平方相加 $p_1^2 + p_2^2 = \\frac{5}{8}$？"
+    options:
+      - id: a
+        text: "因为 $|0\\rangle$ 与 $|+\\rangle$ 并不相互正交（$|\\langle 0|+\\rangle|^2 = 1/2 \\ne 0$），展开 $\\operatorname{Tr}(\\rho^2) = \\sum_{i,j} p_i p_j |\\langle\\psi_i|\\psi_j\\rangle|^2$ 时必须计入交叉项 $2 p_1 p_2 |\\langle 0|+\\rangle|^2 = 3/16$（等价地由 $\\vec{\\boldsymbol{n}}=(1/4,0,3/4)$ 算得 $\\frac{1+|\\vec{\\boldsymbol{n}}|^2}{2} = \\frac{13}{16}$）。"
+        correct: true
+        feedback: "非常透彻！只有当混态的各组成态两两正交时，$\\operatorname{Tr}(\\rho^2)$ 才退化为 $\\sum_k p_k^2$；非正交混合总保有比 $\\sum p_k^2$ 更高的纯度。"
+      - id: b
+        text: "因为所有两态混合在求纯度时必须先把 $\\rho^2$ 乘以维数因子 $2$ 再取迹，忽略这个全局因子 $2$ 才误以为纯度只有 $\\sum p_k^2 = 5/8$。"
+        correct: false
+        category: math_error
+        feedback: "纯度直接定义为 $\\operatorname{Tr}(\\rho^2)$（不能乘 $2$），正是两个非正交纯态的矢量夹角为 $90^\\circ$ 而非 $180^\\circ$ 导致 $|\\vec{\\boldsymbol{n}}|^2 = 5/8$。"
+      - id: c
+        text: "因为只要混合 $|0\\rangle$ 与任何赤道叠加态，无论概率 $p_1, p_2$ 如何分配，混合后的纯度恒等于与比例无关的常数 $13/16$。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "纯度随 $p_1,p_2$ 变化，例如 $p_1=1,p_2=0$ 时纯度等于 $1$。"
+      - id: d
+        text: "因为系综纯度的正确展开公式应当把概率平方项做差而不是相加，也就是必须按 $p_1^2 - p_2^2$ 结合交叉项来计算。"
+        correct: false
+        category: math_error
+        feedback: "无论是否正交，系综纯度公式 $\\sum_{i,j} p_i p_j |\\langle\\psi_i|\\psi_j\\rangle|^2$ 每一项都是非负相加的。"
+    solution: "因 $|\\langle 0|+\\rangle|^2 = 1/2$，由 $\\operatorname{Tr}(\\rho^2) = p_1^2 + p_2^2 + 2p_1p_2|\\langle 0|+\\rangle|^2 = \\frac{9}{16} + \\frac{1}{16} + \\frac{3}{16} = \\frac{13}{16}$，与 $\\frac{1+|\\vec{\\boldsymbol{n}}|^2}{2} = \\frac{1+5/8}{2} = \\frac{13}{16}$ 完全吻合。"
+
+  - id: bloch-mixed-purity-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    params:
+      k:
+        min: 1
+        max: 5
+        step: 1
+    constraints:
+      - "k != 3"
+    prompt: "某单比特统计系综以概率 $p_1 = {{=k/10}}$ 处于 $|0\\rangle$ 态，以概率 $p_2 = {{=(10-k)/10}}$ 处于 $|+x\\rangle = \\frac{1}{\\sqrt{2}}(|0\\rangle + |1\\rangle)$ 态。先写出其 Bloch 矢量 $\\vec{\\boldsymbol{n}}$，再求该混合态的纯度 $\\operatorname{Tr}(\\rho^2)$（用小数表示）。"
+    answer_expr: "(100 + k*k + (10-k)*(10-k)) / 200"
+    tolerance:
+      abs: 0.005
+    common_wrong:
+      - answer_expr: "(k*k + (10-k)*(10-k)) / 100"
+        category: misunderstood_definition
+        feedback: "你算出的只是 $|\\vec{\\boldsymbol{n}}|^2$（或错把 $|0\\rangle$ 与 $|+x\\rangle$ 当作正交态套用 $\\sum p_i^2$）；非正交混态须先求 $\\vec{\\boldsymbol{n}}$ 再代入 $\\operatorname{Tr}(\\rho^2) = \\frac{1+|\\vec{\\boldsymbol{n}}|^2}{2}$！"
+      - answer_expr: "(1 + sqrt(k*k + (10-k)*(10-k))/10) / 2"
+        category: math_error
+        feedback: "你代入公式时漏掉了对模长 $|\\vec{\\boldsymbol{n}}|$ 取平方！你算出来的是较大本征值 $\\frac{1+|\\vec{\\boldsymbol{n}}|}{2}$，而纯度应当使用 $\\frac{1+|\\vec{\\boldsymbol{n}}|^2}{2}$。"
+      - answer_expr: "(100 - k*k - (10-k)*(10-k)) / 200"
+        category: math_error
+        feedback: "纯度表达式分子是 $1 + |\\vec{\\boldsymbol{n}}|^2$，不能减成 $1 - |\\vec{\\boldsymbol{n}}|^2$（混态纯度一定在 $[0.5, 1)$ 之间）。"
+    hints:
+      - "利用线性凸组合 $\\vec{\\boldsymbol{n}} = p_1(0,0,1) + p_2(1,0,0) = (p_2, 0, p_1)$。"
+      - "计算模长平方 $|\\vec{\\boldsymbol{n}}|^2 = p_1^2 + p_2^2$ 后代入 $\\operatorname{Tr}(\\rho^2) = \\frac{1+|\\vec{\\boldsymbol{n}}|^2}{2}$。"
+    solution: "$\\vec{\\boldsymbol{n}} = ({{=(10-k)/10}}, 0, {{=k/10}})$，故 $|\\vec{\\boldsymbol{n}}|^2 = {{=(k*k+(10-k)*(10-k))/100}}$，从而纯度 $\\operatorname{Tr}(\\rho^2) = \\frac{1 + |\\vec{\\boldsymbol{n}}|^2}{2} = {{=(100+k*k+(10-k)*(10-k))/200}}$。"
+
+  - id: bloch-mixed-spot-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "一位同学在抄录 Bloch 矢量迹反演推导时写道：『由 $\\rho = \\frac{\\mathbb{1}+\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}}{2}$ 得 $\\operatorname{Tr}(\\rho\\vec{\\boldsymbol{\\sigma}}) = 0 + \\operatorname{Tr}[n_i(\\delta_{ij}\\mathbb{1} + i\\epsilon_{ijk}\\sigma_k/2)]\\vec{\\boldsymbol{e}}_j = \\vec{\\boldsymbol{n}}$』。这条推导里出现了哪一处典型代数错位？"
+    options:
+      - id: a
+        text: "泡利乘积恒等式原本是 $\\sigma_i\\sigma_j = \\delta_{ij}\\mathbb{1} + i\\epsilon_{ijk}\\sigma_k$（绝对没有 `/2`）；来自 $\\rho$ 的因子 $1/2$ 必须留在整项迹的括号外面，即 $\\frac{1}{2}\\operatorname{Tr}[n_i(\\delta_{ij}\\mathbb{1} + i\\epsilon_{ijk}\\sigma_k)]\\vec{\\boldsymbol{e}}_j$，这样 $\\frac{1}{2}\\operatorname{Tr}(\\mathbb{1}) = 1$ 才刚好导出 $\\vec{\\boldsymbol{n}}$。"
+        correct: true
+        feedback: "精准排雷！这正是《磁共振基础》式 (1.38) 的实际印刷勘误：作者漏写了外层的 $1/2$，却误把 `/2` 写进了 $\\sigma_i\\sigma_j$ 的反对易/对易展开里。"
+      - id: b
+        text: "错在泡利矩阵无迹性质被记反了，单比特的三个泡利矩阵各自本征值之和其实都满足 $\\operatorname{Tr}(\\sigma_k) = 2$，因此第一项原本不该为零而应保留。"
+        correct: false
+        category: math_error
+        feedback: "三块泡利矩阵的本征值均为 $+1$ 与 $-1$，迹严格为零：$\\operatorname{Tr}(\\sigma_k)=0$。"
+      - id: c
+        text: "错在误把二维单位矩阵的迹算成了 $\\operatorname{Tr}(\\mathbb{1})=2$，实际上归一化空间的单位算符迹必须等于 $1$，所以代入后正确结果本该是 $\\vec{\\boldsymbol{n}}/2$。"
+        correct: false
+        category: math_error
+        feedback: "在单比特二维空间中，$\\mathbb{1}$ 是 $2\\times 2$ 单位矩阵，所以 $\\operatorname{Tr}(\\mathbb{1}) = 1 + 1 = 2$。"
+      - id: d
+        text: "把 `/2` 放在括号内的 $i\\epsilon_{ijk}\\sigma_k$ 之后与留在括号外面完全等价，因为 $\\operatorname{Tr}(\\sigma_k)=0$，整个推导在数值计算上并不存在任何错误。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "若按错式把括号外 $1/2$ 丢掉、只保留里面 `/2`，则 $\\operatorname{Tr}(n_i\\delta_{ij}\\mathbb{1})\\vec{\\boldsymbol{e}}_j = 2\\vec{\\boldsymbol{n}}$ 而不是 $\\vec{\\boldsymbol{n}}$，算术自相矛盾。"
+    solution: "因 $\\sigma_i\\sigma_j = \\delta_{ij}\\mathbb{1} + i\\epsilon_{ijk}\\sigma_k$（无 `/2` 因子），来自 $\\rho = \\frac{\\mathbb{1}+\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}}{2}$ 的整体因子 $1/2$ 必须乘在整项迹外面，才能由 $\\frac{1}{2}\\operatorname{Tr}(\\mathbb{1}) = 1$ 正确得出 $\\vec{\\boldsymbol{n}}$。"
+
+  - id: bloch-mixed-ensemble-transfer
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "（混态谱分解迁移）已知某单比特密度矩阵在 Bloch 球内的矢量为 $\\vec{\\boldsymbol{n}} = (0, 0.36, 0.48)$。若按 $\\rho = \\lambda_+|+\\hat{\\boldsymbol{u}}\\rangle\\langle+\\hat{\\boldsymbol{u}}| + \\lambda_-|-\\hat{\\boldsymbol{u}}\\rangle\\langle-\\hat{\\boldsymbol{u}}|$ 作正交本征分解，其两个本征值 $\\lambda_\\pm$ 与主轴单位方向 $\\hat{\\boldsymbol{u}}$ 分别是多少？"
+    options:
+      - id: a
+        text: "$\\lambda_+ = 0.8,\\; \\lambda_- = 0.2$，单位方向 $\\hat{\\boldsymbol{u}} = (0, 0.6, 0.8)$（对应对跖本征矢 $\\pm\\hat{\\boldsymbol{u}}$ 落在球面上）。"
+        correct: true
+        feedback: "完全正确！先求长度 $|\\vec{\\boldsymbol{n}}| = \\sqrt{0.36^2+0.48^2} = 0.6$，即得 $\\lambda_\\pm = \\frac{1\\pm 0.6}{2}$ 与归一化主轴 $\\hat{\\boldsymbol{u}} = \\vec{\\boldsymbol{n}}/0.6 = (0,0.6,0.8)$。"
+      - id: b
+        text: "$\\lambda_+ = 0.68,\\; \\lambda_- = 0.32$，因为必须把 $|\\vec{\\boldsymbol{n}}|$ 平方后再代入本征值公式。"
+        correct: false
+        category: math_error
+        feedback: "不要混淆纯度公式与本征值公式！纯度 $\\operatorname{Tr}(\\rho^2)=\\frac{1+|\\vec{\\boldsymbol{n}}|^2}{2}=0.68$ 平方了模长，而本征值是线性的 $\\lambda_\\pm = \\frac{1\\pm|\\vec{\\boldsymbol{n}}|}{2}$。"
+      - id: c
+        text: "$\\lambda_+ = 0.74,\\; \\lambda_- = 0.26$，只把 $z$ 分量 $0.48$ 代入 $\\frac{1\\pm n_z}{2}$。"
+        correct: false
+        category: misapplied_technique
+        feedback: "$\\frac{1\\pm n_z}{2}$ 是计算基下的对角布居，而非密度矩阵的本征值；因为存在非零横向分量 $n_y=0.36$，必须用总模长 $|\\vec{\\boldsymbol{n}}|$。"
+      - id: d
+        text: "$\\lambda_+ = 0.6,\\; \\lambda_- = 0.4$，直接把模长 $|\\vec{\\boldsymbol{n}}|$ 当成最大本征值。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "$|\\vec{\\boldsymbol{n}}|$ 是两本征值之差 $\\lambda_+ - \\lambda_-$，由 $\\lambda_++\\lambda_-=1$ 解得 $\\lambda_\\pm = \\frac{1\\pm|\\vec{\\boldsymbol{n}}|}{2}$。"
+    solution: "由 $|\\vec{\\boldsymbol{n}}| = \\sqrt{0.36^2+0.48^2} = 0.6$，代入 $\\lambda_\\pm = \\frac{1\\pm|\\vec{\\boldsymbol{n}}|}{2}$ 得 $\\lambda_+ = 0.8,\\; \\lambda_- = 0.2$；主轴方向把 $\\vec{\\boldsymbol{n}}$ 归一化至球面得 $\\hat{\\boldsymbol{u}} = \\vec{\\boldsymbol{n}}/|\\vec{\\boldsymbol{n}}| = (0, 0.6, 0.8)$。"
+
+  - id: bloch-recall-mixed-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: bloch-mixed-density-and-trace
+    difficulty: 1
+    est_minutes: 1
+    prompt: "用一两句话说明统计混态在 Bloch 球中的几何位置、如何用迹提取 $\\vec{\\boldsymbol{n}}$，以及纯度 $\\operatorname{Tr}(\\rho^2)$ 与模长 $|\\vec{\\boldsymbol{n}}|$ 的关系。"
+    rubric:
+      - id: r1
+        criterion: "说明系综混态的 Bloch 矢量 $\\vec{\\boldsymbol{n}}=\\sum_k p_k\\vec{\\boldsymbol{n}}_k$ 满足 $|\\vec{\\boldsymbol{n}}|<1$ 而位于单位球体内部，并写出反演式 $\\vec{\\boldsymbol{n}}=\\operatorname{Tr}(\\rho\\vec{\\boldsymbol{\\sigma}})$。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "写出纯度 $\\operatorname{Tr}(\\rho^2) = \\frac{1+|\\vec{\\boldsymbol{n}}|^2}{2}$（纯态为 $1$，混态严格小于 $1$）及本征值 $\\frac{1\\pm|\\vec{\\boldsymbol{n}}|}{2}$。"
+        weight: 1
+        required: true
+    exemplar: "统计混态 $\\rho=\\sum_k p_k|\\psi_k\\rangle\\langle\\psi_k|$ 的 Bloch 矢量是线性凸组合 $\\vec{\\boldsymbol{n}}=\\sum_k p_k\\vec{\\boldsymbol{n}}_k$，当 $|\\vec{\\boldsymbol{n}}|<1$ 时落入单位球内部，并可由 $\\vec{\\boldsymbol{n}}=\\operatorname{Tr}(\\rho\\vec{\\boldsymbol{\\sigma}})$ 唯一提取；其纯度 $\\operatorname{Tr}(\\rho^2)=\\frac{1+|\\vec{\\boldsymbol{n}}|^2}{2}$ 对纯态等于 $1$、对混态严格小于 $1$，本征值为 $\\frac{1\\pm|\\vec{\\boldsymbol{n}}|}{2}$。"
+
+  - id: bloch-recall-mixed-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: bloch-mixed-density-and-trace
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "下列哪一项同时正确给出了统计系综密度矩阵与泡利矩阵乘积恒等式？"
+    options:
+      - id: a
+        text: "$\\rho = \\sum_k p_k |\\psi_k\\rangle\\langle\\psi_k|$，且 $\\sigma_i\\sigma_j = \\delta_{ij}\\mathbb{1} + i\\epsilon_{ijk}\\sigma_k$"
+        correct: true
+        feedback: "正确。投影算符的右矢和左矢属于同一状态，且泡利乘积 $\\sigma_i\\sigma_j$ 内不含多余的因子 $1/2$。"
+      - id: b
+        text: "$\\rho = p_1|\\psi_1\\rangle\\langle\\varphi_1| + p_2|\\psi_2\\rangle\\langle\\varphi_2|$，且 $\\sigma_i\\sigma_j = \\delta_{ij}\\mathbb{1} + i\\epsilon_{ijk}\\sigma_k/2$"
+        correct: false
+        feedback: "这两处恰恰是讲义式 (1.36) 与式 (1.38) 中的印刷笔误。"
+      - id: c
+        text: "$\\rho = \\sum_k p_k |\\psi_k\\rangle\\langle\\psi_k|$，且 $\\sigma_i\\sigma_j = \\frac{1}{2}\\delta_{ij}\\mathbb{1} + i\\epsilon_{ijk}\\sigma_k$"
+        correct: false
+        feedback: "泡利矩阵平方 $\\sigma_x^2 = \\mathbb{1}$，所以 $\\delta_{ij}\\mathbb{1}$ 前系数为 $1$ 而非 $1/2$。"
+      - id: d
+        text: "$\\rho = \\sum_k p_k^2 |\\psi_k\\rangle\\langle\\psi_k|$，且 $\\sigma_i\\sigma_j = i\\epsilon_{ijk}\\sigma_k$"
+        correct: false
+        feedback: "系综概率权重是一次的 $p_k$ 保证 $\\operatorname{Tr}(\\rho)=\\sum p_k=1$，且 $i=j$ 时 $\\sigma_i^2 = \\mathbb{1} \\ne 0$。"
+    solution: "系综密度矩阵为同态投影的加权和 $\\sum_k p_k|\\psi_k\\rangle\\langle\\psi_k|$，泡利乘积恒等式为 $\\sigma_i\\sigma_j = \\delta_{ij}\\mathbb{1} + i\\epsilon_{ijk}\\sigma_k$。"
+
+  - id: bloch-recall-mixed-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: bloch-mixed-density-and-trace
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "用 Bloch 矢量模长 $n = |\\vec{\\boldsymbol{n}}|$ 写出单比特密度矩阵 $\\rho = \\frac{\\mathbb{1}+\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}}{2}$ 的纯度 $\\operatorname{Tr}(\\rho^2)$（用 `n` 表示 $|\\vec{\\boldsymbol{n}}|$）。"
+    answer: "(1 + n^2) / 2"
+    variables:
+      n: [0, 1]
+    solution: "对 $\\rho^2 = \\frac{1}{4}[(1+|\\vec{\\boldsymbol{n}}|^2)\\mathbb{1}+2\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}]$ 取迹得 $\\operatorname{Tr}(\\rho^2) = \\frac{1+n^2}{2}$。"
+
+  # ==========================================================================
+  # Step 3: bloch-gate-as-3d-rotation (5 题课堂 + 3 题 recall)
+  # ==========================================================================
+  - id: bloch-gate-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "对任意初态密度矩阵 $\\rho_0$（无论纯态或混态，Bloch 矢量为 $\\vec{\\boldsymbol{n}}_0$）施加单比特幺正门 $U = e^{-i\\theta\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}}$ 后，末态 $\\rho_f = U\\rho_0 U^\\dagger$ 的 Bloch 矢量 $\\vec{\\boldsymbol{n}}_f$ 在几何上发生什么变换？"
+    options:
+      - id: a
+        text: "等于将 $\\vec{\\boldsymbol{n}}_0$ 按右手定则绕单位轴 $\\vec{\\boldsymbol{n}}$ 刚性旋转角度 $\\theta$，即 $\\vec{\\boldsymbol{n}}_f = R_{\\vec{\\boldsymbol{n}}\\cdot\\theta}(\\vec{\\boldsymbol{n}}_0)$，矢量长度 $|\\vec{\\boldsymbol{n}}_f|=|\\vec{\\boldsymbol{n}}_0|$ 与纯度保持不变。"
+        correct: true
+        feedback: "完全正确！幺正共轭把复数算符演化严格同构为三维正交旋转，不改变 Bloch 矢量到球心的距离。"
+      - id: b
+        text: "只能旋转单位球面上的纯态矢量，若 $\\rho_0$ 是球内混态则矢量长度会随之缩短。"
+        correct: false
+        feedback: "式 (1.39)–(1.40) 对任意 $|\\vec{\\boldsymbol{n}}_0|\\le 1$ 同样成立，正交旋转矩阵 $R_{\\vec{\\boldsymbol{n}}\\cdot\\theta}$ 严格保长、保纯度。"
+      - id: c
+        text: "由于演化算符指数含 $\\theta/2$，Bloch 矢量实际绕 $\\vec{\\boldsymbol{n}}$ 只转过半角 $\\theta/2$。"
+        correct: false
+        feedback: "半角 $\\theta/2$ 出现在态矢的 $U$ 中；在 $\\rho_f = U\\rho_0 U^\\dagger$ 里左右共轭两次，几何旋转角恰好恢复为完整的 $\\theta$。"
+      - id: d
+        text: "旋转方向由左手定则确定，绕 $+x$ 轴转 $+\\pi/2$ 会把南极 $|1\\rangle$ 送到 $-y$ 轴。"
+        correct: false
+        feedback: "符号约定严格遵循右手定则：右手拇指指 $+x$ 时，四指从 $-z$ 弯向 $+y$，故南极转 $+90^\\circ$ 到 $+y$。"
+    solution: "利用 $U(\\vec{\\boldsymbol{n}}_0\\cdot\\vec{\\boldsymbol{\\sigma}})U^\\dagger = R_{\\vec{\\boldsymbol{n}}\\cdot\\theta}(\\vec{\\boldsymbol{n}}_0)\\cdot\\vec{\\boldsymbol{\\sigma}}$ 与迹反演公式，得 $\\vec{\\boldsymbol{n}}_f = R_{\\vec{\\boldsymbol{n}}\\cdot\\theta}(\\vec{\\boldsymbol{n}}_0)$（右手定则保长旋转）。"
+
+  - id: bloch-gate-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "用 $U_x(\\pi/2) = e^{-i(\\pi/2)S_x}$ 直接作用在下态 $|1\\rangle$ 上算出的态矢是 $\\frac{1}{\\sqrt{2}}(|1\\rangle - i|0\\rangle)$，而绕 $+x$ 轴右手旋转 $+90^\\circ$ 把南极 $(0,0,-1)$ 送到 $+y$ 轴。为什么 $|0\\rangle$ 前面明明有个负号 $-i$，对应态却不是 $-y$ 轴而是 $+y$ 轴？"
+    options:
+      - id: a
+        text: "把不可观测的整体相位 $-i$ 提取到括号外，立刻得到 $-i\\frac{1}{\\sqrt{2}}(|0\\rangle + i|1\\rangle) = -i|+y\\rangle$；它的 $|1\\rangle$ 相对 $|0\\rangle$ 相位恰好是 $+i$，因此密度矩阵等于 $\\frac{\\mathbb{1}+\\sigma_y}{2}$，精准落在 $+y=(0,+1,0)$ 上。"
+        correct: true
+        feedback: "解释得一清二楚！一旦消去整体相位 $-i$，相对相位就从 $|0\\rangle$ 前的 $-i$ 变成 $|1\\rangle$ 前的 $+i$，代数和几何从此严丝合缝。"
+      - id: b
+        text: "因为共振脉冲实际上按左手定则旋转，本来就该停在 $-y$ 轴，只是习惯上改叫 $+y$。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "算符与三维旋转严格遵循右手定则；提取整体相位后你会看到该态本身就是 $\\sigma_y$ 的 $+1$ 本征态 $|+y\\rangle$。"
+      - id: c
+        text: "因为计算密度矩阵非对角元 $\\rho_{01}$ 时只需要看 $|0\\rangle$ 分量的实部符号，不必乘以 $|1\\rangle$ 分量的复共轭。"
+        correct: false
+        category: math_error
+        feedback: "$\\rho_{01} = c_0 c_1^* = (-i/\\sqrt{2})(1/\\sqrt{2}) = -i/2 = (0 - i\\cdot(+1))/2$，正是由两项联合给出 $n_y = +1$。"
+      - id: d
+        text: "因为转角 $\\theta=\\pi/2$ 实际应再翻个负号变成 $-\\pi/2$。"
+        correct: false
+        category: math_error
+        feedback: "符号 $U = e^{-i\\theta\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}}$ 的负号正好产生正角度 $+\\theta$ 的右手旋转。"
+    solution: "因 $\\frac{1}{\\sqrt{2}}(|1\\rangle - i|0\\rangle) = -i\\frac{1}{\\sqrt{2}}(|0\\rangle + i|1\\rangle) = -i|+y\\rangle$，整体相位 $-i$ 在 $\\rho=|\\psi\\rangle\\langle\\psi|$ 中消去，留下 $+y$ 轴矢量 $(0,+1,0)$，与右手旋转 $+90^\\circ$ 完全一致。"
+
+  - id: bloch-rotation-component-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    params:
+      a:
+        min: 1
+        max: 3
+        step: 1
+      b:
+        min: 1
+        max: 4
+        step: 1
+    constraints:
+      - "(a == 1 and b == 2) or (a == 2 and b == 1) or (a == 1 and b == 3) or (a == 3 and b == 4)"
+    prompt: "自旋初始处于南极 $|1\\rangle$（Bloch 矢量 $\\vec{\\boldsymbol{n}}_0 = (0, 0, -1)$）。现施加一个绕斜向单位轴 $\\vec{\\boldsymbol{n}} = \\frac{1}{\\sqrt{{{=a*a+b*b}}}}({{=a}}, 0, {{=b}})$ 旋转 $\\theta = \\pi$ 的单比特门 $U = e^{-i\\pi\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}}$。求末态 Bloch 矢量的 $z$ 分量 $n_{f,z}$（用小数表示）。"
+    answer_expr: "(a*a - b*b) / (a*a + b*b)"
+    tolerance:
+      abs: 0.005
+    common_wrong:
+      - answer_expr: "(b*b - a*a) / (a*a + b*b)"
+        category: math_error
+        feedback: "符号反了！注意初态是南极 $\\vec{\\boldsymbol{n}}_0=(0,0,-1)$ 而不是北极 $(0,0,+1)$，因此 $-\\vec{\\boldsymbol{n}}_0$ 给出 $+1$ 而不是 $-1$。"
+      - answer_expr: "(a*a) / (a*a + b*b)"
+        category: math_error
+        feedback: "绕任意轴旋转 $\\pi$ 的反射公式是 $2(\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{n}}_0)\\vec{\\boldsymbol{n}} - \\vec{\\boldsymbol{n}}_0$，你漏掉了前面那个因子 $2$！"
+      - answer_expr: "(-2*a*b) / (a*a + b*b)"
+        category: misapplied_technique
+        feedback: "你计算的是 $x$ 分量 $n_{f,x}$，题目要求的是 $z$ 分量 $n_{f,z}$。"
+    hints:
+      - "绕单位轴 $\\vec{\\boldsymbol{n}}$ 转动 $\\theta=\\pi$ 的立体几何结果等价于关于 $\\vec{\\boldsymbol{n}}$ 的轴对称：$R_{\\vec{\\boldsymbol{n}}\\cdot\\pi}(\\vec{\\boldsymbol{n}}_0) = 2(\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{n}}_0)\\vec{\\boldsymbol{n}} - \\vec{\\boldsymbol{n}}_0$。"
+      - "代入 $\\vec{\\boldsymbol{n}}_0 = (0,0,-1)$ 得 $n_{f,z} = 1 - 2 n_z^2$（其中 $n_z$ 为单位转轴 $\\vec{\\boldsymbol{n}}$ 的 $z$ 分量）。"
+    solution: "由 $\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{n}}_0 = -\\frac{{{=b}}}{\\sqrt{{{=a*a+b*b}}}}$ 与 $\\pi$ 旋转公式 $\\vec{\\boldsymbol{n}}_f = 2(\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{n}}_0)\\vec{\\boldsymbol{n}} - \\vec{\\boldsymbol{n}}_0$，其 $z$ 分量为 $n_{f,z} = -2\\frac{{{=b*b}}}{{{=a*a+b*b}}} + 1 = \\frac{{{=a*a - b*b}}}{{{=a*a+b*b}}} = {{=(a*a-b*b)/(a*a+b*b)}}$。"
+
+  - id: bloch-gate-spot-mistake
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "某同学查看演化算符 $U_z(\\varphi) = e^{-i\\varphi S_z} = \\cos(\\varphi/2)\\mathbb{1} - i\\sin(\\varphi/2)\\sigma_z$ 后断言：『由于三角函数里出现了 $\\varphi/2$，把 $U_z(\\varphi)$ 作用在赤道 $|+x\\rangle$ 态上时，Bloch 矢量绕 $+z$ 轴也只会转过半角 $\\varphi/2$。』这段推理错在哪里？"
+    options:
+      - id: a
+        text: "混淆了作用于态矢的 $SU(2)$ 半角与密度矩阵共轭后的三维旋转角：$\\rho_f = U\\rho_0 U^\\dagger$ 左右各作用一次 $U$ 与 $U^\\dagger$，正交矩阵 $R_{\\hat{z}\\cdot\\varphi}$ 使相对相位翻倍还原，Bloch 矢量绕 $+z$ 轴严格转过完整角度 $\\varphi$。"
+        correct: true
+        feedback: "概念极清晰！这也正体现了 $SU(2)$ 对 $SO(3)$ 的双覆盖关系：态矢转半角 $\\varphi/2$，而可观测 Bloch 矢量转整角 $\\varphi$。"
+      - id: b
+        text: "错在 $U_z(\\varphi)$ 不含 $x$ 和 $y$ 分量，因此对 $|+x\\rangle$ 不产生任何旋转，保持原地不动。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "$+z$ 轴与 $+x$ 轴垂直，绕 $+z$ 轴旋转正会把 $+x$ 转入 $x\\text{-}y$ 平面内的 $(\\cos\\varphi, \\sin\\varphi, 0)$；只有沿着 $\\pm z$ 的态才绕 $z$ 轴不动。"
+      - id: c
+        text: "错在 $U_z(\\varphi)$ 展开式里的 $\\varphi/2$ 本身就写错了，正确态矢演化公式里不应该有分母 $2$。"
+        correct: false
+        category: math_error
+        feedback: "因 $\\sigma_z = 2S_z$，所以 $e^{-i\\varphi S_z} = e^{-i(\\varphi/2)\\sigma_z}$ 在态矢层面确确实实带有 $\\varphi/2$。"
+      - id: d
+        text: "只有 $\\varphi=2\\pi$ 时才会变成转角 $\\varphi$，其他一般角度下确实只转 $\\varphi/2$。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "检验 $U_z(\\varphi)|+x\\rangle = \\frac{1}{\\sqrt{2}}(e^{-i\\varphi/2}|0\\rangle + e^{i\\varphi/2}|1\\rangle) = e^{-i\\varphi/2}\\frac{1}{\\sqrt{2}}(|0\\rangle + e^{i\\varphi}|1\\rangle)$，相对相位对所有 $\\varphi$ 都恒为 $\\varphi$。"
+    solution: "对 $|+x\\rangle$ 作用 $U_z(\\varphi)$ 得 $e^{-i\\varphi/2}\\frac{1}{\\sqrt{2}}(|0\\rangle+e^{i\\varphi}|1\\rangle)$，相对相位增大 $\\varphi$，对应 Bloch 矢量 $(\\cos\\varphi,\\sin\\varphi,0)$ 绕 $+z$ 轴转动完整角度 $\\varphi$。"
+
+  - id: bloch-gate-rotation-transfer
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "（组合门几何追踪）从下能级 $|1\\rangle$（$\\vec{\\boldsymbol{n}}_0 = (0,0,-1)$）出发，在组合操作 $U_z(\\pi/2) U_x(\\pi/2)|1\\rangle$ 中先作用 $U_x(\\pi/2) = e^{-i(\\pi/2)S_x}$、紧接着再作用 $U_z(\\pi/2) = e^{-i(\\pi/2)S_z}$。按 Bloch 球右手定则连续旋转两次后，末态矢量 $\\vec{\\boldsymbol{n}}_f$ 与对应量子态（忽略整体相位）分别是什么？"
+    options:
+      - id: a
+        text: "先绕 $+x$ 转 $+90^\\circ$ 到 $(0,+1,0)$，再绕 $+z$ 转 $+90^\\circ$ 到 $(-1,0,0)$；对应 $-x$ 轴量子态 $\\frac{1}{\\sqrt{2}}(|0\\rangle - |1\\rangle)$。"
+        correct: true
+        feedback: "几何追踪大功告成！无需乘任何 $2\\times 2$ 矩阵就瞬间看出轨迹：$-z \\xrightarrow{x(\\pi/2)} +y \\xrightarrow{z(\\pi/2)} -x$。"
+      - id: b
+        text: "先绕 $+x$ 转 $+90^\\circ$ 到 $(0,+1,0)$，再绕 $+z$ 转 $+90^\\circ$ 到 $(+1,0,0)$；对应 $+x$ 轴量子态 $\\frac{1}{\\sqrt{2}}(|0\\rangle + |1\\rangle)$。"
+        correct: false
+        category: math_error
+        feedback: "检验绕 $+z$ 轴的右手定则：拇指指 $+z$，四指从 $+x$ 弯向 $+y$，再从 $+y$ 弯向 $-x$！因此 $(0,+1,0)$ 转 $+90^\\circ$ 必到 $(-1,0,0)$ 而非 $(+1,0,0)$。"
+      - id: c
+        text: "因为先作用在右边的算符后旋转，所以应先绕 $+z$ 把 $(0,0,-1)$ 转到原地 $(0,0,-1)$，再绕 $+x$ 转到 $(0,+1,0)$。"
+        correct: false
+        category: misapplied_technique
+        feedback: "算符乘法 $U_2 U_1 |\\psi\\rangle$ 中右边算符 $U_1$ 先作用在态上，对应旋转也必须按 $R_2(R_1(\\vec{\\boldsymbol{n}}_0))$ 的顺序先绕 $x$ 再绕 $z$。"
+      - id: d
+        text: "最终回到南极 $(0,0,-1)$，因为两个 $\\pi/2$ 脉冲效果互相抵消。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "绕不同正交轴 $x$ 与 $z$ 的转动不对易且不会抵消，态已经被送到赤道 $-x$ 上。"
+    solution: "先由 $R_{\\hat{x}\\cdot\\pi/2}(0,0,-1) = (0,+1,0)$，再按右手定则绕 $+z$ 转动 $+90^\\circ$ 得 $R_{\\hat{z}\\cdot\\pi/2}(0,+1,0) = (-1,0,0)$，对应计算基叠加态 $\\frac{1}{\\sqrt{2}}(|0\\rangle - |1\\rangle)$。"
+
+  - id: bloch-recall-gate-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: bloch-gate-as-3d-rotation
+    difficulty: 1
+    est_minutes: 1
+    prompt: "用一两句话说明为什么单比特幺正门 $U = e^{-i\\theta\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}}$ 等价于 Bloch 矢量的三维绕轴旋转，以及它对态纯度的影响。"
+    rubric:
+      - id: r1
+        criterion: "写出借助 $U(\\vec{\\boldsymbol{n}}_0\\cdot\\vec{\\boldsymbol{\\sigma}})U^\\dagger = R_{\\vec{\\boldsymbol{n}}\\cdot\\theta}(\\vec{\\boldsymbol{n}}_0)\\cdot\\vec{\\boldsymbol{\\sigma}}$ 与迹反演得 $\\vec{\\boldsymbol{n}}_f = R_{\\vec{\\boldsymbol{n}}\\cdot\\theta}(\\vec{\\boldsymbol{n}}_0)$（右手定则绕 $\\vec{\\boldsymbol{n}}$ 转 $\\theta$）。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "指出三维正交旋转保持矢量模长 $|\\vec{\\boldsymbol{n}}_f|=|\\vec{\\boldsymbol{n}}_0|$ 不变，因此幺正门保持量子态纯度不变。"
+        weight: 1
+        required: true
+    exemplar: "对 $\\rho_f = U\\rho_0 U^\\dagger$ 应用三维旋转公式 $U(\\vec{\\boldsymbol{n}}_0\\cdot\\vec{\\boldsymbol{\\sigma}})U^\\dagger = R_{\\vec{\\boldsymbol{n}}\\cdot\\theta}(\\vec{\\boldsymbol{n}}_0)\\cdot\\vec{\\boldsymbol{\\sigma}}$ 并取迹，立刻得到 $\\vec{\\boldsymbol{n}}_f = R_{\\vec{\\boldsymbol{n}}\\cdot\\theta}(\\vec{\\boldsymbol{n}}_0)$，即 Bloch 矢量按右手定则绕 $\\vec{\\boldsymbol{n}}$ 转动 $\\theta$；正交旋转严格保长，故幺正门不改变纯度 $\\operatorname{Tr}(\\rho^2)$。"
+
+  - id: bloch-recall-gate-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: bloch-gate-as-3d-rotation
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "若从北极态 $|0\\rangle$（$\\vec{\\boldsymbol{n}}_0 = (0,0,+1)$）出发施加单比特门 $U_x(\\pi/2) = e^{-i(\\pi/2)S_x}$，末态的 Bloch 矢量位于何处？"
+    options:
+      - id: a
+        text: "$(0, -1, 0)$（赤道 $-y$ 轴，对应态 $\\frac{1}{\\sqrt{2}}(|0\\rangle - i|1\\rangle)$）"
+        correct: true
+        feedback: "正确。右手拇指指 $+x$ 时，四指由 $+z$ 弯向 $-y$，且 $U_x(\\pi/2)|0\\rangle = \\frac{1}{\\sqrt{2}}(|0\\rangle - i|1\\rangle)$。"
+      - id: b
+        text: "$(0, +1, 0)$（赤道 $+y$ 轴，对应态 $\\frac{1}{\\sqrt{2}}(|0\\rangle + i|1\\rangle)$）"
+        correct: false
+        feedback: "$(0,+1,0)$ 是从南极 $|1\\rangle$ 绕 $+x$ 转 $+90^\\circ$ 的终点；从北极 $+z$ 出发会转到 $-y$。"
+      - id: c
+        text: "$(+1, 0, 0)$（赤道 $+x$ 轴）"
+        correct: false
+        feedback: "绕 $+x$ 轴转动不会使矢量指向转轴本身 $+x$，而是在垂直于 $x$ 的 $y\\text{-}z$ 平面内运动。"
+      - id: d
+        text: "$(0, 0, -1)$（南极 $-z$ 轴）"
+        correct: false
+        feedback: "转过 $\\pi/2$ 只把北极放到赤道上，需要完整的 $\\pi$ 旋转才会到达南极。"
+    solution: "按右手定则绕 $+x$ 轴转动 $+90^\\circ$ 把 $+z=(0,0,+1)$ 映射到 $-y=(0,-1,0)$；代数验证 $U_x(\\pi/2)|0\\rangle = \\frac{1}{\\sqrt{2}}(|0\\rangle - i|1\\rangle)$。"
+
+  - id: bloch-recall-gate-formula
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: bloch-gate-as-3d-rotation
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "从南极 $|1\\rangle$（$\\vec{\\boldsymbol{n}}_0 = (0,0,-1)$）出发，施加绕 $+x$ 轴旋转 $\\theta$ 角的门 $U_x(\\theta) = e^{-i\\theta S_x}$ 后，末态 Bloch 矢量的 $y$ 分量 $n_{f,y}$ 等于什么（用 `th` 表示 $\\theta$）？"
+    answer: "sin(th)"
+    variables:
+      th: [0, 6.28318]
+    solution: "绕 $+x$ 轴右手旋转 $\\theta$ 把 $(0,0,-1)$ 变为 $(0, \\sin\\theta, -\\cos\\theta)$，故 $y$ 分量为 $\\sin\\theta$。"
+
+  # ==========================================================================
+  # Lesson Final: Explain it 自评总结题
+  # ==========================================================================
+  - id: bloch-final-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 2
+    est_minutes: 4
+    prompt: "请用自己的话系统梳理 Bloch 球表象的三个核心环节：（1）单比特纯态如何写成 $\\rho = \\frac{\\mathbb{1}+\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}}{2}$ 并映射至单位球面（含非对角元 $\\rho_{01}$ 中 $\\pm i n_y$ 符号与对跖点含义）？（2）统计混态的 Bloch 矢量在球内如何分布、如何用 $\\operatorname{Tr}(\\rho\\vec{\\boldsymbol{\\sigma}})$ 反演（修正投影误写 $|\\psi_1\\rangle\\langle\\varphi_1|$ 与泡利积 $\\sigma_i\\sigma_j$ 误加 `/2` 的常见错误），以及如何用纯度 $\\operatorname{Tr}(\\rho^2)$ 与本征值区分纯混态？（3）为什么幺正门 $U = e^{-i\\theta\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}}$ 等价于 Bloch 矢量的三维右手旋转？"
+    rubric:
+      - id: r1
+        criterion: "写出纯态 $\\rho=|\\psi\\rangle\\langle\\psi|=\\frac{\\mathbb{1}+\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}}{2}$（$|\\vec{\\boldsymbol{n}}|=1$）消去整体相位，指明右上角矩阵元 $\\rho_{01} = \\frac{1}{2}(n_x-in_y)$ 匹配 $\\sigma_y=\\begin{pmatrix}0&-i\\\\i&0\\end{pmatrix}$，且对跖点 $\\pm\\vec{\\boldsymbol{n}}$ 正交。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "说明混态 $\\rho=\\sum_k p_k|\\psi_k\\rangle\\langle\\psi_k|$ 给出球内矢量 $|\\vec{\\boldsymbol{n}}|<1$，澄清投影需同态 $|\\psi_k\\rangle\\langle\\psi_k|$ 且 $\\sigma_i\\sigma_j=\\delta_{ij}\\mathbb{1}+i\\epsilon_{ijk}\\sigma_k$ 无多余 `/2`（$1/2$ 在迹外侧），并给出纯度 $\\operatorname{Tr}(\\rho^2)=\\frac{1+|\\vec{\\boldsymbol{n}}|^2}{2}$ 与本征值 $\\frac{1\\pm|\\vec{\\boldsymbol{n}}|}{2}$。"
+        weight: 1
+        required: true
+      - id: r3
+        criterion: "借助三维旋转恒等式 $U(\\vec{\\boldsymbol{n}}_0\\cdot\\vec{\\boldsymbol{\\sigma}})U^\\dagger = R_{\\vec{\\boldsymbol{n}}\\cdot\\theta}(\\vec{\\boldsymbol{n}}_0)\\cdot\\vec{\\boldsymbol{\\sigma}}$ 证明 $\\vec{\\boldsymbol{n}}_f = R_{\\vec{\\boldsymbol{n}}\\cdot\\theta}(\\vec{\\boldsymbol{n}}_0)$，说明幺正门保长、保纯度且消解整体相位困惑。"
+        weight: 1
+        required: true
+      - id: r4
+        criterion: "能用从 $|1\\rangle$ 出发施加 $U_x(\\pi/2)$ 到 $(0,+1,0)$ 的实例把代数演化解与右手旋转轨迹对照印证。"
+        weight: 1
+        required: false
+    exemplar: "首先，纯态 $|\\psi\\rangle = \\cos(\\theta/2)|0\\rangle + \\sin(\\theta/2)e^{i\\varphi}|1\\rangle$ 的密度矩阵 $\\rho=|\\psi\\rangle\\langle\\psi|=\\frac{\\mathbb{1}+\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}}}{2}$ 消除了不可观测的整体相位，对应的 Bloch 矢量 $|\\vec{\\boldsymbol{n}}|=1$ 落在单位球面上，其 $\\rho_{01}$ 元为 $\\frac{1}{2}(n_x-in_y)$ 与 $\\sigma_y$ 严格自洽，球面上的对跖点 $\\pm\\vec{\\boldsymbol{n}}$ 对应相互正交的纯态。其次，系综混合态 $\\rho=\\sum_k p_k|\\psi_k\\rangle\\langle\\psi_k|$（需修正同态投影及 $\\sigma_i\\sigma_j=\\delta_{ij}\\mathbb{1}+i\\epsilon_{ijk}\\sigma_k$ 无多余 `/2`）使 $\\vec{\\boldsymbol{n}}=\\operatorname{Tr}(\\rho\\vec{\\boldsymbol{\\sigma}})=\\sum_k p_k\\vec{\\boldsymbol{n}}_k$ 落入球内（$|\\vec{\\boldsymbol{n}}|<1$），纯度 $\\operatorname{Tr}(\\rho^2)=\\frac{1+|\\vec{\\boldsymbol{n}}|^2}{2}<1$ 且本征值为 $\\frac{1\\pm|\\vec{\\boldsymbol{n}}|}{2}$。最后，由三维旋转恒等式 $U(\\vec{\\boldsymbol{n}}_0\\cdot\\vec{\\boldsymbol{\\sigma}})U^\\dagger = R_{\\vec{\\boldsymbol{n}}\\cdot\\theta}(\\vec{\\boldsymbol{n}}_0)\\cdot\\vec{\\boldsymbol{\\sigma}}$ 可知幺正门 $U=e^{-i\\theta\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}}$ 等价于对 Bloch 矢量作保长、保纯度的右手绕轴旋转 $\\vec{\\boldsymbol{n}}_f=R_{\\vec{\\boldsymbol{n}}\\cdot\\theta}(\\vec{\\boldsymbol{n}}_0)$，例如 $U_x(\\pi/2)|1\\rangle=\\frac{1}{\\sqrt{2}}(|1\\rangle-i|0\\rangle)=-i|+y\\rangle$ 在几何上正对应南极绕 $+x$ 轴转 $+90^\\circ$ 至 $(0,+1,0)$。"

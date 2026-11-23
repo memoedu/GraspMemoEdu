@@ -1,0 +1,681 @@
+concept: longitudinal-sideband-excitation
+exercises:
+  # ==========================================================================
+  # Step 1: sideband-time-dependent-frame-and-jacobi-anger (5 题课堂/测验题 + 3 题 FSRS recall)
+  # ==========================================================================
+  - id: lsb-frame-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "面对总哈密顿量 $H = [\\omega_0 + \\Omega_z\\cos(\\omega_z t + \\varphi_z)]S_z + \\Omega[\\cos(\\omega t + \\varphi)S_x + \\sin(\\omega t + \\varphi)S_y]$，为什么我们不再沿用常速率变换 $e^{-i\\omega t S_z}$，而是改用含时相互作用图像 $U_i(t) = \\exp(-i[\\omega_0 t + \\chi\\sin(\\omega_z t + \\varphi_z)]S_z)$？"
+    options:
+      - id: a
+        text: "因为对 $U_i(t)$ 求时间导数能同时抵消静态项 $\\omega_0 S_z$ 和随时间振荡的纵向调制项 $\\Omega_z\\cos(\\omega_z t+\\varphi_z)S_z$，把全部纵向振荡转写进 $S^+$ 的周期相位因子中。"
+        correct: true
+        feedback: "完全正确。$U_i(t)$ 的相位正是 $[\\omega_0 + \\Omega_z\\cos(\\omega_z t+\\varphi_z)]$ 的时间积分，求导项 $-U_i^\\dagger i\\frac{\\partial}{\\partial t}U_i$ 精确消去全部 $S_z$ 项，使问题化为对周期因子 $e^{i\\chi\\sin(\\omega_z t+\\varphi_z)}$ 的傅里叶展开。"
+      - id: b
+        text: "因为含时变换 $U_i(t)$ 能把纵向调制幅值 $\\Omega_z$ 直接变成零，使总哈密顿量立刻化为不依赖时间的常系数矩阵。"
+        correct: false
+        feedback: "纵向调制项从 $S_z$ 消失后，并没有凭空消失，而是化作了横向升降算符 $S^+$ 前面的周期相位因子 $e^{i\\chi\\sin(\\omega_z t+\\varphi_z)}$，从而裂分出多个边带。"
+      - id: c
+        text: "因为常数速率变换 $e^{-i\\omega t S_z}$ 不是幺正算符，只有包含正弦函数 $\\sin(\\omega_z t+\\varphi_z)$ 的指数算符才满足幺正性。"
+        correct: false
+        feedback: "只要指数是实数乘以厄米算符 $S_z$，任何形式的 $e^{-i\\Theta(t)S_z}$ 都是严格幺正的；选用 $U_i(t)$ 是为了彻底消去含时的 $S_z$ 项。"
+      - id: d
+        text: "因为纵向调制项沿 $S_z$ 方向不与 $S_z$ 对易，必须靠正弦相位将其变为 $S_y$ 项。"
+        correct: false
+        feedback: "$S_z$ 与仅含 $S_z$ 的 $U_i(t)$ 彼此对易；真正起到抵消作用的是含时变换公式中的时间导数修正项 $-U_i^\\dagger i\\frac{\\partial}{\\partial t}U_i$。"
+    solution: "含时变换 $U_i(t) = \\exp(-i[\\omega_0 t + \\chi\\sin(\\omega_z t+\\varphi_z)]S_z)$（其中 $\\chi = \\Omega_z/\\omega_z$）对时间的导数恰好给出 $-[\\omega_0 + \\Omega_z\\cos(\\omega_z t+\\varphi_z)]S_z$，把全部 $S_z$ 项消去并将纵向调制转为 $S^+$ 前的周期相位调制。"
+
+  - id: lsb-frame-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "在刚才 $\\Omega_z/(2\\pi) = 10\\text{ MHz}$、$\\omega_z/(2\\pi) = 50\\text{ MHz}$、$\\Omega/(2\\pi) = 10\\text{ MHz}$ 的例题第 2 步中，为什么在改写横向项并写出边带展开式时必须保留 $S^+$ 前面的因子 $\\frac{1}{2}$？"
+    options:
+      - id: a
+        text: "因为 $\\cos(\\omega t+\\varphi)S_x + \\sin(\\omega t+\\varphi)S_y = \\frac{1}{2}(e^{-i(\\omega t+\\varphi)}S^+ + \\text{h.c.})$；若漏掉 $\\frac{1}{2}$，就会把 $n=0$ 载波有效横向耦合强度算成 $2|J_0(0.2)|\\Omega/(2\\pi) \\approx 19.8\\text{ MHz}$ 而非正确的 $9.900\\text{ MHz}$。"
+        correct: true
+        feedback: "抓得非常准！由 $S_x = \\frac{1}{2}(S^+ + S^-)$ 与 $S_y = \\frac{1}{2}(-iS^+ + iS^-)$ 展开必然出现系数 $\\frac{1}{2}$，最终还原回 $S_x, S_y$ 时才能保持正确幅值 $|J_n(\\chi)|\\Omega$。"
+      - id: b
+        text: "因为无量纲调制指数 $\\chi = 0.2$ 时要求所有贝塞尔函数都人为乘上 $\\frac{1}{2}$ 才满足归一条件。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "因子 $\\frac{1}{2}$ 来自升降算符与 $S_x, S_y$ 的代数换算 $S_x = \\frac{1}{2}(S^+ + S^-)$、$S_y = \\frac{1}{2}(-iS^+ + iS^-)$，对任意调制指数 $\\chi$ 都固定存在。"
+      - id: c
+        text: "因为只有在 $\\varphi_z = 0$ 时才出现因子 $\\frac{1}{2}$，当 $\\varphi_z \\neq 0$ 时 $\\frac{1}{2}$ 会被相位积分吸收。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "$\\varphi_z$ 只贡献相因子 $e^{i n\\varphi_z}$，不会改变 $S_x, S_y$ 换成 $S^+, S^-$ 时的 $\\frac{1}{2}$ 系数。"
+      - id: d
+        text: "因为含时变换 $U_i(t)$ 的导数修正项会从横向驱动里扣掉一半幅值。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "导数修正 $-U_i^\\dagger i\\frac{\\partial}{\\partial t}U_i$ 只含 $S_z$，丝毫不改变横向项 $S^+$ 的幅值。"
+    solution: "由 $S^\\pm = S_x \\pm iS_y$ 反解得 $\\cos\\alpha\\,S_x + \\sin\\alpha\\,S_y = \\frac{1}{2}(e^{-i\\alpha}S^+ + \\text{h.c.})$。保留 $\\frac{1}{2}$ 才能使最终第 $n$ 阶有效耦合恰好为 $|J_n(\\chi)|\\Omega$（即 $n=0$ 时为 $9.900\\text{ MHz}$ 而非 $19.8\\text{ MHz}$）。"
+
+  - id: lsb-bessel-chi-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    params:
+      Bz:
+        min: 5
+        max: 15
+        step: 5
+      fz:
+        min: 70
+        max: 140
+        step: 70
+    prompt: "某电子自旋（$|\\gamma_e|/(2\\pi) = 2.8\\text{ MHz/G}$）沿静磁场 $+z$ 方向受到幅值为 $B_z = {{=Bz}}\\text{ G}$、调制频率为 $\\omega_z/(2\\pi) = {{=fz}}\\text{ MHz}$ 的交变磁场调制（对应纵向耦合 $H_z = -\\gamma_e B_z\\cos(\\omega_z t + \\varphi_z)S_z = \\Omega_z\\cos(\\omega_z t + \\varphi_z)S_z$）。求进入含时相互作用图像时的无量纲纵向调制指数 $\\chi = \\Omega_z / \\omega_z$。"
+    answer_expr: "2.8 * Bz / fz"
+    tolerance:
+      abs: 0.005
+    common_wrong:
+      - answer_expr: "fz / (2.8 * Bz)"
+        category: math_error
+        feedback: "分子分母倒置了：调制指数定义为 $\\chi = \\Omega_z / \\omega_z$，而不是 $\\omega_z / \\Omega_z$。"
+      - answer_expr: "2.8 * Bz / (2 * fz)"
+        category: misapplied_technique
+        feedback: "横向线偏振拆分为圆偏振时才有 $2\\Omega = -\\gamma_e B_x$；纵向项 $H_z = -\\gamma_e B_z\\cos(\\omega_z t+\\varphi_z)S_z$ 直接对应 $\\Omega_z = -\\gamma_e B_z$，不需要除以 $2$。"
+      - answer_expr: "2.8 * Bz * fz"
+        category: math_error
+        feedback: "调制指数是无量纲比值 $\\Omega_z / \\omega_z$，不是两者相乘。"
+    hints:
+      - "先利用 $\\Omega_z/(2\\pi) = |\\gamma_e| B_z/(2\\pi) = 2.8 \\times B_z\\text{ MHz}$ 算出纵向调制幅值（注意 $H_z$ 中不含横向拆分那样的系数 $2$）。"
+      - "再用 $\\chi = \\Omega_z / \\omega_z$ 除以调制频率 $\\omega_z/(2\\pi)$。"
+    solution: "由 $H_z = -\\gamma_e B_z\\cos(\\omega_z t + \\varphi_z)S_z$ 得纵向调制幅值 $\\Omega_z/(2\\pi) = 2.8 \\times {{=Bz}} = {{=2.8*Bz}}\\text{ MHz}$。因此无量纲调制指数为 $\\chi = \\Omega_z / \\omega_z = {{=2.8*Bz}} / {{=fz}} = {{=2.8*Bz/fz}}$。"
+
+  - id: lsb-jacobi-spot-mistake
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "一位同学在推导纵向调制哈密顿量 $H = [\\omega_0 + \\Omega_z\\cos(\\omega_z t)]S_z + \\Omega[\\cos(\\omega t)S_x + \\sin(\\omega t)S_y]$ 的边带展开时，写出了 $H_I = \\sum_{n=-\\infty}^{\\infty} J_n(\\Omega_z)\\Omega e^{i(\\omega_0 - \\omega + n\\omega_z)t}S^+ + \\text{h.c.}$，并认为一阶边带耦合强度为 $2|J_1(\\Omega_z)|\\Omega$。这段推导同时犯了哪两处错误？"
+    options:
+      - id: a
+        text: "既把贝塞尔函数的无量纲自变量 $\\chi = \\Omega_z/\\omega_z$ 错写成了带频率量纲的 $\\Omega_z$，又在转换成 $S^+$ 时漏掉了系数 $\\frac{1}{2}$ 使有效耦合误翻倍。"
+        correct: true
+        feedback: "分析完全正确！傅里叶展开 $e^{i\\chi\\sin(\\omega_z t)}$ 的自变量必须是无量纲调制指数 $\\chi = \\Omega_z/\\omega_z$，且横向项换为 $S^+$ 时必须保留 $\\frac{1}{2}$。"
+      - id: b
+        text: "第 $n$ 阶共振指数应为 $e^{i(\\omega_0 + \\omega - n\\omega_z)t}$，且 $J_n$ 应当改为正弦函数 $\\sin(n\\chi)$。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "指数相位 $(\\omega_0 - \\omega + n\\omega_z)t$ 与贝塞尔函数族 $J_n$ 的形式本身都是正确的，错误出在自变量未除以 $\\omega_z$ 和缺少 $\\frac{1}{2}$。"
+      - id: c
+        text: "应当先做 $U_i = e^{-i\\omega_0 t S_z}$ 再把 $\\Omega_z$ 直接加进 $J_n$ 外部，而不是放在 $J_n$ 里面。"
+        correct: false
+        category: misapplied_technique
+        feedback: "只有把 $\\Omega_z\\cos(\\omega_z t)$ 的积分 $\\chi\\sin(\\omega_z t)$ 一并收入 $U_i(t)$，才能产生 $e^{i\\chi\\sin(\\omega_z t)}$ 的周期相位调制并展开成贝塞尔级数。"
+      - id: d
+        text: "只有在 $\\varphi_z \\neq 0$ 时才需要除以 $\\omega_z$；当 $\\varphi_z = 0$ 时 $\\chi$ 就直接等于 $\\Omega_z$。"
+        correct: false
+        category: missing_prerequisite
+        feedback: "积分 $\\int \\Omega_z\\cos(\\omega_z t + \\varphi_z)\\,dt$ 无论 $\\varphi_z$ 取何值都必然在分母产生 $\\omega_z$，保证指数自变量 $\\chi = \\Omega_z/\\omega_z$ 无量纲。"
+    solution: "含时相互作用图像对 $S_z$ 系数积分产生 $\\chi = \\Omega_z/\\omega_z$，所以贝塞尔函数自变量只能是无量纲的 $\\chi$（而非 $\\Omega_z$）；同时 $\\cos(\\omega t)S_x + \\sin(\\omega t)S_y = \\frac{1}{2}(e^{-i\\omega t}S^+ + \\text{h.c.})$ 必须保留 $\\frac{1}{2}$，故一阶边带耦合强度是 $|J_1(\\chi)|\\Omega$ 而不是 $2|J_1(\\Omega_z)|\\Omega$。"
+
+  - id: lsb-carrier-null-transfer
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "在强纵向调制实验中，研究者将调制频率 $\\omega_z$ 与调制幅度 $\\Omega_z$ 调至满足无量纲指数 $\\chi = \\Omega_z/\\omega_z \\approx 2.4048$（对应零阶贝塞尔函数 $J_0(\\chi)$ 的第一个零点，此时 $|J_1(2.4048)| \\approx 0.519$）。若横向驱动幅度 $\\Omega$ 不变，分别把驱动频率 $\\omega$ 调至裸共振 $\\omega_0$（$n=0$）与一阶边带 $\\omega_0 + \\omega_z$（$n=+1$），在可分辨边带条件下会观察到什么现象？"
+    options:
+      - id: a
+        text: "调至 $\\omega = \\omega_0$ 时，$n=0$ 载波耦合强度 $|J_0(\\chi)|\\Omega = 0$，自旋完全停止在载波处翻转（载波抑制）；而调至 $\\omega = \\omega_0 + \\omega_z$ 时，$n=+1$ 边带仍以约 $0.519\\,\\Omega$ 的有效强度驱动自旋跃迁。"
+        correct: true
+        feedback: "物理图像极为清晰！纵向强相位调制把全部跃迁权重从 $n=0$ 载波重新分配给了 $|n| \\ge 1$ 边带，因此在 $J_0(\\chi)=0$ 处载波跃迁彻底关闭而一阶边带显著活跃。"
+      - id: b
+        text: "调至 $\\omega = \\omega_0$ 时共振跃迁最快（强度保持 $\\Omega$），而所有高阶边带 $n \\neq 0$ 因为偏离静态能隙，激发强度必定为零。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "仅当 $\\chi = 0$ 时 $J_0(0)=1$ 且 $J_{n\\neq 0}(0)=0$；当 $\\chi \\approx 2.4048$ 时恰恰相反，$J_0(\\chi)=0$ 而 $J_1(\\chi)\\neq 0$。"
+      - id: c
+        text: "在 $\\chi \\approx 2.4048$ 时，所有阶贝塞尔函数 $J_n(\\chi)$ 会同时变为零，自旋在任何频率 $\\omega$ 下都无法被横向驱动翻转。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "不同阶次的贝塞尔函数零点彼此错开；由积分定义与包络变化可知，在 $J_0(\\chi)$ 首次归零的 $\\chi \\approx 2.4048$ 处，$J_{\\pm 1}(\\chi)$ 与 $J_{\\pm 2}(\\chi)$ 均不为零且幅值显著。"
+      - id: d
+        text: "载波抑制只影响向下跃迁 $|m_S = +1/2\\rangle \\to |m_S = -1/2\\rangle$，对向上跃迁没有任何抑制效果。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "$J_0(\\chi)\\Omega$ 同时乘在 $S^+$ 与 $S^-$（即 $\\text{h.c.}$）前面，向上和向下两条跃迁通道都被完全关闭。"
+    solution: "由展开式 $H_I = \\frac{1}{2}\\sum_n J_n(\\chi)\\Omega e^{i(n\\varphi_z-\\varphi)}e^{i(\\omega_0-\\omega+n\\omega_z)t}S^+ + \\text{h.c.}$ 可知，第 $n$ 阶边带的有效耦合强度为 $|J_n(\\chi)|\\Omega$。当 $\\chi \\approx 2.4048$ 时 $J_0(\\chi) = 0$，因此 $\\omega = \\omega_0$ 载波耦合消失；而 $|J_1(2.4048)| \\approx 0.519$，在 $\\omega = \\omega_0 + \\omega_z$ 处仍能高效激发。"
+
+  - id: lsb-recall-frame-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: sideband-time-dependent-frame-and-jacobi-anger
+    difficulty: 1
+    est_minutes: 1
+    prompt: "简述含时相互作用图像变换 $U_i(t) = \\exp(-i[\\omega_0 t + \\chi\\sin(\\omega_z t + \\varphi_z)]S_z)$ 如何将纵向交流调制转化为多阶边带共振。"
+    rubric:
+      - id: r1
+        criterion: "说明 $U_i(t)$ 的时间导数同时抵消静态项 $\\omega_0 S_z$ 和纵向调制项 $\\Omega_z\\cos(\\omega_z t + \\varphi_z)S_z$（其中 $\\chi = \\Omega_z / \\omega_z$）。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "说明 $U_i^\\dagger S^+ U_i$ 在升降算符前引入周期相位因子 $e^{i\\chi\\sin(\\omega_z t + \\varphi_z)}$，经 Jacobi–Anger 展开为 $\\sum_{n=-\\infty}^{\\infty} J_n(\\chi)e^{i n(\\omega_z t+\\varphi_z)}$。"
+        weight: 1
+        required: true
+      - id: r3
+        criterion: "指出展开后单频驱动裂分为位于 $\\omega_0 + n\\omega_z$ 的等距边带梳，各阶耦合强度为 $|J_n(\\chi)|\\Omega$。"
+        weight: 1
+        required: false
+    exemplar: "取无量纲调制指数 $\\chi = \\Omega_z / \\omega_z$，含时变换 $U_i(t) = \\exp(-i[\\omega_0 t + \\chi\\sin(\\omega_z t+\\varphi_z)]S_z)$ 通过导数项把总哈密顿量中的全部 $S_z$ 项抵消，同时把纵向振荡转移成 $S^+$ 前的周期相位调制 $e^{i\\chi\\sin(\\omega_z t+\\varphi_z)}$。再由 Jacobi–Anger 傅里叶展开化为 $\\sum_n J_n(\\chi)e^{i n(\\omega_z t+\\varphi_z)}$，使单频横向驱动裂分为间隔 $\\omega_z$ 的边带梳 $\\omega_0 + n\\omega_z$，耦合幅度为 $|J_n(\\chi)|\\Omega$。"
+
+  - id: lsb-recall-frame-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: sideband-time-dependent-frame-and-jacobi-anger
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "在存在纵向交流调制 $H_z = \\Omega_z\\cos(\\omega_z t + \\varphi_z)S_z$ 时，第 $n$ 阶边带的共振频率位置以及相邻边带的频率间隔分别是多少？"
+    options:
+      - id: a
+        text: "共振频率位于 $\\omega_0 + n\\omega_z$（$n\\in\\mathbb{Z}$），相邻边带间隔等于纵向调制频率 $\\omega_z$。"
+        correct: true
+        feedback: "正确。展开式中的时间振荡因子为 $e^{i(\\omega_0 - \\omega + n\\omega_z)t}$，令指数频率为零即得 $\\omega = \\omega_0 + n\\omega_z$，相邻间隔为 $\\omega_z$。"
+      - id: b
+        text: "共振频率位于 $\\omega_0 + n\\Omega_z$，相邻边带间隔等于纵向调制幅度 $\\Omega_z$。"
+        correct: false
+        feedback: "决定边带频率间隔的是振荡角频率 $\\omega_z$；调制幅度 $\\Omega_z$ 则通过 $\\chi = \\Omega_z / \\omega_z$ 决定各阶边带的贝塞尔强度 $|J_n(\\chi)|\\Omega$。"
+      - id: c
+        text: "共振频率位于 $\\omega_0 + n\\Omega$，相邻边带间隔由横向驱动强度 $\\Omega$ 决定。"
+        correct: false
+        feedback: "边带间隔来自于周期相位 $e^{i n\\omega_z t}$，由纵向调制频率 $\\omega_z$ 决定，而非横向驱动强度 $\\Omega$。"
+      - id: d
+        text: "只存在 $n = 0$ 与 $n = \\pm 1$ 三条谱线，不存在 $|n| \\ge 2$ 的高阶边带。"
+        correct: false
+        feedback: "Jacobi–Anger 展开求和遍历全部整数 $n \\in (-\\infty, +\\infty)$，只要 $\\chi \\neq 0$，原则上存在无限多阶边带。"
+    solution: "对周期相因子 $e^{i\\chi\\sin(\\omega_z t+\\varphi_z)}$ 作傅里叶展开产生 $e^{i n\\omega_z t}$（$n \\in \\mathbb{Z}$），因此共振频率分布于 $\\omega = \\omega_0 + n\\omega_z$，相邻边带间距为 $\\omega_z$。"
+
+  - id: lsb-recall-chi-expr
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: sideband-time-dependent-frame-and-jacobi-anger
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "写出决定贝塞尔边带强度的无量纲纵向调制指数 $\\chi$ 的表达式（用 `Om_z` 表示 $\\Omega_z$，用 `w_z` 表示 $\\omega_z$）："
+    answer: "Om_z / w_z"
+    variables:
+      Om_z: [5, 50]
+      w_z: [20, 200]
+    solution: "对纵向调制项 $\\Omega_z\\cos(\\omega_z t + \\varphi_z)$ 积分后得到振幅系数 $\\chi = \\Omega_z / \\omega_z$。"
+
+  # ==========================================================================
+  # Step 2: sideband-single-resonance-and-effective-hi (5 题课堂/测验题 + 3 题 FSRS recall)
+  # ==========================================================================
+  - id: lsb-eff-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "为什么只有在可分辨边带条件 $|J_n(\\chi)\\Omega| \\ll \\omega_z$ 下，才能把无限求和的边带哈密顿量截断为单一第 $n$ 阶边带的有效常系数形式 $H_{I,\\text{eff}}^{(n)}$？"
+    options:
+      - id: a
+        text: "因为相邻边带相距 $\\omega_z$，当目标阶失谐 $|\\Delta_n| \\lesssim |J_n(\\chi)\\Omega| \\ll \\omega_z$ 时，所有其他阶 $m \\neq n$ 的失谐 $|\\Delta_m|$ 至少约 $\\omega_z$，远大于各自耦合强度，因而高速振荡平均抵消。"
+        correct: true
+        feedback: "非常准确！$|J_n(\\chi)\\Omega| \\ll \\omega_z$ 保证了目标边带的有效横向驱动耦合强度远小于边带间距 $\\omega_z$，使第 $n$ 阶能够被独立选出而不串扰其他边带。"
+      - id: b
+        text: "因为一旦 $|J_n(\\chi)\\Omega| \\ll \\omega_z$，所有 $m \\neq n$ 阶贝塞尔函数 $J_m(\\chi)$ 的数值都会严格等于零。"
+        correct: false
+        feedback: "其他阶的 $J_m(\\chi)$ 并不为零（尤其 $m=0$ 往往很大），它们被忽略是因为它们远离共振，失谐 $|\\Delta_m| \\gtrsim \\omega_z$ 远大于它们的耦合强度。"
+      - id: c
+        text: "因为条件 $|J_n(\\chi)\\Omega| \\ll \\omega_z$ 使得二次相互作用图像变换 $U_2(t)$ 变成不随时间变化的常数矩阵。"
+        correct: false
+        feedback: "$U_2(t) = e^{+i\\Delta_n t S_z}$ 始终是含时的；该条件的作用是合法地丢弃其余非共振边带项。"
+      - id: d
+        text: "因为只有在 $|J_n(\\chi)\\Omega| \\ll \\omega_z$ 时，$S_x$ 与 $S_y$ 才满足对易关系 $[S_x, S_y] = 0$。"
+        correct: false
+        feedback: "自旋算符对易关系 $[S_x, S_y] = iS_z$ 是代数固有性质，与条件参数无关。"
+    solution: "相邻边带间频率差为 $\\omega_z$。若耦合强度 $|J_m(\\chi)\\Omega| \\ll \\omega_z$，当 $\\omega$ 接近 $\\omega_0 + n\\omega_z$ 时，其他阶 $m \\neq n$ 必满足 $|\\Delta_m| \\gtrsim \\omega_z \\gg |J_m(\\chi)\\Omega|$，在旋波近似下可忽略，从而只留单一第 $n$ 阶项。"
+
+  - id: lsb-eff-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "在刚才 $\\omega/(2\\pi) = 2052\\text{ MHz}$ 激发 $n=+1$ 边带（$\\Delta_{+1}/(2\\pi) = -2\\text{ MHz}$）的例题第 2 步中，为什么二次相互作用图像变换 $U_2 = e^{+i\\Delta_{+1} t S_z}$ 指数取正号，从而在最终 $H_{I,\\text{eff}}^{(+1)}$ 里给出 $+\\Delta_{+1}S_z$ 而不是 $-\\Delta_{+1}S_z$？"
+    options:
+      - id: a
+        text: "因为单边带项中的时间因子是 $e^{+i\\Delta_{+1} t}S^+$，而正号变换给出 $U_2^\\dagger S^+ U_2 = e^{-i\\Delta_{+1} t}S^+$ 才能把时间抵消；同时求导修正 $-U_2^\\dagger i\\frac{\\partial}{\\partial t}U_2 = -i(i\\Delta_{+1}S_z) = +\\Delta_{+1}S_z$。"
+        correct: true
+        feedback: "推导一丝不苟！与此前消去 $e^{-i\\omega t}S^+$ 选用 $e^{-i\\omega t S_z}$ 恰好对称：这里 $S^+$ 前是 $e^{+i\\Delta_n t}$，必须改用 $e^{+i\\Delta_n t S_z}$ 才能产生 $e^{-i\\Delta_n t}$ 去抵消它，且求导恰好留下 $+\\Delta_n S_z$。"
+      - id: b
+        text: "因为例题中 $\\Delta_{+1}/(2\\pi) = -2\\text{ MHz}$ 本身为负数，所以公式里的正号只是为了把数字变成正的。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "无论 $\\Delta_n$ 本身是正是负，符号约定 $U_2 = e^{+i\\Delta_n t S_z}$ 都是为了消去 $e^{+i\\Delta_n t}S^+$ 而定死的，给出 $+\\Delta_n S_z$。"
+      - id: c
+        text: "因为例题选择了 $n=+1$ 阶边带，若换成 $n=-1$ 阶边带，变换指数就必须改为 $e^{-i\\Delta_{-1} t S_z}$。"
+        correct: false
+        category: misapplied_technique
+        feedback: "公式中时间因子统一写作 $e^{+i\\Delta_n t}S^+$（其中 $\\Delta_n = \\omega_0 - \\omega + n\\omega_z$），因此对所有整数阶 $n$，二次变换统一是 $U_2 = e^{+i\\Delta_n t S_z}$。"
+      - id: d
+        text: "因为横向项还原为 $S_x, S_y$ 时需要在 $\\cos(\\varphi - n\\varphi_z)$ 后带上 $S_x$，为了配合横向项才把 $S_z$ 系数改写成正号。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "$S_x$ 本身就来自升降算符展开；$+\\Delta_n S_z$ 是严格由 $U_2 = e^{+i\\Delta_n t S_z}$ 的时间偏导算出来的，两者互不相干。"
+    solution: "单边带项为 $\\frac{1}{2}J_n(\\chi)\\Omega e^{i(n\\varphi_z-\\varphi)}e^{+i\\Delta_n t}S^+ + \\text{h.c.}$。选用 $U_2 = e^{+i\\Delta_n t S_z}$ 可使 $U_2^\\dagger S^+ U_2 = e^{-i\\Delta_n t}S^+$ 与 $e^{+i\\Delta_n t}$ 相消，且导数项 $-U_2^\\dagger i\\frac{\\partial}{\\partial t}U_2 = +\\Delta_n S_z$。"
+
+  - id: lsb-detuning-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    params:
+      w0:
+        min: 1500
+        max: 2500
+        step: 500
+      w_z:
+        min: 40
+        max: 60
+        step: 20
+      shift:
+        min: 2
+        max: 6
+        step: 2
+    prompt: "设自旋静态共振频率 $\\omega_0/(2\\pi) = {{=w0}}\\text{ MHz}$，纵向调制频率 $\\omega_z/(2\\pi) = {{=w_z}}\\text{ MHz}$。现将横向驱动频率调在 $n=+1$ 阶边带上方 ${{=shift}}\\text{ MHz}$ 处，即 $\\omega/(2\\pi) = {{=w0 + w_z + shift}}\\text{ MHz}$。求化简后单边带有效哈密顿量 $H_{I,\\text{eff}}^{(+1)}/(2\\pi)$ 中 $S_z$ 前的失谐系数 $\\Delta_{+1}/(2\\pi)$（单位：$\\text{MHz}$，注意保留正负号）。"
+    answer_expr: "-shift"
+    tolerance:
+      abs: 0.01
+    common_wrong:
+      - answer_expr: "shift"
+        category: math_error
+        feedback: "正负号反了：失谐定义为 $\\Delta_n = \\omega_0 - \\omega + n\\omega_z$（驱动频率 $\\omega$ 前面带负号），当 $\\omega$ 高于边带中心频率时 $\\Delta_{+1}$ 为负。"
+      - answer_expr: "-(w_z + shift)"
+        category: misapplied_technique
+        feedback: "这是未计入 $n=+1$ 边带平移 $+\\omega_z$ 的载波失谐 $(\\omega_0 - \\omega)/(2\\pi)$，遗漏了 $+n\\omega_z$ 项。"
+      - answer_expr: "w_z - shift"
+        category: math_error
+        feedback: "这是 $n=+2$ 阶边带的失谐 $\\Delta_{+2}/(2\\pi)$，而不是目标 $n=+1$ 边带的失谐。"
+    hints:
+      - "代入第 $n$ 阶边带失谐定义 $\\Delta_n = \\omega_0 - \\omega + n\\omega_z$，此处取 $n = +1$。"
+      - "注意驱动频率 $\\omega/(2\\pi) = {{=w0 + w_z + shift}}\\text{ MHz}$ 高于 $\\omega_0/(2\\pi) + \\omega_z/(2\\pi)$，因此 $\\Delta_{+1}$ 为负值。"
+    solution: "代入 $n = +1$ 边带失谐公式得 $\\Delta_{+1}/(2\\pi) = (\\omega_0 - \\omega + \\omega_z)/(2\\pi) = {{=w0}} - {{=w0 + w_z + shift}} + {{=w_z}} = {{=-shift}}\\text{ MHz}$。"
+
+  - id: lsb-eff-spot-mistake
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "某学习者针对 $n = -1$ 阶边带（已知 $\\chi = 0.4$，$J_1(0.4) \\approx 0.1960$，$\\varphi = \\pi/2$，$\\varphi_z = \\pi/4$）写出了常系数有效哈密顿量：$H_{I,\\text{eff}}^{(-1)} = \\Delta_{-1}S_z + 0.1960\\,\\Omega[\\cos(\\pi/4)S_x + \\sin(\\pi/4)S_y]$。请问这一写法存在哪两处符号错误？"
+    options:
+      - id: a
+        text: "一是由贝塞尔宇称 $J_{-1}(\\chi) = -J_1(\\chi)$ 可知前缀应带负号（$-0.1960\\,\\Omega$）；二是角度 $\\varphi - n\\varphi_z = \\pi/2 - (-1)(\\pi/4) = 3\\pi/4$，而不是 $\\pi/4$。"
+        correct: true
+        feedback: "洞察极其敏锐！负阶奇数贝塞尔函数自带负号，同时减去 $n\\varphi_z$ 在 $n=-1$ 时变成 $\\varphi + \\varphi_z = 3\\pi/4$，两处都会改变有效驱动轴在 $x\\text{-}y$ 平面中的指向。"
+      - id: b
+        text: "一是静态项应改写为 $-\\Delta_{-1}S_z$；二是横向三角函数应写成 $\\cos(\\varphi + n\\varphi_z)$ 与 $\\sin(\\varphi + n\\varphi_z)$。"
+        correct: false
+        category: math_error
+        feedback: "公式本身即为 $+\\Delta_n S_z$ 与 $\\varphi - n\\varphi_z$；出错在于代入 $n=-1$ 时既未用 $J_{-1} = -J_1$，又误将 $\\varphi - (-1)\\varphi_z$ 算成了 $\\varphi - \\varphi_z$。"
+      - id: c
+        text: "只需要把公式里多余的 $S_x$ 删去（保留 $\\cos(\\pi/4)$ 标量项），其他系数与角度全都正确。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "$\\cos(\\varphi - n\\varphi_z)S_x$ 中的 $S_x$ 是由 $\\frac{1}{2}(e^{-i\\alpha}S^+ + \\text{h.c.})$ 展开必然出现的算符（若删去反而错误），真正错在 $J_{-1}$ 符号和相位角 $\\varphi - (-1)\\varphi_z$。"
+      - id: d
+        text: "因为 $J_{-1}(\\chi)$ 实际等于 $J_1(\\chi)$ 且与 $n$ 符号无关，唯一的错误只是 $S_y$ 前应当取负号。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "整数阶贝塞尔函数满足 $J_{-n}(\\chi) = (-1)^n J_n(\\chi)$，因此奇数负阶 $J_{-1}(\\chi) = -J_1(\\chi)$ 必须变号。"
+    solution: "对照 $H_{I,\\text{eff}}^{(n)} = \\Delta_n S_z + J_n(\\chi)\\Omega[\\cos(\\varphi - n\\varphi_z)S_x + \\sin(\\varphi - n\\varphi_z)S_y]$ 代入 $n = -1$：因 $J_{-1}(0.4) = -J_1(0.4) \\approx -0.1960$，且 $\\varphi - n\\varphi_z = \\pi/2 - (-1)(\\pi/4) = 3\\pi/4$，该同学把前缀负号和方位角同时算错了。"
+
+  - id: lsb-unresolved-regime-transfer
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "如果在原本垂直的微波驱动（$\\Omega/(2\\pi) = 8\\text{ MHz}$）上额外叠加一个很慢的低频纵向射频调制（$\\omega_z/(2\\pi) = 3\\text{ MHz}$，$\\Omega_z/(2\\pi) = 6\\text{ MHz}$，故 $\\chi = 2$，$J_0(2) \\approx 0.224$，$|J_{\\pm 1}(2)| \\approx 0.577$），能否直接套用单边带常系数公式 $H_{I,\\text{eff}}^{(n)}$ 精确预测自旋演化？"
+    options:
+      - id: a
+        text: "不能；此时边带有效耦合 $|J_{\\pm 1}(2)|\\Omega/(2\\pi) \\approx 4.6\\text{ MHz}$ 已大于边带间距 $\\omega_z/(2\\pi) = 3\\text{ MHz}$，不满足 $|J_n(\\chi)\\Omega| \\ll \\omega_z$，多条边带同时激发并发生干涉，必须对完整含时哈密顿量作数值计算。"
+        correct: true
+        feedback: "迁移与判据运用得非常到位！一旦耦合强度可比拟或超过边带间隔 $\\omega_z$，相邻边带重叠交织，单边带截断近似彻底失效。"
+      - id: b
+        text: "可以；只要利用 $|J_0(2)|\\Omega/(2\\pi) \\approx 1.79\\text{ MHz} < 3\\text{ MHz}$ 单独保留 $n=0$ 载波即可，高阶边带无需考虑。"
+        correct: false
+        category: misapplied_technique
+        feedback: "可分辨条件要求所有主要活跃边带的耦合都远小于 $\\omega_z$；此处 $|J_{\\pm 1}(2)|\\Omega/(2\\pi) \\approx 4.6\\text{ MHz} > 3\\text{ MHz}$，且 $1.79\\text{ MHz}$ 也不远小于 $3\\text{ MHz}$，高阶边带强烈参与干涉。"
+      - id: c
+        text: "可以；只需在 $\\omega = \\omega_0$ 时把所有 $J_n(2)$ 简单代数相加替代 $J_0(2)$ 就能还原准确结果。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "不同阶次项分别带着不同的含时振荡因子 $e^{i n\\omega_z t}$ 且不对易，不能在固定时刻把系数简单相加当作常系数有效耦合。"
+      - id: d
+        text: "不能，因为 $\\chi = 2$ 超出了 Jacobi–Anger 傅里叶级数的收敛半径，级数不再收敛。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "Jacobi–Anger 展开对任意有限实数 $\\chi$ 都一致收敛；不可用的原因并非级数不收敛，而是单边带 RWA 截断在 $|J_n(\\chi)\\Omega| \\ll \\omega_z$ 不成立时失效。"
+    solution: "在 $\\omega_z/(2\\pi) = 3\\text{ MHz}$ 的低频调制下，$|J_{\\pm 1}(2)|\\Omega/(2\\pi) \\approx 4.6\\text{ MHz} > \\omega_z/(2\\pi)$，可分辨边带条件 $|J_n(\\chi)\\Omega| \\ll \\omega_z$ 失效。多条边带同时被激发并干涉，无法化为单边带常系数模型，必须数值求解完整含时演化。"
+
+  - id: lsb-recall-eff-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: sideband-single-resonance-and-effective-hi
+    difficulty: 1
+    est_minutes: 1
+    prompt: "说明可分辨边带条件 $|J_n(\\chi)\\Omega| \\ll \\omega_z$ 的物理意义，以及二次变换 $U_2 = e^{+i\\Delta_n t S_z}$ 如何得到单边带常系数哈密顿量 $H_{I,\\text{eff}}^{(n)}$。"
+    rubric:
+      - id: r1
+        criterion: "说明 $|J_n(\\chi)\\Omega| \\ll \\omega_z$ 保证单阶边带耦合强度远小于边带间隔 $\\omega_z$，因此最多只有一条边带共振，其余非共振边带可忽略。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "写出二次变换 $U_2 = e^{+i\\Delta_n t S_z}$ 消去 $e^{i\\Delta_n t}$ 并通过导数修正给出 $+\\Delta_n S_z$，得到 $H_{I,\\text{eff}}^{(n)} = \\Delta_n S_z + J_n(\\chi)\\Omega[\\cos(\\varphi-n\\varphi_z)S_x + \\sin(\\varphi-n\\varphi_z)S_y]$。"
+        weight: 1
+        required: true
+      - id: r3
+        criterion: "补充指出当 $\\omega_z$ 过小导致该条件失效时，多边带同时干涉而须进行数值计算。"
+        weight: 1
+        required: false
+    exemplar: "当满足可分辨边带条件 $|J_n(\\chi)\\Omega| \\ll \\omega_z$ 时，边带间隔远大于各自耦合强度，至多只有最接近共振的一阶（记失谐 $\\Delta_n = \\omega_0 - \\omega + n\\omega_z$）被激发，其余阶快速振荡平均抵消。对保留项施以二次变换 $U_2 = e^{+i\\Delta_n t S_z}$，既消去 $e^{i\\Delta_n t}S^+$ 中的时间因子又给出 $+\\Delta_n S_z$，最终化成常系数形式 $H_{I,\\text{eff}}^{(n)} = \\Delta_n S_z + J_n(\\chi)\\Omega[\\cos(\\varphi - n\\varphi_z)S_x + \\sin(\\varphi - n\\varphi_z)S_y]$；若 $\\omega_z$ 太小破坏了可分辨条件，则多边带同时干涉，必须数值求解。"
+
+  - id: lsb-recall-eff-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: sideband-single-resonance-and-effective-hi
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "当从第 $n$ 阶单边带含时项 $\\frac{1}{2}J_n(\\chi)\\Omega[e^{i(n\\varphi_z - \\varphi)}e^{i\\Delta_n t}S^+ + \\text{h.c.}]$ 作二次变换 $U_2 = e^{+i\\Delta_n t S_z}$ 并还原为 $S_x, S_y$ 算符后，常系数有效哈密顿量 $H_{I,\\text{eff}}^{(n)}$ 中的横向有效驱动项是什么？"
+    options:
+      - id: a
+        text: "$J_n(\\chi)\\Omega[\\cos(\\varphi - n\\varphi_z)S_x + \\sin(\\varphi - n\\varphi_z)S_y]$"
+        correct: true
+        feedback: "正确。展开 $\\frac{1}{2}J_n(\\chi)\\Omega(e^{-i(\\varphi-n\\varphi_z)}S^+ + e^{i(\\varphi-n\\varphi_z)}S^-)$ 即得 $\\cos(\\varphi - n\\varphi_z)S_x + \\sin(\\varphi - n\\varphi_z)S_y$，必须同时包含 $S_x$ 与 $S_y$。"
+      - id: b
+        text: "$J_n(\\chi)\\Omega[\\cos(\\varphi - n\\varphi_z) + \\sin(\\varphi - n\\varphi_z)S_y]$"
+        correct: false
+        feedback: "$\\cos(\\varphi - n\\varphi_z)$ 后漏掉了算符 $S_x$，会使该项退化为标量常数而非横向自旋耦合项。"
+      - id: c
+        text: "$2J_n(\\chi)\\Omega[\\cos(\\varphi - n\\varphi_z)S_x + \\sin(\\varphi - n\\varphi_z)S_y]$"
+        correct: false
+        feedback: "转换成 $S^+$ 时应保留 $\\frac{1}{2}$ 因子，因此还原为 $S_x, S_y$ 后系数是 $J_n(\\chi)\\Omega$，没有因子 $2$。"
+      - id: d
+        text: "$J_n(\\chi)\\Omega[\\cos(\\varphi + n\\varphi_z)S_x - \\sin(\\varphi + n\\varphi_z)S_y]$"
+        correct: false
+        feedback: "由 $e^{i(n\\varphi_z - \\varphi)}S^+ = e^{-i(\\varphi - n\\varphi_z)}S^+$ 可知，方位角应为 $\\varphi - n\\varphi_z$ 且 $S_y$ 前为正号。"
+    solution: "将 $\\frac{1}{2}J_n(\\chi)\\Omega[e^{-i(\\varphi-n\\varphi_z)}S^+ + \\text{h.c.}]$ 用 $S^\\pm = S_x \\pm iS_y$ 展开，得到 $J_n(\\chi)\\Omega[\\cos(\\varphi - n\\varphi_z)S_x + \\sin(\\varphi - n\\varphi_z)S_y]$。"
+
+  - id: lsb-recall-detuning-expr
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: sideband-single-resonance-and-effective-hi
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "写出第 $n$ 阶纵向调制边带的失谐 $\\Delta_n$ 表达式（用 `w0` 表示 $\\omega_0$、`w` 表示 $\\omega$、`n` 表示边带阶次、`w_z` 表示 $\\omega_z$）："
+    answer: "w0 - w + n * w_z"
+    variables:
+      w0: [100, 500]
+      w: [100, 500]
+      n: [-3, 3]
+      w_z: [5, 50]
+    solution: "在 $H_I$ 展开式中，第 $n$ 阶项携带时间相因子 $e^{i(\\omega_0 - \\omega + n\\omega_z)t}$，故边带失谐为 $\\Delta_n = \\omega_0 - \\omega + n\\omega_z$。"
+
+  # ==========================================================================
+  # Step 3: sideband-subharmonic-and-mas-transfer (5 题课堂/测验题 + 3 题 FSRS recall)
+  # ==========================================================================
+  - id: lsb-subharmonic-basics
+    dimension: conceptual
+    type: mc
+    role: basics
+    difficulty: 1
+    est_minutes: 1
+    prompt: "当实验中只使用一根倾斜放置的驱动线圈（与静磁场夹角 $\\theta_B \\neq 90^\\circ$）时，为何能够实现频率远低于自旋能隙 $\\omega_0$ 的倍频（亚谐波）激发？"
+    options:
+      - id: a
+        text: "因为同一根倾斜线圈同时在 $x$ 轴产生横向耦合 $\\Omega$、在 $z$ 轴产生同频纵向调制 $\\Omega_z$（$\\omega_z = \\omega$），令 $\\Delta_n = \\omega_0 + (n-1)\\omega = 0$ 后，当 $n = -1, -2, \\dots$ 时可在 $\\omega = \\omega_0 / (1-n)$ 处多光子协同共振。"
+        correct: true
+        feedback: "解释完全到位！横向分量提供 $\\Delta m_S = +1$ 的自旋翻转并贡献能量 $\\omega$，纵向调制提供不改变 $m_S$ 的额外 $|n|$ 份 $\\omega$ 能量，合起来以低频源跨越整倍能隙 $\\omega_0$。"
+      - id: b
+        text: "因为倾斜线圈会把静磁场 $B_0$ 削弱为原来的一半，使自旋能隙自动降到 $\\omega_0/2$。"
+        correct: false
+        feedback: "倾斜的是交变驱动线圈而不是静磁场；自旋静态能隙依然是 $\\omega_0$，改变的是交流场同时具备横向与纵向投影。"
+      - id: c
+        text: "因为当线圈倾斜时，旋波近似失效后正向分量与反向分量相加使驱动频率翻倍。"
+        correct: false
+        feedback: "正向与反向旋转分量角频率都是 $\\omega$，线性叠加不会凭空产生 $2\\omega$；倍频来自纵向分量引起的非线性相位调制 $e^{i\\chi\\sin(\\omega t+\\varphi)}$。"
+      - id: d
+        text: "因为电子自旋从 $|m_S = -1/2\\rangle$ 跃迁到 $|m_S = +1/2\\rangle$ 在倾斜场下只需要角动量变化 $\\Delta m_S = +1/2$。"
+        correct: false
+        feedback: "无论线圈怎样倾斜，量子态本征值差始终是 $\\Delta m_S = (+1/2) - (-1/2) = +1$；纵向调制改变的是能量匹配阶数，不改变跃迁角动量差。"
+    solution: "倾斜单线圈使横向场和纵向场来自同一信号源（$\\omega_z = \\omega$）。将 $\\omega_z = \\omega$ 代入 $\\Delta_n = \\omega_0 - \\omega + n\\omega_z = 0$，得 $\\omega = \\frac{1}{1-n}\\omega_0$；取 $n = -1, -2, \\dots$ 即可用 $\\omega_0/2, \\omega_0/3, \\dots$ 等亚谐波频率激发跃迁。"
+
+  - id: lsb-subharmonic-self-explain
+    lesson_only: true
+    dimension: conceptual
+    type: mc
+    role: practice
+    difficulty: 1
+    est_minutes: 2
+    prompt: "在刚才 $\\omega_0/(2\\pi) = 10\\text{ GHz}$、倾斜线圈以 $\\omega/(2\\pi) = 5\\text{ GHz}$ 作 $n=-1$ 二倍频驱动的例题第 3 步中，为什么把驱动幅度 $\\Omega/(2\\pi) = \\Omega_z/(2\\pi)$ 从 $10\\text{ MHz}$ 提高 $5$ 倍到 $50\\text{ MHz}$ 后，有效边带耦合反而放大了 $25$ 倍（从 $10\\text{ kHz}$ 变为 $250\\text{ kHz}$）？"
+    options:
+      - id: a
+        text: "因为在小调制极限 $\\chi \\ll 1$ 下，$|J_{-1}(\\chi)| \\approx \\chi/2 = \\Omega_z/(2\\omega)$ 也正比于驱动幅度，故有效耦合 $|J_{-1}(\\chi)|\\Omega \\approx \\frac{\\Omega_z\\Omega}{2\\omega}$ 随单线圈驱动幅度呈平方（$5^2=25$ 倍）增长。"
+        correct: true
+        feedback: "抓住了非线性倍频的核心规律！当 $\\Omega$ 与 $\\Omega_z$ 来自同一倾斜线圈时，两者同比例增大，$\\chi\\Omega$ 乘积自然呈现二次方放大。"
+      - id: b
+        text: "因为当驱动幅度变成 $50\\text{ MHz}$ 时，调制指数 $\\chi$ 跃升至 $J_0(\\chi)=0$ 零点附近，把所有载波能量瞬间转给了 $n=-1$ 边带。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "此时 $\\chi = 50/5000 = 0.01$ 仍然远小于 $2.4048$，仍处于线性近似 $|J_{-1}(\\chi)| \\approx \\chi/2$ 成立的小调制区。"
+      - id: c
+        text: "因为驱动频率从 $10\\text{ GHz}$ 降为 $5\\text{ GHz}$ 时，需要把有效边带耦合强度额外乘以阶数平方 $(1-n)^2 = 4$。"
+        correct: false
+        category: math_error
+        feedback: "前后对比保持同一频率 $5\\text{ GHz}$ 和同一阶次 $n=-1$；$25$ 倍变化完全源于 $\\chi$ 与 $\\Omega$ 同时放大 $5$ 倍。"
+      - id: d
+        text: "因为在 $\\Omega = 10\\text{ MHz}$ 情形下误用了 $J_{-2}$ 而非 $J_{-1}$，才显得相差 $25$ 倍。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "两种驱动强度的算例均对应 $n=-1$ 阶二倍频共振，差异来自二次方标度律 $|J_{-1}(\\chi)|\\Omega \\propto \\Omega_z\\Omega$。"
+    solution: "倾斜线圈下 $\\Omega_z$ 与 $\\Omega$ 同源于一个交流源。当 $\\chi = \\Omega_z/\\omega \\ll 1$ 时 $|J_{-1}(\\chi)| \\approx \\frac{\\Omega_z}{2\\omega}$，于是有效耦合 $|J_{-1}(\\chi)|\\Omega \\approx \\frac{\\Omega_z\\Omega}{2\\omega}$ 与驱动强度的平方成正比，所以幅度放大 $5$ 倍导致耦合增强 $25$ 倍。"
+
+  - id: lsb-subharmonic-coupling-template
+    dimension: math
+    type: numeric
+    role: practice
+    difficulty: 2
+    est_minutes: 3
+    params:
+      w0_ghz:
+        min: 8
+        max: 12
+        step: 2
+      Om_mhz:
+        min: 20
+        max: 60
+        step: 20
+    prompt: "已知自旋静态共振频率 $\\omega_0/(2\\pi) = {{=w0_ghz}}\\text{ GHz}$。利用倾斜单线圈在 $n=-1$ 阶二倍频共振点 $\\omega/(2\\pi) = \\omega_0/(4\\pi) = {{=500*w0_ghz}}\\text{ MHz}$ 处激发跃迁，且测得横向与纵向驱动耦合幅度均为 $\\Omega/(2\\pi) = \\Omega_z/(2\\pi) = {{=Om_mhz}}\\text{ MHz}$。求有效二倍频边带耦合强度 $|J_{-1}(\\chi)|\\Omega/(2\\pi)$ 是多少 $\\text{kHz}$？（提示：小调制下 $|J_{-1}(\\chi)| \\approx \\chi/2$）"
+    answer_expr: "1000 * abs(besselj(-1, Om_mhz / (500 * w0_ghz))) * Om_mhz"
+    tolerance:
+      rel: 0.01
+    common_wrong:
+      - answer_expr: "1000 * (Om_mhz / (500 * w0_ghz)) * Om_mhz"
+        category: math_error
+        feedback: "忘记了小调制展开中的系数 $1/2$：$|J_{-1}(\\chi)| \\approx \\chi/2$，而不是 $\\chi$。"
+      - answer_expr: "1000 * (Om_mhz / (1000 * w0_ghz)) / 2 * Om_mhz"
+        category: misapplied_technique
+        feedback: "调制指数分母是驱动角频率 $\\omega = \\omega_0/2$（即 ${{=500*w0_ghz}}\\text{ MHz}$），而不是自旋能隙 $\\omega_0$（${{=1000*w0_ghz}}\\text{ MHz}$）。"
+      - answer_expr: "(Om_mhz / (500 * w0_ghz)) / 2 * Om_mhz"
+        category: math_error
+        feedback: "题目要求以 $\\text{kHz}$ 作答；先算出的是 $\\text{MHz}$，需要再乘以 $1000$ 换算为 $\\text{kHz}$。"
+    hints:
+      - "先由驱动频率 $\\omega/(2\\pi) = {{=500*w0_ghz}}\\text{ MHz}$ 计算调制指数 $\\chi = \\Omega_z / \\omega$。"
+      - "再利用 $|J_{-1}(\\chi)| = |-J_1(\\chi)| \\approx \\chi/2$ 乘以 $\\Omega/(2\\pi)$，最后将 $\\text{MHz}$ 乘 $1000$ 转为 $\\text{kHz}$。"
+    solution: "调制指数为 $\\chi = {{=Om_mhz}} / {{=500*w0_ghz}} = {{=Om_mhz/(500*w0_ghz)}}$，因此 $|J_{-1}(\\chi)| \\approx \\chi/2 = {{=Om_mhz/(1000*w0_ghz)}}$。有效耦合强度为 $|J_{-1}(\\chi)|\\Omega/(2\\pi) \\approx {{=Om_mhz/(1000*w0_ghz)}} \\times {{=Om_mhz}}\\text{ MHz} = {{=1000*Om_mhz*(Om_mhz/(1000*w0_ghz))}}\\text{ kHz}$。"
+
+  - id: lsb-subharmonic-spot-mistake
+    dimension: math
+    type: mc
+    role: practice
+    difficulty: 2
+    est_minutes: 2
+    prompt: "为了用较低频率微波驱动 $\\omega_0/(2\\pi) = 12\\text{ GHz}$ 的自旋能隙，某学生套用倍频条件写成 $\\omega = \\frac{1}{1+n}\\omega_0$ 并取 $n=+1$ 得到 $6\\text{ GHz}$、取 $n=+2$ 得到 $4\\text{ GHz}$。这段计算出了什么差错？"
+    options:
+      - id: a
+        text: "由 $\\Delta_n = \\omega_0 - \\omega + n\\omega = 0$ 导出的正确条件是 $\\omega = \\frac{1}{1-n}\\omega_0$；$6\\text{ GHz}$ 对应的是 $n=-1$ 阶边带，$4\\text{ GHz}$ 对应的是 $n=-2$ 阶边带，而非正整数 $n$。"
+        correct: true
+        feedback: "辨析清晰！分母是 $1-n$ 而非 $1+n$；若把正整数 $n \\ge +1$ 代入正确的 $\\frac{1}{1-n}\\omega_0$，反而不会得到正频率解。"
+      - id: b
+        text: "该学生公式写对了，错在不能把 $12\\text{ GHz}$ 的跃迁降频到 $6\\text{ GHz}$ 以下驱动。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "无论是 $6\\text{ GHz}$（$\\omega_0/2$）还是 $4\\text{ GHz}$（$\\omega_0/3$）都在物理上可行，错在边带阶次记号的正负符号弄反了。"
+      - id: c
+        text: "二倍频共振点应当在 $\\omega = 2\\omega_0 = 24\\text{ GHz}$ 而不是 $\\omega_0/2 = 6\\text{ GHz}$。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "我们要突破的是功放高频带宽上限，利用低频亚谐波 $\\omega_0/2, \\omega_0/3$ 跨越大能隙 $\\omega_0$，而非升到 $2\\omega_0$。"
+      - id: d
+        text: "同源激发下的倍频条件与阶次无关，只能激发 $n=0$ 处的 $\\omega = \\omega_0$。"
+        correct: false
+        category: missing_prerequisite
+        feedback: "当存在同频纵向分量（$\\omega_z = \\omega$）时，全部 $n \\le 0$ 阶边带分别对应不同倍频共振点 $\\omega_0/(1-n)$。"
+    solution: "在同源条件下，令 $\\Delta_n = \\omega_0 - \\omega + n\\omega = 0$ 解得 $\\omega = \\frac{1}{1-n}\\omega_0$。只有 $n \\le 0$ 给出正频率：$n=0$ 为 $12\\text{ GHz}$，$n=-1$ 为 $6\\text{ GHz}$，$n=-2$ 为 $4\\text{ GHz}$；把分母写成 $1+n$ 颠倒了边带阶次 $n$ 的符号。"
+
+  - id: lsb-mas-sideband-transfer
+    dimension: transfer
+    type: mc
+    role: practice
+    difficulty: 3
+    est_minutes: 3
+    prompt: "在固体核磁共振的魔角旋转（MAS）实验中，样品以机械旋转角频率 $\\omega_r$ 高速转动，使沿 $S_z$ 方向的各向异性化学位移相互作用随时间呈幅值为 $\\Omega_r$ 的周期调制，从而在谱图中心峰 $\\omega_0$ 两侧形成间隔为 $\\omega_r$ 的旋转边带 $\\omega_0 + n\\omega_r$。若保持各向异性幅度 $\\Omega_r$ 不变而将转子转速 $\\omega_r$ 提高一倍（已知初始满足 $\\chi_r = \\Omega_r / \\omega_r \\ll 1$），谱图边带会发生什么变化？"
+    options:
+      - id: a
+        text: "旋转边带与中心峰的距离拉宽一倍（变为 $n\\cdot 2\\omega_r$），同时调制指数 $\\chi_r = \\Omega_r / \\omega_r$ 减半，使一阶边带 $|J_{\\pm 1}(\\chi_r)|$ 近似降至原来的一半，谱图能量更集中到 $n=0$ 中心峰。"
+        correct: true
+        feedback: "类比迁移非常精准！MAS 边带遵循完全相同的 $J_n(\\Omega_r / \\omega_r)$ 规律：加快转速 $\\omega_r$ 既推远了边带位置，又直接压低了无量纲调制指数 $\\chi_r$。"
+      - id: b
+        text: "旋转边带的频率间隔缩短为原来的一半，且因为转得更快，一阶边带强度显著增强而中心峰减弱。"
+        correct: false
+        category: incorrect_reasoning
+        feedback: "边带处于 $\\omega_0 + n\\omega_r$，转速翻倍会使间隔翻倍且 $\\chi_r$ 减半，导致边带强度明显衰减、中心峰 $|J_0|$ 更加突出。"
+      - id: c
+        text: "机械转动只能改变边带的横向相位，对边带频率间隔和各阶强度没有任何影响。"
+        correct: false
+        category: missing_prerequisite
+        feedback: "机械转子频率 $\\omega_r$ 直接充当纵向调制频率，既决定边带间隔，又通过 $\\chi_r = \\Omega_r/\\omega_r$ 决定贝塞尔强度分布。"
+      - id: d
+        text: "转速提高一倍后将严格破坏可分辨条件，使谱图所有边带彻底消失并发生载波抑制。"
+        correct: false
+        category: misunderstood_definition
+        feedback: "提高 $\\omega_r$ 让 $|J_n|\\Omega \\ll \\omega_r$ 更加容易满足，且 $\\chi_r$ 变小使 $J_0(\\chi_r)$ 更接近 $1$，不会发生载波抑制。"
+    solution: "MAS 下转子以 $\\omega_r$ 周期调制 $S_z$ 各向异性项，等效于纵向调制频率 $\\omega_r$、调制指数 $\\chi_r = \\Omega_r / \\omega_r$。当 $\\omega_r$ 加倍时，边带间距 $2\\omega_r$ 翻倍且 $\\chi_r$ 减半；在小调制区 $|J_{\\pm 1}(\\chi_r)| \\approx \\chi_r/2$ 也随之减半，权重向 $n=0$ 中心峰集中。"
+
+  - id: lsb-recall-subharmonic-say
+    dimension: conceptual
+    type: explain
+    role: recall
+    knowledge_point: sideband-subharmonic-and-mas-transfer
+    difficulty: 1
+    est_minutes: 1
+    prompt: "说明倾斜单线圈如何突破功放高频带宽限制实现亚谐波倍频激发，以及这一原理如何对应固体核磁魔角旋转（MAS）边带。"
+    rubric:
+      - id: r1
+        criterion: "说明倾斜线圈同时产生横向驱动 $\\Omega$ 与同频纵向调制 $\\Omega_z$（$\\omega_z = \\omega$），由 $\\Delta_n = \\omega_0 + (n-1)\\omega = 0$ 得共振条件 $\\omega = \\frac{1}{1-n}\\omega_0$（$n \\le 0$）。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "说明选取 $n=-1$（$\\omega = \\omega_0/2$）可用带宽内的低频微波（如 $5\\text{ GHz}$）激发更高能隙跃迁（如 $10\\text{ GHz}$），小 $\\chi$ 下有效耦合约 $\\frac{\\Omega_z\\Omega}{2\\omega}$。"
+        weight: 1
+        required: true
+      - id: r3
+        criterion: "说明 MAS 实验中转子以角频率 $\\omega_r$ 周期调制沿 $S_z$ 的各向异性耦合，通过相同相位调制展开分裂出 $\\omega_0 + n\\omega_r$ 旋转边带。"
+        weight: 1
+        required: false
+    exemplar: "倾斜单个线圈使横向耦合 $\\Omega$ 与纵向调制 $\\Omega_z$ 共用同一频率 $\\omega_z = \\omega$，代入边带共振条件得到 $\\omega = \\frac{1}{1-n}\\omega_0$（$n = 0, -1, -2, \\dots$）。因此即使自旋能隙超出功放带宽（例如 $10\\text{ GHz}$），仍可用带内低频微波（例如 $5\\text{ GHz}$ 对应 $n=-1$）激发，小 $\\chi$ 下耦合强度为 $|J_{-1}(\\chi)|\\Omega \\approx \\frac{\\Omega_z\\Omega}{2\\omega}$。同一相位调制规律也支配着固体核磁魔角旋转（MAS）：样品旋转周期调制各向异性 $S_z$ 耦合，将谱线分裂为间隔 $\\omega_r$ 的旋转边带 $\\omega_0 + n\\omega_r$。"
+
+  - id: lsb-recall-subharmonic-contrast
+    dimension: conceptual
+    type: mc
+    role: recall
+    knowledge_point: sideband-subharmonic-and-mas-transfer
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "当单根倾斜线圈同时提供横向驱动与同频纵向调制（$\\omega_z = \\omega$）以二倍频方式激发自旋跃迁（$\\omega = \\omega_0/2$）时，对应边带求和中的哪一阶 $n$，且小调制极限下的有效耦合近似呈何种关系？"
+    options:
+      - id: a
+        text: "对应 $n = -1$ 阶边带，有效耦合强度 $|J_{-1}(\\chi)|\\Omega \\approx \\frac{\\Omega_z\\Omega}{2\\omega}$。"
+        correct: true
+        feedback: "正确。将 $n=-1$ 代入 $\\omega = \\frac{1}{1-n}\\omega_0$ 得 $\\omega_0/2$，且小 $\\chi$ 时 $|J_{-1}(\\chi)| \\approx \\chi/2 = \\Omega_z/(2\\omega)$。"
+      - id: b
+        text: "对应 $n = +1$ 阶边带，有效耦合强度为 $J_1(\\chi)\\Omega \\approx \\Omega$。"
+        correct: false
+        feedback: "$n=+1$ 时 $\\Delta_{+1} = \\omega_0 - \\omega + \\omega = \\omega_0 \\neq 0$，并不共振，也不存在与 $\\chi$ 无关的 $\\Omega$ 耦合。"
+      - id: c
+        text: "对应 $n = -2$ 阶边带，有效耦合强度 $|J_{-2}(\\chi)|\\Omega \\approx \\frac{\\Omega_z\\Omega}{2\\omega}$。"
+        correct: false
+        feedback: "$n=-2$ 对应的是三倍频共振条件 $\\omega = \\omega_0/3$，而非题干所述的 $\\omega_0/2$；且 $\\frac{\\Omega_z\\Omega}{2\\omega}$ 是由一阶小调制近似 $|J_{-1}(\\chi)| \\approx \\chi/2$ 导出的。"
+      - id: d
+        text: "对应 $n = 0$ 阶载波，仅需把微波功率减半即可在 $\\omega_0/2$ 处共振。"
+        correct: false
+        feedback: "$n=0$ 对应基频共振 $\\omega = \\omega_0$；降低功放功率不能改变共振频率位置。"
+    solution: "在同源共振条件 $\\omega = \\frac{1}{1-n}\\omega_0$ 中，$n = -1$ 给出 $\\omega = \\omega_0/2$，其小调制耦合强度满足 $|J_{-1}(\\chi)|\\Omega \\approx \\frac{\\chi}{2}\\Omega = \\frac{\\Omega_z\\Omega}{2\\omega}$。"
+
+  - id: lsb-recall-subharmonic-expr
+    dimension: math
+    type: expression
+    role: recall
+    knowledge_point: sideband-subharmonic-and-mas-transfer
+    difficulty: 1
+    est_minutes: 0.5
+    prompt: "倾斜单线圈满足 $\\omega_z = \\omega$ 时，写出第 $n$ 阶（$n \\le 0$）同源倍频激发的共振驱动频率 $\\omega$ 表达式（用 `w0` 表示 $\\omega_0$、`n` 表示边带阶次）："
+    answer: "w0 / (1 - n)"
+    variables:
+      w0: [1, 20]
+      n: [-4, 0]
+    solution: "令 $\\Delta_n = \\omega_0 - \\omega + n\\omega = \\omega_0 + (n-1)\\omega = 0$，解得 $\\omega = \\frac{1}{1-n}\\omega_0$。"
+
+  # ==========================================================================
+  # Lesson Final: Explain it 自评总结题
+  # ==========================================================================
+  - id: longitudinal-sideband-final-explain
+    dimension: conceptual
+    type: explain
+    role: core
+    difficulty: 3
+    est_minutes: 4
+    prompt: "请系统梳理纵向交流调制下的边带激发物理全流程：（1）含时相互作用图像 $U_i(t)$ 与 Jacobi–Anger 展开如何把纵向调制变成贝塞尔边带梳？（2）在什么条件下可进一步化为单边带常系数哈密顿量 $H_{I,\\text{eff}}^{(n)}$，在将 $S_x, S_y$ 改写为 $S^+, S^-$ 以及最终还原为 $\\cos(\\varphi - n\\varphi_z)S_x + \\sin(\\varphi - n\\varphi_z)S_y$ 时各自必须确保保留哪些系数、无量纲自变量与自旋算符？（3）同源倾斜线圈倍频激发 $\\omega = \\frac{1}{1-n}\\omega_0$ 与固体核磁 MAS 边带之间有何共同机理？"
+    rubric:
+      - id: r1
+        criterion: "说明含时变换 $U_i(t) = \\exp(-i[\\omega_0 t + \\chi\\sin(\\omega_z t+\\varphi_z)]S_z)$（$\\chi = \\Omega_z/\\omega_z$）消去静态与纵向调制项，并在 $S^+$ 前引入周期相位因子，经 Jacobi–Anger 展开产生间隔 $\\omega_z$、耦合为 $|J_n(\\chi)|\\Omega$ 的边带梳。"
+        weight: 1
+        required: true
+      - id: r2
+        criterion: "说明可分辨条件 $|J_n(\\chi)\\Omega| \\ll \\omega_z$ 允许只保留单一近共振阶 $n$，再作二次变换 $U_2 = e^{+i\\Delta_n t S_z}$（$\\Delta_n = \\omega_0 - \\omega + n\\omega_z$）得 $H_{I,\\text{eff}}^{(n)} = \\Delta_n S_z + J_n(\\chi)\\Omega[\\cos(\\varphi - n\\varphi_z)S_x + \\sin(\\varphi - n\\varphi_z)S_y]$，并明确指出改写 $S^+$ 须保留 $\\frac{1}{2}$ 因子、贝塞尔自变量为无量纲 $\\chi$ 且横项必须保留 $S_x$（以及小 $\\omega_z$ 下需数值求解）。"
+        weight: 1
+        required: true
+      - id: r3
+        criterion: "说明倾斜单线圈 $\\omega_z = \\omega$ 给出倍频激发 $\\omega = \\frac{1}{1-n}\\omega_0$（$n \\le 0$），可用带内低频（如 $\\omega_0/2$）跨越功放带宽上限，并与 MAS 转子周期调制各向异性 $S_z$ 耦合产生 $\\omega_0 + n\\omega_r$ 边带同源。"
+        weight: 1
+        required: true
+      - id: r4
+        criterion: "补充提及负奇数阶宇称 $J_{-n}(\\chi) = (-1)^n J_n(\\chi)$ 或载波抑制零点 $J_0(\\chi) = 0$（$\\chi \\approx 2.4048$）以及小 $\\chi$ 下二倍频耦合的平方标度律 $\\frac{\\Omega_z\\Omega}{2\\omega}$。"
+        weight: 1
+        required: false
+    exemplar: "面对总哈密顿量中的纵向调制 $\\Omega_z\\cos(\\omega_z t + \\varphi_z)S_z$，先构造含时相互作用图像 $U_i(t) = \\exp(-i[\\omega_0 t + \\chi\\sin(\\omega_z t+\\varphi_z)]S_z)$（无量纲调制指数 $\\chi = \\Omega_z/\\omega_z$），其时间偏导把静态项和纵向项一并消去，只留周期相位因子 $e^{i\\chi\\sin(\\omega_z t+\\varphi_z)}$ 乘在 $\\frac{\\Omega}{2}S^+$ 上（修正原讲义漏掉的 $\\frac{1}{2}$）。再经 Jacobi–Anger 傅里叶展开（修正 $J_n(x)\\to J_n(\\chi)$），单频驱动裂分为位置 $\\omega_0 + n\\omega_z$、间隔 $\\omega_z$ 的边带共振梳，各阶强度为 $|J_n(\\chi)|\\Omega$（其中 $\\chi \\approx 2.4048$ 时 $J_0=0$ 实现载波抑制）。当可分辨条件 $|J_n(\\chi)\\Omega| \\ll \\omega_z$ 成立时，最多只有一项近共振，对其施以二次变换 $U_2 = e^{+i\\Delta_n t S_z}$（$\\Delta_n = \\omega_0 - \\omega + n\\omega_z$）即化为常系数形式 $H_{I,\\text{eff}}^{(n)} = \\Delta_n S_z + J_n(\\chi)\\Omega[\\cos(\\varphi-n\\varphi_z)S_x + \\sin(\\varphi-n\\varphi_z)S_y]$（补齐讲义漏印的 $S_x$，并注意负奇数阶满足 $J_{-n}(\\chi)=(-1)^n J_n(\\chi)$）；若 $\\omega_z$ 太小导致多边带干涉，则只能数值求解。最后，倾斜单线圈令 $\\omega_z = \\omega$ 给出倍频激发 $\\omega = \\frac{1}{1-n}\\omega_0$（$n \\le 0$），使 $5\\text{ GHz}$ 功放能以耦合 $|J_{-1}(\\chi)|\\Omega \\approx \\frac{\\Omega_z\\Omega}{2\\omega}$ 激发 $10\\text{ GHz}$ 能隙；而固体核磁魔角旋转（MAS）正是转子频率 $\\omega_r$ 对各向异性 $S_z$ 耦合的周期相位调制，按相同贝塞尔展开产生 $\\omega_0 + n\\omega_r$ 旋转边带。"

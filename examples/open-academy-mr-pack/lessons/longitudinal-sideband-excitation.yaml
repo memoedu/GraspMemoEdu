@@ -1,0 +1,269 @@
+concept: longitudinal-sideband-excitation
+version: 1
+sources:
+  - source: ch1-magnetic-resonance
+    section: "1.2.2 节, pp. 5–7, 式 (1.24)–(1.32)"
+objective: |
+  **Goal:** 能够从含时纵向调制哈密顿量出发，通过含时相互作用图像与 Jacobi–Anger 傅里叶展开导出贝塞尔边带强度 $J_n(\chi)\Omega$，在可分辨边带条件下通过二次旋转变换写出单阶常系数有效哈密顿量 $H_{I,\text{eff}}^{(n)}$，并应用至倾斜线圈倍频激发（$\omega = \frac{1}{1-n}\omega_0$）与固体核磁魔角旋转（MAS）边带分析。
+recap:
+  - concept: rotating-wave-and-frame
+    text: "旋波近似保留角动量匹配的逆时针横向分量，利用 $U_i = e^{-i\\omega t S_z}$ 与升降算符恒等式 $U_i^\\dagger S^+ U_i = e^{i\\omega t}S^+$ 可消去横向驱动的时间依赖。"
+  - concept: bloch-siegert-shift
+    text: "强或远失谐横向驱动分量会带来微小频率偏移而超出主共振简化范畴，本课只要求主共振条件成立；该项可作选学背景。"
+where_this_fits: |
+  ### 当交变磁场不再垂直于静磁场，或者再叠加纵向调制时
+
+  前面处理横向旋转驱动时，我们默认线圈严格垂直于静磁场（即纵向分量 $B_z = 0$）。但真实实验中线圈往往存在倾角，或者实验者会主动沿 $z$ 轴再施加射频调制。此时纵轴 $S_z$ 系数随时间振荡，能隙本身在不停呼吸。
+
+  本课不再局限于常速率旋转参考系，而是构造**含时相互作用图像**把纵轴调制整体吸收进幺正变换相位中，借助贝塞尔函数展开揭示边带共振梳、载波抑制与突破功放带宽的倍频激发原理。
+knowledge_points:
+  - id: sideband-time-dependent-frame-and-jacobi-anger
+    title: "含时参考系与 Jacobi–Anger 边带展开"
+    tldr: |
+      - 含时纵向调制 $H_z = \Omega_z\cos(\omega_z t + \varphi_z)S_z$ 与横向驱动共同进入总哈密顿量。
+      - 引入无量纲调制指数 $\chi = \Omega_z / \omega_z$ 与含时变换 $U_i(t) = e^{-i[\omega_0 t + \chi\sin(\omega_z t + \varphi_z)]S_z}$，同时消去静态项与纵向调制项。
+      - 经 Jacobi–Anger 展开后，单频驱动裂分为位于 $\omega_0 + n\omega_z$ 的无限边带梳，第 $n$ 阶耦合幅度为 $|J_n(\chi)|\Omega$。
+    explain: |
+      ### 含时纵向驱动模型与 $\frac{1}{2}$ 因子勘误
+
+      实际线圈不垂直于 $z$ 轴或外加独立纵向交变场时，产生纵向扰动 $H_z = -\gamma_e B_z\cos(\omega t+\varphi)S_z$，一般写作 $H_z = \Omega_z\cos(\omega_z t + \varphi_z)S_z$（对比横向线偏振拆为圆偏振时定义 $2\Omega = -\gamma_e B_x$，纵向项无须拆分，直接对应 $\Omega_z = -\gamma_e B_z$）。结合静态项与旋波近似横向分量，总哈密顿量为：
+      $$H = \big[\omega_0 + \Omega_z\cos(\omega_z t + \varphi_z)\big]S_z + \Omega\big[\cos(\omega t + \varphi)S_x + \sin(\omega t + \varphi)S_y\big]$$
+      **教材勘误提示：** 用 $S_x = \frac{1}{2}(S^+ + S^-)$ 与 $S_y = \frac{1}{2}(-iS^+ + iS^-)$ 改写横向项时，必须保留 $\frac{1}{2}$ 因子，即 $\cos(\omega t+\varphi)S_x + \sin(\omega t+\varphi)S_y = \frac{1}{2}(e^{-i(\omega t+\varphi)}S^+ + \text{h.c.})$；原讲义式 (1.26)、(1.28)、(1.30)、(1.31) 漏写了 $S^+$ 前的 $\frac{1}{2}$。
+
+      ### 含时相互作用图像与 Jacobi–Anger 展开
+
+      设无量纲**纵向调制指数** $\chi = \Omega_z/\omega_z$，取含时相位 $\Theta(t) = \omega_0 t + \chi\sin(\omega_z t + \varphi_z)$ 构造**含时相互作用图像变换** $U_i(t) = e^{-i\Theta(t)S_z}$（略去 $t=0$ 积分常数 $-\chi\sin\varphi_z$ 仅固定零时刻参考系偏置，不改变 $H_I$）。代入通式 $H_I = U_i^\dagger H U_i - U_i^\dagger i\partial_t U_i$：因算符方向 $S_z$ 固定，$[\Theta(t)S_z, \dot{\Theta}(t)S_z] = 0$ 使指数可按标量链式法则直接求导（无须时间排序）得 $\partial_t U_i = -i\dot{\Theta}(t)S_z U_i$；又因 $[U_i(t), S_z] = 0$（即与 $\omega_0 S_z + H_z$ 对易），静态与纵向 $S_z$ 项穿过 $U_i^\dagger(\cdots)U_i$ 后原样保留，恰与导数项 $-[\omega_0 + \Omega_z\cos(\omega_z t+\varphi_z)]S_z$ 精确抵消！同时 $U_i^\dagger S^+ U_i = e^{i\Theta(t)}S^+$ 把纵向振荡转为周期相位调制：
+      $$H_I = \frac{\Omega}{2}\Big(e^{i[(\omega_0-\omega)t-\varphi]}e^{i\chi\sin(\omega_z t+\varphi_z)}S^+ + \text{h.c.}\Big)$$
+      因 $e^{i\chi\sin(\omega_z t+\varphi_z)} = \sum_{n=-\infty}^\infty A_n e^{i n\omega_z t}$，令 $\alpha' = \omega_z t$、$\alpha = \alpha' + \varphi_z$，利用奇函数 $\sin(n\alpha - \chi\sin\alpha)$ 在 $[-\pi,\pi]$ 积分为零，得 $A_n = e^{i n\varphi_z}\frac{1}{\pi}\int_0^\pi \cos(n\alpha - \chi\sin\alpha)\,d\alpha = e^{i n\varphi_z}J_n(\chi)$，其中 $J_n(\chi)$ 为第 $n$ 阶第一类贝塞尔函数（一并修正式 (1.29)–(1.32) 将 $\chi$ 误印为 $x$ 的笔误）。代回即得无限边带之和：
+      $$H_I = \frac{1}{2}\sum_{n=-\infty}^{\infty} J_n(\chi)\Omega\, e^{i(n\varphi_z - \varphi)} e^{i(\omega_0 - \omega + n\omega_z)t} S^+ + \text{h.c.}$$
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="双栏边带激发与贝塞尔包络图：左栏展示纵向调制下在频率 omega_0 两侧等间距 omega_z 分布的边带共振梳 omega_0 + n omega_z（以调制指数 chi 等于 1.2 为例标出 n 等于 0、正负 1、正负 2 阶相对强度）；右栏绘制零阶、一阶、二阶贝塞尔函数绝对值随调制指数 chi 在 0 到 3.5 的变化曲线，并用红点标出 chi 约等于 2.4048 处首次出现的载波抑制零点 J_0 等于 0。">
+      <defs>
+      <marker id="l4s1-dark" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#171717"/></marker>
+      </defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12.5" fill="#171717">
+      <text x="156" y="24" text-anchor="middle" font-size="13.5" font-weight="600">边带共振梳 ω = ω₀ + nω_z (例: χ = 1.2)</text>
+      <line x1="44" y1="66" x2="282" y2="66" stroke="#d4d4d4" stroke-width="1" stroke-dasharray="4 4"/>
+      <line x1="44" y1="149" x2="282" y2="149" stroke="#d4d4d4" stroke-width="1" stroke-dasharray="4 4"/>
+      <text x="38" y="70" text-anchor="end" font-size="11" fill="#737373">1.0</text>
+      <text x="38" y="153" text-anchor="end" font-size="11" fill="#737373">0.5</text>
+      <line x1="38" y1="232.0" x2="290" y2="232.0" stroke="#171717" stroke-width="1.5" marker-end="url(#l4s1-dark)"/>
+      <line x1="44" y1="232.0" x2="44" y2="48" stroke="#171717" stroke-width="1.5" marker-end="url(#l4s1-dark)"/>
+      <text x="294" y="236" font-size="12">ω</text>
+      <text x="48" y="47" font-size="11.5" font-weight="600">|J_n(χ)|</text>
+      <line x1="76.0" y1="232.0" x2="76.0" y2="205.55" stroke="#f59e0b" stroke-width="4"/><circle cx="76.0" cy="205.55" r="3.5" fill="#f59e0b"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="76.0" y="197.55" text-anchor="middle" font-size="11.5" fill="#f59e0b" font-weight="600">0.16</text><text x="76.0" y="249" text-anchor="middle" font-size="12" fill="#f59e0b" font-weight="600">-2</text><line x1="122.0" y1="232.0" x2="122.0" y2="149.28" stroke="#10b981" stroke-width="4"/><circle cx="122.0" cy="149.28" r="3.5" fill="#10b981"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="122.0" y="141.28" text-anchor="middle" font-size="11.5" fill="#10b981" font-weight="600">0.50</text><text x="122.0" y="249" text-anchor="middle" font-size="12" fill="#10b981" font-weight="600">-1</text><line x1="168.0" y1="232.0" x2="168.0" y2="120.59" stroke="#3b82f6" stroke-width="4"/><circle cx="168.0" cy="120.59" r="3.5" fill="#3b82f6"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="168.0" y="112.59" text-anchor="middle" font-size="11.5" fill="#3b82f6" font-weight="600">0.67</text><text x="168.0" y="249" text-anchor="middle" font-size="12" fill="#3b82f6" font-weight="600">n=0</text><line x1="214.0" y1="232.0" x2="214.0" y2="149.28" stroke="#10b981" stroke-width="4"/><circle cx="214.0" cy="149.28" r="3.5" fill="#10b981"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="214.0" y="141.28" text-anchor="middle" font-size="11.5" fill="#10b981" font-weight="600">0.50</text><text x="214.0" y="249" text-anchor="middle" font-size="12" fill="#10b981" font-weight="600">+1</text><line x1="260.0" y1="232.0" x2="260.0" y2="205.55" stroke="#f59e0b" stroke-width="4"/><circle cx="260.0" cy="205.55" r="3.5" fill="#f59e0b"/><text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="260.0" y="197.55" text-anchor="middle" font-size="11.5" fill="#f59e0b" font-weight="600">0.16</text><text x="260.0" y="249" text-anchor="middle" font-size="12" fill="#f59e0b" font-weight="600">+2</text>
+      <text x="168" y="266" text-anchor="middle" font-size="12" fill="#3b82f6" font-weight="600">ω₀</text>
+      <line x1="168" y1="92" x2="214" y2="92" stroke="#737373" stroke-width="1.4"/>
+      <line x1="168" y1="87" x2="168" y2="97" stroke="#737373" stroke-width="1.4"/>
+      <line x1="214" y1="87" x2="214" y2="97" stroke="#737373" stroke-width="1.4"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="191" y="83" text-anchor="middle" font-size="11.5" fill="#737373">间距 ω_z</text>
+      <text x="162" y="286" text-anchor="middle" font-size="12" fill="#737373">各阶有效耦合幅度 |J_n(χ)|Ω</text>
+      <line x1="308" y1="18" x2="308" y2="284" stroke="#d4d4d4" stroke-width="1"/>
+      <text x="476" y="24" text-anchor="middle" font-size="13.5" font-weight="600">贝塞尔包络 |J_n(χ)| 随 χ 变化</text>
+      <line x1="358.0" y1="147.0" x2="610.0" y2="147.0" stroke="#d4d4d4" stroke-width="1" stroke-dasharray="4 4"/>
+      <line x1="358.0" y1="62.0" x2="610.0" y2="62.0" stroke="#d4d4d4" stroke-width="1" stroke-dasharray="4 4"/>
+      <text x="352.0" y="66.0" text-anchor="end" font-size="11" fill="#737373">1.0</text>
+      <text x="352.0" y="151.0" text-anchor="end" font-size="11" fill="#737373">0.5</text>
+      <text x="352.0" y="236.0" text-anchor="end" font-size="11" fill="#737373">0</text>
+      <line x1="531.15" y1="232.0" x2="531.15" y2="128" stroke="#ef4444" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <line x1="358.0" y1="232.0" x2="624.0" y2="232.0" stroke="#171717" stroke-width="1.5" marker-end="url(#l4s1-dark)"/>
+      <line x1="358.0" y1="232.0" x2="358.0" y2="48.0" stroke="#171717" stroke-width="1.5" marker-end="url(#l4s1-dark)"/>
+      <text x="364.0" y="47" font-size="11.5" font-weight="600">|J_n|</text>
+      <line x1="358.0" y1="232.0" x2="358.0" y2="236.0" stroke="#171717" stroke-width="1.2"/><text x="358.0" y="249" text-anchor="middle" font-size="11.5">0</text><line x1="430.0" y1="232.0" x2="430.0" y2="236.0" stroke="#171717" stroke-width="1.2"/><text x="430.0" y="249" text-anchor="middle" font-size="11.5">1</text><line x1="502.0" y1="232.0" x2="502.0" y2="236.0" stroke="#171717" stroke-width="1.2"/><text x="502.0" y="249" text-anchor="middle" font-size="11.5">2</text><line x1="574.0" y1="232.0" x2="574.0" y2="236.0" stroke="#171717" stroke-width="1.2"/><text x="574.0" y="249" text-anchor="middle" font-size="11.5">3</text><line x1="610.0" y1="232.0" x2="610.0" y2="236.0" stroke="#171717" stroke-width="1.2"/><text x="610.0" y="249" text-anchor="middle" font-size="11.5">3.5</text>
+      <text x="484" y="286" text-anchor="middle" font-size="12" fill="#737373">无量纲调制指数 χ = Ω_z / ω_z</text>
+      <polyline points="358.0,232.0 359.8,231.99 361.6,231.95 363.4,231.88 365.2,231.79 367.0,231.67 368.8,231.52 370.6,231.35 372.4,231.15 374.2,230.93 376.0,230.68 377.8,230.4 379.6,230.1 381.4,229.78 383.2,229.42 385.0,229.05 386.8,228.65 388.6,228.22 390.4,227.77 392.2,227.29 394.0,226.8 395.8,226.28 397.6,225.73 399.4,225.17 401.2,224.58 403.0,223.97 404.8,223.33 406.6,222.68 408.4,222.01 410.2,221.31 412.0,220.6 413.8,219.86 415.6,219.11 417.4,218.34 419.2,217.55 421.0,216.74 422.8,215.92 424.6,215.08 426.4,214.22 428.2,213.35 430.0,212.47 431.8,211.57 433.6,210.65 435.4,209.72 437.2,208.78 439.0,207.83 440.8,206.87 442.6,205.89 444.4,204.91 446.2,203.92 448.0,202.91 449.8,201.9 451.6,200.89 453.4,199.86 455.2,198.83 457.0,197.79 458.8,196.75 460.6,195.7 462.4,194.65 464.2,193.6 466.0,192.55 467.8,191.49 469.6,190.43 471.4,189.37 473.2,188.32 475.0,187.26 476.8,186.2 478.6,185.15 480.4,184.1 482.2,183.06 484.0,182.02 485.8,180.98 487.6,179.96 489.4,178.93 491.2,177.92 493.0,176.91 494.8,175.91 496.6,174.92 498.4,173.94 500.2,172.98 502.0,172.02 503.8,171.07 505.6,170.14 507.4,169.22 509.2,168.31 511.0,167.42 512.8,166.55 514.6,165.68 516.4,164.84 518.2,164.01 520.0,163.2 521.8,162.41 523.6,161.63 525.4,160.88 527.2,160.14 529.0,159.43 530.8,158.73 532.6,158.06 534.4,157.41 536.2,156.78 538.0,156.17 539.8,155.59 541.6,155.02 543.4,154.49 545.2,153.97 547.0,153.49 548.8,153.02 550.6,152.59 552.4,152.17 554.2,151.79 556.0,151.43 557.8,151.1 559.6,150.79 561.4,150.52 563.2,150.27 565.0,150.04 566.8,149.85 568.6,149.69 570.4,149.55 572.2,149.44 574.0,149.36 575.8,149.32 577.6,149.3 579.4,149.31 581.2,149.34 583.0,149.41 584.8,149.51 586.6,149.64 588.4,149.8 590.2,149.99 592.0,150.21 593.8,150.46 595.6,150.73 597.4,151.04 599.2,151.38 601.0,151.75 602.8,152.15 604.6,152.57 606.4,153.03 608.2,153.52 610.0,154.03" fill="#ffffff" fill-opacity="0" stroke="#f59e0b" stroke-width="2.2" stroke-dasharray="6 3"/>
+      <polyline points="358.0,232.0 359.8,229.88 361.6,227.75 363.4,225.63 365.2,223.51 367.0,221.4 368.8,219.29 370.6,217.18 372.4,215.08 374.2,213.0 376.0,210.92 377.8,208.85 379.6,206.79 381.4,204.74 383.2,202.7 385.0,200.68 386.8,198.68 388.6,196.68 390.4,194.71 392.2,192.75 394.0,190.81 395.8,188.89 397.6,187.0 399.4,185.12 401.2,183.26 403.0,181.43 404.8,179.62 406.6,177.83 408.4,176.07 410.2,174.34 412.0,172.63 413.8,170.95 415.6,169.3 417.4,167.67 419.2,166.08 421.0,164.52 422.8,162.99 424.6,161.49 426.4,160.02 428.2,158.59 430.0,157.19 431.8,155.83 433.6,154.5 435.4,153.2 437.2,151.95 439.0,150.73 440.8,149.54 442.6,148.4 444.4,147.29 446.2,146.22 448.0,145.19 449.8,144.2 451.6,143.26 453.4,142.35 455.2,141.48 457.0,140.65 458.8,139.87 460.6,139.13 462.4,138.43 464.2,137.77 466.0,137.15 467.8,136.58 469.6,136.05 471.4,135.56 473.2,135.12 475.0,134.72 476.8,134.36 478.6,134.05 480.4,133.78 482.2,133.55 484.0,133.37 485.8,133.24 487.6,133.14 489.4,133.09 491.2,133.09 493.0,133.12 494.8,133.2 496.6,133.33 498.4,133.49 500.2,133.7 502.0,133.96 503.8,134.25 505.6,134.59 507.4,134.97 509.2,135.39 511.0,135.85 512.8,136.36 514.6,136.9 516.4,137.49 518.2,138.11 520.0,138.78 521.8,139.48 523.6,140.22 525.4,141.0 527.2,141.82 529.0,142.68 530.8,143.57 532.6,144.5 534.4,145.46 536.2,146.46 538.0,147.49 539.8,148.56 541.6,149.66 543.4,150.8 545.2,151.96 547.0,153.16 548.8,154.38 550.6,155.64 552.4,156.93 554.2,158.24 556.0,159.58 557.8,160.95 559.6,162.35 561.4,163.77 563.2,165.22 565.0,166.69 566.8,168.18 568.6,169.69 570.4,171.23 572.2,172.78 574.0,174.36 575.8,175.95 577.6,177.57 579.4,179.2 581.2,180.84 583.0,182.5 584.8,184.18 586.6,185.87 588.4,187.57 590.2,189.29 592.0,191.01 593.8,192.74 595.6,194.49 597.4,196.24 599.2,198.0 601.0,199.76 602.8,201.53 604.6,203.31 606.4,205.08 608.2,206.86 610.0,208.65" fill="#ffffff" fill-opacity="0" stroke="#10b981" stroke-width="2.4"/>
+      <polyline points="358.0,62.0 359.8,62.03 361.6,62.11 363.4,62.24 365.2,62.42 367.0,62.66 368.8,62.95 370.6,63.3 372.4,63.7 374.2,64.14 376.0,64.65 377.8,65.2 379.6,65.8 381.4,66.46 383.2,67.17 385.0,67.92 386.8,68.73 388.6,69.59 390.4,70.5 392.2,71.45 394.0,72.46 395.8,73.51 397.6,74.62 399.4,75.76 401.2,76.96 403.0,78.2 404.8,79.49 406.6,80.82 408.4,82.2 410.2,83.62 412.0,85.08 413.8,86.58 415.6,88.13 417.4,89.72 419.2,91.35 421.0,93.01 422.8,94.72 424.6,96.47 426.4,98.25 428.2,100.06 430.0,101.92 431.8,103.8 433.6,105.72 435.4,107.68 437.2,109.66 439.0,111.68 440.8,113.73 442.6,115.8 444.4,117.91 446.2,120.04 448.0,122.2 449.8,124.38 451.6,126.59 453.4,128.82 455.2,131.07 457.0,133.34 458.8,135.63 460.6,137.95 462.4,140.28 464.2,142.63 466.0,144.99 467.8,147.37 469.6,149.76 471.4,152.17 473.2,154.58 475.0,157.01 476.8,159.45 478.6,161.89 480.4,164.34 482.2,166.8 484.0,169.26 485.8,171.73 487.6,174.2 489.4,176.67 491.2,179.15 493.0,181.62 494.8,184.09 496.6,186.56 498.4,189.02 500.2,191.48 502.0,193.94 503.8,196.39 505.6,198.83 507.4,201.26 509.2,203.68 511.0,206.09 512.8,208.48 514.6,210.87 516.4,213.24 518.2,215.59 520.0,217.93 521.8,220.25 523.6,222.56 525.4,224.84 527.2,227.11 529.0,229.35 530.8,231.57 532.6,230.23 534.4,228.05 536.2,225.9 538.0,223.77 539.8,221.68 541.6,219.6 543.4,217.56 545.2,215.54 547.0,213.56 548.8,211.6 550.6,209.68 552.4,207.78 554.2,205.92 556.0,204.1 557.8,202.3 559.6,200.54 561.4,198.82 563.2,197.13 565.0,195.48 566.8,193.87 568.6,192.29 570.4,190.75 572.2,189.25 574.0,187.79 575.8,186.37 577.6,184.99 579.4,183.65 581.2,182.35 583.0,181.09 584.8,179.87 586.6,178.7 588.4,177.57 590.2,176.48 592.0,175.43 593.8,174.43 595.6,173.47 597.4,172.55 599.2,171.68 601.0,170.85 602.8,170.07 604.6,169.33 606.4,168.64 608.2,167.98 610.0,167.38" fill="#ffffff" fill-opacity="0" stroke="#3b82f6" stroke-width="2.6"/>
+      <circle cx="531.15" cy="232.0" r="4.5" fill="#ef4444"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="531.15" y="122" text-anchor="middle" font-size="11.5" fill="#ef4444" font-weight="600">χ ≈ 2.4048 (J₀=0)</text>
+      <text x="531.15" y="266" text-anchor="middle" font-size="11" fill="#ef4444" font-weight="600">载波零点</text>
+      <rect x="476" y="40" width="144" height="62" rx="6" fill="#ffffff" fill-opacity="0.95" stroke="#d4d4d4" stroke-width="1.2"/>
+      <line x1="485" y1="54" x2="508" y2="54" stroke="#3b82f6" stroke-width="2.6"/>
+      <text x="514" y="58" font-size="11.5">|J₀(χ)| 载波 (n=0)</text>
+      <line x1="485" y1="72" x2="508" y2="72" stroke="#10b981" stroke-width="2.4"/>
+      <text x="514" y="76" font-size="11.5">|J₁(χ)| 一阶边带</text>
+      <line x1="485" y1="90" x2="508" y2="90" stroke="#f59e0b" stroke-width="2.2" stroke-dasharray="6 3"/>
+      <text x="514" y="94" font-size="11.5">|J₂(χ)| 二阶边带</text>
+      </g>
+      </svg>
+      ```
+
+      可见，单频驱动被调制成以 $\omega_0$ 为中心、间距为 $\omega_z$ 的共振梳 $\omega_0 + n\omega_z$，各阶强度由第一类贝塞尔函数 $|J_n(\chi)|$ 调控；当 $\chi \approx 2.4048$ 到达 $J_0(\chi)$ 首个零点时，$n=0$ 载波被完全抑制，能量转入 $n=\pm 1, \pm 2$ 等边带。
+    worked: |
+      设自旋静态跃迁频率 $\omega_0/(2\pi) = 2000\text{ MHz}$，沿 $z$ 轴施加幅值 $\Omega_z/(2\pi) = 10\text{ MHz}$、调制频率 $\omega_z/(2\pi) = 50\text{ MHz}$（初相位 $\varphi_z = 0$）的纵向交流场，并配合横向驱动幅值 $\Omega/(2\pi) = 10\text{ MHz}$（$\varphi = 0$）。
+
+      1. **计算纵向调制指数 $\chi$ 并写出含时变换 $U_i(t)$。** 由定义直接相除：
+         $$\chi = \frac{\Omega_z}{\omega_z} = \frac{10\text{ MHz}}{50\text{ MHz}} = 0.2, \qquad U_i(t) = \exp\!\Big(-i\big[\omega_0 t + 0.2\sin(\omega_z t)\big]S_z\Big).$$
+
+      2. **写出修正后的边带展开式并读出共振位置。** 保留 $S^+$ 前的 $\frac{1}{2}$ 因子并代入 $\varphi = \varphi_z = 0$ 与 $\chi = 0.2$：
+         $$H_I = \frac{1}{2}\sum_{n=-\infty}^{\infty} J_n(0.2)\Omega\, e^{i(\omega_0 - \omega + n\omega_z)t} S^+ + \text{h.c.}$$
+         由共振条件 $\omega_0 - \omega + n\omega_z = 0$ 得等间距边带频率 $\omega/(2\pi) = 2000 + 50n\text{ MHz}$：
+         $$n=0: 2000\text{ MHz},\qquad n=\pm 1: 2050\text{ / }1950\text{ MHz},\qquad n=\pm 2: 2100\text{ / }1900\text{ MHz}.$$
+
+      3. **计算前几阶边带的有效横向耦合幅度 $|J_n(0.2)|\Omega/(2\pi)$。** 利用 $J_0(0.2) \approx 0.9900$、$|J_{\pm 1}(0.2)| \approx 0.09950$、$|J_{\pm 2}(0.2)| \approx 0.004983$：
+         $$|J_0(0.2)|\frac{\Omega}{2\pi} \approx 9.900\text{ MHz},\qquad |J_{\pm 1}(0.2)|\frac{\Omega}{2\pi} \approx 0.995\text{ MHz},\qquad |J_{\pm 2}(0.2)|\frac{\Omega}{2\pi} \approx 0.0498\text{ MHz}.$$
+
+      各阶有效耦合均小于间距 $50\text{ MHz}$，各边带清晰分离。
+    problems:
+      - lsb-frame-basics
+      - lsb-frame-self-explain
+      - lsb-bessel-chi-template
+      - lsb-jacobi-spot-mistake
+      - lsb-carrier-null-transfer
+
+  - id: sideband-single-resonance-and-effective-hi
+    title: "可分辨边带条件与单边带有效哈密顿量"
+    tldr: |
+      - 记边带失谐 $\Delta_n = \omega_0 - \omega + n\omega_z$；在可分辨条件 $|J_n(\chi)\Omega| \ll \omega_z$ 下至多一项共振。
+      - 作二次变换 $U_2 = e^{+i\Delta_n t S_z}$ 得常系数 $H_{I,\text{eff}}^{(n)}$（并补齐教材式 (1.32) 漏掉的 $S_x$）。
+      - 当 $\omega_z$ 过小使 $|J_n(\chi)\Omega| \ll \omega_z$ 失效时，多边带干涉须数值求解。
+    explain: |
+      ### 孤立单边带共振与二次旋转坐标系
+
+      记第 $n$ 阶边带的频率失谐为 $\Delta_n = \omega_0 - \omega + n\omega_z$。因为相邻边带间隔为 $\omega_z$，只要满足**可分辨边带条件** $|J_m(\chi)\Omega| \ll \omega_z$（对所有主要阶次 $m$ 成立），且驱动频率 $\omega$ 接近某单一目标边带 $\omega_0 + n\omega_z$（即 $|\Delta_n| \lesssim |J_n(\chi)\Omega|$），则其余任何 $m \neq n$ 阶都满足 $|\Delta_m| = |\Delta_n + (m-n)\omega_z| \gtrsim \omega_z \gg |J_m(\chi)\Omega|$。这些非共振项高速振荡，在旋波近似下可平均忽略（高精度分析时仅贡献高阶小频移）。
+
+      仅保留第 $n$ 阶近共振项（保留 $\frac{1}{2}$ 因子）：
+      $$H_I^{(n)} \approx \frac{1}{2}J_n(\chi)\Omega\, e^{i(n\varphi_z - \varphi)} e^{i\Delta_n t} S^+ + \text{h.c.}$$
+      为消去残留的时间因子 $e^{i\Delta_n t}$，施加以正号为特征的**二次相互作用图像变换** $U_2(t) = e^{+i\Delta_n t S_z}$。由于 $U_2$ 指数带正号，求导修正项 $-U_2^\dagger i\frac{\partial}{\partial t}U_2 = +\Delta_n S_z$ 为正，而 $U_2^\dagger S^+ U_2 = e^{-i\Delta_n t}S^+$ 恰好抵消 $e^{+i\Delta_n t}$。将 $\frac{1}{2}(e^{-i(\varphi-n\varphi_z)}S^+ + e^{i(\varphi-n\varphi_z)}S^-)$ 还原回 $S_x, S_y$，即得精确的常系数有效哈密顿量：
+      $$H_{I,\text{eff}}^{(n)} = \Delta_n S_z + J_n(\chi)\Omega\big[\cos(\varphi - n\varphi_z)S_x + \sin(\varphi - n\varphi_z)S_y\big]$$
+      **教材勘误提示：** 原讲义式 (1.32) 在 $\cos(\varphi - n\varphi_z)$ 后漏印了算符 $S_x$，必须补齐 $S_x$ 才是合法的横向自旋耦合项。
+
+      ### 贝塞尔符号宇称与不可分辨边带区
+
+      注意负阶贝塞尔函数满足宇称恒等式 $J_{-n}(\chi) = (-1)^n J_n(\chi)$。当 $n$ 为负奇数（如 $n=-1$）且 $0 < \chi < 3.83$ 时，$J_{-1}(\chi) < 0$，等效于将横平面驱动轴额外翻转 $\pi$（而有效横向耦合强度大小仍为 $|J_n(\chi)|\Omega$）。此外，相位组合 $\varphi - n\varphi_z$ 说明纵向调制初相位 $\varphi_z$ 会按阶数 $n$ 线性传入有效旋转轴方位角，从而可通过调控 $\varphi_z$ 实现边带门控相移。
+
+      相反，若调制频率 $\omega_z$ 很低（例如同时叠加了低频射频场）导致 $|J_n(\chi)\Omega| \ll \omega_z$ 不再成立，相邻边带的失谐不再远大于耦合强度，多阶边带将同时发生激发并产生干涉拍频。此时单边带近似完全失效，不能再用上式解析求解，必须对完整的含时哈密顿量作数值演化计算。
+    worked: |
+      承接上例（$\omega_0/(2\pi) = 2000\text{ MHz}$、$\omega_z/(2\pi) = 50\text{ MHz}$、$\Omega_z/(2\pi) = \Omega/(2\pi) = 10\text{ MHz}$，故 $\chi = 0.2$），将横向驱动频率调至 $\omega/(2\pi) = 2052\text{ MHz}$，取初相位 $\varphi = \pi/3$、$\varphi_z = \pi/6$。
+
+      1. **筛选近共振边带并计算失谐 $\Delta_n/(2\pi)$。** 代入 $\Delta_n = \omega_0 - \omega + n\omega_z$：
+         $$\frac{\Delta_{+1}}{2\pi} = 2000 - 2052 + 50 = -2\text{ MHz}, \qquad \frac{\Delta_0}{2\pi} = -52\text{ MHz}, \qquad \frac{\Delta_{+2}}{2\pi} = +48\text{ MHz}.$$
+         因 $|J_1(0.2)\Omega|/(2\pi) \approx 0.995\text{ MHz} \ll 50\text{ MHz}$，可孤立保留 $n = +1$ 阶边带。
+
+      2. **作二次变换 $U_2 = e^{+i\Delta_{+1} t S_z}$ 并计算有效相位角。** 由 $\varphi - (+1)\varphi_z = \frac{\pi}{3} - \frac{\pi}{6} = \frac{\pi}{6}$，代入修正后的式 (1.32) 得：
+         $$\frac{H_{I,\text{eff}}^{(+1)}}{2\pi} = (-2\text{ MHz})S_z + 0.995\text{ MHz}\left(\cos\frac{\pi}{6}\,S_x + \sin\frac{\pi}{6}\,S_y\right).$$
+
+      3. **写出在 $\{|m_S=+1/2\rangle, |m_S=-1/2\rangle\}$ 基下的矩阵形式。** 利用 $S_z = \frac{1}{2}\text{diag}(1,-1)$ 与 $\cos\frac{\pi}{6}S_x + \sin\frac{\pi}{6}S_y = \frac{1}{2}\begin{pmatrix} 0 & e^{-i\pi/6} \\ e^{i\pi/6} & 0 \end{pmatrix}$：
+         $$\frac{H_{I,\text{eff}}^{(+1)}}{2\pi} \approx \begin{pmatrix} -1 & 0.4975\,e^{-i\pi/6} \\ 0.4975\,e^{+i\pi/6} & +1 \end{pmatrix}\text{ MHz} \approx \begin{pmatrix} -1 & 0.4309 - 0.2488i \\ 0.4309 + 0.2488i & +1 \end{pmatrix}\text{ MHz}.$$
+
+      可见整个含时边带问题被精确化为了一个失谐为 $-2\text{ MHz}$、有效耦合幅值为 $0.995\text{ MHz}$ 的静态二能级共振问题。
+    problems:
+      - lsb-eff-basics
+      - lsb-eff-self-explain
+      - lsb-detuning-template
+      - lsb-eff-spot-mistake
+      - lsb-unresolved-regime-transfer
+
+  - id: sideband-subharmonic-and-mas-transfer
+    title: "倾斜线圈倍频激发与 MAS 边带迁移"
+    tldr: |
+      - 倾斜单线圈同时产生 $\Omega$ 与同频 $\Omega_z$（$\omega_z = \omega$），得倍频共振 $\omega = \frac{1}{1-n}\omega_0$（$n \le 0$）。
+      - 取 $n=-1$ 可用 $\omega_0/2$ 跨越功放带宽，小 $\chi$ 下有效耦合 $|J_{-1}(\chi)|\Omega \approx \frac{\Omega_z\Omega}{2\omega}$。
+      - 魔角旋转（MAS）周期调制 $S_z$ 各向异性，产生 $\omega_0 + n\omega_r$ 旋转边带。
+    explain: |
+      ### 倾斜单线圈下的同源倍频激发条件
+
+      当实验中只有一根微波线圈且故意倾斜安装（$\theta_B \neq 90^\circ$）时，同一个交变源会同时产生横向耦合 $\Omega \propto B_x$ 与纵向调制 $\Omega_z \propto B_z$，因而纵向频率严格锁定为驱动频率 $\omega_z = \omega$（且 $\varphi_z = \varphi$）。将 $\omega_z = \omega$ 代入第 $n$ 阶边带失谐公式，令 $\Delta_n = 0$ 即得**倍频（亚谐波）激发条件**：
+      $$\Delta_n = \omega_0 - \omega + n\omega = \omega_0 + (n - 1)\omega = 0 \implies \omega = \frac{1}{1 - n}\omega_0 \quad (n = 0, -1, -2, \dots)$$
+      这里只有 $n \le 0$ 才对应正频率 $\omega > 0$：$n = 0$ 为基频共振 $\omega_0$；$n = -1$ 对应 $\omega = \omega_0/2$（吸取一个横向光子和一个同频纵向能量量子，共以二倍频跨越能隙）；$n = -2$ 对应 $\omega = \omega_0/3$。实际应用中，当自旋能隙（例如 $\omega_0/(2\pi) = 10\text{ GHz}$）超出实验室微波功放的带宽上限时，只需倾斜线圈并改用 $5\text{ GHz}$ 微波源驱动 $n = -1$ 阶边带即可实现共振翻转，必要时微调静磁场 $B_0$ 以对准目标能隙。
+
+      ```svg
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" aria-label="倾斜线圈几何与同源倍频激发阶梯图：左图展示单根倾斜驱动线圈的磁场 B_ac 与静磁场 z 轴成非 90 度夹角 theta_B，同时投影出沿 x 轴的横向驱动 Omega 与沿 z 轴的同频纵向调制 Omega_z（满足 omega_z 等于 omega）；右图对比基频 n 等于 0（10 GHz，超出 6 GHz 功放带宽）、二倍频 n 等于负 1（5 GHz）与三倍频 n 等于负 2（约 3.33 GHz）如何跨越 10 GHz 自旋能隙。">
+      <defs>
+      <marker id="l4s2-dark" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#171717"/></marker>
+      <marker id="l4s2-blue" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#3b82f6"/></marker>
+      <marker id="l4s2-red" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#ef4444"/></marker>
+      <marker id="l4s2-amber" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#f59e0b"/></marker>
+      <marker id="l4s2-green" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" fill="#10b981"/></marker>
+      </defs>
+      <g font-family="ui-sans-serif, system-ui, sans-serif" font-size="12.5" fill="#171717">
+      <text x="140" y="24" text-anchor="middle" font-size="13.5" font-weight="600">倾斜单线圈同时产生 Ω 与 Ω_z</text>
+      <line x1="84.0" y1="222.0" x2="84.0" y2="48" stroke="#171717" stroke-width="1.8" marker-end="url(#l4s2-dark)"/>
+      <line x1="64.0" y1="206.0" x2="250" y2="206.0" stroke="#d4d4d4" stroke-width="1.5" marker-end="url(#l4s2-dark)"/>
+      <text x="91.0" y="55" font-weight="600">z (B₀)</text>
+      <text x="255" y="210.0">x</text>
+      <line x1="185.07" y1="115.0" x2="185.07" y2="206.0" stroke="#d4d4d4" stroke-width="1.3" stroke-dasharray="3 3"/>
+      <line x1="185.07" y1="115.0" x2="84.0" y2="115.0" stroke="#d4d4d4" stroke-width="1.3" stroke-dasharray="3 3"/>
+      <line x1="84.0" y1="206.0" x2="185.07" y2="206.0" stroke="#3b82f6" stroke-width="3" marker-end="url(#l4s2-blue)"/>
+      <line x1="84.0" y1="206.0" x2="84.0" y2="115.0" stroke="#ef4444" stroke-width="3" marker-end="url(#l4s2-red)"/>
+      <line x1="84.0" y1="206.0" x2="185.07" y2="115.0" stroke="#f59e0b" stroke-width="3" marker-end="url(#l4s2-amber)"/>
+      <path d="M122.64 171.21 A52.0 52.0 0 0 0 84.0 154.0" fill="#ffffff" fill-opacity="0" stroke="#737373" stroke-width="1.5"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="89.0" y="138" font-size="11.5" fill="#737373">θ_B ≠ 90°</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="189.07" y="107.0" font-size="12" fill="#f59e0b" font-weight="600">B_ac(ω)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="134.53" y="224.0" text-anchor="middle" font-size="12" fill="#3b82f6" font-weight="600">横向 Ω (ω)</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="76.0" y="152" text-anchor="end" font-size="12" fill="#ef4444" font-weight="600">纵向 Ω_z</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="76.0" y="168" text-anchor="end" font-size="11.5" fill="#ef4444">(ω_z = ω)</text>
+      <rect x="16" y="242" width="246" height="44" rx="6" fill="#ffffff" fill-opacity="0" stroke="#d4d4d4" stroke-width="1.2"/>
+      <text x="139" y="260" text-anchor="middle" font-size="11.5" fill="#171717">单源倾斜: ω_z = ω，调制指数 χ = Ω_z / ω</text>
+      <text x="139" y="278" text-anchor="middle" font-size="11.5" fill="#737373">共振条件 ω = ω₀ / (1 - n) (n = 0, -1, -2...)</text>
+      <line x1="278" y1="18" x2="278" y2="286" stroke="#d4d4d4" stroke-width="1"/>
+      <text x="458" y="24" text-anchor="middle" font-size="13.5" font-weight="600">倍频激发阶梯：5 GHz 驱动 10 GHz 跃迁</text>
+      <line x1="298" y1="74.0" x2="554" y2="74.0" stroke="#171717" stroke-width="2.2"/>
+      <line x1="298" y1="202.0" x2="554" y2="202.0" stroke="#171717" stroke-width="2.2"/>
+      <text x="560" y="78.0" font-size="12" font-weight="600">|+1/2⟩</text>
+      <text x="560" y="206.0" font-size="12" font-weight="600">|-1/2⟩</text>
+      <line x1="604" y1="202.0" x2="604" y2="74.0" stroke="#737373" stroke-width="1.2" marker-end="url(#l4s2-dark)"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="604" y="142" text-anchor="middle" font-size="11.5" fill="#737373">10 GHz</text>
+      <line x1="340" y1="199.0" x2="340" y2="79.0" stroke="#ef4444" stroke-width="2.2" stroke-dasharray="5 3" marker-end="url(#l4s2-red)"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="340" y="55" text-anchor="middle" font-size="11.5" fill="#ef4444" font-weight="600">n=0: ω₀</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="340" y="140" text-anchor="middle" font-size="11" fill="#ef4444">10 GHz 超带宽</text>
+      <line x1="408" y1="138.0" x2="452" y2="138.0" stroke="#d4d4d4" stroke-width="1.4" stroke-dasharray="3 3"/>
+      <line x1="430" y1="199.0" x2="430" y2="142.0" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#l4s2-blue)"/>
+      <line x1="430" y1="135.0" x2="430" y2="79.0" stroke="#3b82f6" stroke-width="2.5" marker-end="url(#l4s2-blue)"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="430" y="55" text-anchor="middle" font-size="11.5" fill="#3b82f6" font-weight="600">n=-1: ω₀/2</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="456" y="110" font-size="11" fill="#3b82f6">5 GHz</text>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="456" y="175" font-size="11" fill="#3b82f6">5 GHz</text>
+      <line x1="504" y1="159.33" x2="544" y2="159.33" stroke="#d4d4d4" stroke-width="1.4" stroke-dasharray="3 3"/>
+      <line x1="504" y1="116.67" x2="544" y2="116.67" stroke="#d4d4d4" stroke-width="1.4" stroke-dasharray="3 3"/>
+      <line x1="524" y1="199.0" x2="524" y2="163.33" stroke="#10b981" stroke-width="2.2" marker-end="url(#l4s2-green)"/>
+      <line x1="524" y1="156.33" x2="524" y2="120.67" stroke="#10b981" stroke-width="2.2" marker-end="url(#l4s2-green)"/>
+      <line x1="524" y1="113.67" x2="524" y2="79.0" stroke="#10b981" stroke-width="2.2" marker-end="url(#l4s2-green)"/>
+      <text stroke="#ffffff" stroke-width="4" stroke-linejoin="round" paint-order="stroke" x="524" y="55" text-anchor="middle" font-size="11.5" fill="#10b981" font-weight="600">n=-2: ω₀/3</text>
+      <rect x="308.0" y="236" width="162.0" height="24" rx="4" fill="#ffffff" fill-opacity="0" stroke="#10b981" stroke-width="1.5"/>
+      <text x="389.0" y="252" text-anchor="middle" font-size="11.5" fill="#10b981" font-weight="600">功放可用带宽 (0–6 GHz)</text>
+      <line x1="308.0" y1="264" x2="605.0" y2="264" stroke="#171717" stroke-width="1.4" marker-end="url(#l4s2-dark)"/>
+      <circle cx="398.0" cy="264" r="4" fill="#10b981"/>
+      <circle cx="443.0" cy="264" r="4.5" fill="#3b82f6"/>
+      <line x1="470.0" y1="258" x2="470.0" y2="270" stroke="#737373" stroke-width="1.4" stroke-dasharray="2 2"/>
+      <circle cx="578.0" cy="264" r="4" fill="#ef4444"/>
+      <text x="398.0" y="282" text-anchor="middle" font-size="11" fill="#10b981" font-weight="600">3.33</text>
+      <text x="443.0" y="282" text-anchor="middle" font-size="11" fill="#3b82f6" font-weight="600">5 GHz</text>
+      <text x="470.0" y="282" text-anchor="middle" font-size="10.5" fill="#737373">6</text>
+      <text x="578.0" y="282" text-anchor="middle" font-size="11" fill="#ef4444" font-weight="600">10 GHz (超限)</text>
+      </g>
+      </svg>
+      ```
+
+      在小调制极限 $\chi = \Omega_z / \omega \ll 1$ 下，由贝塞尔积分定义展开 $\cos(\alpha - \chi\sin\alpha) = \cos\alpha\cos(\chi\sin\alpha) + \sin\alpha\sin(\chi\sin\alpha)$：前项关于 $\alpha = \pi/2$ 奇对称而在 $[0,\pi]$ 积分为零，小 $\chi$ 下 $\sin(\chi\sin\alpha) \approx \chi\sin\alpha$，故 $J_1(\chi) \approx \frac{1}{\pi}\int_0^\pi \chi\sin^2\alpha\,d\alpha = \frac{\chi}{2}$，再由宇称得 $J_{-1}(\chi) = -J_1(\chi) \approx -\frac{\chi}{2}$。因此二倍频有效耦合强度 $|J_{-1}(\chi)|\Omega \approx \frac{\chi}{2}\Omega = \frac{\Omega_z\Omega}{2\omega}$ 与单线圈驱动幅度成**平方**正比，适当提高驱动功率即可保持可用操控速率。
+
+      ### 迁移至固体核磁魔角旋转（MAS）边带
+
+      同一套贝塞尔相位调制机制也支配着固体核磁共振的**魔角旋转（MAS）**。固体核自旋的化学位移各向异性与偶极耦合会在 $S_z$ 上引入依赖晶粒取向的频移；将样品绕与静磁场成魔角 $\arccos(1/\sqrt{3}) \approx 54.74^\circ$ 的转轴以机械角频率 $\omega_r$ 高速旋转后，静态平均偏移抵消，残留各向异性耦合随转角以 $\omega_r$ 谐波周期调制。进入含时相互作用图像积分并作 Jacobi–Anger 展开，谱线便在中心峰 $\omega_0$（$n=0$）两侧裂分为间隔 $\omega_r$ 的**旋转边带**（$\omega_0 + n\omega_r$）；提高转速 $\omega_r$ 会压低等效调制指数 $\chi$，将边带强度聚回中心峰。
+    worked: |
+      某电子自旋处于静磁场中，静态跃迁频率为 $\omega_0/(2\pi) = 10\text{ GHz} = 10000\text{ MHz}$，而实验室功放仅能输出 $6\text{ GHz}$ 以下微波。现将单根线圈倾斜放置，在 $\omega/(2\pi) = 5\text{ GHz} = 5000\text{ MHz}$ 处同时产生 $\omega_z = \omega$ 的调制。
+
+      1. **确定共振边带阶次 $n$。** 代入同源共振公式 $\omega = \frac{1}{1-n}\omega_0$：
+         $$5\text{ GHz} = \frac{10\text{ GHz}}{1 - n} \implies 1 - n = 2 \implies n = -1.$$
+
+      2. **强驱动情形（$\Omega/(2\pi) = \Omega_z/(2\pi) = 50\text{ MHz}$）下的有效耦合。** 计算调制指数 $\chi$ 与 $n=-1$ 阶贝塞尔幅值：
+         $$\chi = \frac{\Omega_z}{\omega} = \frac{50\text{ MHz}}{5000\text{ MHz}} = 0.01, \qquad |J_{-1}(0.01)| = |-J_1(0.01)| \approx \frac{\chi}{2} = 0.005,$$
+         $$|J_{-1}(\chi)|\frac{\Omega}{2\pi} \approx 0.005 \times 50\text{ MHz} = 0.25\text{ MHz} = 250\text{ kHz}.$$
+         注意由于 $\chi \ll 1$，此值几乎精确等于二次标度估算 $\frac{\Omega_z\Omega}{2\omega} / (2\pi) = \frac{50^2}{2\times 5000}\text{ MHz} = 250\text{ kHz}$。
+
+      3. **对照弱驱动情形（$\Omega/(2\pi) = \Omega_z/(2\pi) = 10\text{ MHz}$）。** 此时 $\chi = \frac{10}{5000} = 0.002$，$|J_{-1}(0.002)| \approx 0.001$，有效耦合降为：
+         $$|J_{-1}(0.002)|\frac{\Omega}{2\pi} \approx 0.001 \times 10\text{ MHz} = 10\text{ kHz}.$$
+
+      将驱动幅度提高 $5$ 倍，二倍频有效耦合提升了 $5^2 = 25$ 倍（从 $10\text{ kHz}$ 跃升至 $250\text{ kHz}$），足以支撑实验中的弱激发调控。
+    problems:
+      - lsb-subharmonic-basics
+      - lsb-subharmonic-self-explain
+      - lsb-subharmonic-coupling-template
+      - lsb-subharmonic-spot-mistake
+      - lsb-mas-sideband-transfer
+final: longitudinal-sideband-final-explain
+summary: |
+  - **含时参考系与 Jacobi–Anger 边带梳**：构造含时变换 $U_i(t) = e^{-i[\omega_0 t + \chi\sin(\omega_z t+\varphi_z)]S_z}$（调制指数 $\chi = \Omega_z/\omega_z$）将纵向振荡化为 $S^+$ 的相位调制，展开后得到间距 $\omega_z$ 的共振梳 $\omega_0 + n\omega_z$，耦合强度由 $|J_n(\chi)|\Omega$ 给出（修正了讲义漏掉 $\frac{1}{2}$ 因子与 $J_n(x)\to J_n(\chi)$ 的笔误）。
+  - **单边带常系数有效哈密顿量**：在可分辨边带条件 $|J_n(\chi)\Omega| \ll \omega_z$ 下，定义失谐 $\Delta_n = \omega_0 - \omega + n\omega_z$ 并作二次变换 $U_2 = e^{+i\Delta_n t S_z}$，得到 $H_{I,\text{eff}}^{(n)} = \Delta_n S_z + J_n(\chi)\Omega[\cos(\varphi - n\varphi_z)S_x + \sin(\varphi - n\varphi_z)S_y]$（补齐了讲义漏印的 $S_x$）；若 $\omega_z$ 过小则多边带干涉须数值求解。
+  - **同源倍频激发与 MAS 迁移**：倾斜单个线圈使 $\omega_z = \omega$，由 $\omega = \frac{1}{1-n}\omega_0$（$n \le 0$）可用低频功放（如 $\omega_0/2$）实现二倍频跃迁；固体核磁魔角旋转（MAS）的旋转边带源于完全相同的 $S_z$ 周期相位调制机制。
+  **Next:** 完成全部操控与非共振分析后，下一单元「频率测量：Rabi 与 Ramsey 序列」将把相干演化直接用于高精度测定自旋共振频率 $\omega_0$。

@@ -74,55 +74,65 @@ concepts:
     title: "磁共振实现单比特量子门"
     description: "通过调节驱动场幅值 $\\Omega$、失谐 $\\delta$、相位 $\\beta$ 与脉冲时长 $t$，在磁共振系统中实现 $(\\pi/2)_\\beta$、$(\\pi)_\\beta$、Pauli-X/Y/Z、T、S 以及 Hadamard 等单比特量子门。"
     difficulty: 2
-    est_minutes: 15
+    est_minutes: 25
     goal_weight: 2
-    dimensions: [conceptual, math]
+    dimensions: [conceptual, math, transfer]
     prereqs:
       - id: su2-evolution-and-rabi-prob
     objectives:
+      - text: "区分赤道平面脉冲轴（$x/y/\\beta$）、纯失谐 $z$ 轴以及 $\\Omega = \\delta$ 对角斜轴控制方案，解释磁共振脉冲天然生成 $\\det(U)=1$ 的 $SU(2)$ 门及全局相位差"
+        dimension: conceptual
       - text: "根据目标单比特门反推所需的 $(\\Omega, \\delta, \\beta, t)$ 脉冲参数并写出对应的 $SU(2)$ 矩阵"
         dimension: math
-    status: stub
+      - text: "将磁共振脉冲实现的 $SU(2)$ 门与《量子光学》第 11 章标准 Hadamard 门及相位门量子线路对照组合"
+        dimension: transfer
+    status: authored
 
   - id: bloch-sphere-representation
     title: "态与门的 Bloch 球表示"
     description: "把任意单比特纯态与混态密度矩阵表示为 $\\rho = (\\mathbb{1} + \\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{\\sigma}})/2$（$|\\vec{\\boldsymbol{n}}| \\le 1$），并证明幺正门 $U = e^{-i\\theta\\vec{\\boldsymbol{n}}\\cdot\\vec{\\boldsymbol{S}}}$ 等价于 Bloch 矢量的三维旋转 $R_{\\vec{\\boldsymbol{n}}\\cdot\\theta}$。"
     difficulty: 2
-    est_minutes: 15
+    est_minutes: 25
     goal_weight: 3
-    dimensions: [conceptual, math]
+    dimensions: [conceptual, math, transfer]
     prereqs:
       - id: su2-evolution-and-rabi-prob
       - id: single-qubit-gates
         strength: soft
     objectives:
-      - text: "由密度矩阵计算 Bloch 矢量 $\\vec{\\boldsymbol{n}} = \\operatorname{Tr}(\\rho\\vec{\\boldsymbol{\\sigma}})$ 并区分纯态与混态"
+      - text: "由密度矩阵计算 Bloch 矢量 $\\vec{\\boldsymbol{n}} = \\operatorname{Tr}(\\rho\\vec{\\boldsymbol{\\sigma}})$、本征值与纯度，并区分纯态与混态"
         dimension: math
       - text: "用 Bloch 球三维旋转直观追踪单比特门对量子态的作用"
         dimension: conceptual
-    status: stub
+      - text: "把 Bloch 矢量几何与三维绕轴旋转框架推广至任意二能级原子系综与统计混合态的演化分析"
+        dimension: transfer
+    status: authored
 
   - id: bloch-siegert-shift
     title: "横向非共振项与 Bloch-Siegert 平移"
     description: "通过二次相互作用图像变换与自旋轴旋转，定量分析一般横向非共振驱动（含旋波近似忽略的反向旋转项）对能级造成的二阶频移 $\\Delta_{\\text{BS}} = \\Omega'^2/[2(\\omega_0 - \\omega')]$，从而定量界定旋波近似的成立条件。"
     difficulty: 3
-    est_minutes: 20
+    est_minutes: 25
     goal_weight: 2
-    dimensions: [conceptual, math]
+    dimensions: [conceptual, math, transfer]
     prereqs:
       - id: rotating-wave-and-frame
     confused_with:
       - longitudinal-sideband-excitation
     objectives:
+      - text: "从第一重旋转系下的自旋量化轴倾斜出发，说明横向非共振项诱导二阶频移的能级排斥机制"
+        dimension: conceptual
       - text: "推导并估算 Bloch-Siegert 平移 $\\Delta_{\\text{BS}}$ 的大小，判断何时可以采用旋波近似"
         dimension: math
-    status: stub
+      - text: "将磁共振中的二阶共振频移类比至量子光学大失谐色散 AC Stark 频移并评估多音寄生驱动误差"
+        dimension: transfer
+    status: authored
 
   - id: longitudinal-sideband-excitation
     title: "纵向驱动与边带及倍频激发"
     description: "分析沿静磁场方向的含时纵向驱动 $H_z = \\Omega_z\\cos(\\omega_z t + \\varphi_z)S_z$，经含时相互作用图像与傅里叶级数展开导出贝塞尔函数调制的边带拉比频率 $J_n(\\chi)\\Omega$，以及用于突破功放带宽的倍频激发条件 $\\omega = \\frac{1}{1-n}\\omega_0$。"
     difficulty: 3
-    est_minutes: 20
+    est_minutes: 28
     goal_weight: 2
     dimensions: [conceptual, math, transfer]
     prereqs:
@@ -130,9 +140,13 @@ concepts:
       - id: bloch-siegert-shift
         strength: soft
     objectives:
+      - text: "阐明含时纵向调制如何通过相位调制把单频驱动裂分为间隔 $\\omega_z$ 的多阶边带并区分可分辨与重叠区"
+        dimension: conceptual
       - text: "解释纵向含时扰动如何产生第 $n$ 阶边带并计算有效驱动强度 $J_n(\\chi)\\Omega$ 与倍频激发频率"
         dimension: math
-    status: stub
+      - text: "将纵向相位调制的边带与倍频规律迁移到倾斜线圈亚谐波激发与固体核磁魔角旋转（MAS）边带现象"
+        dimension: transfer
+    status: authored
 
   - id: rabi-and-ramsey-spectroscopy
     title: "频率测量：Rabi 与 Ramsey 序列"
