@@ -63,6 +63,8 @@ try {
       errors, diagnostics}), {cause: error});
   }
   const pane = await panel.boundingBox();
+  const question = await page.locator('#stepCard').boundingBox();
+  assert.ok(question.y - pane.y < 180, 'the question starts directly beneath its toolbar');
   const separator = page.getByRole('separator', {name: '调整题目与白板比例'});
   const handle = await separator.boundingBox();
   await page.mouse.move(handle.x + handle.width / 2, handle.y + 40);
