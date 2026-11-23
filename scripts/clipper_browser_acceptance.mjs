@@ -9,9 +9,27 @@ const [output, fixture, base = 'http://127.0.0.1:18891'] = process.argv.slice(2)
 const require = createRequire(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
 const [first, second] = JSON.parse(await readFile(path.join(fixture, 'browser-fixtures.json'), 'utf8'));
 await mkdir(output, {recursive: true});
-const browser = await launchAcceptanceChrome(require);
+const engine = process.env.CLIPPER_BROWSER || 'chrome';
+const mobile = process.env.CLIPPER_MOBILE === '1';
+const fallback = process.env.CLIPPER_FALLBACK === '1';
+const inPage = mobile || fallback;
+const browser = engine === 'chrome' ? await launchAcceptanceChrome(require) : await require('playwright')[engine].launch();
 const errors = [], checks = [];
-const context = await browser.newContext({viewport: {width: 1280, height: 900}, locale: 'zh-CN'});
+const desktopSize = {width: 1280, height: 900}, mobileSize = {width: 390, height: 844};
+const context = await browser.newContext({viewport: mobile ? mobileSize : desktopSize, locale: 'zh-CN',
+  ...(mobile ? {hasTouch: true, isMobile: true} : {})});
+context.setDefaultTimeout(14000);
+if (fallback) await context.addInitScript(() => {
+  const matches = Element.prototype.matches;
+  const find = Document.prototype.querySelectorAll;
+  const supports = CSS.supports.bind(CSS);
+  const invalid = () => { throw new DOMException('Selector is not implemented', 'SyntaxError'); };
+  Element.prototype.matches = function (selector) { return selector === ':popover-open' ? invalid() : matches.call(this, selector); };
+  Document.prototype.querySelectorAll = function (selector) { return selector === 'dialog:modal' ? invalid() : find.call(this, selector); };
+  CSS.supports = (...args) => args[0] === 'selector(dialog:modal)' ? false : supports(...args);
+  Object.defineProperty(HTMLElement.prototype, 'showPopover', {value: undefined});
+  Object.defineProperty(window, 'open', {value: () => null});
+});
 await context.addInitScript(() => {
   const sampleVoice = {name: 'Local fixture voice', localService: true, lang: 'en-US'};
   Object.defineProperty(window, 'SpeechSynthesisUtterance', {value: class {
@@ -46,7 +64,9 @@ async function account(invite) {
 }
 
 async function select(css, element = false) {
-  await main.locator(css).evaluate((node, entire) => {
+  const target = main.locator(css);
+  await target.scrollIntoViewIfNeeded();
+  await target.evaluate((node, entire) => {
     const selection = getSelection(), range = document.createRange();
     if (entire) range.selectNode(node);
     else range.selectNodeContents(node);
@@ -57,10 +77,12 @@ async function select(css, element = false) {
 }
 
 async function open(label, css, element = false) {
+  if (inPage && popup) await main.getByRole('button', {name: '最小化', exact: true}).click();
   await select(css, element);
-  const event = popup ? null : main.waitForEvent('popup');
+  const event = popup || inPage ? null : main.waitForEvent('popup');
   await chooser.getByRole('button', {name: label, exact: true}).click();
   if (event) popup = await event;
+  if (inPage) popup = main;
   await popup.locator(workspace).waitFor();
   return popup;
 }
@@ -75,48 +97,69 @@ try {
   assert.equal(await toggle.getAttribute('aria-pressed'), 'true');
   assert.equal(await chooser.isVisible(), false);
 
-  const phrase = await main.locator(phraseSelector).boundingBox();
-  await main.mouse.move(phrase.x + 2, phrase.y + phrase.height / 2);
-  await main.mouse.down();
-  await main.mouse.move(phrase.x + 90, phrase.y + phrase.height / 2, {steps: 12});
-  await main.mouse.up();
+  if (mobile) await main.locator(formulaSelector).tap();
+  else {
+    const phrase = await main.locator(phraseSelector).boundingBox();
+    await main.mouse.move(phrase.x + 2, phrase.y + phrase.height / 2);
+    await main.mouse.down();
+    await main.mouse.move(phrase.x + 90, phrase.y + phrase.height / 2, {steps: 12});
+    await main.mouse.up();
+  }
   await chooser.waitFor();
-  checks.push('native drag exposes actions');
-  await main.evaluate(() => getSelection().removeAllRanges());
-  await main.locator(formulaSelector).hover();
-  await main.keyboard.press('Alt+Shift+s');
-  await chooser.waitFor();
-  await main.keyboard.press('Alt+Shift+c');
-  assert.equal(await main.evaluate(() => document.activeElement.textContent), '卡');
-  checks.push('keyboard selects a formula and focuses actions');
+  checks.push(mobile ? 'touch formula exposes actions' : 'native drag exposes actions');
+  if (!mobile) {
+    await main.evaluate(() => getSelection().removeAllRanges());
+    await main.locator(formulaSelector).hover();
+    await main.keyboard.press('Alt+Shift+s');
+    await chooser.waitFor();
+    await main.keyboard.press('Alt+Shift+c');
+    await main.waitForFunction(() => document.activeElement.matches('.clipperActions button:first-child'), undefined, {timeout: 4000});
+    checks.push('keyboard selects a formula and focuses actions');
+  }
 
   await open('摘', formulaSelector, true);
   await popup.getByRole('button', {name: '保存摘录'}).click();
   await popup.getByText('已存入个人自由学习。', {exact: true}).waitFor();
   assert.match(await popup.locator('.clipperSource').innerHTML(), /x\^2/);
-  assert.equal(Math.round((await popup.locator(workspace).boundingBox()).y), 0);
+  if (!inPage) assert.equal(Math.round((await popup.locator(workspace).boundingBox()).y), 0);
   checks.push('formula-only excerpt uses original LaTeX');
+  await popup.waitForFunction(() => [...document.querySelectorAll('link[data-clipper-styles]')]
+    .filter(link => /\/clipper\.css\b/.test(link.href)).every(link => link.sheet));
   for (const width of [320, 375, 414, 768]) {
     await popup.setViewportSize({width, height: 660});
-    assert.ok(await popup.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'horizontal overflow at ' + width);
+    const size = await popup.evaluate(() => new Promise(resolve => requestAnimationFrame(() =>
+      requestAnimationFrame(() => resolve({
+        viewport: innerWidth, root: document.documentElement.scrollWidth,
+        body: document.body.scrollWidth, mode: document.compatMode,
+        workspace: Math.round(document.querySelector('.clipperWorkspace').getBoundingClientRect().right),
+      })))));
+    assert.ok(size.root <= size.viewport, `horizontal overflow at ${width}: ${JSON.stringify(size)}`);
   }
   await popup.screenshot({path: path.join(output, 'clipper-excerpt.png')});
-  await popup.getByRole('button', {name: '在当前页置顶', exact: true}).click({timeout: 8000}).catch(error => {
+  if (inPage) await main.setViewportSize(mobile ? mobileSize : desktopSize);
+  else await popup.getByRole('button', {name: '在当前页置顶', exact: true}).click({timeout: 8000}).catch(error => {
     if (!popup.isClosed()) throw error;
   });
-  const dock = main.locator('.clipperDock:popover-open');
+  const dock = main.locator(fallback ? '.clipperDock' : '.clipperDock:popover-open');
   await dock.waitFor();
-  await main.mouse.click(24, 250);
-  await main.mouse.wheel(0, 400);
+  if (mobile) {
+    await main.touchscreen.tap(24, 250);
+    await main.evaluate(() => window.scrollBy(0, 400));
+  } else {
+    await main.mouse.click(24, 250);
+    await main.mouse.wheel(0, 400);
+  }
   assert.ok(await dock.isVisible());
   await dock.getByRole('button', {name: '最小化', exact: true}).click();
   assert.equal(await dock.locator('.clipperPanel').isVisible(), false);
   await dock.getByRole('button', {name: '恢复', exact: true}).click();
-  const reopened = main.waitForEvent('popup');
-  await dock.getByRole('button', {name: '普通窗口', exact: true}).click();
-  popup = await reopened;
+  if (!inPage) {
+    const reopened = main.waitForEvent('popup');
+    await dock.getByRole('button', {name: '普通窗口', exact: true}).click();
+    popup = await reopened;
+  }
   await popup.getByText('已存入个人自由学习。', {exact: true}).waitFor();
-  checks.push('topmost dock survives page interaction and preserves content on minimize and popout');
+  checks.push('dock survives page interaction and preserves the workspace on minimize and restore');
 
   for (const [selector, expected] of [
     ['p:has-text("Legacy SVG") mjx-container', '\\frac{1}{2}'],
@@ -155,6 +198,7 @@ try {
   assert.equal(spoken.language, 'en-US');
   assert.match(spoken.text, /Capture the sequence/);
   checks.push('meaning lookup and local speech synthesis handoff');
+  if (inPage) await main.getByRole('button', {name: '最小化', exact: true}).click();
   await main.goto(base + '/#/free-study');
   await main.getByRole('button', {name: '翻看背面'}).click();
   await main.getByText('Fixture back for review').waitFor();
@@ -173,9 +217,10 @@ try {
   await main.screenshot({path: path.join(output, 'free-study-clips.png')});
   checks.push('site FSRS review and both RemNote markdown downloads');
 
-  const closed = popup.waitForEvent('close');
+  const closed = inPage ? null : popup.waitForEvent('close');
   await account(second);
-  await closed;
+  if (closed) await closed;
+  else await main.locator(workspace).waitFor({state: 'detached'});
   assert.equal(await toggle.getAttribute('aria-pressed'), 'false');
   await main.getByRole('button', {name: '摘录', exact: true}).click();
   await main.getByText('这里还没有内容。').waitFor();
@@ -183,6 +228,6 @@ try {
   assert.deepEqual(errors, []);
   console.log('PASS', checks.length, 'browser checks');
 } finally {
-  await writeFile(path.join(output, 'clipper-browser.json'), JSON.stringify({checks, errors}, null, 2));
+  await writeFile(path.join(output, 'clipper-browser.json'), JSON.stringify({engine, mobile, fallback, checks, errors}, null, 2));
   await browser.close();
 }

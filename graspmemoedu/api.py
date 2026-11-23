@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.exceptions import RequestValidationError
 from pydantic import BaseModel, ConfigDict, Field
+from starlette.concurrency import run_in_threadpool
 
 from .config import Settings
 from .judge import ExistingJudge
@@ -622,6 +623,14 @@ def create_app(settings: Settings | None = None, service: LearningService | None
                     access_store.authorize(access, requested_topic(request), feature)
                 except DomainError as exc:
                     return deny(exc.code, exc.message, exc.status_code)
+            elif path in CLIPPER_PATHS:
+                try:
+                    access = await run_in_threadpool(access_store.resolve, request.headers.get('x-learning-identity'))
+                except DomainError as exc:
+                    return deny(exc.code, exc.message, exc.status_code)
+                if access['role'] != 'account':
+                    return deny('clip_login_required', '请登录后使用零碎知识剪藏。')
+                request.state.clipper_access = access
             elif path not in ('/api/access/guest', '/api/access/login') and not academy_callback:
                 try:
                     access = access_store.resolve(request.headers.get('x-learning-identity'))
@@ -972,7 +981,8 @@ def create_app(settings: Settings | None = None, service: LearningService | None
 
     from .context_dictionary import lookup_word
     register_clipper_routes(app, access_store, dashboard_store.profile,
-                            lambda word: lookup_word(word, data_dir=settings.data_dir / 'context-dictionary'))
+                            lambda word: lookup_word(word, data_dir=settings.data_dir / 'context-dictionary',
+                                                     limit=6, definitions_only=True))
     register_answer_conversion(app, access_store)
     register_whiteboard_ocr(app, access_store)
     register_context_library_routes(app, catalog, access_store, subjects,

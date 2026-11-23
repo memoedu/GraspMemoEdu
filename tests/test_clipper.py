@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 import json
 import os
@@ -6,6 +7,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from graspmemoedu.clipper import ClipperStore
+from graspmemoedu.service import DomainError
 from tests import test_admin_students as fixtures
 
 
@@ -61,6 +63,21 @@ class ClipperTests(unittest.TestCase):
             self.assertEqual(self.read(route, guests).status_code, 403)
         self.assertEqual(self.post('items', self.item(), guests).status_code, 403)
 
+    def test_review_reads_a_single_card_and_list_projection_omits_unused_material(self):
+        source = {**self.item()['source'], 'title': 'Visible source', 'context': 'Long original context'}
+        first = self.item(source=source)
+        second = self.item(source=source)
+        for item in (first, second):
+            self.assertEqual(self.post('items', item).status_code, 200)
+        with patch.object(self.store, 'resolve', wraps=self.store.resolve) as resolve:
+            page = self.read('items?due=true&compact=true&limit=1')
+            self.assertEqual(page.status_code, 200, page.text)
+            self.assertEqual(resolve.call_count, 1)
+        self.assertEqual(page.json()['next'], 1)
+        self.assertEqual(page.json()['items'][0]['source'], {'title': source['title'], 'route': source['route']})
+        self.assertEqual(self.read('items?limit=31').status_code, 422)
+        self.assertEqual(self.read('items').json()['items'][0]['source'], source)
+
     def test_model_actions_share_rules_without_leaking_source_links_or_main_judge_usage(self):
         calls = []
 
@@ -101,6 +118,29 @@ class ClipperTests(unittest.TestCase):
             store = ClipperStore(self.store)
             with self.assertRaisesRegex(Exception, '额度'):
                 store.record_model_call(self.normal)
+
+    def test_concurrent_model_calls_preserve_usage_and_enforce_configured_caps(self):
+        limits = ('GRASPMEMOEDU_CLIPPER_DAILY_ACCOUNT', 'GRASPMEMOEDU_CLIPPER_DAILY_GLOBAL')
+
+        def record(store, learner):
+            try:
+                store.record_model_call(learner)
+            except DomainError as exc:
+                self.assertEqual((exc.code, exc.status_code), ('clip_quota', 429))
+                return False
+            return True
+
+        for account_limit, global_limit, expected in ((0, 0, 8), (3, 0, 3), (0, 3, 3)):
+            with self.subTest(account_limit=account_limit, global_limit=global_limit):
+                with closing(self.store._connect()) as con:
+                    con.execute('DELETE FROM clipper_model_usage')
+                with patch.dict(os.environ, dict(zip(limits, map(str, (account_limit, global_limit))))):
+                    store = ClipperStore(self.store)
+                with ThreadPoolExecutor(max_workers=8) as workers:
+                    allowed = list(workers.map(lambda _: record(store, self.normal), range(8)))
+                self.assertEqual(sum(allowed), expected)
+                with closing(self.store._connect()) as con:
+                    self.assertEqual(con.execute('SELECT count FROM clipper_model_usage').fetchone()[0], expected)
 
 
 if __name__ == '__main__':
