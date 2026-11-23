@@ -15,10 +15,15 @@ const button = name=>page.getByRole('button',{name,exact:true});
 let transcript = '', began;
 const errors=[];
 page.on('pageerror',e=>errors.push(String(e)));
-await page.route(/\/api\/voice-input\/transcribe(?:\?|$)/,async route=>{
-  began=route.request().postDataJSON();
-  assert.equal(began.segmented,true);
-  await route.fulfill({json:{text:transcript}});
+await page.route(/\/api\/voice-input\/stream(?:\?|$)/, async route => {
+  const packet = route.request().postDataJSON();
+  if (packet.op === 'open') {
+    began = packet;
+    assert.equal(began.manual, true);
+  }
+  const offset = (packet.offset || 0) + Buffer.from(packet.pcm || '', 'base64').length;
+  const boundary = packet.op === 'cut' || packet.op === 'finish';
+  await route.fulfill({json: boundary ? {offset, text: transcript} : {offset}});
 });
 async function cut(text) {
   transcript=text;
@@ -43,17 +48,13 @@ try {
   await page.locator('#identitySubmitButton').waitFor({state:'hidden'});
   await page.goto(base+'/#/subjects/math/banks/isolated-bank/group-a?question=voice-algebra');
   const source=page.locator('#trainingAnswer');
-  await source.fill('x^2');
   await source.focus();
-  await source.press('End');
-  // The normal keyboard path promotes the expression to its editable math field.
-  await source.press('+');
+  // A complete typed expression exercises the normal math-field promotion.
+  await source.fill('x^2+1');
   const root=page.locator('.ProseMirror:visible').first();
   await root.waitFor();
   const math=root.locator('math-field').first();
   await math.waitFor();
-  await math.focus(); await math.evaluate(m=>{m.position=m.lastOffset;});
-  await math.press('1');
   await hasValue(source,'x^2+1');
   await math.focus(); await math.evaluate(m=>{m.position=m.lastOffset;});
   const before=await source.inputValue(), latex=await math.evaluate(m=>m.value);

@@ -36,12 +36,14 @@ class Open(Message):
     profile: Literal['general', 'answer', 'calculator', 'answer_commands']
     context: VoiceContext = Field(default_factory=VoiceContext)
     live: bool = False
+    manual: bool = False
 
 
 class Chunk(Message):
-    op: Literal['audio', 'pause', 'finish']
+    op: Literal['audio', 'pause', 'cut', 'finish']
     offset: int = Field(strict=True, ge=0, le=MAX_AUDIO)
     pcm: str = Field(max_length=(MAX_CHUNK + 2) // 3 * 4)
+    part: int | None = Field(default=None, strict=True, ge=0, le=4096)
 
 
 class Cancel(Message):
@@ -208,7 +210,8 @@ class Take:
         self.provider = self.timer = self.pending = None
         self.offset = self.attempts = self.segments = 0
         self.sentences, self.prefix, self.last = {}, '', None
-        self.live = opened.live and opened.profile != 'answer_commands'
+        self.live = (opened.live or opened.manual) and opened.profile != 'answer_commands'
+        self.context, self.part, self.history = opened.context, 0, ''
         self.by_silence = 0
         self.boundary = None
         self.preroll = None
@@ -221,7 +224,8 @@ class Take:
         if self.segments - self.by_silence >= 24:
             raise DomainError('voice_pause_limit', '这段录音已多次暂停，请结束后再开始一段。', 422)
         self.segments += 1
-        self.provider = self.factory(self.opened.context, self.update, live=self.live, previous=self.prefix if self.live else '')
+        self.provider = self.factory(self.context, self.update, live=self.live or self.opened.manual,
+                                     previous=self.prefix if self.live else '')
         self.boundary = SpeechBoundary() if self.live and self.by_silence < 24 else None
         self.paused = False
 
@@ -254,11 +258,11 @@ class Take:
                 return
             if self.pending and (self.pending[0] == self.key(text) or not self.pending[1].done()):
                 return
-            if self.live and live_text(text, self.opened.profile, self.opened.context)[1]:
+            if self.live and live_text(text, self.opened.profile, self.context)[1]:
                 return
-            if not self.live and quick_math(text, self.opened.profile, self.opened.context) is not None:
+            if not self.live and quick_math(text, self.opened.profile, self.context) is not None:
                 return
-            work = self.speculate(self.format_result, text, self.opened.profile, self.opened.context)
+            work = self.speculate(self.format_result, text, self.opened.profile, self.context)
             if work is not None:
                 self.pending = self.key(text), work
                 self.attempts += 1
@@ -295,17 +299,50 @@ class Take:
             self.start_segment()
         self.provider.write(pcm)
 
+    def confirmed_text(self, *, finishing):
+        with self.sentences_lock:
+            self.closed = finishing
+            if self.timer:
+                self.timer.cancel()
+                self.timer = None
+            final, pending = self.prefix, self.pending
+            if self.opened.manual:
+                self.prefix, self.pending, self.attempts = '', None, 0
+        if not final:
+            if self.opened.manual:
+                return ''
+            raise DomainError('voice_empty', '未识别到语音。', 422)
+        if pending and self.key(final) == pending[0]:
+            try:
+                return pending[1].result()
+            except Exception:
+                pass
+        return self.format_result(final, self.opened.profile, self.context)
+
+    def advance(self, text):
+        self.part += 1
+        self.preroll = self.boundary = None
+        if text and self.opened.profile != 'answer_commands':
+            original = self.opened.context.textbox
+            self.history = (self.history + ' ' + text)[-4096:]
+            textbox = original.model_dump() if original else {}
+            textbox['before'] = (textbox.get('before', '') + self.history)[-4096:]
+            self.context = VoiceContext.model_validate({**self.opened.context.model_dump(), 'textbox': textbox})
+
     def consume(self, packet, pcm, signature):
         if self.last and self.last[0] == signature:
             return self.last[1]
         if packet.offset != self.offset:
             raise DomainError('voice_offset', '录音片段顺序已改变，请重试。', 409)
+        if ((packet.op == 'cut' and not self.opened.manual)
+                or (self.opened.manual and packet.op in ('cut', 'finish') and packet.part != self.part)):
+            raise DomainError('voice_offset', '录音分段顺序已改变，请重试。', 409)
         if self.offset + len(pcm) > MAX_AUDIO or not pcm and packet.op == 'audio':
             raise DomainError('invalid_recording', '录音片段为空或超过时长。', 422)
         if pcm:
             self.write(pcm)
             self.offset += len(pcm)
-        if packet.op in ('pause', 'finish'):
+        if packet.op in ('pause', 'cut', 'finish'):
             self.end_segment()
         elif self.provider and self.boundary and self.boundary.reached(pcm):
             with self.sentences_lock:
@@ -315,7 +352,7 @@ class Take:
                 self.by_silence += 1
                 self.preroll, self.boundary = b'', SpeechBoundary()
         response = {'offset': self.offset}
-        if self.live and packet.op != 'finish':
+        if self.live and not self.opened.manual and packet.op != 'finish':
             with self.sentences_lock:
                 heard, pending = self.current_text(), self.pending
             rendered = self.preview_text
@@ -327,21 +364,10 @@ class Take:
                     rendered = pending[1].result()
             if rendered != self.preview_text:
                 self.preview_text = response['preview'] = rendered
-        if packet.op == 'finish':
-            with self.sentences_lock:
-                self.closed = True
-                if self.timer:
-                    self.timer.cancel()
-                final, pending = self.prefix, self.pending
-            if not final:
-                raise DomainError('voice_empty', '未识别到语音。', 422)
-            if pending and self.key(final) == pending[0]:
-                try:
-                    response['text'] = pending[1].result()
-                except Exception:
-                    pass
-            if 'text' not in response:
-                response['text'] = self.format_result(final, self.opened.profile, self.opened.context)
+        if packet.op in ('cut', 'finish'):
+            response['text'] = self.confirmed_text(finishing=packet.op == 'finish')
+            if packet.op == 'cut':
+                self.advance(response['text'])
         self.last = signature, response
         return response
 
@@ -419,7 +445,7 @@ class Sessions:
                     raise ValueError()
             except ValueError:
                 raise DomainError('invalid_recording', '录音片段格式无效。', 422) from None
-            signature = packet.op, packet.offset, sha256(pcm).digest()
+            signature = packet.op, packet.offset, packet.part, sha256(pcm).digest()
         with self.lock:
             now = monotonic()
             self.receipts = {k: v for k, v in self.receipts.items() if v[0] > now}
