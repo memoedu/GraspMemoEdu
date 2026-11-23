@@ -109,13 +109,14 @@ class GuideReader:
             raise ValueError('Invalid guide resource')
         return candidate
 
-    def _compile(self, text):
+    def _compile(self, text, *, answer_values=None):
         node = shutil.which('node')
         if not node:
             raise ValueError('Guide renderer unavailable')
+        payload = {'markdown': text} if answer_values is None else {'answer_values': answer_values}
         result = subprocess.run(
             [node, str(Path(__file__).resolve().parents[1] / 'scripts/render_guide.mjs')],
-            input=json.dumps({'markdown': text}, ensure_ascii=False),
+            input=json.dumps(payload, ensure_ascii=False),
             capture_output=True, text=True, encoding='utf-8', timeout=25,
             creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0),
             env={**os.environ, 'NODE_NO_WARNINGS': '1'})
