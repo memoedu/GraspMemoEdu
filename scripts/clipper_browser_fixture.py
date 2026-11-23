@@ -37,6 +37,12 @@ def main():
     course['modules'][0]['example']['html'] = (
         '<p id="clip-fixture">Capture the sequence <span data-tex="x^2">x²</span> on this line.</p>'
         '<p id="clip-formulas">Inline \\(\\frac{a}{b}\\) and display $$y^3=z$$.</p>'
+        '<p>Legacy SVG <mjx-container jax="SVG"><svg width="40" height="34" viewBox="0 0 40 34">'
+        '<defs><path id="MJX-1-TEX-N-31" d="M1 1V9"/><path id="MJX-1-TEX-N-32" d="M1 1H6V9H1"/></defs>'
+        '<g data-mml-node="math"><g data-mml-node="mfrac"><g data-mml-node="mn"><use href="#MJX-1-TEX-N-31"/></g>'
+        '<g data-mml-node="mn" transform="translate(0 20)"><use href="#MJX-1-TEX-N-32"/></g>'
+        '<rect width="16" height="1" y="14"/></g></g></svg></mjx-container></p>'
+        '<p>Native MathML <math><msup><mi>m</mi><mn>3</mn></msup></math></p>'
         '<details><summary>Optional</summary><p>PRIVATE_HIDDEN_FIXTURE</p></details>'
     )
     settings = Settings(data_dir=args.root, port=args.port)
