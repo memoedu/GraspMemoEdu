@@ -67,7 +67,9 @@ export function attachChatEditor(input, labels, options = {}) {
   const mount = document.createElement('div'), preview = document.createElement('div');
   preview.className = 'helpReplyText chatPreview'; preview.hidden = true;
   const hint = document.createElement('p'); hint.className = 'inputHint'; hint.textContent = labels.hint;
-  host.append(toolbar, mount, preview, hint); input.after(host);
+  const editing = document.createElement('div');
+  editing.append(mount);
+  host.append(toolbar, editing, preview, hint); input.after(host);
   const editable = new Compartment(); let disabled = false, uploading = false, destroyed = false, formula;
   const uploadStatus = document.createElement('p'); uploadStatus.className = 'feedbackStatus';
   uploadStatus.setAttribute('role', 'status'); host.append(uploadStatus);
@@ -109,6 +111,7 @@ export function attachChatEditor(input, labels, options = {}) {
     b.addEventListener('click', () => {if (!disabled) action();}); toolbar.append(b); buttons.push(b); return b;
   }
   function wrap(before, after = before) {
+    showPreview(false);
     const {from, to} = formula?.selection() || view.state.selection.main, selected = view.state.sliceDoc(from, to);
     view.dispatch({changes: {from, to, insert: before + selected + after},
       selection: {anchor: from + before.length, head: from + before.length + selected.length}});
@@ -117,14 +120,19 @@ export function attachChatEditor(input, labels, options = {}) {
   }
   button(labels.bold, () => wrap('**')); button(labels.italic, () => wrap('*'));
   button(labels.list, () => wrap('- ', '')); button(labels.math, () => {
+    showPreview(false);
     if (!formula) {wrap('$'); return;}
     const {from, to} = formula.selection() || view.state.selection.main;
     void formula.insertFormula(undefined, [from, to]);
   });
-  const toggle = button(labels.preview, () => {
-    preview.hidden = !preview.hidden; toggle.setAttribute('aria-pressed', String(!preview.hidden));
-    if (!preview.hidden) renderChatMarkdown(preview, input.value);
-  }); toggle.setAttribute('aria-pressed', 'false');
+  function showPreview(show) {
+    editing.hidden = show;
+    preview.hidden = !show;
+    toggle.setAttribute('aria-pressed', String(show));
+    if (show) renderChatMarkdown(preview, input.value);
+  }
+  const toggle = button(labels.preview, () => showPreview(preview.hidden));
+  toggle.setAttribute('aria-pressed', 'false');
   async function addImages(files, position = formula?.selection()?.from ?? view.state.selection.main.from) {
     if (disabled || uploading || !options.upload) return;
     const wasDisabled = input.disabled;
@@ -153,8 +161,8 @@ export function attachChatEditor(input, labels, options = {}) {
         const insert = '\n' + result.markdown + '\n';
         if (view.state.doc.length + insert.length > input.maxLength) throw Error(labels.tooLong);
         view.dispatch({changes: {from: position, insert}, selection: {anchor: position + insert.length}});
-        position += insert.length; preview.hidden = false; toggle.setAttribute('aria-pressed', 'true');
-        renderChatMarkdown(preview, input.value);
+        position += insert.length;
+        showPreview(true);
       }
       uploadStatus.textContent = '';
     } catch (error) {if (!destroyed) uploadStatus.textContent = error.message || labels.invalidImage;}
@@ -177,7 +185,7 @@ export function attachChatEditor(input, labels, options = {}) {
     event.preventDefault(); event.stopPropagation();
     void addImages(files, formula?.visible ? formula.selection()?.from : view.posAtCoords({x: event.clientX, y: event.clientY}) ?? undefined);
   }, true);
-  return {host, focus: () => formula?.visible ? formula.focusAt(input.value.length) : view.focus(), isUploading: () => uploading,
+  return {host, focus() { showPreview(false); if (formula?.visible) formula.focusAt(input.value.length); else view.focus(); }, isUploading: () => uploading,
     destroy: () => {destroyed = true; formula?.destroy(); view.destroy();}, setValue,
     setDisabled(value) {disabled = value; input.disabled = value || uploading; buttons.forEach(b => b.disabled = value);
       view.dispatch({effects: editable.reconfigure(EditorView.editable.of(!value && !uploading))}); formula?.sync();}

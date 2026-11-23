@@ -6,7 +6,7 @@ import {history, closeHistory, redo, undo} from '@milkdown/prose/history';
 import {keymap} from '@milkdown/prose/keymap';
 import {Slice} from '@milkdown/prose/model';
 import {NodeSelection, Plugin, TextSelection} from '@milkdown/prose/state';
-import {MathfieldElement, convertAsciiMathToLatex, validateLatex} from 'mathlive';
+import {MathfieldElement, convertAsciiMathToLatex, convertLatexToAsciiMath, validateLatex} from 'mathlive';
 import {unified} from 'unified';
 import {unifiedLatexFromString} from '@unified-latex/unified-latex-util-parse';
 import {printRaw} from '@unified-latex/unified-latex-util-print-raw';
@@ -39,20 +39,45 @@ function bareLatex(raw) {
     .replace(/\\left\\lceil#\?\\right\\rceil\s*\\left\(/g, '\\operatorname{ceil}\\left(');
 }
 
+// Incomplete ASCII structures open a real MathLive slot, including the second
+// argument of a fraction. Incomplete TeX commands remain editable until valid.
+function inlineMath(raw) {
+  if (!/[\\α-ωΑ-Ω√∞≤≥≠±×÷−+*/^_!=()[\]{}|<>-]/.test(raw)) return null;
+  if (!/[A-Za-z0-9α-ωΑ-Ω√∞]/.test(raw)) return null;
+  const format = raw.includes('\\') ? 'latex' : 'ascii';
+  let latex;
+  if (format === 'latex') {
+    if (!safe(raw) || /(?:\{\}|[+*=<>-])$/.test(raw)) return null;
+    try {
+      katex.renderToString(raw, {trust: false, strict: 'ignore', throwOnError: true, maxExpand: 100, maxSize: 10});
+    } catch { return null; }
+    latex = raw;
+  } else {
+    const script = raw.match(/^(.+?)([\^_])(?:\{\})?$/);
+    if (script) latex = bareLatex(script[1]) + script[2] + '{\\placeholder{}}';
+    else if (raw.endsWith('/')) latex = '\\frac{' + bareLatex(raw.slice(0, -1)) + '}{\\placeholder{}}';
+    else if (/[+*=<>-]$/.test(raw)) return null;
+    else latex = bareLatex(raw).replace(/\\left\(\s*\\right\)/g, '\\left(\\placeholder{}\\right)');
+  }
+  return latex && safe(latex) ? {latex, format} : null;
+}
+
 export function answerMathSpans(value) {
   const spans = [];
   let start = 0;
   function bare(end) {
-    const section = value.slice(start, end), tex = section.trim();
-    if (/^\\[a-zA-Z]+/.test(tex) && safe(tex)) {
-      const from = start + section.indexOf(tex);
-      spans.push({from, to: from + tex.length, raw: tex, latex: tex, display: false});
+    const section = value.slice(start, end);
+    const environment = section.trim();
+    if (/^\\begin\{([A-Za-z*]+)\}[\s\S]*\\end\{\1\}$/.test(environment) && inlineMath(environment)) {
+      const from = start + section.indexOf(environment);
+      spans.push({from, to: from + environment.length, raw: environment, latex: environment, format: 'latex'});
       return;
     }
+    // Keep an unfinished explicit delimiter and its contents together.
+    if (/(?:^|[^\\])(?:\$|\\[(\[])/.test(section)) return;
     for (const item of bareMathRuns(section)) {
-      const latex = bareLatex(item.raw);
-      if (!latex || !safe(latex)) continue;
-      spans.push({...item, from: start + item.from, to: start + item.to, latex, display: false});
+      const formula = inlineMath(item.raw);
+      if (formula) spans.push({...item, ...formula, from: start + item.from, to: start + item.to});
     }
   }
   for (const span of formulaSpans(value)) {
@@ -64,20 +89,25 @@ export function answerMathSpans(value) {
   return spans;
 }
 
-export function renderAnswerPreview(target, spans) {
-  const fragment = document.createDocumentFragment();
-  for (const part of spans) {
-    const ink = document.createElement('span');
-    const latex = part.latex.replace(/([\^_])\{\}/g, '$1{\\square}');
-    if (renderLatex(ink, latex, part.display)) fragment.append(ink);
+function asciiValue(latex, groupScripts = false) {
+  let ascii = convertLatexToAsciiMath(sourceLatex(latex)).replaceAll('❓', '').replace(/\b([a-z]+) +\(/gi, '$1(');
+  // MathLive wraps fraction operands and scripts. Simple exact answers keep the
+  // familiar keyboard spelling while compound operands retain their grouping.
+  ascii = ascii.replace(/\(([\w.]+)\)(?=\/)/g, '$1').replace(/\/\(([\w.]+)\)/g, '/$1');
+  for (let i = ascii.length - 2; i >= 0; i--) {
+    if (!'^_'.includes(ascii[i])) continue;
+    const arg = followingArgument(ascii, i + 1);
+    if (arg) {
+      const value = !groupScripts && (/^[a-z]$|^\d+$/i.test(arg.body)) ? arg.body : '{' + arg.body + '}';
+      ascii = ascii.slice(0, i + 1) + value + ascii.slice(arg.end);
+    }
   }
-  target.replaceChildren(fragment);
-  target.hidden = !target.childElementCount;
+  return ascii;
 }
 
 const formulaSchema = $node(mathType, () => ({
   inline: true, group: 'inline', atom: true, selectable: true,
-  attrs: {latex: {default: ''}, display: {default: false}, raw: {default: null}},
+  attrs: {latex: {default: ''}, display: {default: false}, raw: {default: null}, format: {default: null}},
   parseDOM: [{tag: 'span[data-site-latex]', getAttrs(dom) {
     const latex = dom.getAttribute('data-site-latex');
     return safe(latex) ? {latex, display: dom.hasAttribute('data-display')} : false;
@@ -89,7 +119,12 @@ const formulaSchema = $node(mathType, () => ({
     runner: (state, node) => state.addNode('text', undefined, asText(node))},
 }));
 
-function documentJSON(text, detectBare = false) {
+function formulaAttrs(part, prose) {
+  if (prose && part.format === 'latex') return {latex: part.latex, display: false};
+  return {latex: part.latex, display: part.display, raw: part.raw, format: part.format};
+}
+
+function documentJSON(text, detectBare = false, prose = false) {
   const rows = [[]];
   function plain(value) {
     value.split('\n').forEach((part, index) => {
@@ -99,9 +134,9 @@ function documentJSON(text, detectBare = false) {
   }
   let from = 0;
   for (const match of detectBare ? answerMathSpans(text) : formulaSpans(text)) {
-    if (!safe(match.latex)) continue;
+    if (prose && match.format === 'ascii' || !safe(match.latex)) continue;
     plain(text.slice(from, match.from));
-    rows.at(-1).push({type: mathType, attrs: {latex: match.latex, display: match.display, raw: match.raw}});
+    rows.at(-1).push({type: mathType, attrs: formulaAttrs(match, prose)});
     from = match.to;
   }
   plain(text.slice(from));
@@ -130,6 +165,13 @@ function sourcePosition(doc, offset) {
 }
 
 const lint = unified().use(unifiedLatexFromString).use(lints.unifiedLatexLintNoPlaintextOperators, {fix: true}).freeze();
+function editedLatex(latex) {
+  const value = sourceLatex(latex);
+  // MathLive may serialize a fraction as \frac37. The TeX parser restores
+  // argument groups for the form value, including nested and single-digit slots.
+  try { return printRaw(lint.parse(wrap(value)).content[0].content); }
+  catch { return value; }
+}
 const operator = /(?<![a-z\\])(?:sin|cos|tan|ln|log|exp|lim|max|min)(?![a-z])/i;
 function fixOperator(source) {
   if (source.length > 220 || !operator.test(source)) return null;
@@ -143,18 +185,6 @@ function fixOperator(source) {
 }
 
 export async function createFormulaEditor(host, options) {
-  const live = document.createElement('span');
-  live.className = 'answerFormulaPreview';
-  live.hidden = true;
-  live.setAttribute('aria-label', options.previewLabel || options.formula);
-  function typedSpans(doc) {
-    const found = [];
-    doc.descendants((node, pos) => {
-      if (node.isText) for (const part of answerMathSpans(node.text))
-        found.push({...part, from: pos + part.from, to: pos + part.to});
-    });
-    return found;
-  }
   const previewCache = new Map();
   function preview(latex) {
     if (previewCache.has(latex)) return previewCache.get(latex);
@@ -177,7 +207,7 @@ export async function createFormulaEditor(host, options) {
     return html ? [{label: fraction ? options.fraction : options.operator, latex, preview: html}] : [];
   }
 
-  let view;
+  let view, recognitionTimer;
   const update = $prose(() => new Plugin({
     filterTransaction(tr) {
       return !tr.docChanged || tr.getMeta('sourceSync') || options.enabled() && serialize(tr.doc).length <= options.maxLength();
@@ -185,7 +215,7 @@ export async function createFormulaEditor(host, options) {
   }));
   const editor = await Editor.make().config(ctx => {
     ctx.set(rootCtx, host);
-    ctx.set(defaultValueCtx, {type: 'json', value: documentJSON(options.value(), options.detectInitialBare)});
+    ctx.set(defaultValueCtx, {type: 'json', value: documentJSON(options.value(), options.detectInitialBare, !options.answer)});
     ctx.set(editorViewOptionsCtx, {
       editable: options.enabled,
       attributes: {role: 'textbox', 'aria-multiline': 'true', 'aria-label': options.label, spellcheck: 'false'},
@@ -195,8 +225,10 @@ export async function createFormulaEditor(host, options) {
         this.updateState(result.state);
         const changed = result.transactions.some(transaction => transaction.docChanged);
         if (changed && !tr.getMeta('sourceSync')) options.change(serialize(this.state.doc));
-        if (changed && options.answer) renderAnswerPreview(live, typedSpans(this.state.doc));
         if (changed || tr.selectionSet) {
+          clearTimeout(recognitionTimer);
+          if (!tr.getMeta('sourceSync') && this.state.selection.empty && this.state.selection.$from.nodeBefore?.isText)
+            recognitionTimer = setTimeout(promoteTypedRun, 180);
           queueMicrotask(() => {
             if (!this.composing && host.isConnected) options.refresh(this.dom);
           });
@@ -206,30 +238,46 @@ export async function createFormulaEditor(host, options) {
       handlePaste(view, event) {
         const text = event.clipboardData?.getData('text/plain');
         if (!text) return false;
-        const value = /^\\[A-Za-z]/.test(text) && safe(text) ? wrap(text) : text;
-        const doc = view.state.schema.nodeFromJSON(documentJSON(value));
+        const doc = view.state.schema.nodeFromJSON(documentJSON(text, true, !options.answer));
         view.dispatch(closeHistory(view.state.tr.replaceSelection(Slice.maxOpen(doc.content))));
         return true;
       },
       handleTextInput(view, from, to, text) {
         const start = view.state.doc.resolve(from);
         const prefix = start.parent.textBetween(0, start.parentOffset, '', () => '\uFFFC');
-        if (options.answer && !view.composing && ['(', '^', '_'].includes(text) && !/[\\$]/.test(prefix)) {
-          const raw = bareMathRuns(prefix).at(-1);
-          const name = prefix.match(/[A-Za-z]+$/)?.[0];
-          const fn = text === '(' && name && options.candidates(name).find(item => item.label === name);
-          const previous = raw?.to === prefix.length ? raw.raw : '';
-          const latex = fn?.latex || (previous ? bareLatex(previous) : '') +
-            (text === '(' ? '\\left(#?\\right)' : text + '{#?}');
-          insertFormula(from - (fn ? name.length : previous.length), to, {latex});
+        if (view.composing) return false;
+        if (text.length > 1) {
+          const spans = answerMathSpans(text);
+          if (!spans.some(part => options.answer || part.format !== 'ascii')) return false;
+          const doc = view.state.schema.nodeFromJSON(documentJSON(text, true, !options.answer));
+          view.dispatch(view.state.tr.replaceRange(from, to, Slice.maxOpen(doc.content)));
           return true;
         }
-        if (!/[$)\]]$/.test(text)) return false;
         const before = prefix + text;
-        const match = formulaSpans(before).at(-1);
-        if (!match || match.to !== before.length || match.latex.includes('\uFFFC') || !safe(match.latex)) return false;
-        const node = view.state.schema.nodes[mathType].create({latex: match.latex, display: match.display, raw: match.raw});
-        view.dispatch(view.state.tr.replaceWith(from - (match.raw.length - text.length), to, node));
+        if (!/[\\$]/.test(prefix) && options.answer && ['(', '[', '^', '_', '/'].includes(text)) {
+          const base = bareMathRuns(prefix).at(-1);
+          const name = prefix.match(/[A-Za-z]+$/)?.[0];
+          const fn = text === '(' && name && options.candidates(name).find(item => item.label === name);
+          const previous = base?.to === prefix.length ? base.raw : '';
+          if (!previous && !fn && text === '/') return false;
+          const operand = previous ? bareLatex(previous) : '';
+          const template = {'(': operand + '\\left(#?\\right)', '[': operand + '\\left[#?\\right]',
+            '^': operand + '^{#?}', '_': operand + '_{#?}', '/': '\\frac{' + operand + '}{#?}'};
+          insertFormula(from - (fn ? name.length : previous.length), to,
+            {latex: fn?.latex || template[text], format: 'ascii'});
+          return true;
+        }
+        if (!/[$)\]}\s]$/.test(text) && !options.answer) return false;
+        const trailing = before.trimEnd();
+        if (/\\[A-Za-z]+$/.test(trailing) && before === trailing) return false;
+        const match = answerMathSpans(trailing).at(-1);
+        if (!match || !options.answer && match.format === 'ascii' || match.to !== trailing.length || match.raw.includes('\uFFFC')) return false;
+        const pos = from - (before.length - match.from - text.length);
+        const node = view.state.schema.nodes[mathType].create(formulaAttrs(match, !options.answer));
+        const tr = view.state.tr.replaceWith(pos, to, node);
+        if (trailing.length < before.length) tr.insertText(before.slice(trailing.length), pos + 1);
+        view.dispatch(tr);
+        if (match.format && before === trailing) enterFormula(pos, false);
         return true;
       },
     });
@@ -237,18 +285,18 @@ export async function createFormulaEditor(host, options) {
     $prose(() => history()), $prose(() => keymap({'Mod-z': undo, 'Mod-Shift-z': redo, 'Mod-y': redo, ...baseKeymap}))
   ]).create();
   view = editor.action(ctx => ctx.get(editorViewCtx));
-  if (options.answer) {
-    host.append(live);
-    // Finish undelimited runs after leaving prose, preserving the exact draft bytes.
-    view.dom.addEventListener('focusout', () => queueMicrotask(() => {
-      if (!host.isConnected || host.contains(document.activeElement) || view.composing) return;
-      const tr = view.state.tr;
-      for (const part of typedSpans(tr.doc).reverse()) {
-        tr.replaceWith(part.from, part.to, view.state.schema.nodes[mathType].create(part));
-      }
-      if (tr.docChanged) view.dispatch(tr.setMeta('sourceSync', true).setMeta('addToHistory', false));
-    }));
+  function promoteTypedRun(controlWordOnly = true) {
+    if (!view?.hasFocus() || view.composing || !options.enabled()) return;
+    const {selection, schema} = view.state, text = selection.$from.nodeBefore?.text;
+    if (!selection.empty || !text || controlWordOnly && !/\\[a-z]+$/i.test(text)) return;
+    const part = answerMathSpans(text).at(-1);
+    if (!part || !options.answer && part.format === 'ascii' || part.to !== text.length) return;
+    const pos = selection.from - part.raw.length;
+    view.dispatch(view.state.tr.replaceWith(pos, selection.to, schema.nodes[mathType].create(formulaAttrs(part, !options.answer))));
+    enterFormula(pos, false);
   }
+
+  const typedClosers = new WeakSet();
 
   function mathView(node, view, getPos) {
     const math = document.createElement('math-field');
@@ -267,12 +315,24 @@ export async function createFormulaEditor(host, options) {
     math.value = node.attrs.latex;
     dom.append(math);
 
+    let groupedScripts = !options.literal || /[\^_]\{/.test(node.attrs.raw || '');
     function writeMath() {
       const pos = getPos();
       if (pos === undefined || !options.enabled()) return;
       const latex = math.value;
       if (latex === node.attrs.latex) return;
-      const raw = {...node.attrs, latex, raw: null};
+      if (!latex) {
+        const focused = document.activeElement === math;
+        const tr = view.state.tr.delete(pos, pos + node.nodeSize);
+        tr.setSelection(TextSelection.create(tr.doc, pos));
+        view.dispatch(closeHistory(tr));
+        if (focused) view.focus();
+        return;
+      }
+      const format = node.attrs.format;
+      const value = format === 'ascii' ? asciiValue(latex, groupedScripts) :
+        format === 'latex' ? editedLatex(latex) : null;
+      const raw = {...node.attrs, latex, raw: value};
       const tr = view.state.tr.setNodeMarkup(pos, null, raw);
       if (serialize(tr.doc).length > options.maxLength()) {
         math.setValue(node.attrs.latex, {silenceNotifications: true});
@@ -280,6 +340,23 @@ export async function createFormulaEditor(host, options) {
       }
       view.dispatch(tr);
     }
+    // A typed TeX brace immediately after ^ or _ describes the group MathLive
+    // already opened. Consume its closing brace by moving out of that group.
+    let explicitScript = false;
+    math.addEventListener('keydown', event => {
+      if (event.isComposing || event.defaultPrevented || math.mode === 'latex') return;
+      if (event.key === '{' && /[\^_]\{(?:\\placeholder\{\})?\}/.test(math.value)
+        && (math.getValue(math.selection, 'latex').includes('\\placeholder') || math.getElementInfo(math.position)?.depth > 0)) {
+        explicitScript = true;
+        groupedScripts = true;
+        event.preventDefault(); event.stopImmediatePropagation();
+      } else if (event.key === '}' && (explicitScript || typedClosers.has(math))) {
+        typedClosers.delete(math);
+        explicitScript = false;
+        event.preventDefault(); event.stopImmediatePropagation();
+        math.executeCommand('moveAfterParent');
+      }
+    }, true);
     math.addEventListener('input', () => {
       writeMath();
       options.refresh(math);
@@ -356,9 +433,11 @@ export async function createFormulaEditor(host, options) {
     const math = view.nodeDOM(pos)?.querySelector?.('math-field');
     if (!math) { view.focus(); return; }
     math.focus();
-    if (edit) {
+    if (edit && math.value.includes('\\placeholder{}')) {
       math.position = 0;
       math.executeCommand('moveToNextPlaceholder');
+    } else {
+      math.position = math.lastOffset;
     }
   }
 
@@ -374,7 +453,10 @@ export async function createFormulaEditor(host, options) {
       }
     }
     const latex = template.replaceAll('#?', '\\placeholder{}');
-    const node = view.state.schema.nodes[mathType].create({latex});
+    const functionCall = /^[A-Za-z\\].*\\left\(#\?\\right\)$/.test(candidate.latex);
+    const format = candidate.format || (options.literal ? (functionCall ? 'ascii' : 'latex') : null);
+    const raw = format === 'ascii' ? asciiValue(latex) : format === 'latex' ? sourceLatex(latex) : null;
+    const node = view.state.schema.nodes[mathType].create({latex, raw, format});
     const tr = view.state.tr.replaceWith(from, to, node);
     if (serialize(tr.doc).length > options.maxLength()) return;
     view.dispatch(closeHistory(tr));
@@ -397,19 +479,46 @@ export async function createFormulaEditor(host, options) {
       apply: candidate => insertFormula(from - query.length, to + tail, candidate),
     };
   });
-  view.dom.addEventListener('compositionend', () => queueMicrotask(() => options.refresh(view.dom)));
+  view.dom.addEventListener('compositionend', () => {
+    clearTimeout(recognitionTimer);
+    recognitionTimer = setTimeout(() => { promoteTypedRun(false); options.refresh(view.dom); }, 20);
+  });
 
   return {
     root: view.dom,
+    value: () => serialize(view.state.doc),
     focus(offset, inside = false) {
       const pos = sourcePosition(view.state.doc, offset ?? serialize(view.state.doc).length);
       if (inside && view.state.doc.nodeAt(pos)?.type.name === mathType) { enterFormula(pos, true); return; }
       view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, pos)));
       view.focus();
     },
+    focusTyped(text, offset) {
+      const doc = view.state.doc;
+      const parts = answerMathSpans(text);
+      const adjusted = index => options.answer ? index : index + 4 * parts.filter(part => part.format === 'latex' && part.to <= index).length;
+      const fragment = parts.find(part => part.format && (options.answer || part.format === 'latex') && offset > part.from && offset <= part.to);
+      if (!fragment) { this.focus(adjusted(offset)); return; }
+      const pos = sourcePosition(doc, adjusted(fragment.from));
+      const math = view.nodeDOM(pos)?.querySelector?.('math-field');
+      if (!math) { this.focus(offset); return; }
+      enterFormula(pos, true);
+      const tail = text.slice(offset, fragment.to);
+      if (fragment.format === 'latex' && tail === '}') {
+        math.position = Math.max(0, math.lastOffset - 1);
+        typedClosers.add(math);
+      }
+      if (!math.value.includes('\\placeholder{}') && fragment.format === 'ascii') {
+        // Continue inside a denominator/exponent when its last character was typed.
+        if (offset === fragment.to && /(?:\/|[\^_])[\w.]+$/.test(fragment.raw))
+          math.position = Math.max(0, math.lastOffset - 1);
+        else if (offset < fragment.to && /^[)\]}]+$/.test(text.slice(offset, fragment.to)))
+          math.position = Math.max(0, math.lastOffset - (fragment.to - offset));
+      }
+    },
     replaceSource(text) {
       if (text === serialize(view.state.doc)) return;
-      const doc = view.state.schema.nodeFromJSON(documentJSON(text, options.answer));
+      const doc = view.state.schema.nodeFromJSON(documentJSON(text, true, !options.answer));
       view.dispatch(view.state.tr.replaceWith(0, view.state.doc.content.size, doc.content).setMeta('sourceSync', true));
     },
     insertFormula(latex) {
@@ -465,7 +574,7 @@ export async function createFormulaEditor(host, options) {
       view.setProps({editable: options.enabled});
       host.querySelectorAll('math-field').forEach(math => {math.readOnly = !options.enabled();});
     },
-    destroy() { detach(); void editor.destroy(); },
+    destroy() { clearTimeout(recognitionTimer); detach(); void editor.destroy(); },
   };
 }
 
