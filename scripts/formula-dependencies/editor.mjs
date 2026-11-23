@@ -6,6 +6,7 @@ import {history, closeHistory, redo, undo} from '@milkdown/prose/history';
 import {keymap} from '@milkdown/prose/keymap';
 import {Slice} from '@milkdown/prose/model';
 import {NodeSelection, Plugin, TextSelection} from '@milkdown/prose/state';
+import {Decoration, DecorationSet} from '@milkdown/prose/view';
 import {MathfieldElement, convertAsciiMathToLatex, convertLatexToAsciiMath, validateLatex} from 'mathlive';
 import {unified} from 'unified';
 import {unifiedLatexFromString} from '@unified-latex/unified-latex-util-parse';
@@ -25,6 +26,10 @@ function serialize(doc) {
   const paragraphs = [];
   doc.forEach(row => paragraphs.push(row.textBetween(0, row.content.size, '', asText)));
   return paragraphs.join('\n');
+}
+function sourceRange(doc, selection) {
+  const offset = pos => serialize(doc.cut(0, pos)).length;
+  return {from: offset(selection.from), to: offset(selection.to)};
 }
 const displayable = latex => typeof latex === 'string' && latex.length <= 4000
   && !/\\(?:html\w*|css\w*|includegraphics|href|url|style|class|def|gdef|edef|newcommand|renewcommand)\b/i.test(latex);
@@ -208,7 +213,13 @@ export async function createFormulaEditor(host, options) {
   }
 
   let view, recognitionTimer;
+  const mathPositions = new WeakMap();
   const update = $prose(() => new Plugin({
+    state: {
+      init: () => DecorationSet.empty,
+      apply: (tr, previous) => tr.getMeta('voicePreview') ?? (tr.docChanged || tr.selectionSet ? DecorationSet.empty : previous),
+    },
+    props: {decorations(state) { return this.getState(state); }},
     filterTransaction(tr) {
       return !tr.docChanged || tr.getMeta('sourceSync') || options.enabled() && serialize(tr.doc).length <= options.maxLength();
     },
@@ -300,6 +311,7 @@ export async function createFormulaEditor(host, options) {
 
   function mathView(node, view, getPos) {
     const math = document.createElement('math-field');
+    mathPositions.set(math, getPos);
     const dom = document.createElement('span');
     dom.className = 'siteFormula';
     dom.classList.toggle('siteFormulaDisplay', node.attrs.display);
@@ -547,8 +559,7 @@ export async function createFormulaEditor(host, options) {
     },
     sourceSelection() {
       const {doc, selection} = view.state;
-      const offset = pos => serialize(doc.cut(0, pos)).length;
-      return {from: offset(selection.from), to: offset(selection.to)};
+      return sourceRange(doc, selection);
     },
     focusSource(from, to = from) {
       const doc = view.state.doc;
@@ -558,20 +569,77 @@ export async function createFormulaEditor(host, options) {
     anchor(target) {
       const {doc, selection} = view.state;
       if (target?.localName === 'math-field') {
-        const latex = target.value, position = JSON.stringify(target.selection);
-        return text => {
-          if (doc !== view.state.doc || target.value !== latex || JSON.stringify(target.selection) !== position
-            || !target.isConnected || !options.enabled()) return false;
-          return target.insert(text, {format: 'auto', selectionMode: 'after'});
+        const latex = target.value, captured = target.selection, position = JSON.stringify(captured);
+        const valid = () => doc === view.state.doc && target.value === latex && JSON.stringify(target.selection) === position
+          && target.isConnected && options.enabled();
+        let mirror;
+        function clear() { mirror?.remove(); mirror = null; target.classList.remove('voiceMathOriginal'); }
+        return {
+          clear,
+          readText() {
+            const pos = mathPositions.get(target)();
+            const start = Math.min(...captured.ranges.flat()), end = Math.max(...captured.ranges.flat());
+            return {before: serialize(doc.cut(0, pos)) + target.getValue(0, start, 'latex'),
+              selected: start === end ? '' : target.getValue(captured, 'latex'),
+              after: target.getValue(end, target.lastOffset, 'latex') + serialize(doc.cut(pos + 1))};
+          },
+          preview(text) {
+            if (!valid()) return false;
+            if (!text) { clear(); return true; }
+            if (!mirror) {
+              mirror = document.createElement('math-field');
+              mirror.setAttribute('aria-hidden', 'true'); mirror.tabIndex = -1; mirror.inert = true;
+              mirror.setAttribute('math-virtual-keyboard-policy', 'manual');
+              target.after(mirror); target.classList.add('voiceMathOriginal');
+            }
+            mirror.setValue(latex, {silenceNotifications: true});
+            mirror.selection = captured;
+            mirror.insert(text, {format: 'auto', selectionMode: 'after', focus: false, silenceNotifications: true});
+            return true;
+          },
+          insert(text) {
+            if (!valid()) return false;
+            view.dispatch(closeHistory(view.state.tr));
+            const inserted = target.insert(text, {format: 'auto', selectionMode: 'after'});
+            view.dispatch(closeHistory(view.state.tr));
+            return inserted;
+          },
         };
       }
-      return text => {
-        if (doc !== view.state.doc || !view.state.selection.eq(selection) || !view.dom.isConnected || !options.enabled()) return false;
-        const parsed = view.state.schema.nodeFromJSON(documentJSON(text, true, !options.answer));
-        const tr = closeHistory(view.state.tr.replaceSelection(Slice.maxOpen(parsed.content)));
-        if (serialize(tr.doc).length > options.maxLength()) return false;
-        view.dispatch(tr);
-        return true;
+      const valid = () => doc === view.state.doc && view.state.selection.eq(selection) && view.dom.isConnected && options.enabled();
+      let marked = false;
+      function decorate(set) { view.dispatch(view.state.tr.setMeta('voicePreview', set).setMeta('addToHistory', false)); }
+      function clear() {
+        if (marked && view.dom.isConnected) decorate(DecorationSet.empty);
+        marked = false;
+      }
+      return {
+        clear,
+        readText() {
+          const value = serialize(doc), {from, to} = sourceRange(doc, selection);
+          return {before: value.slice(0, from), selected: value.slice(from, to), after: value.slice(to)};
+        },
+        preview(text) {
+          if (!valid()) return false;
+          if (!text) { clear(); return true; }
+          const span = document.createElement('span');
+          span.textContent = text;
+          const {from, to} = selection;
+          const marks = [Decoration.widget(from, span, {side: -1, ignoreSelection: true})];
+          if (from < to) marks.push(Decoration.inline(from, to, {class: 'voiceRangeOriginal'}));
+          decorate(DecorationSet.create(doc, marks));
+          marked = true;
+          return true;
+        },
+        insert(text) {
+          if (!valid()) return false;
+          const parsed = view.state.schema.nodeFromJSON(documentJSON(text, true, !options.answer));
+          const tr = closeHistory(view.state.tr.replaceSelection(Slice.maxOpen(parsed.content)));
+          if (serialize(tr.doc).length > options.maxLength()) return false;
+          view.dispatch(tr);
+          view.dispatch(closeHistory(view.state.tr));
+          return true;
+        },
       };
     },
     setDisabled() {

@@ -12,7 +12,9 @@ try {
     $voice.Rate = -1
     $format = [System.Speech.AudioFormat.SpeechAudioFormatInfo]::new(16000, 16, 1)
     $phrases = @{variable='艾克斯加三减歪'; coordinate='负一，一'; script='歪六';
-                 integral='积分，艾克斯的平方加三乘艾克斯，微分艾克斯'; order='七减三乘二'; reading='更新后的读数等于五'}
+                 integral='积分，艾克斯的平方加三乘艾克斯，微分艾克斯'; order='七减三乘二'; reading='更新后的读数等于五'
+                 'calc-first'='十二加上三十六'; 'calc-repair'='不对，应该是十二加上三十八'
+                 'prose-first'='我们的讨论安排在周三'; 'prose-repair'='不对，应该是周五'}
     foreach ($sample in $phrases.GetEnumerator()) {
         $file = Join-Path $root ($sample.Key + '.wav')
         if (Test-Path -LiteralPath $file) { throw "Fixture output already exists: $file" }

@@ -174,6 +174,19 @@ class TrainingAudioApiTests(unittest.TestCase):
         self.assertEqual(result.status_code, 403)
         self.assertEqual(len(self.transcriber.calls), 1)
 
+    def test_contextual_file_recording_shares_the_stream_recognizer(self):
+        from unittest.mock import patch
+        body = {'mime_type': 'audio/wav', 'data_base64': self.body['data_base64'], 'profile': 'answer',
+                'live': True, 'context': {'textbox': {'before': '口径用 R 表示。'}}}
+        with patch.object(self.app.state.voice_streams.factory, 'recording', return_value={'text': '口径等于六'}) as recognize:
+            result = self.client.post('/api/voice-input/transcribe', headers=self.headers, json=body)
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(result.json(), {'text': 'R=6'})
+        wav, context = recognize.call_args.args
+        self.assertEqual(wav, self.audio_data)
+        self.assertEqual(context.textbox.before, '口径用 R 表示。')
+        self.assertEqual(self.transcriber.calls, [])
+
     def test_refinement_profiles_route_only_general_and_reject_calculator_prose(self):
         from unittest.mock import Mock
         from graspmemoedu.voice_input import refine_voice

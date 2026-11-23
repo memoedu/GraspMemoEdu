@@ -2,16 +2,51 @@ import base64
 from concurrent.futures import ThreadPoolExecutor
 from threading import BoundedSemaphore, Event
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
 from graspmemoedu.service import DomainError
-from graspmemoedu.voice_input import refine_voice
+from graspmemoedu.voice_input import format_voice, live_text, refine_voice
 from graspmemoedu.voice_math import VoiceContext, quick_math
 from graspmemoedu.voice_stream import Cancel, Chunk, Open, Outbox, Sessions
 
 
 class MathDictationTests(unittest.TestCase):
+    def test_textbox_scope_reaches_asr_and_refinement_without_consuming_the_whole_prompt(self):
+        box = {'before': 'p' * 3000 + '左侧温度', 'selected': '选中词', 'after': '右侧压强' + 'q' * 3000}
+        c = VoiceContext(stem='题干开头' + '某' * 3000 + '题干末尾', textbox=box)
+        parts = [v['content'][0]['text'] for v in c.asr_input('本次前句')['context']]
+        self.assertTrue(len(parts) <= 5 and all(0 < len(t) <= 400 for t in parts))
+        for expected in ('题干开头', '题干末尾', '左侧温度', '选中词', '右侧压强', '本次前句'):
+            self.assertIn(expected, ''.join(parts))
+        for profile in ('general', 'calculator', 'answer'):
+            model = Mock(side_effect=['non_writing', '样本'] if profile == 'general' else ['x'])
+            refine_voice('本次口述', profile, model, context=c)
+            instructions, source = model.call_args.args
+            self.assertIn('只输出本次', instructions)
+            self.assertEqual(source['transcript'], '本次口述')
+            self.assertEqual(source['notation']['textbox'], box)
+            self.assertEqual(source['notation']['stem'], c.stem)
+
+    def test_only_the_spoken_insertion_uses_notation_from_either_side_and_the_selection(self):
+        for area, letter in [('before', 'r'), ('after', 's'), ('selected', 't')]:
+            c = VoiceContext(stem='半径用 a 表示。', symbols=['a'], textbox={area: f'半径用 {letter} 表示。'})
+            self.assertEqual(format_voice('半径等于五', 'answer', c, live=True), letter + '=5')
+        self.assertEqual(quick_math('b加七', 'calculator', VoiceContext(textbox={'before': '2*B+'})), 'B+7')
+        self.assertEqual(quick_math('a六', 'answer', VoiceContext(textbox={'after': 'a_{6}'})), 'a_{6}')
+        self.assertIsNone(quick_math('a六', 'answer', VoiceContext(textbox={'before': 'a^{new}，a_{new}'})))
+
+    def test_direct_repairs_preserve_surrounding_speech_and_quotations(self):
+        context = VoiceContext()
+        self.assertEqual(format_voice('先记下来。会议定在周三，不对，是周五。', 'general', context, live=True),
+                         '先记下来。会议定在周五。')
+        self.assertEqual(format_voice('他说“不对，是周五”。', 'general', context, live=True), '他说“不对，是周五”。')
+        self.assertEqual(format_voice('八乘四。加七，不对，是五', 'calculator', context, live=True), '8*4+5')
+        self.assertEqual(format_voice('函数不对称。', 'general', context, live=True), '函数不对称。')
+        self.assertEqual(format_voice('总数是六，不对，是九。', 'general', context, live=True), '总数是九。')
+        self.assertEqual(live_text('12+8。不对，应该是', 'calculator', context, partial=True)[0], '12+8')
+        self.assertEqual(format_voice('保留这句话。', 'answer_commands', context, live=True), '保留这句话。')
+
     def test_full_stem_reaches_formatter_and_recognizer_has_bounded_turns(self):
         stem = '请用题目定义的变量作答。' * 230 + '使用末尾条件。'
         context = VoiceContext(stem=stem, symbols=['a^{next}'])
@@ -24,6 +59,9 @@ class MathDictationTests(unittest.TestCase):
         self.assertTrue(turns[-1]['content'][0]['text'].endswith('使用末尾条件。'))
         short = VoiceContext(stem='平面上有三个点，求另一个点的坐标。')
         self.assertEqual(short.asr_input()['context'][0]['content'][0]['text'], short.stem)
+        continued = context.asr_input('仅本次录音的前文')['context']
+        self.assertEqual(len(continued), 5)
+        self.assertTrue(continued[-1]['content'][0]['text'].endswith('使用末尾条件。\n仅本次录音的前文'))
 
     def test_same_audio_different_visible_question_and_explicit_indices(self):
         coordinates = VoiceContext(stem='写出点的坐标。', domains=['coordinates'], dimensions=2)
@@ -92,9 +130,11 @@ class VoiceSessionTests(unittest.TestCase):
 
     def setUp(self):
         self.providers = []
-        def factory(context, update):
+        self.history = []
+        def factory(context, update, *, live=False, previous=''):
             provider = Provider(context, update)
             self.providers.append(provider)
+            self.history.append(previous)
             return provider
         self.reserve = Mock()
         self.registry = Sessions(BoundedSemaphore(2), self.reserve, factory, lambda t, p, c: t)
@@ -142,6 +182,57 @@ class VoiceSessionTests(unittest.TestCase):
         self.assertEqual(error.exception.code, 'voice_incomplete')
         self.assertTrue(self.providers[0].closed)
         self.assertFalse(self.registry.active)
+
+    def test_opted_in_snapshots_replace_retract_and_cross_pause(self):
+        self.call(Cancel(op='cancel', take=self.start.take))
+        packet = self.start.model_copy(update={'live': True, 'profile': 'general'})
+        self.registry.formatter = format_voice
+        self.call(packet)
+        first = self.packet('audio', pcm=b'ab')
+        self.assertEqual(self.call(first), {'offset': 2, 'preview': '二加一'})
+        self.assertEqual(self.call(first)['preview'], '二加一')
+        provider = self.providers[-1]
+        provider.write = lambda pcm: None
+        provider.update({'sentence_id': 0, 'text': '', 'sentence_end': False})
+        self.assertEqual(self.call(self.packet('audio', 2, b'cd'))['preview'], '')
+        provider.update({'sentence_id': 0, 'text': '一起散步', 'sentence_end': False})
+        self.assertEqual(self.call(self.packet('audio', 4, b'ef'))['preview'], '一起散步')
+        provider.final = '一起散步。'
+        self.assertEqual(self.call(self.packet('pause', 6))['preview'], '一起散步。')
+        self.assertEqual(self.call(self.packet('audio', 6, b'gh'))['preview'], '一起散步。二加一')
+        self.providers[-1].final = '明天。'
+        self.assertEqual(self.call(self.packet('finish', 8))['text'], '一起散步。明天。')
+
+    def test_structured_commands_never_expose_or_apply_an_interim(self):
+        self.call(Cancel(op='cancel', take=self.start.take))
+        self.call(self.start.model_copy(update={'live': True, 'profile': 'answer_commands'}))
+        self.assertEqual(self.call(self.packet('audio', pcm=b'ab')), {'offset': 2})
+        self.assertEqual(self.call(self.packet('finish', 2))['text'], '二加七')
+
+    def test_natural_pause_drains_the_provider_and_keeps_the_recording_and_context(self):
+        self.call(Cancel(op='cancel', take=self.start.take))
+        self.registry.formatter = format_voice
+        self.call(self.start.model_copy(update={'live': True, 'profile': 'general'}))
+        voice, silence = b'ab' * (160 * 9), bytes(320 * 51)
+        with patch('graspmemoedu.voice_stream.Vad.is_speech', lambda vad, data, rate: any(data)):
+            # Frame analysis must work even when the network splits a VAD frame.
+            self.call(self.packet('audio', 0, voice[:234]))
+            self.call(self.packet('audio', 234, voice[234:]))
+            self.providers[-1].final = '周三。'
+            result = self.call(self.packet('audio', len(voice), silence))
+            self.assertEqual(result['preview'], '周三。')
+            self.assertTrue(self.providers[-1].closed)
+            offset = len(voice) + len(silence)
+            sessions = len(self.providers)
+            self.call(self.packet('audio', offset, bytes(9600)))
+            self.assertEqual(len(self.providers), sessions)
+            offset += 9600
+            self.call(self.packet('audio', offset, voice))
+            self.assertEqual(self.history[-1], '周三。')
+            self.providers[-1].final = '不对，是周五。'
+            self.assertEqual(self.call(self.packet('finish', offset + len(voice)))['text'], '周五。')
+            self.assertEqual(b''.join(self.providers[-2].received + self.providers[-1].received),
+                             voice + silence + bytes(8000) + voice)
 
     def test_cancel_is_idempotent_and_releases_slot(self):
         cancel = Cancel(op='cancel', take=self.start.take)

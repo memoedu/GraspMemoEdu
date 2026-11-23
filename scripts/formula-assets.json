@@ -1,7 +1,7 @@
 {
   "files": {
     "vendor/formula/editor.mjs.LEGAL.txt": "fed0b6765604f5f7835a79765f45fc0b8272b79c20cf3bcb5c612fc9cfb73bd7",
-    "vendor/formula/editor.mjs": "bfbbfc8a40e85d1fcb77300739eea9117b665d3e37500f225160f782dc12ada4",
+    "vendor/formula/editor.mjs": "96a0c0639176fc52eed14db140f93e4a030fa4900d3c831b9362c3aef40cc00a",
     "vendor/formula/fonts/KaTeX_AMS-Regular.woff2": "0cdd387c9590a1a9f9794560022dbb59654a7d86f187aa0c81495ad42d3a7308",
     "vendor/formula/fonts/KaTeX_Caligraphic-Bold.woff2": "de7701e42cf1f4cf0b766c03fb27977207eee2f4fd5d76fa82188406da43ea4c",
     "vendor/formula/fonts/KaTeX_Caligraphic-Regular.woff2": "5d53e70ad607c2352162dec9e0923fb54ecdafaccbf604cd8dcf7d00facb989b",
