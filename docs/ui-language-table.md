@@ -2,7 +2,7 @@
 
 本表从当前界面词库自动生成。修改以词库为准，随后重新生成并检查本表。术语约定见 [界面语言规范](ui-language.md)。
 
-共 1064 条界面文案映射（包括不同位置重复使用的文案）。花括号表示运行时填入的名称、数量或时间，不是页面上的固定文字。
+共 1067 条界面文案映射（包括不同位置重复使用的文案）。花括号表示运行时填入的名称、数量或时间，不是页面上的固定文字。
 
 不包括作者课程正文、题目、答案、解析或用户输入。首页的学科双语副标题按约定保留。
 
@@ -136,6 +136,9 @@
 | Semantic recall: express the meaning in your own words. Ctrl + Enter to submit. | 复现：按含义判断，可用自己的话表述。Ctrl + Enter 提交。 |
 | Complete every item before submitting. The question is correct only when every item is correct. | 完成所有小项后提交；整题全部正确才计为正确。 |
 | Select your answer, then submit. Ctrl + Enter to submit. | 选择答案后提交。Ctrl + Enter 提交。 |
+| Select an answer first. | 请先选择答案。 |
+| Complete every answer field first. | 请先完成所有作答项。 |
+| . You can still revisit completed material. | 。你仍可回看已学内容。 |
 | Single choice | 单选 |
 | Multiple choice | 多选 |
 | Expected | 应选 |
@@ -490,7 +493,7 @@
 | Beginner mode | 入门模式 |
 | Show the answer command box | 显示文字答题框 |
 | Type a command below a question to fill in your answer. Calculator and voice input also work with the box turned off. | 在题目下方输入文字并转换为答案。关闭后仍可用计算器或录音填写。 |
-| Show brief tips about how lessons, practice and reviews work. | 在学习、练习和复习中短暂显示机制提示。 |
+| Show instructions, keyboard shortcuts and tips about how learning works. | 显示学习页面中的操作说明、快捷键和机制提示。 |
 | Reviews stay first. Groups include every unfinished Topic, including paused and prerequisite-blocked lessons. | 复习任务保留在前列；层级中显示所有未完成的 Topic，包括暂停和前置受阻的内容。 |
 | Administrator | 管理员 |
 | Advanced learner | 高阶学习者 |
