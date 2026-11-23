@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-"""Render Unit 1 of open-academy-mr-pack into a multi-lesson interactive web app
-with localStorage persistence and a 12-card FSRS-5 review-time prediction dashboard."""
+"""Render full-course open-academy-mr-pack into an adaptive multi-unit web app:
+- Authored concepts load lessons/<id>.yaml + exercises/<id>.yaml interactively with FSRS-5.
+- Stub concepts render prerequisite/objective/notation contract cards without needing YAML files.
+"""
 
 from __future__ import annotations
 
@@ -11,13 +13,6 @@ import sys
 from pathlib import Path
 
 import yaml
-
-
-UNIT1_DEFAULT_CONCEPTS = [
-    "spin-zeeman-and-drive",
-    "rotating-wave-and-frame",
-    "su2-evolution-and-rabi-prob",
-]
 
 
 def md_block_to_html(text: str) -> str:
@@ -130,149 +125,327 @@ def render_exercise_slot(ex: dict) -> str:
     )
 
 
+def render_footer_nav(
+    flat_concepts: list[tuple[int, int, str]],
+    pos: int,
+    concepts_by_id: dict[str, dict],
+) -> str:
+    btns: list[str] = []
+    if pos > 0:
+        _, _, prev_cid = flat_concepts[pos - 1]
+        prev_title = concepts_by_id[prev_cid]["title"]
+        btns.append(
+            f'<button type="button" class="btn btn-jump-lesson" data-jump-lesson="{html.escape(prev_cid)}">'
+            f"← 上一课：{html.escape(prev_title)}</button>"
+        )
+    if pos + 1 < len(flat_concepts):
+        _, _, next_cid = flat_concepts[pos + 1]
+        next_title = concepts_by_id[next_cid]["title"]
+        btns.append(
+            f'<button type="button" class="btn btn-primary btn-jump-lesson" data-jump-lesson="{html.escape(next_cid)}">'
+            f"下一课：{html.escape(next_title)} →</button>"
+        )
+    return f'<div class="lesson-footer-nav">{"".join(btns)}</div>'
+
+
 def build_html(pack_dir: Path, default_concept: str = "spin-zeeman-and-drive") -> str:
     course = yaml.safe_load((pack_dir / "courses" / "mr-fundamentals.yaml").read_text(encoding="utf-8"))
     concepts_doc = yaml.safe_load((pack_dir / "concepts" / "magnetic-resonance.yaml").read_text(encoding="utf-8"))
     concepts_by_id = {c["id"]: c for c in concepts_doc["concepts"]}
 
-    unit1 = course["units"][0]
-    concept_ids = list(unit1.get("concepts") or UNIT1_DEFAULT_CONCEPTS)
+    notation_terms: list[dict] = []
+    notation_path = pack_dir / "notation.yaml"
+    if notation_path.is_file():
+        ndoc = yaml.safe_load(notation_path.read_text(encoding="utf-8")) or {}
+        notation_terms = list(ndoc.get("terms") or [])
+
+    units = list(course.get("units") or [])
+    flat_concepts: list[tuple[int, int, str]] = []
+    lesson_idx_counter = 0
+    for u_idx, unit in enumerate(units, start=1):
+        for cid in unit.get("concepts") or []:
+            lesson_idx_counter += 1
+            flat_concepts.append((u_idx, lesson_idx_counter, cid))
+
+    course_cid_set = {cid for _, _, cid in flat_concepts}
+    authored_set: set[str] = set()
+    for _, _, cid in flat_concepts:
+        cmeta = concepts_by_id[cid]
+        if (
+            cmeta.get("status") == "authored"
+            and (pack_dir / "lessons" / f"{cid}.yaml").is_file()
+            and (pack_dir / "exercises" / f"{cid}.yaml").is_file()
+        ):
+            authored_set.add(cid)
 
     ex_map: dict[str, dict] = {}
     kp_meta: list[dict] = []
     lessons_meta: list[dict] = []
-    tabs_html: list[str] = []
-    lessons_sections_html: list[str] = []
+    unit_nav_groups_html: list[str] = []
+    panes_html: list[str] = []
 
-    for l_idx, cid in enumerate(concept_ids, start=1):
-        lesson = yaml.safe_load((pack_dir / "lessons" / f"{cid}.yaml").read_text(encoding="utf-8"))
-        ex_doc = yaml.safe_load((pack_dir / "exercises" / f"{cid}.yaml").read_text(encoding="utf-8"))
-        cmeta = concepts_by_id[cid]
-        local_ex_map = {e["id"]: e for e in ex_doc["exercises"]}
-        for ex_id, ex_obj in local_ex_map.items():
-            enriched = dict(ex_obj)
-            enriched["lessonId"] = cid
-            ex_map[ex_id] = enriched
+    flat_pos = 0
+    for u_idx, unit in enumerate(units, start=1):
+        unit_cids = list(unit.get("concepts") or [])
+        authored_in_unit = sum(1 for cid in unit_cids if cid in authored_set)
+        tabs_in_unit: list[str] = []
 
-        lessons_meta.append(
-            {
-                "id": cid,
-                "index": l_idx,
-                "title": cmeta["title"],
-                "version": lesson.get("version", 1),
-                "estMinutes": cmeta.get("est_minutes", 30),
-                "exerciseIds": [e["id"] for e in ex_doc["exercises"]],
-            }
-        )
+        for cid in unit_cids:
+            u_num, l_idx, _ = flat_concepts[flat_pos]
+            cmeta = concepts_by_id[cid]
+            is_authored = cid in authored_set
+            is_default = cid == default_concept
+            active_cls = " active" if is_default else ""
+            footer_nav = render_footer_nav(flat_concepts, flat_pos, concepts_by_id)
+            flat_pos += 1
 
-        is_default = cid == default_concept
-        active_cls = " active" if is_default else ""
-        tabs_html.append(
-            f'<button type="button" class="lesson-tab{active_cls}" data-lesson-tab="{html.escape(cid)}">'
-            f'<span class="tab-kicker">第 {l_idx} 课 · v{lesson.get("version", 1)}</span>'
-            f'<span class="tab-title">{html.escape(cmeta["title"])}</span>'
-            f'<span class="tab-prog" data-lesson-prog="{html.escape(cid)}">0 / {len(ex_doc["exercises"])}</span>'
-            f'</button>'
-        )
+            if is_authored:
+                lesson = yaml.safe_load((pack_dir / "lessons" / f"{cid}.yaml").read_text(encoding="utf-8"))
+                ex_doc = yaml.safe_load((pack_dir / "exercises" / f"{cid}.yaml").read_text(encoding="utf-8"))
+                local_ex_map = {e["id"]: e for e in ex_doc["exercises"]}
+                for ex_id, ex_obj in local_ex_map.items():
+                    enriched = dict(ex_obj)
+                    enriched["lessonId"] = cid
+                    ex_map[ex_id] = enriched
 
-        prereq_titles = [
-            f"{concepts_by_id[pid]['title']}（{pid}）" if pid in concepts_by_id else pid
-            for pid in cmeta.get("prereq_ids", [])
-        ]
-        prereq_chain = " 、 ".join(prereq_titles) if prereq_titles else "无"
-        sources_str = " · ".join(f"{s['source']}（{s.get('section', '')}）" for s in lesson.get("sources", []))
+                lessons_meta.append(
+                    {
+                        "id": cid,
+                        "index": l_idx,
+                        "unitIndex": u_num,
+                        "title": cmeta["title"],
+                        "status": "authored",
+                        "version": lesson.get("version", 1),
+                        "estMinutes": cmeta.get("est_minutes", 30),
+                        "exerciseIds": [e["id"] for e in ex_doc["exercises"]],
+                    }
+                )
 
-        recap_blocks: list[str] = []
-        for rec in lesson.get("recap", []):
-            rcid = rec["concept"]
-            rtitle = concepts_by_id.get(rcid, {}).get("title", rcid)
-            jump_btn = (
-                f' <button type="button" class="btn btn-jump-lesson" data-jump-lesson="{html.escape(rcid)}">跳转复习本节 →</button>'
-                if rcid in concept_ids
-                else ""
-            )
-            recap_blocks.append(
-                f'<div class="recap-item">'
-                f'<div class="recap-head"><strong>前置回顾 · {html.escape(rtitle)}（{html.escape(rcid)}）</strong>{jump_btn}</div>'
-                f'<div>{md_block_to_html(rec.get("text", ""))}</div>'
-                f'</div>'
-            )
-        recap_html = f'<section class="card recap-card"><h3>前置衔接（Recap）</h3>{"".join(recap_blocks)}</section>' if recap_blocks else ""
+                tabs_in_unit.append(
+                    f'<button type="button" class="lesson-tab authored-tab{active_cls}" data-lesson-tab="{html.escape(cid)}">'
+                    f'<span class="tab-kicker">第 {l_idx} 课 · v{lesson.get("version", 1)}</span>'
+                    f'<span class="tab-title">{html.escape(cmeta["title"])}</span>'
+                    f'<span class="tab-prog" data-lesson-prog="{html.escape(cid)}">已做 0 / {len(ex_doc["exercises"])}</span>'
+                    f"</button>"
+                )
 
-        steps_html: list[str] = []
-        for s_idx, kp in enumerate(lesson["knowledge_points"], start=1):
-            probs_html = [render_exercise_slot(local_ex_map[pid]) for pid in kp["problems"]]
-            recalls = [e for e in ex_doc["exercises"] if e.get("role") == "recall" and e.get("knowledge_point") == kp["id"]]
-            recalls_html = [render_exercise_slot(r) for r in recalls]
-            kp_meta.append(
-                {
-                    "id": kp["id"],
-                    "lessonId": cid,
-                    "lessonIndex": l_idx,
-                    "lessonTitle": cmeta["title"],
-                    "step": s_idx,
-                    "title": kp["title"],
-                    "problemIds": list(kp["problems"]),
-                    "recallIds": [r["id"] for r in recalls],
-                }
-            )
-            steps_html.append(
-                f"""
-                <section class="card step" id="step-{html.escape(cid)}-{s_idx}">
-                  <div class="step-num">第 {l_idx} 课 Step {s_idx} · {html.escape(kp['id'])}</div>
-                  <h2>{html.escape(kp['title'])}</h2>
-                  <div class="tldr"><strong>本步要点 (TL;DR)</strong>{md_block_to_html(kp.get('tldr', ''))}</div>
-                  <div class="explain">{md_block_to_html(kp['explain'])}</div>
-                  <div class="worked"><h3>Worked Example</h3>{md_block_to_html(kp['worked'])}</div>
-                  <details class="problems-box" open id="problems-{html.escape(kp['id'])}">
-                    <summary>随堂与测验题库（{len(kp['problems'])} 题 · 自动计时与存档）</summary>
-                    {''.join(probs_html)}
-                  </details>
-                  <details class="problems-box" id="recalls-{html.escape(kp['id'])}">
-                    <summary>FSRS 间隔复习 Recall 题（{len(recalls)} 题 · 完成后可更新复习时间）</summary>
-                    {''.join(recalls_html)}
-                    <div class="recall-batch-bar">
-                      <button type="button" class="btn btn-primary btn-commit-recall" data-kp="{html.escape(kp['id'])}">提交本步 3 题 Recall 复习并更新下次复习时间</button>
-                      <span class="recall-batch-status" data-kp-recall-status="{html.escape(kp['id'])}"></span>
+                prereq_titles = [
+                    f"{concepts_by_id[pr['id']]['title']}（{pr['id']}）" if pr["id"] in concepts_by_id else pr["id"]
+                    for pr in cmeta.get("prereqs", [])
+                ]
+                prereq_chain = " 、 ".join(prereq_titles) if prereq_titles else "无"
+                sources_str = " · ".join(f"{s['source']}（{s.get('section', '')}）" for s in lesson.get("sources", []))
+
+                recap_blocks: list[str] = []
+                for rec in lesson.get("recap", []):
+                    rcid = rec["concept"]
+                    rtitle = concepts_by_id.get(rcid, {}).get("title", rcid)
+                    jump_btn = (
+                        f' <button type="button" class="btn btn-jump-lesson" data-jump-lesson="{html.escape(rcid)}">跳转复习本节 →</button>'
+                        if rcid in course_cid_set
+                        else ""
+                    )
+                    recap_blocks.append(
+                        f'<div class="recap-item">'
+                        f'<div class="recap-head"><strong>前置回顾 · {html.escape(rtitle)}（{html.escape(rcid)}）</strong>{jump_btn}</div>'
+                        f'<div>{md_block_to_html(rec.get("text", ""))}</div>'
+                        f"</div>"
+                    )
+                recap_html = (
+                    f'<section class="card recap-card"><h3>前置衔接（Recap）</h3>{"".join(recap_blocks)}</section>'
+                    if recap_blocks
+                    else ""
+                )
+
+                steps_html: list[str] = []
+                for s_idx, kp in enumerate(lesson["knowledge_points"], start=1):
+                    probs_html = [render_exercise_slot(local_ex_map[pid]) for pid in kp["problems"]]
+                    recalls = [
+                        e
+                        for e in ex_doc["exercises"]
+                        if e.get("role") == "recall" and e.get("knowledge_point") == kp["id"]
+                    ]
+                    recalls_html = [render_exercise_slot(r) for r in recalls]
+                    kp_meta.append(
+                        {
+                            "id": kp["id"],
+                            "lessonId": cid,
+                            "lessonIndex": l_idx,
+                            "lessonTitle": cmeta["title"],
+                            "step": s_idx,
+                            "title": kp["title"],
+                            "problemIds": list(kp["problems"]),
+                            "recallIds": [r["id"] for r in recalls],
+                        }
+                    )
+                    steps_html.append(
+                        f"""
+                        <section class="card step" id="step-{html.escape(cid)}-{s_idx}">
+                          <div class="step-num">第 {l_idx} 课 Step {s_idx} · {html.escape(kp['id'])}</div>
+                          <h2>{html.escape(kp['title'])}</h2>
+                          <div class="tldr"><strong>本步要点 (TL;DR)</strong>{md_block_to_html(kp.get('tldr', ''))}</div>
+                          <div class="explain">{md_block_to_html(kp['explain'])}</div>
+                          <div class="worked"><h3>Worked Example</h3>{md_block_to_html(kp['worked'])}</div>
+                          <details class="problems-box" open id="problems-{html.escape(kp['id'])}">
+                            <summary>随堂与测验题库（{len(kp['problems'])} 题 · 自动计时与存档）</summary>
+                            {''.join(probs_html)}
+                          </details>
+                          <details class="problems-box" id="recalls-{html.escape(kp['id'])}">
+                            <summary>FSRS 间隔复习 Recall 题（{len(recalls)} 题 · 完成后可更新复习时间）</summary>
+                            {''.join(recalls_html)}
+                            <div class="recall-batch-bar">
+                              <button type="button" class="btn btn-primary btn-commit-recall" data-kp="{html.escape(kp['id'])}">提交本步 {len(recalls)} 题 Recall 复习并更新下次复习时间</button>
+                              <span class="recall-batch-status" data-kp-recall-status="{html.escape(kp['id'])}"></span>
+                            </div>
+                          </details>
+                        </section>
+                        """
+                    )
+
+                final_ex = local_ex_map[lesson["final"]]
+                panes_html.append(
+                    f"""
+                    <div class="lesson-pane{active_cls}" data-lesson-pane="{html.escape(cid)}">
+                      <div class="meta">课程：{html.escape(course['title'])} · Unit {u_num}（{html.escape(unit['title'])}）· 第 {l_idx}/{len(flat_concepts)} 课 · 双源依据：{html.escape(sources_str)} · 预计 {cmeta.get('est_minutes', 30)} 分钟</div>
+                      <h1>{html.escape(cmeta['title'])}</h1>
+                      <section class="card">
+                        <div class="meta">直接前置依赖：{html.escape(prereq_chain)}</div>
+                        {md_block_to_html(lesson['where_this_fits'])}
+                      </section>
+                      {recap_html}
+                      {''.join(steps_html)}
+                      <section class="card">
+                        <h3>Explain it（课末自评总结题）</h3>
+                        {render_exercise_slot(final_ex)}
+                      </section>
+                      <section class="card">
+                        <h3>本节总结</h3>
+                        {md_block_to_html(lesson['summary'])}
+                      </section>
+                      {footer_nav}
                     </div>
-                  </details>
-                </section>
-                """
-            )
+                    """
+                )
+            else:
+                obj_list = list(cmeta.get("objectives") or [])
+                lessons_meta.append(
+                    {
+                        "id": cid,
+                        "index": l_idx,
+                        "unitIndex": u_num,
+                        "title": cmeta["title"],
+                        "status": "stub",
+                        "version": 0,
+                        "estMinutes": cmeta.get("est_minutes", 15),
+                        "exerciseIds": [],
+                    }
+                )
+                tabs_in_unit.append(
+                    f'<button type="button" class="lesson-tab stub-tab{active_cls}" data-lesson-tab="{html.escape(cid)}">'
+                    f'<span class="tab-kicker">第 {l_idx} 课 · 待编写 (Stub)</span>'
+                    f'<span class="tab-title">{html.escape(cmeta["title"])}</span>'
+                    f'<span class="tab-prog" data-lesson-stub="{html.escape(cid)}">预计 {cmeta.get("est_minutes", 15)} 分钟 · {len(obj_list)} 目标</span>'
+                    f"</button>"
+                )
 
-        final_ex = local_ex_map[lesson["final"]]
-        nav_btns: list[str] = []
-        if l_idx > 1:
-            prev_cid = concept_ids[l_idx - 2]
-            prev_title = concepts_by_id[prev_cid]["title"]
-            nav_btns.append(f'<button type="button" class="btn btn-jump-lesson" data-jump-lesson="{html.escape(prev_cid)}">← 上一课：{html.escape(prev_title)}</button>')
-        if l_idx < len(concept_ids):
-            next_cid = concept_ids[l_idx]
-            next_title = concepts_by_id[next_cid]["title"]
-            nav_btns.append(f'<button type="button" class="btn btn-primary btn-jump-lesson" data-jump-lesson="{html.escape(next_cid)}">下一课：{html.escape(next_title)} →</button>')
+                prereq_items_html: list[str] = []
+                for pr in cmeta.get("prereqs") or []:
+                    pid = pr["id"]
+                    pstrength = "软前置 (soft)" if pr.get("strength") == "soft" else "硬前置 (hard)"
+                    pmeta = concepts_by_id.get(pid, {})
+                    ptitle = pmeta.get("title", pid)
+                    p_is_authored = pid in authored_set
+                    status_pill = (
+                        '<span class="pill pill-ok">已开放正课</span>'
+                        if p_is_authored
+                        else '<span class="pill pill-new">待编写 (Stub)</span>'
+                    )
+                    jump_html = (
+                        f'<button type="button" class="btn btn-jump-lesson" data-jump-lesson="{html.escape(pid)}">'
+                        f"{'跳转复习前置课 →' if p_is_authored else '查看前置 Stub 契约 →'}</button>"
+                        if pid in course_cid_set
+                        else ""
+                    )
+                    prereq_items_html.append(
+                        f'<li class="stub-prereq-row">'
+                        f'<span><strong>{html.escape(ptitle)}</strong>（<code>{html.escape(pid)}</code>）· {html.escape(pstrength)} {status_pill}</span>'
+                        f"{jump_html}"
+                        f"</li>"
+                    )
+                prereqs_block = (
+                    f'<ul class="stub-list">{"".join(prereq_items_html)}</ul>'
+                    if prereq_items_html
+                    else '<p class="meta">无前置依赖。</p>'
+                )
 
-        lessons_sections_html.append(
-            f"""
-            <div class="lesson-pane{active_cls}" data-lesson-pane="{html.escape(cid)}">
-              <div class="meta">课程：{html.escape(course['title'])}（{html.escape(unit1['title'])} · 第 {l_idx}/3 课） · 双源依据：{html.escape(sources_str)} · 预计 {cmeta.get('est_minutes', 30)} 分钟</div>
-              <h1>{html.escape(cmeta['title'])}</h1>
-              <section class="card">
-                <div class="meta">直接前置依赖：{html.escape(prereq_chain)}</div>
-                {md_block_to_html(lesson['where_this_fits'])}
-              </section>
-              {recap_html}
-              {''.join(steps_html)}
-              <section class="card">
-                <h3>Explain it（课末自评总结题）</h3>
-                {render_exercise_slot(final_ex)}
-              </section>
-              <section class="card">
-                <h3>本节总结</h3>
-                {md_block_to_html(lesson['summary'])}
-              </section>
-              <div class="lesson-footer-nav">{''.join(nav_btns)}</div>
-            </div>
-            """
+                obj_items_html = [
+                    f'<li><span class="tag">{html.escape(o.get("dimension", "conceptual"))}</span> {md_block_to_html(o.get("text", ""))}</li>'
+                    for o in obj_list
+                ]
+                objectives_block = (
+                    f'<ul class="stub-list">{"".join(obj_items_html)}</ul>'
+                    if obj_items_html
+                    else '<p class="meta">暂未规划目标。</p>'
+                )
+
+                matched_terms = [t for t in notation_terms if cid in (t.get("introduced_by") or [])]
+                notation_block = (
+                    '<ul class="stub-list">'
+                    + "".join(
+                        f'<li><strong>{html.escape(t.get("label", t["id"]))}</strong>（<code>{html.escape(t["id"])}</code>）</li>'
+                        for t in matched_terms
+                    )
+                    + "</ul>"
+                    if matched_terms
+                    else '<p class="meta">本节未新增独立符号，沿用前置符号契约（<code>notation.yaml</code>）。</p>'
+                )
+
+                panes_html.append(
+                    f"""
+                    <div class="lesson-pane stub-pane{active_cls}" data-lesson-pane="{html.escape(cid)}">
+                      <div class="meta">课程：{html.escape(course['title'])} · Unit {u_num}（{html.escape(unit['title'])}）· 第 {l_idx}/{len(flat_concepts)} 课 · 难度 {cmeta.get('difficulty', 2)} · 预计 {cmeta.get('est_minutes', 15)} 分钟</div>
+                      <div class="stub-title-row">
+                        <h1>{html.escape(cmeta['title'])}</h1>
+                        <span class="pill pill-stub">STATUS: STUB（契约已就绪，正课待填充）</span>
+                      </div>
+                      <section class="card stub-contract-card">
+                        <h3>规划描述与单元定位</h3>
+                        <div>{md_block_to_html(cmeta.get('description', ''))}</div>
+                        <p class="meta">所在单元说明：{html.escape(unit.get('intro', ''))}</p>
+                      </section>
+                      <section class="card">
+                        <h3>前置依赖链（Prerequisites）</h3>
+                        {prereqs_block}
+                      </section>
+                      <section class="card">
+                        <h3>规划学习目标（Objectives · {len(obj_list)} 项）</h3>
+                        {objectives_block}
+                      </section>
+                      <section class="card">
+                        <h3>符号准入契约（<code>notation.yaml</code> 注册）</h3>
+                        {notation_block}
+                      </section>
+                      <section class="card">
+                        <h3>独立填充指引（解耦工作流）</h3>
+                        <ol>
+                          <li>编写正课 <code>lessons/{html.escape(cid)}.yaml</code> 与配套题库 <code>exercises/{html.escape(cid)}.yaml</code>（以及可选 <code>tools/svgs/{html.escape(cid)}.py</code> 并运行 <code>python tools/build_svgs.py --concept {html.escape(cid)}</code>）。</li>
+                          <li>在 <code>concepts/magnetic-resonance.yaml</code> 中将 <code>{html.escape(cid)}</code> 的 <code>status</code> 从 <code>stub</code> 改为 <code>authored</code>。</li>
+                          <li>运行 <code>python tools/academy_check.py check -v</code> 与 <code>python tools/render_preview.py</code>，无需改动渲染器或既有章节即可开放交互课程与 FSRS 卡片。</li>
+                        </ol>
+                      </section>
+                      {footer_nav}
+                    </div>
+                    """
+                )
+
+        unit_nav_groups_html.append(
+            f'<div class="unit-group">'
+            f'<div class="unit-group-head">'
+            f'<strong>Unit {u_idx} · {html.escape(unit["title"])}</strong>'
+            f'<span class="meta">已开放 {authored_in_unit} / {len(unit_cids)} 课</span>'
+            f"</div>"
+            f'<div class="unit-switcher">{"".join(tabs_in_unit)}</div>'
+            f"</div>"
         )
 
     ex_json = json.dumps(ex_map, ensure_ascii=False).replace("</", "<\\/")
@@ -285,7 +458,7 @@ def build_html(pack_dir: Path, default_concept: str = "spin-zeeman-and-drive") -
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{html.escape(course['title'])} · Unit 1 全三课互动学习与 FSRS 预测预览</title>
+  <title>{html.escape(course['title'])} · 全课程地图（已开放 {len(authored_set)}/{len(flat_concepts)} 课）与 FSRS 预测预览</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" />
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
@@ -293,18 +466,34 @@ def build_html(pack_dir: Path, default_concept: str = "spin-zeeman-and-drive") -
   <style>
     :root {{ --bg:#f8fafc; --card:#ffffff; --text:#0f172a; --muted:#64748b; --border:#e2e8f0; --accent:#2563eb; --ok:#16a34a; --warn:#d97706; --bad:#dc2626; }}
     body {{ margin:0; background:var(--bg); color:var(--text); font-family:ui-sans-serif,system-ui,-apple-system,sans-serif; line-height:1.75; }}
-    main {{ max-width:940px; margin:20px auto; padding:0 18px 90px; }}
+    main {{ max-width:980px; margin:20px auto; padding:0 18px 90px; }}
     .meta {{ color:var(--muted); font-size:13px; margin-bottom:8px; }}
     h1 {{ font-size:28px; margin:4px 0 12px; }}
-    .unit-switcher {{ display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; margin:0 0 14px; }}
-    .lesson-tab {{ display:flex; flex-direction:column; align-items:flex-start; gap:3px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:#fff; cursor:pointer; text-align:left; transition:border-color .15s,background .15s,box-shadow .15s; }}
+    .course-map {{ display:flex; flex-direction:column; gap:10px; margin:0 0 14px; }}
+    .unit-group {{ background:#fff; border:1px solid var(--border); border-radius:10px; padding:10px 12px; }}
+    .unit-group-head {{ display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; margin-bottom:8px; font-size:13px; }}
+    .unit-group-head .meta {{ margin:0; }}
+    .unit-switcher {{ display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:8px; }}
+    .lesson-tab {{ display:flex; flex-direction:column; align-items:flex-start; gap:3px; padding:9px 11px; border:1px solid var(--border); border-radius:9px; background:#fff; cursor:pointer; text-align:left; transition:border-color .15s,background .15s,box-shadow .15s; }}
     .lesson-tab:hover {{ border-color:var(--accent); background:#f8fbff; }}
     .lesson-tab.active {{ border-color:var(--accent); background:#eff6ff; box-shadow:0 2px 10px rgba(37,99,235,.12); }}
+    .lesson-tab.stub-tab {{ border-style:dashed; background:#f8fafc; color:#475569; }}
+    .lesson-tab.stub-tab .tab-kicker {{ color:#64748b; }}
+    .lesson-tab.stub-tab .tab-title {{ color:#334155; }}
+    .lesson-tab.stub-tab.active {{ border-color:#64748b; background:#f1f5f9; box-shadow:0 2px 8px rgba(71,85,105,.12); }}
     .tab-kicker {{ font-size:11px; font-weight:700; color:var(--accent); text-transform:uppercase; }}
-    .tab-title {{ font-size:14px; font-weight:700; color:var(--text); line-height:1.35; }}
+    .tab-title {{ font-size:13.5px; font-weight:700; color:var(--text); line-height:1.35; }}
     .tab-prog {{ font-size:11px; color:var(--muted); }}
     .lesson-pane {{ display:none; }}
     .lesson-pane.active {{ display:block; }}
+    .stub-title-row {{ display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-bottom:6px; }}
+    .stub-title-row h1 {{ margin:0; }}
+    .pill-stub {{ background:#fef3c7; color:#92400e; border:1px dashed #f59e0b; padding:3px 10px; border-radius:99px; font-size:12px; font-weight:700; }}
+    .stub-contract-card {{ border-left:3px solid #94a3b8; background:#fcfcfd; }}
+    .stub-list {{ list-style:none; padding-left:0; margin:6px 0 0; display:flex; flex-direction:column; gap:8px; }}
+    .stub-list li {{ padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:#fff; font-size:14px; }}
+    .stub-list li p {{ display:inline; margin:0; }}
+    .stub-prereq-row {{ display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px; }}
     .scorebar {{ position:sticky; top:0; z-index:30; background:rgba(255,255,255,.96); backdrop-filter:blur(8px); border:1px solid var(--border); border-radius:10px; padding:10px 14px; margin-bottom:14px; display:flex; flex-wrap:wrap; gap:10px; justify-content:space-between; align-items:center; font-size:13px; box-shadow:0 2px 8px rgba(15,23,42,.05); }}
     .score-stats {{ display:flex; flex-wrap:wrap; gap:12px; align-items:center; }}
     .card {{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:22px 24px; margin:18px 0; }}
@@ -368,27 +557,27 @@ def build_html(pack_dir: Path, default_concept: str = "spin-zeeman-and-drive") -
     .lesson-footer-nav {{ display:flex; justify-content:space-between; gap:10px; margin-top:20px; flex-wrap:wrap; }}
     .step-math {{ margin:6px 0 10px 16px; }}
     .katex-display {{ overflow-x:auto; overflow-y:hidden; padding:4px 0; }}
-    @media (max-width: 720px) {{ .unit-switcher {{ grid-template-columns:1fr; }} .forecast-strip {{ grid-template-columns:repeat(4, minmax(0, 1fr)); }} .fsrs-table {{ display:block; overflow-x:auto; }} }}
+    @media (max-width: 720px) {{ .forecast-strip {{ grid-template-columns:repeat(4, minmax(0, 1fr)); }} .fsrs-table {{ display:block; overflow-x:auto; }} }}
   </style>
 </head>
 <body>
 <main>
   <div class="scorebar">
-    <div><strong>Open Academy · Unit 1 全三课互动学习</strong> · 双教材集成 · <code>localStorage</code> 自动存档</div>
+    <div><strong>Open Academy · {html.escape(course['title'])}（已开放 {len(authored_set)}/{len(flat_concepts)} 课）</strong> · <code>localStorage</code> 自动存档</div>
     <div class="score-stats">
-      <span id="score-readout">Unit 1：自动判题 0 / 63 · 自评 0 / 12</span>
+      <span id="score-readout">已开放 {len(authored_set)}/{len(flat_concepts)} 课：自动判题 0 / {sum(1 for e in ex_map.values() if e['type'] != 'explain')} · 自评 0 / {sum(1 for e in ex_map.values() if e['type'] == 'explain')}</span>
       <span id="lesson-readout">当前课：0 / 25</span>
       <span id="time-readout">累计作答 0s</span>
-      <span id="due-readout">今日到期卡片：0 / 12</span>
+      <span id="due-readout">今日到期卡片：0 / {len(kp_meta) + 3}</span>
     </div>
   </div>
 
-  <nav class="unit-switcher" aria-label="Unit 1 课程切换">
-    {''.join(tabs_html)}
+  <nav class="course-map" aria-label="全课程三单元导航">
+    {''.join(unit_nav_groups_html)}
   </nav>
 
   <details class="dash-panel" open>
-    <summary>Unit 1 全局学习进度与 12 卡 FSRS-5 复习时间预测面板（目标保持率 90% · 最长间隔 60 天）</summary>
+    <summary>全局学习进度与 FSRS-5 复习时间预测面板（目标保持率 90% · 最长间隔 60 天）</summary>
     <div class="dash-controls">
       <span class="clock-pill" id="sim-clock-readout">当前参考时间：真实时间</span>
       <button type="button" class="btn" data-shift-days="1">时间快进 +1 天</button>
@@ -402,12 +591,12 @@ def build_html(pack_dir: Path, default_concept: str = "spin-zeeman-and-drive") -
       <input type="file" id="import-file-input" accept="application/json" style="display:none" />
       <button type="button" class="btn btn-danger" id="btn-reset-all">重置全部进度</button>
     </div>
-    <div class="meta">说明：Unit 1 共 3 课、9 个知识点（9 张 KP 卡 + 3 张维度卡 = 12 张 FSRS 卡）。做完某步全部 5 题自动为该知识点建卡；后续可通过该步的 3 题 Recall 批量提交推进 FSRS 排程（使用提示、重试或超时 <code>durationMs &gt; targetSeconds</code> 会从 Good 降级为 Hard）。</div>
+    <div class="meta">说明：当前已开放 {len(authored_set)} 门正课（{len(kp_meta)} 张知识点 KP 卡 + 3 张维度卡 = {len(kp_meta) + 3} 张 FSRS 卡），其余 {len(flat_concepts) - len(authored_set)} 课以 Stub 契约卡占位；后续任意 Stub 课转为 <code>authored</code> 后重新渲染即可自动加入互动题库与 FSRS 排程。</div>
     <div class="forecast-strip" id="forecast-strip"></div>
     <table class="fsrs-table">
       <thead>
         <tr>
-          <th>记忆卡片（9 知识点 / 3 维度）</th>
+          <th>记忆卡片（已开放知识点 / 维度）</th>
           <th>状态</th>
           <th>稳定度 S / 难度 D</th>
           <th>当前保持率 R(t)</th>
@@ -420,7 +609,7 @@ def build_html(pack_dir: Path, default_concept: str = "spin-zeeman-and-drive") -
     </table>
   </details>
 
-  {''.join(lessons_sections_html)}
+  {''.join(panes_html)}
 </main>
 <script>
 const EX_MAP = {ex_json};
@@ -598,7 +787,7 @@ function reviewActivityRating(items) {{
 }}
 
 // ============================================================================
-// Persistent State Management (localStorage) & Lesson Switching
+// Persistent State Management (localStorage) & Multi-Unit Lesson Switching
 // ============================================================================
 function makeDefaultState() {{
   return {{
@@ -640,10 +829,14 @@ function switchLesson(lessonId, scrollTop = false) {{
   document.querySelectorAll("[data-lesson-tab]").forEach(btn => {{
     btn.classList.toggle("active", btn.dataset.lessonTab === lessonId);
   }});
+  let activePane = null;
   document.querySelectorAll("[data-lesson-pane]").forEach(pane => {{
-    pane.classList.toggle("active", pane.dataset.lessonPane === lessonId);
+    const isHit = pane.dataset.lessonPane === lessonId;
+    pane.classList.toggle("active", isHit);
+    if (isHit) activePane = pane;
   }});
   renderDashboard();
+  if (activePane) window.__renderAllMath(activePane);
   if (scrollTop && typeof window.scrollTo === "function") {{
     window.scrollTo({{ top: 0, behavior: "smooth" }});
   }}
@@ -687,9 +880,9 @@ function cardSpecs() {{
     }});
   }}
   const dimNames = {{
-    conceptual: "Unit 1 维度 · 概念理解 (conceptual)",
-    math: "Unit 1 维度 · 数学推导 (math)",
-    transfer: "Unit 1 维度 · 迁移应用 (transfer)"
+    conceptual: "已开放维度 · 概念理解 (conceptual)",
+    math: "已开放维度 · 数学推导 (math)",
+    transfer: "已开放维度 · 迁移应用 (transfer)"
   }};
   for (const dim of ["conceptual", "math", "transfer"]) {{
     const dimIds = Object.values(EX_MAP).filter(e => e.dimension === dim && e.role !== "recall").map(e => e.id);
@@ -787,15 +980,22 @@ function renderDashboard() {{
   const autoOk = autoAll.filter(e => getExState(e.id).correct === true).length;
   const explainOk = explainAll.filter(e => getExState(e.id).correct !== null).length;
   const totalSec = Math.round(Object.values(STATE.exercises).reduce((acc, s) => acc + (s.durationMs || 0), 0) / 1000);
+  const authoredCount = LESSONS_META.filter(l => l.status === "authored").length;
 
-  document.getElementById("score-readout").textContent = `Unit 1：自动判题 ${{autoOk}} / ${{autoAll.length}} · 自评 ${{explainOk}} / ${{explainAll.length}}`;
+  document.getElementById("score-readout").textContent =
+    `已开放 ${{authoredCount}}/${{LESSONS_META.length}} 课：自动判题 ${{autoOk}} / ${{autoAll.length}} · 自评 ${{explainOk}} / ${{explainAll.length}}`;
   document.getElementById("time-readout").textContent = `累计作答 ${{totalSec}}s`;
 
   const curLesson = LESSONS_META.find(l => l.id === STATE.activeLesson) || LESSONS_META[0];
-  const curDone = curLesson.exerciseIds.filter(id => getExState(id).correct !== null).length;
-  document.getElementById("lesson-readout").textContent = `第 ${{curLesson.index}} 课：${{curDone}} / ${{curLesson.exerciseIds.length}}`;
+  if (curLesson.status === "stub") {{
+    document.getElementById("lesson-readout").textContent = `第 ${{curLesson.index}} 课（Unit ${{curLesson.unitIndex}}）：待编写 Stub`;
+  }} else {{
+    const curDone = curLesson.exerciseIds.filter(id => getExState(id).correct !== null).length;
+    document.getElementById("lesson-readout").textContent = `第 ${{curLesson.index}} 课（Unit ${{curLesson.unitIndex}}）：${{curDone}} / ${{curLesson.exerciseIds.length}}`;
+  }}
 
   for (const lm of LESSONS_META) {{
+    if (lm.status !== "authored") continue;
     const el = document.querySelector(`[data-lesson-prog="${{lm.id}}"]`);
     if (el) {{
       const done = lm.exerciseIds.filter(id => getExState(id).correct !== null).length;
@@ -1292,7 +1492,7 @@ document.querySelectorAll(".btn-commit-recall").forEach(btn => {{
     const statusEl = document.querySelector(`[data-kp-recall-status="${{kpId}}"]`);
     const missing = kp.recallIds.filter(rid => getExState(rid).correct === null);
     if (missing.length > 0) {{
-      statusEl.textContent = `请先完成本步全部 3 道 Recall 题（还差 ${{missing.join("、")}}，第 1 题请展开评分清单并点「按当前勾选提交自评」）。`;
+      statusEl.textContent = `请先完成本步全部 ${{kp.recallIds.length}} 道 Recall 题（还差 ${{missing.join("、")}}，第 1 题请展开评分清单并点「按当前勾选提交自评」）。`;
       return;
     }}
     const nowMs = virtualNowMs();

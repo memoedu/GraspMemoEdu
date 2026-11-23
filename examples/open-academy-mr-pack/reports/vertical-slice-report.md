@@ -7,7 +7,7 @@
             - 第 1 课：[lessons/spin-zeeman-and-drive.yaml](../lessons/spin-zeeman-and-drive.yaml)（`version: 1`，2 幅 SVG）与 [exercises/spin-zeeman-and-drive.yaml](../exercises/spin-zeeman-and-drive.yaml)（25 题，涵盖 15 道课堂与测验题、9 道 FSRS `recall` 题、课末总结 `zeeman-final-explain`）
             - 第 2 课：[lessons/rotating-wave-and-frame.yaml](../lessons/rotating-wave-and-frame.yaml)（`version: 4`，2 幅 SVG）与 [exercises/rotating-wave-and-frame.yaml](../exercises/rotating-wave-and-frame.yaml)（25 题，`rwa-final-explain`）
             - 第 3 课：[lessons/su2-evolution-and-rabi-prob.yaml](../lessons/su2-evolution-and-rabi-prob.yaml)（`version: 1`，2 幅 SVG）与 [exercises/su2-evolution-and-rabi-prob.yaml](../exercises/su2-evolution-and-rabi-prob.yaml)（25 题，`rabi-final-explain`）
-        - 校验工具与交互预览生成：[tools/academy_check.py](../tools/academy_check.py)、[tools/build_svgs.py](../tools/build_svgs.py)、[tools/verify_math.py](../tools/verify_math.py)、[tools/render_preview.py](../tools/render_preview.py)
+        - 校验工具与按课解耦 SVG 模块：[tools/academy_check.py](../tools/academy_check.py)、[tools/build_svgs.py](../tools/build_svgs.py)、[tools/svgs/_geom.py](../tools/svgs/_geom.py)、[tools/svgs/spin-zeeman-and-drive.py](../tools/svgs/spin-zeeman-and-drive.py)、[tools/svgs/rotating-wave-and-frame.py](../tools/svgs/rotating-wave-and-frame.py)、[tools/svgs/su2-evolution-and-rabi-prob.py](../tools/svgs/su2-evolution-and-rabi-prob.py)、[tools/verify_math.py](../tools/verify_math.py)、[tools/render_preview.py](../tools/render_preview.py)
         - 先修依赖链导出与生成的交互预览：[reports/_prereqs_l1.txt](./_prereqs_l1.txt)、[reports/_prereqs_l2.txt](./_prereqs_l2.txt)、[reports/_prereqs_l3.txt](./_prereqs_l3.txt)、[preview/index.html](../preview/index.html)、[preview/rotating-wave-and-frame.html](../preview/rotating-wave-and-frame.html)
 
 2. **双教材对照集成架构与符号契约**
@@ -20,7 +20,7 @@
         - 外部先修基线 `qm-spin-and-operators-foundation`（`status: stub`）显式覆盖 $-\vec{\boldsymbol{\mu}}\cdot\boldsymbol{B}$ 与 $-\hat{\boldsymbol{d}}\cdot\boldsymbol{E}$ 偶极耦合、二阶常系数线性微分方程、$(\vec{\boldsymbol{n}}\cdot\vec{\boldsymbol{\sigma}})^2 = \mathbb{1}$ 泡利指数公式与圆偏振角动量约定。
 
 3. **自动化校验与交互网页验证结果**
-    - **SVG 程序化坐标生成与规则校验（[tools/build_svgs.py](../tools/build_svgs.py)）**：Unit 1 全部 6 幅 `<svg>`（`svg_l1_1.svg`、`svg_l1_2.svg`、`svg1.svg`、`svg2.svg`、`svg_l3_1.svg`、`svg_l3_2.svg`）均输出 `validate -> OK`。
+    - **按课解耦 SVG 自动注入与防漂移门禁（[tools/build_svgs.py](../tools/build_svgs.py) & `tools/svgs/<concept_id>.py`）**：将 6 幅图拆至 3 个互不干扰的 `tools/svgs/<concept_id>.py` 模块（共用 `_geom.py`）；`build_svgs.py` 支持 `--concept <id>` 单课构建、原位无损更新对应 `lessons/<concept_id>.yaml` 内嵌代码块，并在 `--check` 与 [tools/academy_check.py](../tools/academy_check.py) 中强制校验代码与 YAML 零漂移，均输出 `validate -> OK` 与 `YAML sync -> OK`。
     - **Open Academy 静态规则与字数检查（[tools/academy_check.py](../tools/academy_check.py) `check -v`）**
         - 最终修订后退出码 `0`：**0 errors，0 warnings**（全部 21 处词数检查均在规范区间内）。
         - 第 1 课实测：`where_this_fits eq=111`，三步 `tldr` 为 `44 / 42 / 36`，三步 `explain` 为 `209 / 236 / 248`。
@@ -29,9 +29,10 @@
     - **符号推导、ODE 等价、例题与 75 题模板验证（[tools/verify_math.py](../tools/verify_math.py)）**
         - SymPy 与 NumPy 核验 Unit 1 式 `(1.1)–(1.16)`：包括 $2S_z=\hat{\sigma}_3$、$2S_x=\hat{\sigma}_++\hat{\sigma}_-$、$\Omega=V/\hbar$、三维 Rodrigues 旋转、升降算符变换、$SU(2)$ 演化算符 $U_I$、$U_I|1\rangle$ 括号勘误校验、共振 $\pi/2$ 脉冲叠加态 $\frac{1}{\sqrt{2}}(|1\rangle - i e^{-i\varphi}|0\rangle)$、Gerry & Knight 耦合概率幅 ODE 与二阶方程 $\ddot{C}_e - i\delta\dot{C}_e + \frac{\Omega^2}{4}C_e = 0$ 解析解等价性、反转度 $W(t)=-\cos(\Omega t)$、以及 JC 模型 $2\times 2$ 子空间量子化拉比频率 $\Omega(n)=2\lambda\sqrt{n+1}$ 与真空拉比频率 $\Omega(0)=2\lambda$。
         - 核验全部 3 课的 Worked Examples 数值计算（无嵌入式 Python 块）及全部 75 道练习（第 1–3 课各 25 题，含全数参数化模板、表达式变量自由度与正则校验）。
-    - **多课交互网页预览与 Node `vm` 运行验证（[tools/render_preview.py](../tools/render_preview.py)）**
-        - 同时生成 [preview/index.html](../preview/index.html)（默认第 1 课）与 [preview/rotating-wave-and-frame.html](../preview/rotating-wave-and-frame.html)（默认第 2 课），两页共享 Unit 1 顶部三课切换标签、`Recap` 跨课跳转按钮、`localStorage` 状态键 `open_academy_mr_progress_v1` 与 12 张 FSRS-5 复习时间预测卡片（9 张 KP 卡 + 3 张维度卡）及「快进到最早到期卡」控制。
-        - Node `vm` 实测确认两份 HTML 各自包含全部 `75` 个题目 DOM 槽位、`EX_MAP`（75 题）、`KP_META`（9 步）、`LESSONS_META`（3 课）及 `cardSpecs()`（12 张 FSRS 卡片）无语法或运行时错误。
+    - **全三单元 `authored` / `stub` 自适应网页与 Node `vm` 运行验证（[tools/render_preview.py](../tools/render_preview.py)）**
+        - 自动遍历 `courses/mr-fundamentals.yaml` 全部 3 个 Unit（共 10 节概念：3 节 `authored` 互动正课 + 7 节 `stub` 契约预览卡）；点击任意 Stub 课可查看描述、可跳转前置依赖链、规划学习目标、`notation.yaml` 注册符号及独立填充指引。
+        - 同时生成 [preview/index.html](../preview/index.html)（默认第 1 课）与 [preview/rotating-wave-and-frame.html](../preview/rotating-wave-and-frame.html)（默认第 2 课），共享 `localStorage` 状态键 `open_academy_mr_progress_v1`、12 张 FSRS-5 预测卡片（9 张 KP 卡 + 3 张维度卡）与「快进到最早到期卡」控制。
+        - Node `vm` 实测确认两份 HTML 均包含 3 个单元导航组、10 个课标签、7 个 Stub 契约面板、75 个题目 DOM 槽位、`EX_MAP`（75）、`KP_META`（9）、`LESSONS_META`（10）及 `cardSpecs()`（12 张卡片），切换至 `single-qubit-gates` Stub 面板与已开放正课均无报错。
 
 4. **独立子代理审计与两轮盲测修订闭环**
     - **先修一致性审计员（`e68a87c6`）**：确认全三课 75 题均落在先修边界内且未向 Unit 2/3 超纲泄露；精准捕获并修复第 3 课共振 $\pi/2$ 脉冲末态相位误作 $e^{+i\varphi}$ 的符号矛盾（已修正为 $\frac{1}{\sqrt{2}}(|1\rangle - i e^{-i\varphi}|0\rangle)$ 并在 `verify_math.py` 加入符号断言），并将课程级 `est_minutes` 从 `18 / 20 / 20` 调整为 `25 / 28 / 32`。

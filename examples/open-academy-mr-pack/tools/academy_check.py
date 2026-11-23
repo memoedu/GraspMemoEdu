@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import itertools
 import math
 import os
@@ -710,6 +711,37 @@ def check_pack(pack_dir: Path, verbose: bool = False) -> tuple[list[Issue], list
                 err = validate_svg_block(match.group(2))
                 if err:
                     issues.append(Issue(lfile, lcon, f"invalid SVG: {err}"))
+
+        # Anti-drift check against per-concept SVG generator module tools/svgs/<concept_id>.py
+        svg_mod_path = pack_dir / "tools" / "svgs" / f"{lcon}.py"
+        if svg_mod_path.is_file():
+            svgs_dir_str = str(svg_mod_path.parent)
+            if svgs_dir_str not in sys.path:
+                sys.path.insert(0, svgs_dir_str)
+            spec = importlib.util.spec_from_file_location(f"check_svg_{lcon.replace('-', '_')}", svg_mod_path)
+            if spec and spec.loader:
+                svg_mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(svg_mod)
+                kp_svgs = getattr(svg_mod, "KP_SVGS", {})
+                kp_by_id = {kp["id"]: kp for kp in kps}
+                for kpid, gen_fn in kp_svgs.items():
+                    if kpid not in kp_by_id:
+                        issues.append(Issue(lfile, lcon, f'tools/svgs/{lcon}.py references unknown KP "{kpid}"'))
+                        continue
+                    exp_svg = "\n".join(line.rstrip() for line in gen_fn().strip().splitlines())
+                    m = SVG_FENCE_RE.search(kp_by_id[kpid].get("explain") or "")
+                    if not m:
+                        issues.append(Issue(lfile, kpid, f"missing embedded ```svg``` block expected by tools/svgs/{lcon}.py"))
+                        continue
+                    emb_svg = "\n".join(line.rstrip() for line in m.group(2).strip().splitlines())
+                    if emb_svg != exp_svg:
+                        issues.append(
+                            Issue(
+                                lfile,
+                                kpid,
+                                f"embedded SVG drifted from tools/svgs/{lcon}.py; run python tools/build_svgs.py --concept {lcon}",
+                            )
+                        )
 
     # Exercise reference checks & recall checks
     for eid, (econ, efile, ex) in exercises_by_id.items():
