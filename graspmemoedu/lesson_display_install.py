@@ -104,7 +104,7 @@ def repair_assets(source):
     return assets, code
 
 
-def verify_topic(path, tid, catalog, data):
+def verify_topic(path, tid, catalog, data, *, previous=None):
     topic = catalog.topics[tid]
     spec = read_display(path)
     if (set(spec) - {'tex_repairs'} != {'schema', 'topic_id', 'version', 'values'}
@@ -115,12 +115,19 @@ def verify_topic(path, tid, catalog, data):
     variants = [bank.question(qid, active) for qid in bank.load(active)['questions']] if active else []
     source = {display_key(kind, row[name]): (kind, row[name]) for row, name, kind in lesson_fields(topic, variants)}
     repairs = spec.get('tex_repairs', {})
+    # A display-only repair can carry archived translations that still serve
+    # pinned question revisions. Their previously installed bytes must match.
+    carried_values = (repairs and previous and
+                      all(previous.get(field) == spec[field] for field in ('topic_id', 'version', 'values')))
     if (not isinstance(spec['values'], dict) or not isinstance(repairs, dict) or not (spec['values'] or repairs)
-            or not (spec['values'].keys() | repairs.keys()) <= source.keys()):
+            or not repairs.keys() <= source.keys()
+            or not carried_values and not spec['values'].keys() <= source.keys()):
         raise ValueError(f'Localization contains invalid source bindings: {tid}')
     for key, value in spec['values'].items():
         if not isinstance(value, str) or not value.strip() or '\x00' in value or len(value) > 2_000_000:
             raise ValueError(f'Invalid lesson display value: {tid}')
+        if key not in source:
+            continue  # The byte-identical archived entry was checked above.
         kind, original = source[key]
         if kind == 'title' and ('<' in value or '>' in value):
             raise ValueError(f'Expected plain text: {tid}')
@@ -182,7 +189,7 @@ def install(package, data):
                     row['id'] for cid in set(manifest['courses']) & ML_COURSES for row in catalog.course(cid)['topics']
                 }:
                     raise ValueError('TeX recovery exceeds the Machine Learning scope')
-                verify_topic(path, path.stem, catalog, data)
+                verify_topic(path, path.stem, catalog, data, previous=read_display(root / DIRECTORY / name))
         if all((root / DIRECTORY / name).is_file() and digest((root / DIRECTORY / name).read_bytes()) == checksum
                for name, checksum in manifest['files'].items()):
             return {'status': 'unchanged', 'generation': json.loads(previous)['generation']}
