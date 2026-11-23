@@ -220,6 +220,19 @@ class BankPresentationTests(unittest.TestCase):
         self.assertEqual(json.loads(key), {'term': ['x+3']})
         self.assertEqual(json.loads(response), {'term': '3+x'})
 
+    def test_worked_example_correction_without_a_source_interaction(self):
+        question = self.course['modules'][0]['example']
+        ident = question['id']
+        self.assertNotIn('interaction', question)
+        self.bank['questions'][ident] = {'source_sha256': digest(question), 'question': question['question'],
+                                         'html': question['html'], 'reference_answer': question['reference_answer'],
+                                         'constraints': question['constraints'],
+                                         'explanation_html': '<p>Corrected derivation.</p>'}
+        revision = install_bank(self.bank, self.course, self.root)
+        correction = QuestionBank(self.course, self.root).question(ident, revision)
+        self.assertNotIn('interaction', correction)
+        self.assertEqual(correction['explanation_html'], '<p>Corrected derivation.</p>')
+
     def test_old_and_new_review_rounds_and_immutable_revisions(self):
         learning = LearningService(self.course, self.root, DeterministicJudge())
         now = datetime.now(timezone.utc)
