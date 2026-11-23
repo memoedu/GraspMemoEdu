@@ -85,8 +85,8 @@ def prompt(name):
     return Path(__file__).with_name('voice_prompts').joinpath(name).read_text(encoding='utf-8')
 
 
-def complete(instructions, source, *, input_key='recording_transcript', max_tokens=4500):
-    config = independent_settings()
+def complete(instructions, source, *, input_key='recording_transcript', max_tokens=4500, config=None):
+    config = config if config is not None else independent_settings()
     base_url = config['base_url'].rstrip('/')
     host = urlsplit(base_url)
     if host.scheme != 'https' or not host.hostname or host.username or host.password or host.query or host.fragment:
