@@ -23,7 +23,7 @@ MIC = """
         const stop = [...document.querySelectorAll('.voiceToolPanel button')].find(b => b.textContent === '结束录音');
         if (stop && !stop.hidden && stop.offsetWidth) {
           micTiming.ready = performance.now();
-          micTiming.loading = loading;
+          micTiming.loading = loading >= micTiming.clicked ? loading : null;
           observer.disconnect();
         }
       });
@@ -190,8 +190,10 @@ def main():
                     passed &= result['text'] == before + expected + after
                 if not passed: failures.append(key)
                 assert timing['ready'] >= timing['clicked']
+                setup_gap = (round(timing['loading'] - timing['microphone'])
+                             if timing['loading'] is not None and timing['microphone'] is not None else None)
                 result.update(case=key, audio_posts=len(packets), mic_open_ms=round(timing['ready']-timing['clicked']),
-                              setup_gap_ms=round(timing['loading']-timing['microphone']), passed=passed)
+                              mic_reused=timing['microphone'] is None, setup_gap_ms=setup_gap, passed=passed)
                 evidence.append(result)
                 print(json.dumps(result, ensure_ascii=False), flush=True)
         finally:
