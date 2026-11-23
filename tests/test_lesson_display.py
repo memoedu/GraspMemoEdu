@@ -93,6 +93,24 @@ class LessonDisplayTests(unittest.TestCase):
             self.assertFalse(newer.preview)
             self.assertIs(newer.question(question), question)
 
+    def test_new_revision_display_keeps_only_unchanged_archived_values(self):
+        tid = 'ma-topic-90'
+        archived = display_key('html', '<p>Old revision.</p>')
+        source = '<p>Current revision.</p>'
+        active = display_key('html', source)
+        catalog = SimpleNamespace(topics={tid: {'id': tid, 'version': 'v1', 'modules': [],
+            'introductions': [{'title': 'Lesson', 'html': source}]}})
+        previous = {'schema': 1, 'topic_id': tid, 'version': 'v1', 'values': {archived: '<p>旧题。</p>'}}
+        with tempfile.TemporaryDirectory() as directory, patch('graspmemoedu.lesson_display_install.QuestionBank') as bank:
+            bank.return_value.active_revision.return_value = None
+            path = Path(directory) / 'display.json'
+            candidate = {**previous, 'values': {**previous['values'], active: '<p>新题。</p>'}}
+            path.write_text(json.dumps(candidate), encoding='utf-8')
+            verify_topic(path, tid, catalog, Path(directory), previous=previous)
+            for invalid in (None, {**previous, 'version': 'v0'}, {**previous, 'values': {archived: '<p>异文。</p>'}}):
+                with self.subTest(previous=invalid), self.assertRaisesRegex(ValueError, 'invalid source bindings'):
+                    verify_topic(path, tid, catalog, Path(directory), previous=invalid)
+
     def test_markup_binding_ignores_punctuation_changes_but_protects_attributes_and_formulas(self):
         source = '<p>See <span data-tex="x">x</span><img alt="shape" src="data:image/png;base64,WA=="></p>'
         signature = MarkupSignature(source).signature()

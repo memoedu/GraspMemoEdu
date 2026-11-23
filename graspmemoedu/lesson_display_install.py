@@ -115,13 +115,16 @@ def verify_topic(path, tid, catalog, data, *, previous=None):
     variants = [bank.question(qid, active) for qid in bank.load(active)['questions']] if active else []
     source = {display_key(kind, row[name]): (kind, row[name]) for row, name, kind in lesson_fields(topic, variants)}
     repairs = spec.get('tex_repairs', {})
-    # A display-only repair can carry archived translations that still serve
-    # pinned question revisions. Their previously installed bytes must match.
-    carried_values = (repairs and previous and
-                      all(previous.get(field) == spec[field] for field in ('topic_id', 'version', 'values')))
     if (not isinstance(spec['values'], dict) or not isinstance(repairs, dict) or not (spec['values'] or repairs)
-            or not repairs.keys() <= source.keys()
-            or not carried_values and not spec['values'].keys() <= source.keys()):
+            or not repairs.keys() <= source.keys()):
+        raise ValueError(f'Localization contains invalid source bindings: {tid}')
+    # Pinned question revisions can still use their installed translations.
+    # Only carry exact prior values for the same Topic version.
+    archived = spec['values'].keys() - source.keys()
+    if archived and (not previous
+                     or any(previous.get(field) != spec[field] for field in ('topic_id', 'version'))
+                     or not isinstance(previous.get('values'), dict)
+                     or any(previous['values'].get(key) != spec['values'][key] for key in archived)):
         raise ValueError(f'Localization contains invalid source bindings: {tid}')
     for key, value in spec['values'].items():
         if not isinstance(value, str) or not value.strip() or '\x00' in value or len(value) > 2_000_000:
