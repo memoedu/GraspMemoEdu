@@ -8,7 +8,9 @@ import unittest
 import zipfile
 
 from fastapi.testclient import TestClient
-from graspmemoedu.mathacademy_import import SourceIndex, Assets, Renderer, adapt, prepare, install, source_fingerprint
+from graspmemoedu.mathacademy_import import (
+    PRACTICE_ENRICHMENT, SourceIndex, Assets, Renderer, adapt, file_hash, prepare, install, source_fingerprint,
+)
 from graspmemoedu.catalog import Catalog
 from graspmemoedu.config import Settings
 from graspmemoedu.course_graph import GraphStore
@@ -98,6 +100,65 @@ class MathAcademyTests(unittest.TestCase):
         self.assertEqual(restored.topic_courses, catalog.topic_courses)
         restored_state = create_learning_service(restored.topic('ma-topic-2'), self.root / 'restored').state()
         self.assertTrue(next(row for row in restored_state['blocks'] if row['id'] == practice['id'])['preview_answer'])
+
+    def test_enrichment_upgrades_existing_read_only_topic_in_both_courses(self):
+        from graspmemoedu.lesson_display import DIRECTORY, display_key
+        from graspmemoedu.topic_install import encoded
+
+        self.prepared()
+        install(self.package, self.data)
+        settings = Settings.load(self.data)
+        old = Catalog.load(settings)
+        tid = 'ma-topic-2'
+        topic = deepcopy(old.topics[tid])
+        before = old.topic_paths[tid]
+        source_file = settings.content_dir / 'mathacademy-sources' / 'topics' / f'{tid}.json'
+        raw_before = file_hash(source_file)
+        module = topic['modules'][0]
+        module['example'].update(reference_answer='4', explanation_html='<p>Two squared is four.</p>', constraints='Exact.')
+        q = module['practices'][0]
+        q.update(reference_answer='6', explanation_html='<p>A cube has six faces.</p>', constraints='Exact.')
+        q['interaction']['grading'] = 'exact'
+        q['interaction']['controls'][0]['answers'] = ['6']
+        module['practices'].extend({**deepcopy(q), 'id': f'variant-{i}'} for i in range(6))
+        topic['availability'].update(trainable=True, reasons=[])
+        topic['version'] = 'new-synthetic-version'
+        paths = {
+            f'topics/{tid}.json': topic,
+            f'{DIRECTORY}/{tid}.json': {'schema': 1, 'topic_id': tid, 'version': topic['version'],
+                                       'values': {display_key('html', topic['introductions'][0]['html']): '<p>译文</p>'}},
+            'report.json': {'readable': 1, 'trainable': 1, 'untrainable': 0},
+            'catalog.json': {'courses': [{'id': 'ma-course-20', 'description': old.courses['ma-course-20']['description'],
+                                          'units': [], 'topics': [{'id': tid, 'path': f'topics/{tid}.json'}]}]},
+        }
+        upgrade = self.root / 'enrichment'
+        for name, payload in paths.items():
+            path = upgrade / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(encoded(payload))
+        manifest = {'schema': 1, 'kind': PRACTICE_ENRICHMENT,
+                    'enrichment': {tid: {'topic_sha256': '0' * 64, 'raw_sha256': raw_before}},
+                    'files': {name: file_hash(upgrade / name) for name in paths}}
+        path = upgrade / 'manifest.json'
+        path.write_bytes(encoded(manifest))
+        pointer = self.data / 'active-content.json'
+        original_pointer = pointer.read_bytes()
+        with self.assertRaisesRegex(ValueError, 'source or version differs'):
+            install(upgrade, self.data)
+        self.assertEqual(pointer.read_bytes(), original_pointer)
+        manifest['enrichment'][tid]['topic_sha256'] = file_hash(before)
+        path.write_bytes(encoded(manifest))
+        with self.assertRaisesRegex(RuntimeError, 'pre-activation'):
+            install(upgrade, self.data, fail_at='activate')
+        self.assertEqual(pointer.read_bytes(), original_pointer)
+        self.assertEqual(install(upgrade, self.data)['upgraded'], [tid])
+        installed = Catalog.load(Settings.load(self.data))
+        self.assertEqual(installed.courses, old.courses)
+        self.assertEqual(installed.topic_courses[tid], old.topic_courses[tid])
+        self.assertTrue(installed.topics[tid]['availability']['trainable'])
+        self.assertEqual(file_hash(Settings.load(self.data).content_dir / 'mathacademy-sources' / 'topics'
+                                   / f'{tid}.json'), raw_before)
+        self.assertEqual(install(upgrade, self.data)['status'], 'unchanged')
 
     def test_reader_and_catalog_enforce_test_purpose_and_qualification(self):
         self.prepared(); install(self.package, self.data)
