@@ -117,6 +117,7 @@ export function attachChatEditor(input, labels, options = {}) {
         && !formula?.visible && view.state.doc === doc && view.state.selection.eq(selection);
       const show = marks => view.dispatch({effects: setVoicePreview.of(marks)});
       return {
+        from, to,
         clear() { if (!destroyed && view.state.field(voicePreview).size) show(Decoration.none); },
         preview(text) {
           if (!valid()) return false;

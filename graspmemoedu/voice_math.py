@@ -1,7 +1,7 @@
 """Typed, visible notation shared by streaming recognition and answer formatting."""
 import re
 import unicodedata
-from functools import lru_cache
+from functools import cached_property, lru_cache
 from difflib import SequenceMatcher
 from importlib.resources import files
 from typing import Annotated, Literal
@@ -14,6 +14,35 @@ Symbol = Annotated[str, Field(pattern=r'^[A-Za-z](?:[\^_]\{(?:[A-Za-z]{1,8}|\d{1
 Domain = Literal['coordinates', 'vectors', 'calculus', 'fractions', 'geometry', 'functions', 'sequences']
 
 
+def excerpt(text, limit):
+    if len(text) <= limit:
+        return text
+    tail = limit // 2
+    return text[:limit - tail - 1] + '…' + text[-tail:]
+
+
+class TextboxContext(BaseModel):
+    model_config = ConfigDict(extra='forbid', frozen=True)
+    before: str = Field(default='', max_length=4096)
+    selected: str = Field(default='', max_length=4096)
+    after: str = Field(default='', max_length=4096)
+
+    @cached_property
+    def text(self):
+        return '\n'.join((self.before, self.selected, self.after))
+
+    @cached_property
+    def symbols(self):
+        clean = re.sub(r'\\(?:text|operatorname|begin|end)\{[^}]*\}|\\[A-Za-z]+', ' ', self.text)
+        pattern = r'(?<![A-Za-z])([A-Za-z])(?:\s*([_^])\s*(?:\{([A-Za-z]{1,8}|\d{1,4})\}|([A-Za-z]{1,8}|\d{1,4})))?(?![A-Za-z])'
+        return tuple(dict.fromkeys(base + (mark + '{' + (braced or bare) + '}' if mark else '')
+                                   for base, mark, braced, bare in re.findall(pattern, clean)))
+
+    def asr_hint(self):
+        return '\n'.join(label + text for label, text in (
+            ('光标前：', self.before[-400:]), ('选区：', excerpt(self.selected, 160)), ('光标后：', self.after[:300])) if text)
+
+
 class VoiceContext(BaseModel):
     model_config = ConfigDict(extra='forbid')
     stem: str = Field(default='', max_length=65536)
@@ -21,6 +50,11 @@ class VoiceContext(BaseModel):
     symbols: list[Symbol] = Field(default_factory=list, max_length=32)
     dimensions: Literal[0, 2, 3] = 0
     style: Literal['mixed', 'literal', 'math', 'code'] = 'mixed'
+    textbox: TextboxContext | None = None
+
+    def symbols_for(self, base):
+        local = [s for s in self.textbox.symbols if s[0].lower() == base.lower()] if self.textbox else []
+        return local or [s for s in self.symbols if s[0].lower() == base.lower()]
 
     def hints(self):
         names = {'coordinates': '坐标', 'vectors': '向量', 'calculus': '微积分', 'fractions': '分式',
@@ -30,13 +64,8 @@ class VoiceContext(BaseModel):
     def asr_input(self, previous=''):
         # Fun-ASR accepts five user messages of at most 400 characters each.
         text = '\n'.join(filter(None, (self.hints(), self.stem)))
-        previous = previous[-240:]
-        limit = 2000 - len(previous) - bool(previous)
-        if len(text) > limit:
-            tail = limit // 2
-            text = text[:limit - tail - 1] + '…' + text[-tail:]
-        if previous:
-            text = (text + '\n' + previous).strip()
+        suffix = '\n'.join(filter(None, (self.textbox.asr_hint() if self.textbox else '', previous[-240:])))
+        text = '\n'.join(filter(None, (excerpt(text, 2000 - len(suffix) - bool(suffix)), suffix)))
         return {'context': [{'role': 'user', 'content': [{'type': 'input_text', 'text': text[i:i + 400]}]}
                             for i in range(0, len(text), 400)]} if text else {}
 
@@ -88,7 +117,7 @@ def marked_symbol(compact, context):
     if not spoken:
         return None
     base, suffix = spoken.groups()
-    candidates = [s for s in context.symbols if len(s) > 1 and s[0].lower() == base.lower()]
+    candidates = [s for s in context.symbols_for(base) if len(s) > 1]
     labels = [(s, s[3:-1]) for s in candidates]
     literal = number(suffix) or suffix.lower()
     matches = [s for s, label in labels if label.lower() == literal]
@@ -102,16 +131,22 @@ def marked_symbol(compact, context):
 
 def named_quantity(label, context):
     """Read an explicit name/symbol binding; defer ambiguous or indirect references."""
-    stem = re.sub(r'\\[()[\]]|\$|\s+', '', context.stem)
     name = re.escape(label)
-    matches = []
-    for symbol in context.symbols:
-        item = re.escape(symbol) + r'(?![a-zA-Z0-9_^])'
-        if (re.search(name + r'(?:记[为作]|定义为|表示为|为)' + item, stem)
-                or re.search(name + r'(?:可)?用' + item + r'(?:来)?表示', stem)
-                or re.search(r'(?<![a-zA-Z0-9])' + item + r'(?:表示|代表)' + name, stem)):
-            matches.append(symbol)
-    return matches[0] if len(matches) == 1 else None
+    sources = [(context.stem, context.symbols)]
+    if context.textbox:
+        sources.insert(0, (context.textbox.text, context.textbox.symbols))
+    for source, symbols in sources:
+        stem = re.sub(r'\\[()[\]]|\$|\s+', '', source)
+        matches = []
+        for symbol in symbols:
+            item = re.escape(symbol) + r'(?![a-zA-Z0-9_^])'
+            if (re.search(name + r'(?:记[为作]|定义为|表示为|为)' + item, stem)
+                    or re.search(name + r'(?:可)?用' + item + r'(?:来)?表示', stem)
+                    or re.search(r'(?<![a-zA-Z0-9])' + item + r'(?:表示|代表)' + name, stem)):
+                matches.append(symbol)
+        if matches:
+            return matches[0] if len(matches) == 1 else None
+    return None
 
 
 REPAIR = re.compile(r'(?:[，,。；;！!？?]\s*|(?<=[\d零一二两三四五六七八九十]))'
@@ -183,11 +218,12 @@ def quick_math(transcript, profile, context):
         if symbol:
             return symbol
         relation = re.fullmatch(r'(其中|于是|因此|所以)?[,，]?([\u4e00-\u9fff]{1,10})(等于|大于|小于)(.+)', compact)
-        if relation and relation[2] in context.stem and context.style == 'mixed':
+        if relation and context.style == 'mixed' and (relation[2] in context.stem or
+                                                      context.textbox and relation[2] in context.textbox.text):
             right = expression(relation[4], context)
             if right:
                 left = named_quantity(relation[2], context)
-                if not left and context.symbols:
+                if not left and (context.symbols or context.textbox and context.textbox.symbols):
                     return None
                 prefix = relation[1] + '，' if relation[1] else ''
                 if left and not prefix:
@@ -217,7 +253,8 @@ def expression(compact, context):
         return '乘' if re.fullmatch(r'(?:ch|sh)eng?', spoken) else match[0]
     compact = re.sub(r'(?<=[0-9零一二两三四五六七八九A-Za-z])[\u4e00-\u9fff](?=[a-zA-Z])', between, compact)
     # A decorated variable, spoken letter name or an explicit case request needs context-aware refinement.
-    if re.search(r'[A-Za-z]{2,}', compact) or any(len(s) > 1 and s[0].lower() in compact.lower() for s in context.symbols):
+    if re.search(r'[A-Za-z]{2,}', compact) or any(len(s) > 1 for base in set(re.findall('[A-Za-z]', compact))
+                                                   for s in context.symbols_for(base)):
         return None
     tokens = TOKENS.findall(compact)
     if ''.join(tokens) != compact:
@@ -227,8 +264,10 @@ def expression(compact, context):
         if token in OPERATORS:
             result.append(OPERATORS[token])
         elif re.fullmatch('[A-Za-z]', token):
-            matches = [symbol for symbol in context.symbols if symbol.lower() == token.lower()]
-            result.append(matches[0] if len(matches) == 1 else token.lower())
+            matches = context.symbols_for(token)
+            if len(matches) > 1:
+                return None
+            result.append(matches[0] if matches else token.lower())
         elif re.fullmatch(NUMBER + r'(?:\.\d+)?', token):
             value = number(token)
             if value is None:

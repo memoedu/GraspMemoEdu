@@ -58,7 +58,10 @@ RENDERED = """
 CASES = {'algebra': ('variable', 'x+3-y'), 'pair': ('coordinate', '(-1,1)'),
          'iteration': ('script', 'y^{new}'), 'index': ('script', 'y_{6}'),
          'order': ('order', '7-3*2'), 'integral': ('integral', r'\intx^2+3\cdotx\,dx'),
-         'reading-one': ('reading', 'q=5'), 'reading-two': ('reading', 'p=5')}
+         'reading-one': ('reading', 'q=5'), 'reading-two': ('reading', 'p=5'),
+         'textbox-before': ('reading', 'm=5'), 'textbox-after': ('reading', 'n=5')}
+TEXTBOX = {'textbox-before': ('更新后的读数用 m 表示。', '。'),
+           'textbox-after': ('结果：', '。更新后的读数用 n 表示。')}
 
 
 def main():
@@ -104,6 +107,10 @@ def main():
                 page.goto(args.base + '/#/subjects/math/banks/isolated-bank/group-a?question=voice-' + key)
                 answer = page.locator('#trainingAnswer')
                 answer.wait_for()
+                if key in TEXTBOX:
+                    before, after = TEXTBOX[key]
+                    answer.fill(before + '旧值' + after)
+                    answer.evaluate('(el, p) => el.setSelectionRange(p, p+2)', len(before))
                 answer.focus()
                 page.get_by_role('button', name='录音输入', exact=True).click()
                 page.get_by_role('button', name='结束录音', exact=True).wait_for()
@@ -114,6 +121,8 @@ def main():
                   stop_to_input_ms:Math.round(t.inserted-t.stopped), text:document.querySelector('#trainingAnswer').value};}""")
                 assert 'audio' in packets and 'finish' in packets and result['stop_to_input_ms'] >= 0, (key, packets, result)
                 assert expected in result['text'].replace(' ', ''), (key, result)
+                if key in TEXTBOX:
+                    assert result['text'] == before + expected + after, (key, result)
                 result.update(case=key, audio_posts=packets.count('audio'))
                 evidence.append(result)
                 print(json.dumps(result, ensure_ascii=False), flush=True)

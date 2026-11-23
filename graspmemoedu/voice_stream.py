@@ -2,12 +2,14 @@
 import base64
 from concurrent.futures import Future, ThreadPoolExecutor
 from hashlib import sha256
+from io import BytesIO
 import os
 from queue import Queue
 from threading import BoundedSemaphore, Event, Lock, Thread, Timer
 from time import monotonic
 from typing import Annotated, Literal
 from uuid import UUID
+import wave
 
 from fastapi import Request
 from pydantic import BaseModel, ConfigDict, Field
@@ -49,6 +51,13 @@ class Cancel(Message):
 Packet = Annotated[Open | Chunk | Cancel, Field(discriminator='op')]
 
 
+def sentence_result(sentence):
+    index, text = sentence.get('sentence_id'), sentence.get('text')
+    if type(index) is not int or not 0 <= index < 4096 or not isinstance(text, str):
+        raise ValueError('Invalid recognition event')
+    return index, (text, sentence.get('sentence_end', sentence.get('end_time') is not None) is True)
+
+
 class Recognizer:
     """Per-site SDK client and two send workers. Each take gets a separate recognition task."""
     def __init__(self):
@@ -65,11 +74,35 @@ class Recognizer:
                 from dashscope import Client
                 self.client = Client(api_key=key, region='cn-beijing', timeout=18)
 
-    def __call__(self, context, update, *, live=False, previous=''):
+    def __call__(self, context, update, *, live=False, previous='', sample_rate=16000):
         self.prepare()
         if self.client is None:
             raise DomainError('transcription_unavailable', '语音转写尚未配置。', 503)
-        return Outbox(self.workers, lambda: Duplex(self.client, context, update, live, previous))
+        return Outbox(self.workers, lambda: Duplex(self.client, context, update, live, previous, sample_rate))
+
+    def recording(self, data, context):
+        """Give a completed browser recording the same contextual recognizer as live PCM."""
+        sentences = {}
+        def update(sentence):
+            index, result = sentence_result(sentence)
+            sentences[index] = result
+        try:
+            with wave.open(BytesIO(data), 'rb') as wav:
+                rate = wav.getframerate()
+                provider = self(context, update, sample_rate=rate)
+                try:
+                    while frame := wav.readframes(rate // 10):
+                        provider.write(frame)
+                    provider.finish()
+                finally:
+                    provider.close()
+            if any(text and not final for text, final in sentences.values()):
+                raise ValueError('Unsettled recognition')
+            return {'text': ''.join(sentences[i][0] for i in sorted(sentences)).strip()}
+        except DomainError:
+            raise
+        except Exception:
+            raise DomainError('voice_stream_failed', '录音转写未完成，请重试。', 502) from None
 
     def close(self):
         self.workers.shutdown(wait=True, cancel_futures=True)
@@ -113,8 +146,8 @@ class Outbox:
 
 
 class Duplex:
-    def __init__(self, client, context, update, live, previous):
-        self.session = client.audio.asr.recognize(model='fun-asr-realtime', input=context.asr_input(previous),
+    def __init__(self, client, context, update, live, previous, sample_rate=16000):
+        self.session = client.audio.asr.recognize(model='fun-asr-realtime', input=context.asr_input(previous), sample_rate=sample_rate,
             parameters={'max_sentence_silence': 200 if live else 320, 'heartbeat': True}, timeout=18)
         self.done = Future()
         try:
@@ -200,13 +233,11 @@ class Take:
         return text.strip().rstrip('。')
 
     def update(self, sentence):
-        index, text = sentence.get('sentence_id'), sentence.get('text')
-        if type(index) is not int or not 0 <= index < 4096 or not isinstance(text, str):
-            raise ValueError('Invalid recognition event')
+        index, result = sentence_result(sentence)
         with self.sentences_lock:
             if self.closed:
                 return
-            self.sentences[index] = text, sentence.get('sentence_end', sentence.get('end_time') is not None) is True
+            self.sentences[index] = result
             full = self.current_text()
             if len(full) > 16000:
                 raise ValueError('Transcript too long')

@@ -12,6 +12,30 @@ from graspmemoedu.voice_stream import Cancel, Chunk, Open, Outbox, Sessions
 
 
 class MathDictationTests(unittest.TestCase):
+    def test_textbox_scope_reaches_asr_and_refinement_without_consuming_the_whole_prompt(self):
+        box = {'before': 'p' * 3000 + '左侧温度', 'selected': '选中词', 'after': '右侧压强' + 'q' * 3000}
+        c = VoiceContext(stem='题干开头' + '某' * 3000 + '题干末尾', textbox=box)
+        parts = [v['content'][0]['text'] for v in c.asr_input('本次前句')['context']]
+        self.assertTrue(len(parts) <= 5 and all(0 < len(t) <= 400 for t in parts))
+        for expected in ('题干开头', '题干末尾', '左侧温度', '选中词', '右侧压强', '本次前句'):
+            self.assertIn(expected, ''.join(parts))
+        for profile in ('general', 'calculator', 'answer'):
+            model = Mock(side_effect=['non_writing', '样本'] if profile == 'general' else ['x'])
+            refine_voice('本次口述', profile, model, context=c)
+            instructions, source = model.call_args.args
+            self.assertIn('只输出本次', instructions)
+            self.assertEqual(source['transcript'], '本次口述')
+            self.assertEqual(source['notation']['textbox'], box)
+            self.assertEqual(source['notation']['stem'], c.stem)
+
+    def test_only_the_spoken_insertion_uses_notation_from_either_side_and_the_selection(self):
+        for area, letter in [('before', 'r'), ('after', 's'), ('selected', 't')]:
+            c = VoiceContext(stem='半径用 a 表示。', symbols=['a'], textbox={area: f'半径用 {letter} 表示。'})
+            self.assertEqual(format_voice('半径等于五', 'answer', c, live=True), letter + '=5')
+        self.assertEqual(quick_math('b加七', 'calculator', VoiceContext(textbox={'before': '2*B+'})), 'B+7')
+        self.assertEqual(quick_math('a六', 'answer', VoiceContext(textbox={'after': 'a_{6}'})), 'a_{6}')
+        self.assertIsNone(quick_math('a六', 'answer', VoiceContext(textbox={'before': 'a^{new}，a_{new}'})))
+
     def test_direct_repairs_preserve_surrounding_speech_and_quotations(self):
         context = VoiceContext()
         self.assertEqual(format_voice('先记下来。会议定在周三，不对，是周五。', 'general', context, live=True),

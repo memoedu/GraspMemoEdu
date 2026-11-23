@@ -1,22 +1,22 @@
-import { t, getLanguage, translateMessage, applyStaticTranslations, learningTitle } from "./i18n.js?v=12fbf355cca92815";
-import {answerReady} from './question-input.js?v=12fbf355cca92815';
-import {reportableContent, visibleContentTopics} from './content-report.js?v=12fbf355cca92815';
-import {startPresence} from './presence.js?v=12fbf355cca92815';
-import {createLearningCache} from './learning-cache.js?v=12fbf355cca92815';
-import {createReadCache, createContentCache, createValidationCache, readLifetime, contentPath, contentKey} from './response-cache.js?v=12fbf355cca92815';
+import { t, getLanguage, translateMessage, applyStaticTranslations, learningTitle } from "./i18n.js?v=deee336ea10b0e6d";
+import {answerReady} from './question-input.js?v=deee336ea10b0e6d';
+import {reportableContent, visibleContentTopics} from './content-report.js?v=deee336ea10b0e6d';
+import {startPresence} from './presence.js?v=deee336ea10b0e6d';
+import {createLearningCache} from './learning-cache.js?v=deee336ea10b0e6d';
+import {createReadCache, createContentCache, createValidationCache, readLifetime, contentPath, contentKey} from './response-cache.js?v=deee336ea10b0e6d';
 
-import {answerEditor, readerContent, readerStepTitle as sharedReaderStepTitle, readerHistorySteps, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, readerDrawerState, topicProgress, topicHistory} from './learning-ui.js?v=12fbf355cca92815';
-import {selfAssessment, showAnswerButton} from './self-assessment.js?v=12fbf355cca92815';
-import {mountTopicBacklinks, focusContentNode} from './topic-content.js?v=12fbf355cca92815';
-import {renderSourceReader} from './learning-ui.js?v=12fbf355cca92815';
-import {lessonTaskLabel, readingSectionHeading} from './learning-ui.js?v=12fbf355cca92815';
-import {createTrainingView} from './training.js?v=12fbf355cca92815';
-import {clearLearningHint, learningHint, practiceHint} from './beginner-hints.js?v=12fbf355cca92815';
-import {installToolbars, setQuestionTools} from './question-tools.js?v=12fbf355cca92815';
-import {installAutocomplete} from './autocomplete.js?v=12fbf355cca92815';
-import {expressionCompletions} from './calculator-policy.js?v=12fbf355cca92815';
-import {installVoiceInput, refreshVoiceInput, voiceAnswerPending} from './voice-input.js?v=12fbf355cca92815';
-import {installAnswerConversion, setAnswerCommandInputEnabled} from './answer-conversion.js?v=12fbf355cca92815';
+import {answerEditor, readerContent, readerStepTitle as sharedReaderStepTitle, readerHistorySteps, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, readerDrawerState, topicProgress, topicHistory} from './learning-ui.js?v=deee336ea10b0e6d';
+import {selfAssessment, showAnswerButton} from './self-assessment.js?v=deee336ea10b0e6d';
+import {mountTopicBacklinks, focusContentNode} from './topic-content.js?v=deee336ea10b0e6d';
+import {renderSourceReader} from './learning-ui.js?v=deee336ea10b0e6d';
+import {lessonTaskLabel, readingSectionHeading} from './learning-ui.js?v=deee336ea10b0e6d';
+import {createTrainingView} from './training.js?v=deee336ea10b0e6d';
+import {clearLearningHint, learningHint, practiceHint} from './beginner-hints.js?v=deee336ea10b0e6d';
+import {installToolbars, setQuestionTools} from './question-tools.js?v=deee336ea10b0e6d';
+import {installAutocomplete} from './autocomplete.js?v=deee336ea10b0e6d';
+import {expressionCompletions} from './calculator-policy.js?v=deee336ea10b0e6d';
+import {installVoiceInput, refreshVoiceInput, voiceAnswerPending} from './voice-input.js?v=deee336ea10b0e6d';
+import {installAnswerConversion, setAnswerCommandInputEnabled} from './answer-conversion.js?v=deee336ea10b0e6d';
 
 let topicTraining = null, topicTrainingKey = null;
 function stopTopicTraining() { topicTraining?.stop(); topicTraining = null; topicTrainingKey = null; }
@@ -1740,7 +1740,7 @@ void ensureDeployment().catch(() => {});
 installToolbars($('pageTools'), installVoiceInput({canUse: () => !identityProblem && access?.role === 'account',
   getIdentity: () => `${identityGeneration}:${connectionGeneration}`, request}));
 installAnswerConversion(request);
-const { initPortal } = await import("./portal.js?v=12fbf355cca92815");
+const { initPortal } = await import("./portal.js?v=deee336ea10b0e6d");
 startPresence({getAccess: () => identityProblem ? null : access, request, getTopics: visibleContentTopics});
 portal = initPortal({
   fetchGuideAsset: async (url, subjectId) => {

@@ -27,6 +27,10 @@ function serialize(doc) {
   doc.forEach(row => paragraphs.push(row.textBetween(0, row.content.size, '', asText)));
   return paragraphs.join('\n');
 }
+function sourceRange(doc, selection) {
+  const offset = pos => serialize(doc.cut(0, pos)).length;
+  return {from: offset(selection.from), to: offset(selection.to)};
+}
 const displayable = latex => typeof latex === 'string' && latex.length <= 4000
   && !/\\(?:html\w*|css\w*|includegraphics|href|url|style|class|def|gdef|edef|newcommand|renewcommand)\b/i.test(latex);
 const safe = latex => displayable(latex) && validateLatex(latex).length === 0;
@@ -209,6 +213,7 @@ export async function createFormulaEditor(host, options) {
   }
 
   let view, recognitionTimer;
+  const mathPositions = new WeakMap();
   const update = $prose(() => new Plugin({
     state: {
       init: () => DecorationSet.empty,
@@ -306,6 +311,7 @@ export async function createFormulaEditor(host, options) {
 
   function mathView(node, view, getPos) {
     const math = document.createElement('math-field');
+    mathPositions.set(math, getPos);
     const dom = document.createElement('span');
     dom.className = 'siteFormula';
     dom.classList.toggle('siteFormulaDisplay', node.attrs.display);
@@ -553,8 +559,7 @@ export async function createFormulaEditor(host, options) {
     },
     sourceSelection() {
       const {doc, selection} = view.state;
-      const offset = pos => serialize(doc.cut(0, pos)).length;
-      return {from: offset(selection.from), to: offset(selection.to)};
+      return sourceRange(doc, selection);
     },
     focusSource(from, to = from) {
       const doc = view.state.doc;
@@ -571,6 +576,13 @@ export async function createFormulaEditor(host, options) {
         function clear() { mirror?.remove(); mirror = null; target.classList.remove('voiceMathOriginal'); }
         return {
           clear,
+          readText() {
+            const pos = mathPositions.get(target)();
+            const start = Math.min(...captured.ranges.flat()), end = Math.max(...captured.ranges.flat());
+            return {before: serialize(doc.cut(0, pos)) + target.getValue(0, start, 'latex'),
+              selected: start === end ? '' : target.getValue(captured, 'latex'),
+              after: target.getValue(end, target.lastOffset, 'latex') + serialize(doc.cut(pos + 1))};
+          },
           preview(text) {
             if (!valid()) return false;
             if (!text) { clear(); return true; }
@@ -585,7 +597,13 @@ export async function createFormulaEditor(host, options) {
             mirror.insert(text, {format: 'auto', selectionMode: 'after', focus: false, silenceNotifications: true});
             return true;
           },
-          insert: text => valid() && target.insert(text, {format: 'auto', selectionMode: 'after'}),
+          insert(text) {
+            if (!valid()) return false;
+            view.dispatch(closeHistory(view.state.tr));
+            const inserted = target.insert(text, {format: 'auto', selectionMode: 'after'});
+            view.dispatch(closeHistory(view.state.tr));
+            return inserted;
+          },
         };
       }
       const valid = () => doc === view.state.doc && view.state.selection.eq(selection) && view.dom.isConnected && options.enabled();
@@ -597,6 +615,10 @@ export async function createFormulaEditor(host, options) {
       }
       return {
         clear,
+        readText() {
+          const value = serialize(doc), {from, to} = sourceRange(doc, selection);
+          return {before: value.slice(0, from), selected: value.slice(from, to), after: value.slice(to)};
+        },
         preview(text) {
           if (!valid()) return false;
           if (!text) { clear(); return true; }
@@ -615,6 +637,7 @@ export async function createFormulaEditor(host, options) {
           const tr = closeHistory(view.state.tr.replaceSelection(Slice.maxOpen(parsed.content)));
           if (serialize(tr.doc).length > options.maxLength()) return false;
           view.dispatch(tr);
+          view.dispatch(closeHistory(view.state.tr));
           return true;
         },
       };

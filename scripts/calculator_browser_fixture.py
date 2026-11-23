@@ -69,7 +69,7 @@ def main():
     bank = training_bank()
     group = bank['groups'][1]
     if args.voice:
-        for name, stem in {
+        stems = {
             'algebra': r'请写出由 \(x\) 和 \(y\) 组成的式子。',
             'pair': '在平面直角坐标系中，请写出点的坐标。',
             'iteration': r'沿用迭代记号 \(x^{new}, y^{new}, z^{new}\)。请写出所指的变量。',
@@ -79,7 +79,9 @@ def main():
             'reading-two': r'仪器连续测量两次。初始读数用 \(q\) 表示，更新后的读数用 \(p\) 表示。请记录口述关系。',
             'integral': r'用积分表示关于 \(x\) 的表达式，写出微分元。',
             'radius': '根据给出的圆，口述半径的关系。',
-        }.items():
+        }
+        stems.update(dict.fromkeys(('textbox-before', 'textbox-after'), stems['reading-one']))
+        for name, stem in stems.items():
             group['questions'].append({**group['questions'][0], 'id': 'voice-' + name, 'question': stem,
                                        'html': '<p>' + stem + '</p><span hidden>HIDDEN_REFERENCE</span>',
                                        'reference_answer': 'HIDDEN_REFERENCE'})

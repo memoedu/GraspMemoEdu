@@ -1,9 +1,9 @@
-import {getLanguage} from './i18n.js?v=12fbf355cca92815';
-import {activeFormulaField, prepareVoiceFormula} from './formula-input.js?v=12fbf355cca92815';
-import {microphoneIcon, recordingMime} from './microphone-recorder.js?v=12fbf355cca92815';
-import {streamMicrophone} from './voice-stream.js?v=12fbf355cca92815';
-import {voiceContext} from './voice-context.js?v=12fbf355cca92815';
-import {answerTarget, answerConversionChange} from './answer-conversion.js?v=12fbf355cca92815';
+import {getLanguage} from './i18n.js?v=deee336ea10b0e6d';
+import {activeFormulaField, prepareVoiceFormula} from './formula-input.js?v=deee336ea10b0e6d';
+import {microphoneIcon, recordingMime} from './microphone-recorder.js?v=deee336ea10b0e6d';
+import {streamMicrophone} from './voice-stream.js?v=deee336ea10b0e6d';
+import {dictationContext, voiceContext} from './voice-context.js?v=deee336ea10b0e6d';
+import {answerTarget, answerConversionChange} from './answer-conversion.js?v=deee336ea10b0e6d';
 
 const answerForms = new WeakSet();
 const textTypes = ['text', 'search', 'tel', 'url', 'email', 'number'];
@@ -200,7 +200,7 @@ async function start() {
   if (target.profile === 'answer' && !['literal', 'code'].includes(target.context?.style)) prepareVoiceFormula();
   setPhase(job, 'opening', strings('正在打开麦克风…', 'Opening microphone…'));
   try {
-    job.context = target.math ? {...target.context, style: 'math'} : target.context;
+    job.context = dictationContext(target);
     if (!target.answer) job.draft = previewAt(job);
     job.recorder = await streamMicrophone({request: streamRequest, profile: target.profile, context: job.context,
       onPreview: job.draft?.show,

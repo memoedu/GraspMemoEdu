@@ -14,6 +14,7 @@ const context = await browser.newContext({viewport: {width: 390, height: 844}, l
 await context.addInitScript(() => { globalThis.AudioWorkletNode = undefined; });
 const page = await context.newPage();
 const errors = [], calls = [], submissions = [];
+let capturedContext;
 let release;
 page.on('pageerror', error => errors.push(error.message));
 page.on('request', request => {
@@ -21,6 +22,7 @@ page.on('request', request => {
 });
 await page.route('**/api/voice-input/transcribe?*', async route => {
   const body = route.request().postDataJSON(); calls.push(body.profile);
+  capturedContext = body.context;
   assert.match(body.mime_type, /^audio\/(mp4|ogg|webm)$/);
   assert.ok(body.data_base64.length > 100);
   const result = await new Promise(resolve => { release = resolve; });
@@ -110,11 +112,13 @@ try {
   await page.goto(base + '/#/settings');
   const displayName = page.locator('#profileDisplayName');
   await displayName.fill('原始');
+  await displayName.evaluate(input => input.setSelectionRange(1, 1));
   assert.equal(await page.locator('#pageTools .voiceTool').count(), 1);
   await record(displayName);
   await stop.click();
   await wait(() => release);
   await displayName.fill('录音后的编辑');
+  assert.deepEqual(capturedContext.textbox, {before: '原', selected: '', after: '始'});
   release({body: {text: '补充'}});
   const insert = page.getByRole('button', {name: '插入转写文字'});
   await insert.waitFor();

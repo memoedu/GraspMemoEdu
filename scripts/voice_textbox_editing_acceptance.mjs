@@ -49,6 +49,7 @@ try {
   await name.evaluate(el=>{el.setSelectionRange(1,2);window.commits=0;el.addEventListener('input',()=>window.commits++);});
   preview='初稿'; confirmed='终稿';
   await start(name); await hasValue(name,'前初稿后'); assert.equal(began.live,true);
+  assert.deepEqual(began.context.textbox,{before:'前', selected:'旧', after:'后'});
   preview='新版'; await hasValue(name,'前新版后');
   preview=''; await hasValue(name,'前旧后');
   preview='新版'; await hasValue(name,'前新版后');
@@ -79,17 +80,23 @@ try {
   await source.focus();
   await source.press('End');
   // The normal keyboard path promotes the expression to its editable math field.
-  await source.press('+'); await page.keyboard.type('1');
+  await source.press('+');
   const root=page.locator('.ProseMirror:visible').first();
   await root.waitFor();
-  await hasValue(source,'x^2+1');
   const math=root.locator('math-field').first();
+  await math.waitFor();
+  await math.focus(); await math.evaluate(m=>{m.position=m.lastOffset;});
+  await math.press('1');
+  await hasValue(source,'x^2+1');
   await math.focus(); await math.evaluate(m=>{m.position=m.lastOffset;});
   const before=await source.inputValue(), latex=await math.evaluate(m=>m.value);
   preview='+4'; confirmed='+5';
   await start(math);
   const mirror=root.locator('math-field[aria-hidden="true"]');
   await mirror.waitFor();
+  assert.equal(began.context.textbox.before,latex);
+  assert.equal(began.context.textbox.selected,'');
+  assert.equal(began.context.textbox.after,'');
   assert.ok((await mirror.evaluate(m=>m.value)).includes('4'));
   assert.equal(await source.inputValue(),before);
   preview='+6';
@@ -106,6 +113,7 @@ try {
   preview='初稿';confirmed='定稿';
   await start(root);
   await root.getByText('初稿',{exact:true}).waitFor();
+  assert.equal(began.context.textbox.before,before);
   assert.equal(await source.inputValue(),before);
   preview='修正文字';
   await root.getByText('修正文字',{exact:true}).waitFor();
@@ -115,6 +123,7 @@ try {
   await hasValue(source,before);
   console.log('PASS MathLive atom positions, ProseMirror revisions and one-step undo');
   await page.goto(base+'/#/settings');
+  await page.locator('#profileDisplayName').waitFor();
   // Mount the same optional Markdown composer used by portal.js, with its normal formula adapter.
   await page.evaluate(async ()=>{
     const asset=name=>performance.getEntriesByType('resource').find(e=>new URL(e.name).pathname.endsWith('/'+name))?.name;
@@ -131,6 +140,7 @@ try {
   await chat.focus(); await chat.press('Home'); await chat.press('ArrowRight');
   preview='中间';confirmed='定稿';
   await start(chat); await chat.getByText('中间',{exact:true}).waitFor();
+  assert.deepEqual(began.context.textbox,{before:'首',selected:'',after:'尾'});
   assert.equal(await chatSource.inputValue(),'首尾');
   preview='已改'; await chat.getByText('已改',{exact:true}).waitFor();
   await button('结束录音').click(); await hasValue(chatSource,'首定稿尾');

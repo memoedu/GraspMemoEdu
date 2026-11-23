@@ -1,4 +1,4 @@
-import {t, getLanguage} from './i18n.js?v=12fbf355cca92815';
+import {t, getLanguage} from './i18n.js?v=deee336ea10b0e6d';
 
 export const ideaSetupSection = 'idea-setup';
 export const ideaSetupHash = `#/subjects/cs/guide?section=${ideaSetupSection}`;
