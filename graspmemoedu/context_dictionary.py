@@ -7,6 +7,7 @@ SQLite connection to the pinned Wn 1.1.1 connection pool.
 from __future__ import annotations
 
 from contextlib import contextmanager
+from functools import lru_cache
 import importlib
 import json
 from pathlib import Path
@@ -76,8 +77,20 @@ No private hooks outside this small, version-checked boundary are used.
             connection.close()
 
 
-def _evidence(sense, word) -> dict:
+@lru_cache(maxsize=1)
+def _morphy():
+    return importlib.import_module('wn.morphy').Morphy()
+
+
+def _evidence(sense, word, *, definitions_only=False) -> dict:
     synset = sense.synset()
+    fields = {
+        'lemma': word.lemma()[:500], 'pos': word.pos[:16],
+        'definition': (synset.definition() or '')[:2000],
+        'examples': _strings([*sense.examples(), *synset.examples()], count=3, length=1000),
+    }
+    if definitions_only:
+        return fields
     relations = []
     for relation, targets in synset.relations(*SYNSET_RELATIONS).items():
         for target in targets[:5]:
@@ -90,17 +103,15 @@ def _evidence(sense, word) -> dict:
                               'target_id': target.id[:256],
                               'lemmas': _strings([target.word().lemma()])})
     return {
+        **fields,
         'sense_id': sense.id[:256], 'synset_id': synset.id[:256],
-        'lemma': word.lemma()[:500], 'pos': word.pos[:16],
-        'definition': (synset.definition() or '')[:2000],
         'lemmas': _strings(synset.lemmas()),
-        'examples': _strings([*sense.examples(), *synset.examples()], count=3, length=1000),
         'relations': relations[:24],
     }
 
 
 def lookup_word(surface: str, *, data_dir: str | Path | None,
-                limit: int = 12) -> dict:
+                limit: int = 12, definitions_only: bool = False) -> dict:
     """Return bounded lexical candidates, without network access or writes.
 
 The configured directory must contain a prepared manifest and ``wn.db``.
@@ -139,13 +150,12 @@ capability failures, so callers can keep showing the reader and annotations.
             return _base(surface, 'not_available', 'dependency_missing')
         if getattr(wn, '__version__', None) != WN_VERSION:
             return _base(surface, 'not_available', 'incompatible_dependency')
-        morphy = importlib.import_module('wn.morphy').Morphy()
         query = unicodedata.normalize('NFC', ' '.join(surface.split())).casefold()
         with _read_dictionary(wn, directory) as dictionary:
             words = {word.id: word for word in dictionary.words(query)}
             # Query morphology explicitly even when the surface is also a
             # separate entry (e.g. designed adjective versus design verb).
-            for pos, candidates in morphy(query).items():
+            for pos, candidates in _morphy()(query).items():
                 for lemma in sorted(candidates)[:24]:
                     for word in dictionary.words(lemma, pos=pos):
                         words[word.id] = word
@@ -154,7 +164,8 @@ capability failures, so callers can keep showing the reader and annotations.
             pairs = [(sense, word) for word in ordered for sense in word.senses()]
             result = _base(surface, 'available' if pairs else 'not_found')
             result.update(lemma_candidates=candidates,
-                          senses=[_evidence(sense, word) for sense, word in pairs[:limit]],
+                          senses=[_evidence(sense, word, definitions_only=definitions_only)
+                                  for sense, word in pairs[:limit]],
                           total_senses=len(pairs), truncated=len(pairs) > limit)
             return result
     except (OSError, ValueError, sqlite3.Error):

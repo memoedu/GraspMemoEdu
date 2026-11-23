@@ -139,10 +139,13 @@ class ClipperStore:
             """)
 
     @staticmethod
-    def public(row):
+    def public(row, compact=False):
+        source = json.loads(row['source'])
+        if compact:
+            source = {key: source.get(key, '') for key in ('route', 'title')}
         return {**{k: row[k] for k in ('id', 'kind', 'type_id', 'front', 'back', 'day', 'created_at',
                                        'due_at', 'revision')},
-                'source': json.loads(row['source'])}
+                'source': source}
 
     def save(self, learner, item, tz):
         front, back = item.front.strip(), item.back.strip()
@@ -166,15 +169,16 @@ class ClipperStore:
             con.commit()
         return self.public(row)
 
-    def list(self, learner, kind, offset, due):
+    def list(self, learner, kind, offset, due, limit=30, compact=False):
         when = self.now().isoformat()
         where = 'learner_id=? AND kind=?' + (' AND due_at<=?' if due else '')
         args = (learner, kind, when) if due else (learner, kind)
         order = 'due_at, id' if due else 'created_at DESC, id DESC'
         with closing(self.access._connect()) as con:
-            rows = con.execute(f'SELECT * FROM clipper_items WHERE {where} ORDER BY {order} LIMIT 31 OFFSET ?',
-                               (*args, offset)).fetchall()
-        return {'items': [self.public(row) for row in rows[:30]], 'next': offset + 30 if len(rows) > 30 else None}
+            rows = con.execute(f'SELECT * FROM clipper_items WHERE {where} ORDER BY {order} LIMIT ? OFFSET ?',
+                               (*args, limit + 1, offset)).fetchall()
+        return {'items': [self.public(row, compact) for row in rows[:limit]],
+                'next': offset + limit if len(rows) > limit else None}
 
     def review(self, learner, result):
         with closing(self.access._connect()) as con:
@@ -206,12 +210,18 @@ class ClipperStore:
     def record_model_call(self, learner):
         day = local_day(self.now(), 'Asia/Shanghai')
         with closing(self.access._connect()) as con:
-            con.execute('BEGIN IMMEDIATE')
-            own, total = con.execute('''SELECT coalesce(sum(CASE WHEN learner_id=? THEN count ELSE 0 END),0),
-                coalesce(sum(count),0) FROM clipper_model_usage WHERE day=?''', (learner, day)).fetchone()
-            if (self.account_limit is not None and own >= self.account_limit or
-                    self.global_limit is not None and total >= self.global_limit):
-                raise DomainError('clip_quota', '今日剪藏模型额度已用完。', 429)
+            if self.account_limit is not None or self.global_limit is not None:
+                con.execute('BEGIN IMMEDIATE')
+                if self.account_limit is not None:
+                    own = con.execute('SELECT count FROM clipper_model_usage WHERE day=? AND learner_id=?',
+                                      (day, learner)).fetchone()
+                    if own and own[0] >= self.account_limit:
+                        raise DomainError('clip_quota', '今日剪藏模型额度已用完。', 429)
+                if self.global_limit is not None:
+                    total, = con.execute('SELECT coalesce(sum(count),0) FROM clipper_model_usage WHERE day=?',
+                                         (day,)).fetchone()
+                    if total >= self.global_limit:
+                        raise DomainError('clip_quota', '今日剪藏模型额度已用完。', 429)
             con.execute('''INSERT INTO clipper_model_usage VALUES(?,?,1)
                            ON CONFLICT(day, learner_id) DO UPDATE SET count=count+1''', (day, learner))
             con.commit()
@@ -239,10 +249,7 @@ def register_clipper_routes(app, access_store, profile, dictionary, *, generate=
     slots = BoundedSemaphore(8)
 
     def account(request):
-        access = access_store.resolve(request.headers.get('x-learning-identity'))
-        if access.get('role') != 'account':
-            raise DomainError('clip_login_required', '请登录后使用零碎知识剪藏。', 403)
-        return access
+        return request.state.clipper_access
 
     @app.get(TYPES)
     def clip_types(request: Request):
@@ -251,8 +258,9 @@ def register_clipper_routes(app, access_store, profile, dictionary, *, generate=
 
     @app.get(ITEMS)
     def clip_items(request: Request, kind: Literal['card', 'excerpt'] = 'card',
-                   offset: int = Query(default=0, ge=0), due: bool = False):
-        return store.list(account(request)['learner_id'], kind, offset, due)
+                   offset: int = Query(default=0, ge=0), due: bool = False,
+                   limit: int = Query(default=30, ge=1, le=30), compact: bool = False):
+        return store.list(account(request)['learner_id'], kind, offset, due, limit, compact)
 
     @app.post(ITEMS)
     def save_clip(payload: Item, request: Request):
