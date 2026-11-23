@@ -38,6 +38,7 @@ class VoiceRecording(BaseModel):
     profile: Literal['general', 'answer', 'calculator', 'answer_commands']
     context: VoiceContext | None = None
     live: bool = False
+    segmented: bool = False
 
 
 def recorded_wave(payload):

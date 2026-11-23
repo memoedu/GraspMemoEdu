@@ -90,6 +90,19 @@ class MathDictationTests(unittest.TestCase):
         named.stem = '温度用 a 表示，若改用另一套单位，温度用 b 表示。'
         self.assertIsNone(quick_math('温度等于五', 'answer', named))
 
+    def test_explicit_vector_direction_limits_and_derivative_are_preserved(self):
+        context = VoiceContext(style='math', symbols=['Q', 't'])
+        for spoken, latex in (
+            ('横向量，负三、Q、七', r'\begin{pmatrix}-3&Q&7\end{pmatrix}'),
+            ('竖着的向量 是 七，零，负二', r'\begin{pmatrix}7\\0\\-2\end{pmatrix}'),
+            ('积分从负二到七，t平方减四，微分t', r'\int_{-2}^{7} t^2-4\,dt'),
+            ('积分t平方减四乘t，dt，从负二到七', r'\int_{-2}^{7} t^2-4\cdot t\,dt'),
+            ('偏Q比偏t等于t加九', r'\frac{\partial Q}{\partial t}=t+9'),
+            ('偏Q比偏t', r'\frac{\partial Q}{\partial t}'),
+        ):
+            with self.subTest(spoken=spoken):
+                self.assertEqual(quick_math(spoken, 'answer', context), latex)
+
 
 class Provider:
     def __init__(self, context, update):

@@ -4,35 +4,27 @@ import {createRequire} from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
 
-const [fixture, output, base = 'http://127.0.0.1:18886', mode = 'legacy'] = process.argv.slice(2);
+const [fixture, output, base = 'http://127.0.0.1:18886', mode = 'fallback'] = process.argv.slice(2);
 const require = createRequire(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
 const {chromium} = require('playwright');
 const browser = await chromium.launch({headless: true, channel: 'chrome',
   args: ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream']});
 const context = await browser.newContext({viewport: {width: 414, height: 844}, locale: 'zh-CN', permissions: ['microphone']});
-if (mode === 'legacy') await context.addInitScript(() => { globalThis.AudioWorkletNode = undefined; });
+if (mode === 'fallback') await context.addInitScript(() => { globalThis.AudioWorkletNode = undefined; });
 const page = await context.newPage();
 page.setDefaultTimeout(12000);
 const errors = [], requests = [];
 let respond, transcript = '左二配右二';
+let uploads = 0, silence = false;
 page.on('pageerror', error => errors.push(error.message));
 page.on('request', request => {
   if (request.method() === 'POST') requests.push(new URL(request.url()).pathname);
 });
 await page.route('**/api/voice-input/transcribe?*', route => {
   assert.equal(route.request().postDataJSON().profile, 'answer_commands');
-  return route.fulfill({json: {text: transcript}});
-});
-let packets = 0;
-if (mode === 'stream') await page.route('**/api/voice-input/stream?*', route => {
-  const body = route.request().postDataJSON();
-  if (body.op === 'open') {
-    assert.equal(body.profile, 'answer_commands');
-    assert.notEqual(body.live, true);
-  }
-  if (body.op === 'audio') packets++;
-  const offset = (body.offset || 0) + Buffer.from(body.pcm || '', 'base64').length;
-  return route.fulfill({json: body.op === 'finish' ? {offset, text: transcript} : {offset, preview: '临时命令'}});
+  assert.equal(route.request().postDataJSON().segmented, true);
+  uploads++;
+  return route.fulfill({json: {text: silence ? '' : transcript}});
 });
 const phrase = page.locator('.answerConversion textarea:visible');
 const answer = page.locator('#answerInput');
@@ -265,16 +257,20 @@ async function setCommandInput(enabled) {
 
 async function speak() {
   const initial = await answer.inputValue(), conversions = requests.filter(p => p === '/api/answer-conversion').length;
-  const initialPackets = packets;
+  const initialUploads = uploads;
+  silence = false;
   await mic.click();
   const stop = page.getByRole('button', {name: '结束录音', exact: true});
   await stop.waitFor();
-  if (mode === 'stream') {
-    for (let n = 0; n < 50 && packets === initialPackets; n++) await page.waitForTimeout(50);
-    assert.ok(packets > initialPackets);
-    assert.equal(await answer.inputValue(), initial);
-    assert.equal(requests.filter(p => p === '/api/answer-conversion').length, conversions);
-  } else await new Promise(resolve => setTimeout(resolve, 300));
+  await page.waitForTimeout(350);
+  assert.equal(uploads, initialUploads);
+  await page.getByRole('button', {name: '转写', exact: true}).click();
+  for (let n = 0; n < 50 && uploads === initialUploads; n++) await page.waitForTimeout(50);
+  assert.equal(uploads, initialUploads + 1);
+  assert.equal(await answer.inputValue(), initial);
+  assert.equal(requests.filter(p => p === '/api/answer-conversion').length, conversions);
+  assert.ok(!requests.includes('/api/voice-input/stream'));
+  silence = true;
   await stop.click();
 }
 async function recordMiddlePair() {

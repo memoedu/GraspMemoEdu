@@ -79,6 +79,12 @@ def main():
             'reading-two': r'仪器连续测量两次。初始读数用 \(q\) 表示，更新后的读数用 \(p\) 表示。请记录口述关系。',
             'integral': r'用积分表示关于 \(x\) 的表达式，写出微分元。',
             'radius': '根据给出的圆，口述半径的关系。',
+            'vector-row': '写出向量的各个分量，保留指定的排列方向。',
+            'vector-column': '请在答案中写出指定的向量。',
+            'integral-bounds': r'请写出关于 \(x\) 的积分，保留上下限和微分元。',
+            'partial': r'请写出 \(f\) 关于 \(x\) 的偏导，并记录口述的结果。',
+            'calculation': '按原话记录表达式和所说结果。',
+            'repair': '记录说话者最终指定的算式。',
         }
         stems.update(dict.fromkeys(('textbox-before', 'textbox-after'), stems['reading-one']))
         for name, stem in stems.items():
@@ -96,6 +102,9 @@ def main():
     (root / 'training-banks').mkdir()
     (root / 'training-banks' / 'isolated-bank.json').write_text(json.dumps(bank), encoding='utf-8')
     app = create_app(Settings(data_dir=root, port=args.port), create_learning_service(topic, root, DeterministicJudge()))
+    if args.voice:
+        # The matrix runs more than twelve synthetic recordings from a single fixture account.
+        app.state.public_limits.submissions_per_minute = 40
     account = app.state.access_store.create_account('Voice input fixture', purpose='test', is_student=True)
     (root / 'fixture-invitation.txt').write_text(account['invitation_code'], encoding='utf-8')
     print('READY calculator fixture', flush=True)

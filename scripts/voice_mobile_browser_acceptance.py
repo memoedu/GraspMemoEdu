@@ -40,7 +40,10 @@ MICROPHONE = """
   }
   Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {value: async () => {
     window.micCalls++;
-    if (window.fixtureRecorder && mp4Fixture) return {getTracks: () => [{stop() {}}]};
+    if (window.fixtureRecorder && mp4Fixture) {
+      const track = Object.assign(new EventTarget(), {stop() {}});
+      return {getTracks: () => [track], getAudioTracks: () => [track]};
+    }
     const audio = new AudioContext();
     window.testAudio = audio;
     if (audio.state !== 'running') await audio.resume();
@@ -67,18 +70,17 @@ def exercise(context, base, invitation, fallback, force_mp4, mp4_fixture, *, use
     page.on('pageerror', lambda error: errors.append(str(error)))
 
     def stream(route):
-        packet = route.request.post_data_json
-        opened.append(packet['op'])
-        offset = packet.get('offset', 0) + len(base64.b64decode(packet.get('pcm', '')))
-        route.fulfill(json={'offset': offset, **({'text': '合成录音'} if packet['op'] == 'finish' else {})})
+        opened.append(True)
+        route.abort()
 
     def recorded(route):
         payload = VoiceRecording.model_validate(route.request.post_data_json)
+        assert payload.segmented
         with wave.open(io.BytesIO(recorded_wave(payload)), 'rb') as audio:
             seconds = audio.getnframes() / audio.getframerate()
             assert seconds > .15
         uploads.append(payload.mime_type)
-        route.fulfill(json={'text': '合成录音'})
+        route.fulfill(json={'text': '第一段' if len(uploads) == 1 else '第二段'})
 
     page.route(re.compile(r'/api/voice-input/stream(?:\?|$)'), stream)
     page.route(re.compile(r'/api/voice-input/transcribe(?:\?|$)'), recorded)
@@ -112,28 +114,30 @@ def exercise(context, base, invitation, fallback, force_mp4, mp4_fixture, *, use
     bounds = timer.bounding_box()
     assert 0 <= bounds['x'] and bounds['x'] + bounds['width'] <= context.pages[0].viewport_size['width']
     expect(timer).to_have_text('00 分钟: 01 秒 / 2 分钟')
+    assert not uploads and not opened
     button('暂停录音').click()
     paused = timer.inner_text()
     page.evaluate('window.clockAdvance += 5000')
     assert timer.inner_text() == paused
+    assert not uploads and not opened
+    button('转写').tap()
+    expect(field).to_have_value('第一段')
     button('继续录音').click()
+    expect(timer).to_have_text('00 分钟: 02 秒 / 2 分钟')
     if use_limit:
         page.evaluate('window.clockAdvance += 120000')
         button('结束录音').wait_for(state='hidden')
     else:
         button('结束录音').click()
     try:
-        expect(field).to_have_value('合成录音')
+        expect(field).to_have_value('第一段第二段')
     except AssertionError as error:
         status = page.locator('.voiceToolPanel [role="status"]').text_content()
         raise AssertionError((status, opened, uploads, errors)) from error
     assert page.evaluate('window.micCalls') == 1 and not errors, errors
-    assert opened.count('finish') + len(uploads) == 1
-    if fallback:
-        assert not opened and uploads == (['audio/mp4'] if force_mp4 else ['audio/webm'])
-    else:
-        assert not uploads and opened[0] == 'open' and 'pause' in opened
-    return {'fallback': fallback, 'media': uploads[0] if uploads else 'PCM', 'automatic_stop': use_limit,
+    assert not opened
+    assert uploads == [('audio/mp4' if force_mp4 else 'audio/webm') if fallback else 'audio/wav'] * 2
+    return {'fallback': fallback, 'media': uploads[0], 'automatic_stop': use_limit,
             'fixture_encoder': page.evaluate('window.fixtureRecorder')}
 
 
