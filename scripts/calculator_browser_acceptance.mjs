@@ -77,6 +77,12 @@ async function sidebarOrientation(cardSelector) {
 async function text(value) {
   await outputBox.getByText(value, {exact: true}).waitFor();
 }
+function resultTypography() {
+  return outputBox.evaluate(result => {
+    const {fontFamily, fontSize, fontWeight, letterSpacing, lineHeight} = getComputedStyle(result);
+    return {fontFamily, fontSize, fontWeight, letterSpacing, lineHeight};
+  });
+}
 async function open() {
   await select('expression');
 }
@@ -169,12 +175,15 @@ try {
   await expressionInput.fill('1.2*10^24');
   await expressionInput.press('Enter');
   await text('1.2e+24');
+  const scientificTypography = await resultTypography();
   await notation.press('Space');
   await text('1200000000000000000000000');
+  assert.deepEqual(await resultTypography(), scientificTypography);
   assert.equal(await notation.getAttribute('aria-pressed'), 'true');
   await page.screenshot({path: path.join(output, 'decimal-result.png'), animations: 'disabled'});
   await notation.click();
   await text('1.2e+24');
+  assert.deepEqual(await resultTypography(), scientificTypography);
   assert.equal(await notation.getAttribute('aria-pressed'), 'false');
   await expressionInput.fill('-2.5*10^(-9)');
   await expressionInput.press('Enter');
@@ -185,15 +194,17 @@ try {
   await expressionInput.fill('10^100');
   await expressionInput.press('Enter');
   await text('1e+100');
+  const mobileTypography = await resultTypography();
   await notation.click();
   await text('1' + '0'.repeat(100));
+  assert.deepEqual(await resultTypography(), mobileTypography);
   assert.equal(await outputBox.evaluate(result => result.scrollWidth <= result.clientWidth), true);
   await page.setViewportSize({width: 1440, height: 900});
   await expressionInput.fill('2+3');
   await expressionInput.press('Enter');
   await text('5');
   await notation.waitFor({state: 'hidden'});
-  checks.push('FORMAT toggles large and small scalar results without another calculation.');
+  checks.push('FORMAT toggles large and small scalar results without recalculation or typography changes on desktop or mobile.');
   await store('A', '5');
   await expressionInput.fill('');
   await recall.click();

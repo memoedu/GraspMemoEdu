@@ -36,7 +36,7 @@ MA 材料至少开放科学计算器。网站对已安装和今后导入的材�
 
 表达式框可直接键入，也可用同一面板按键编辑。矩阵、数列和线性规划模型提供结构化编辑和文本输入，两个视图共用当前值。常数、单位、日期、进制和运算类型可用选择控件输入。每道题的计算历史只保留在该题的临时面板中。
 
-指数形式的单个数值旁会显示 `↻`（结果格式，FORMAT）。点击可将 `1.2e+24` 展开为 `1200000000000000000000000`，再点一次切回。新结果沿用自动显示，计算精度与答题填入值保持原样。可按题通过 `disable_keys: ["result_notation"]` 禁用。符号参考[卡西欧 FORMAT 手册](https://support.casio.com/global/en/calc/manual/fx-991CW%2BUK_en/changing_calculation_result_format/changing_the_display_format_calc_results.html)。
+指数形式的单个数值旁会显示 `↻`（结果格式，FORMAT）。点击可将 `1.2e+24` 展开为 `1200000000000000000000000`，再点一次切回。两种格式使用同样的答案字号和字距，过长的十进制数字会换行。新结果沿用自动显示，计算精度与答题填入值保持原样。可按题通过 `disable_keys: ["result_notation"]` 禁用。符号参考[卡西欧 FORMAT 手册](https://support.casio.com/global/en/calc/manual/fx-991CW%2BUK_en/changing_calculation_result_format/changing_the_display_format_calc_results.html)。
 
 点击「转换」把当前结果填入原题，计算器保持打开。多空题可连续计算并从第一空依次填写，也可点选题中空位固定目标。多值选项先逐个点击「记录」，最后一次计算后点击「转换」。计算器会列出已记录的值，转换失败时可以撤回末值后重试。操作示例见[答题转换](answer-conversion.md)。
 
