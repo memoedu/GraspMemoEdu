@@ -5,41 +5,83 @@ import {createRequire} from 'node:module';
 import {homedir} from 'node:os';
 import {launchAcceptanceChrome} from './launch_acceptance_chrome.mjs';
 
-const [assetRoot, site] = process.argv.slice(2);
+const [assetRoot, site, voiceFile, invitationFile] = process.argv.slice(2);
+assert.equal(Boolean(voiceFile), Boolean(invitationFile), 'Provide both the microphone WAV and the fixture invitation file');
 const editor = 'https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v1/';
 const requireRuntime = createRequire(join(homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
-const chrome = await launchAcceptanceChrome(requireRuntime);
+const chrome = await launchAcceptanceChrome(requireRuntime, voiceFile ? [
+  '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', `--use-file-for-fake-audio-capture=${voiceFile}`,
+] : []);
 try {
   const browser = await chrome.newContext({viewport: {width: 1440, height: 880}, locale: 'zh-CN'});
   await browser.addInitScript(() => {
     // The test writes real files using Chrome's isolated filesystem.
     // Only the native directory chooser and its permission prompt are simulated.
     if (globalThis.FileSystemHandle && navigator.storage) {
-      Object.defineProperty(FileSystemHandle.prototype, 'queryPermission', {value: async () => 'granted'});
-      window.showDirectoryPicker = () => navigator.storage.getDirectory();
+      window.archivePermission = 'granted';
+      Object.defineProperty(FileSystemHandle.prototype, 'queryPermission', {value: async () => window.archivePermission});
+      Object.defineProperty(FileSystemHandle.prototype, 'requestPermission', {value: async ({mode}) => {
+        window.requestedArchiveMode = mode;
+        return (window.archivePermission = 'granted');
+      }});
+      window.showDirectoryPicker = () => window.cancelArchivePicker
+        ? Promise.reject(new DOMException('Cancelled', 'AbortError')) : navigator.storage.getDirectory();
     }
   });
   const page = await browser.newPage();
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   const diagnostics = [];
+  let blockEditor = false;
   page.on('console', message => { if (message.type() === 'error') diagnostics.push(message.text()); });
   page.on('requestfailed', request => diagnostics.push(request.url() + ' ' + request.failure()?.errorText));
   await page.route(editor + '**', async route => {
     const path = new URL(route.request().url()).pathname.slice(new URL(editor).pathname.length);
+    if (blockEditor && path === 'whiteboard.html') return route.fulfill({status: 200, contentType: 'text/html', body: ''});
     const contentType = path.endsWith('.js') ? 'text/javascript' : path.endsWith('.css') ? 'text/css' : 'text/html';
     await route.fulfill({status: 200, contentType, body: await readFile(join(assetRoot, path))});
   });
   let calls = 0;
+  let receiveFirstOcr, releaseFirstOcr;
+  const firstOcrStarted = new Promise(resolve => { receiveFirstOcr = resolve; });
+  const firstOcrRelease = new Promise(resolve => { releaseFirstOcr = resolve; });
   await page.route('**/api/whiteboard/recognize**', async route => {
     const payload = route.request().postDataJSON();
     assert.match(payload.image, /^iVBORw0KGgo/);
     assert.ok(payload.question.length > 5);
     assert.doesNotMatch(payload.question, /REFERENCE_ONLY/);
     calls++;
-    await route.fulfill({json: calls === 1 ? {status: 'insufficient', feedback: '还缺第三、第四个空。'} :
+    if (calls === 1) {
+      receiveFirstOcr();
+      await firstOcrRelease;
+      return route.fulfill({status: 502, json: {detail: {code: 'whiteboard_ocr_unavailable', message: '测试：识别暂不可用。'}}});
+    }
+    await route.fulfill({json: calls === 2 ? {status: 'insufficient', feedback: '还缺第三、第四个空。'} :
       {status: 'ready', answer: 'correct'}});
   });
+  let releaseVoice, receivedVoice;
+  const voiceStarted = new Promise(resolve => { receivedVoice = resolve; });
+  const voiceRelease = new Promise(resolve => { releaseVoice = resolve; });
+  if (voiceFile) {
+    await page.route('**/api/voice-input/transcribe**', async route => {
+      const {mime_type, data_base64, profile} = route.request().postDataJSON();
+      const wav = Buffer.from(data_base64, 'base64');
+      assert.equal(mime_type, 'audio/wav');
+      assert.equal(profile, 'calculator');
+      assert.equal(wav.toString('ascii', 0, 4), 'RIFF');
+      assert.equal(wav.readUInt32LE(24), 16000);
+      assert.ok(wav.length > 10000);
+      receivedVoice();
+      await voiceRelease;
+      return route.fulfill({json: {text: '2x + 3 = 7'}});
+    });
+    await page.goto(site + '/#/settings');
+    await page.locator('#userMenuButton').click();
+    await page.locator('#identityButton').click();
+    await page.locator('#invitationCode').fill((await readFile(invitationFile, 'utf8')).trim());
+    await page.locator('#identitySubmitButton').click();
+    await page.locator('#identitySubmitButton').waitFor({state: 'hidden'});
+  }
   await page.goto(site + '/#/subjects/math/topic/calculator-fixture');
   const next = page.getByRole('button', {name: '下一页', exact: true}).last();
   const mastered = page.locator('#stepCard .choiceActions .primaryButton:enabled', {hasText: '已掌握'});
@@ -82,18 +124,85 @@ try {
   await page.mouse.up();
   await frame.getByRole('button', {name: '撤销', exact: true}).click();
   await frame.getByRole('button', {name: '重做', exact: true}).click();
+  const undo = frame.getByRole('button', {name: '撤销', exact: true});
+  await page.evaluate(() => { window.cancelArchivePicker = true; });
+  await panel.getByRole('button', {name: '归档目录'}).click();
+  assert.ok(await undo.isEnabled(), 'canceling directory selection preserves undo history');
+  await page.evaluate(() => { window.cancelArchivePicker = false; });
+  await panel.getByRole('button', {name: '归档目录'}).click();
+  await panel.getByText('归档目录已授权。', {exact: true}).waitFor();
+  assert.ok(await undo.isEnabled(), 'reauthorizing a directory preserves undo history');
+  const archiveEntries = await page.evaluate(async () => {
+    const root = await navigator.storage.getDirectory();
+    const names = [];
+    for await (const name of root.keys()) names.push(name);
+    return names;
+  });
+  assert.equal(archiveEntries.includes('GraspMemoEdu-Whiteboards'), false, 'choosing a folder does not create an empty archive');
+  await panel.getByRole('button', {name: '收起'}).click();
+  await launcher.click();
+  await panel.getByRole('button', {name: '归档目录'}).waitFor();
+  assert.ok(await undo.isEnabled(), 'reopening the same live board preserves undo history');
+  await frame.getByRole('button', {name: '画笔', exact: true}).click();
+  await canvas.scrollIntoViewIfNeeded();
+  const lassoTarget = await canvas.boundingBox();
+  await page.mouse.move(lassoTarget.x + 100, lassoTarget.y + 48);
+  await page.mouse.down();
+  await page.mouse.move(lassoTarget.x + 150, lassoTarget.y + 76, {steps: 8});
+  await page.mouse.up();
+  await frame.getByRole('button', {name: '套索', exact: true}).click();
+  await canvas.scrollIntoViewIfNeeded();
+  const selection = await canvas.boundingBox();
+  await page.mouse.move(selection.x + 85, selection.y + 30);
+  await page.mouse.down();
+  for (const [x, y] of [[170, 30], [170, 110], [85, 110], [85, 30]]) {
+    await page.mouse.move(selection.x + x, selection.y + y, {steps: 8});
+  }
+  await page.mouse.up();
+  await frame.getByRole('button', {name: '删除所选', exact: true}).click();
+  await undo.click();
 
   const expression = panel.getByRole('textbox', {name: '白板表达式或语音草稿'});
   const name = panel.getByRole('textbox', {name: '变量名'});
-  await expression.fill('2+3');
+  await expression.fill('2+3=5');
+  await expression.evaluate(input => input.setSelectionRange(0, 3));
   await name.fill('A');
   await panel.getByRole('button', {name: '储存／换元'}).click();
   await panel.getByText('A = 5', {exact: true}).waitFor();
   await frame.getByRole('button', {name: '清屏'}).click();
   await expression.fill('A+2');
   await panel.getByRole('button', {name: '计算', exact: true}).click();
-  await expression.evaluate(input => input.dispatchEvent(new CustomEvent('whiteboard-dictation', {detail: '2x + 3 = 7'})));
   const send = panel.getByRole('button', {name: '提交', exact: true});
+  if (voiceFile) {
+    await expression.fill('');
+    await page.getByRole('button', {name: '录音输入', exact: true}).click();
+    const end = page.getByRole('button', {name: '结束录音', exact: true});
+    await end.waitFor();
+    await page.locator('.voiceDuration:visible').filter({hasText: '02 秒'}).waitFor();
+    await end.click();
+    await voiceStarted;
+    await send.click();
+    await panel.getByText('请先结束录音并等待转写完成。', {exact: true}).waitFor();
+    assert.equal(calls, 0);
+    releaseVoice();
+    await page.waitForFunction(() => document.querySelector('[data-whiteboard-expression]')?.value === '2x + 3 = 7');
+  } else {
+    await expression.evaluate(input => input.dispatchEvent(new CustomEvent('whiteboard-dictation', {detail: '2x + 3 = 7'})));
+  }
+  await page.evaluate(() => { window.archivePermission = 'denied'; });
+  await send.click();
+  await panel.getByText('请先选择并授权本机归档目录。', {exact: true}).waitFor();
+  assert.equal(calls, 0);
+  await page.evaluate(() => { window.archivePermission = 'prompt'; });
+  await send.click();
+  await firstOcrStarted;
+  assert.equal(await page.evaluate(() => window.requestedArchiveMode), 'readwrite');
+  assert.ok(await send.isDisabled(), 'prevent duplicate submission while the OCR request is pending');
+  assert.ok(await frame.getByRole('button', {name: '画笔', exact: true}).isDisabled());
+  releaseFirstOcr();
+  await panel.getByText('测试：识别暂不可用。', {exact: true}).waitFor();
+  await frame.getByRole('button', {name: '画笔', exact: true}).and(frame.locator('button:enabled')).waitFor();
+  assert.equal(await page.locator('.feedback.correct,.feedback.incorrect').count(), 0);
   await send.click();
   await panel.getByText('还缺第三、第四个空。', {exact: true}).waitFor();
   assert.equal(await page.locator('.feedback.correct,.feedback.incorrect').count(), 0);
@@ -111,7 +220,7 @@ try {
   assert.ok(saved.texts.includes('2x + 3 = 7'));
   await send.click();
   await page.locator('.feedback.correct').waitFor();
-  assert.equal(calls, 2);
+  assert.equal(calls, 3);
   await panel.getByRole('button', {name: '收起'}).click();
   await launcher.click();
   await panel.getByText('A = 5', {exact: true}).waitFor();
@@ -120,9 +229,48 @@ try {
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
     assert.equal(overflow, false, 'viewport ' + width);
   }
+  await page.evaluate(async () => {
+    const {saveWhiteboard, restoreWhiteboard} = await import('/whiteboard-archive.js');
+    const sandbox = await (await navigator.storage.getDirectory()).getDirectoryHandle('archive-recovery-test', {create: true});
+    const scene = {version: 1, items: [{kind: 'text', text: 'archive recovery', color: '#000000', x: 4, y: 20}]};
+    await saveWhiteboard(sandbox, 'recovery-example', {scene, png: new Blob(['test raster'])}, []);
+    const archive = await sandbox.getDirectoryHandle('GraspMemoEdu-Whiteboards');
+    for await (const entry of archive.values()) {
+      const saved = JSON.parse(await (await (await entry.getFileHandle('latest.json')).getFile()).text());
+      await entry.removeEntry(saved.image);
+    }
+    const recovered = await restoreWhiteboard(sandbox, 'recovery-example');
+    if (!recovered?.imageMissing || recovered.scene.items[0]?.text !== 'archive recovery') {
+      throw Error('Scene must survive a missing PNG');
+    }
+  });
+  blockEditor = true;
+  await page.evaluate(async () => {
+    const toolsModule = document.querySelector('link[href*="/question-tools.js"]')?.href || '/question-tools.js';
+    const {setQuestionTools} = await import(toolsModule);
+    const section = document.createElement('section');
+    section.id = 'whiteboard-editor-retry';
+    const question = document.createElement('article');
+    section.append(question);
+    document.body.append(section);
+    setQuestionTools(question, {id: 'editor-retry', calculate: {level: 'scientific'}},
+      {key: 'editor-retry', editable: true, isCurrent: () => true});
+  });
+  const retryCase = page.locator('#whiteboard-editor-retry');
+  const retryLauncher = retryCase.locator('[data-question-tool=whiteboard]');
+  await retryLauncher.click();
+  await retryCase.getByText('白板载入失败，收起后重试。', {exact: true}).waitFor();
+  await retryCase.getByRole('button', {name: '收起', exact: true}).click();
+  blockEditor = false;
+  await retryLauncher.click();
+  await retryCase.getByRole('button', {name: '归档目录', exact: true}).and(retryCase.locator('button:enabled')).waitFor();
+  assert.equal(await retryCase.locator('.whiteboardStatus').textContent(), '');
   assert.deepEqual(errors, []);
   console.log(JSON.stringify({passed: true, checks: ['split', 'swap', 'undo-redo', 'register survives clearing',
-    'voice insertion event', 'archive and reopen', 'insufficient without submission', 'shared judge', 'small viewports']}));
+    voiceFile ? 'Chrome capture, transcription insertion and pending submit guard' : 'voice insertion event',
+    'archive and reopen', 'directory cancellation and denied permission', 'live undo after reopen',
+    'lasso deletion and undo', 'OCR freeze and recovery', 'insufficient without submission', 'shared judge', 'small viewports',
+    'editable scene recovered after its PNG went missing', 'editor retries after load failure']}));
 } finally {
   await chrome.close();
 }
