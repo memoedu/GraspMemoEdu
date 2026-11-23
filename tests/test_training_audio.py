@@ -233,6 +233,16 @@ class TrainingAudioApiTests(unittest.TestCase):
         self.assertEqual(context.textbox.before, '口径用 R 表示。')
         self.assertEqual(self.transcriber.calls, [])
 
+    def test_completed_silent_segment_does_not_block_later_segments(self):
+        from unittest.mock import patch
+        body = {'mime_type': 'audio/wav', 'data_base64': self.body['data_base64'], 'profile': 'answer_commands',
+                'segmented': True}
+        with patch.object(self.app.state.voice_streams.factory, 'recording', return_value={'text': ''}) as recognize:
+            result = self.client.post('/api/voice-input/transcribe', headers=self.headers, json=body)
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(result.json(), {'text': ''})
+        self.assertEqual(recognize.call_args.args[0], self.audio_data)
+
     def test_refinement_profiles_route_only_general_and_reject_calculator_prose(self):
         from unittest.mock import Mock
         from graspmemoedu.voice_input import refine_voice

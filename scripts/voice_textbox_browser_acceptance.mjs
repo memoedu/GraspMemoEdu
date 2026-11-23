@@ -1,143 +1,118 @@
-/** Exercise spoken self-correction through the real streaming service in an isolated website. */
+/** Verify local capture, ordered submissions, retry and editing through the supported site UI. */
 import assert from 'node:assert/strict';
 import {readFile, writeFile} from 'node:fs/promises';
-import path from 'node:path';
-import os from 'node:os';
 import {createRequire} from 'node:module';
+import os from 'node:os';
+import path from 'node:path';
+import {runInNewContext} from 'node:vm';
 
-const [fixture, clips, output, base = 'http://127.0.0.1:18978'] = process.argv.slice(2);
+const [fixture, output, base = 'http://127.0.0.1:18993'] = process.argv.slice(2);
 assert.ok(['localhost','127.0.0.1'].includes(new URL(base).hostname));
+{
+  let Processor;
+  const output = [];
+  class AudioWorkletProcessor {
+    port = {postMessage(data) { output.push(data instanceof ArrayBuffer ? [...new Int16Array(data)] : data); }};
+  }
+  runInNewContext(await readFile(new URL('../web/voice-pcm.js', import.meta.url), 'utf8'), {
+    AudioWorkletProcessor, Int16Array, ArrayBuffer, registerProcessor: (_, type) => { Processor = type; },
+  });
+  const pcm = new Processor();
+  const samples = (...values) => pcm.process([[values.map(x => x/32768)]]);
+  const event = data => pcm.port.onmessage({data});
+  samples(1,2); event('cut'); samples(3); event('cut'); samples(4);
+  event('pause'); samples(99); event('cut'); event('resume'); samples(5); event('finish');
+  assert.deepEqual(output,[[1,2],'cut',[3],'cut',[4],'pause','cut','resume',[5],'finish']);
+}
 const require = createRequire(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
 const {chromium} = require('playwright');
-const browser = await chromium.launch({headless: true, channel:'chrome', args:['--autoplay-policy=no-user-gesture-required']});
-const page = await browser.newPage({locale:'zh-CN'});
-const errors = [], results = [];
-page.on('pageerror', e => errors.push(String(e)));
+const browser = await chromium.launch({headless: true, channel: 'chrome', args:['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream']});
+const context = await browser.newContext({locale: 'zh-CN', viewport: {width: 390,height: 844}, permissions: ['microphone'], serviceWorkers: 'block'});
+const page = await context.newPage();
+page.setDefaultTimeout(12000);
+const errors = [], evidence = [], uploads = [], replies = [];
+let totalMicPermissions = 0, streamingRequests = 0;
 await page.addInitScript(() => {
-  // Compare the capture clock to painted frames, including the device's input latency.
-  const fetchRequest = window.fetch;
-  window.fetch = function(resource, options) {
-    if (String(resource).includes('/api/voice-input/stream') && options?.body && window.liveEvidence) {
-      const packet = JSON.parse(options.body);
-      if (packet.pcm) {
-        const bytes = Uint8Array.from(atob(packet.pcm), c => c.charCodeAt(0));
-        if (new Int16Array(bytes.buffer).some(sample => Math.abs(sample)>40)) {
-          window.liveEvidence.voicedFrames.push(performance.now());
-        }
-      }
-    }
-    return fetchRequest.apply(this, arguments);
-  };
-  Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {value:async () => {
-    const clock = new AudioContext({sampleRate:16000, latencyHint:'interactive', sinkId:{type:'none'}});
-    await clock.resume();
-    const sink = clock.createMediaStreamDestination();
-    window.syntheticMic = {clock, sink};
-    return sink.stream;
-  }});
+  const original = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+  window.opens = 0;
+  navigator.mediaDevices.getUserMedia = opts => { window.opens++; return original(opts); };
 });
-const button = name => page.getByRole('button',{name, exact:true});
-const mic = button('录音输入'), stop = button('结束录音');
-async function play(field, first, correction, waitAfterSpeech) {
-  const audio = await Promise.all([first, correction].map(name => readFile(path.join(clips,name+'.wav')).then(b => b.toString('base64'))));
+page.on('pageerror', error => errors.push(error.message));
+await page.route(/\/api\/voice-input\/stream(?:\?|$)/, route => { streamingRequests++; return route.abort(); });
+await page.route(/\/api\/voice-input\/transcribe(?:\?|$)/, async route => {
+  const body = route.request().postDataJSON(), wav = Buffer.from(body.data_base64, 'base64');
+  assert.equal(body.segmented,true);
+  assert.equal(body.mime_type,'audio/wav');
+  assert.equal(wav.length,44+wav.readUInt32LE(40));
+  assert.equal(wav.readUInt32LE(24),16000);
+  uploads.push({wav, context: body.context});
+  const result = await new Promise(resolve => replies.push(resolve));
+  await route.fulfill({status: result.status ?? 200, json: result.json});
+});
+const button = name => page.getByRole('button', {name,exact:true});
+const mic = button('录音输入'), cut = button('转写'), end = button('结束录音');
+const field = page.locator('#profileDisplayName');
+const wait = async (test, label) => {
+  for (let n=0; n<100; n++) {
+    if (await test()) return;
+    await new Promise(resolve => setTimeout(resolve,40));
+  }
+  assert.fail(label);
+};
+const value = expected => wait(async () => await field.inputValue()===expected,'unexpected input value');
+const upload = n => wait(() => replies.length >= n, 'segment upload');
+const reply = (number,text) => replies[number-1]({json:{text}});
+async function begin(text, selection) {
+  await field.fill(text);
   await field.focus();
+  await field.evaluate((el,range)=>el.setSelectionRange(...range),selection);
   await mic.click();
-  await stop.waitFor();
-  return field.evaluate(async (input, {audio, waitAfterSpeech}) => {
-    const {clock,sink} = window.syntheticMic;
-    const chunks = [];
-    for (const encoded of audio) {
-      const raw = Uint8Array.from(atob(encoded), char => char.charCodeAt(0));
-      const buffer = await clock.decodeAudioData(raw.buffer);
-      const data = buffer.getChannelData(0);
-      let from = 0, to = data.length;
-      while (from<to && Math.abs(data[from])*32768<=40) from++;
-      while (to>from && Math.abs(data[to-1])*32768<=40) to--;
-      chunks.push({buffer,from:from/buffer.sampleRate,duration:(to-from)/buffer.sampleRate});
-    }
-    const start = clock.currentTime+.08, startMs = performance.now()+80;
-    const correctionStart = start+chunks[0].duration+1.35;
-    const t = window.liveEvidence = {firstStart:startMs, firstEnd:startMs+chunks[0].duration*1000,
-      correctionStart:startMs+(correctionStart-start)*1000, end:startMs+(correctionStart-start+chunks[1].duration)*1000,
-      initial:input.value, changes:[], voicedFrames:[]};
-    t.scheduledEnd = t.end;
-    input.addEventListener('input', () => { t.committed=performance.now(); }, {once:true});
-    let shown = input.value;
-    function frame() {
-      if (input.value !== shown) { shown=input.value; t.changes.push({at:performance.now(),value:shown}); }
-      if (t.committed) { requestAnimationFrame(() => {t.painted=performance.now(); t.final=input.value;}); return; }
-      if (performance.now()-startMs<25000) requestAnimationFrame(frame);
-    }
-    requestAnimationFrame(frame);
-    chunks.forEach(({buffer,from,duration},i) => {
-      const when=i===0?start:correctionStart;
-      // Stamp actual audio-graph boundaries. A device's audio clock can drift from wall time,
-      // particularly while booting or changing devices. Keep the extrapolated time separately.
-      const marker=clock.createConstantSource(); marker.offset.value=0; marker.connect(sink);
-      marker.onended=()=>{t[i===0?'firstStart':'correctionStart']=performance.now();};
-      marker.start(when); marker.stop(when+1/clock.sampleRate);
-      const source = clock.createBufferSource(); source.buffer=buffer; source.connect(sink);
-      source.onended=()=>{
-        t[i===0?'firstEnd':'end']=performance.now();
-        if (i===1) setTimeout(()=>{
-          t.stopped=performance.now();
-          [...document.querySelectorAll('button')].find(b=>b.textContent==='结束录音' && b.offsetWidth)?.click();
-        },waitAfterSpeech);
-      };
-      source.start(when,from,duration);
-    });
-  },{audio,waitAfterSpeech});
+  await end.waitFor();
 }
 try {
-  await page.goto(base+'/#/subjects/math/topic/calculator-fixture');
-  await button('下一页').last().waitFor();
+  await page.goto(base+'/#/settings');
   await page.locator('#userMenuButton').click();
   await page.locator('#identityButton').click();
   await page.locator('#invitationCode').fill((await readFile(path.join(fixture,'fixture-invitation.txt'),'utf8')).trim());
   await page.locator('#identitySubmitButton').click();
   await page.locator('#identitySubmitButton').waitFor({state:'hidden'});
-  for (const kind of ['calculator','prose']) {
-    let input, wanted, replacement, prefix, suffix, clip;
-    if (kind==='calculator') {
-      await button('下一页').last().click();
-      await page.getByRole('toolbar',{name:'题目工具'}).locator('[data-question-tool=expression]').click();
-      input = page.locator('.calculatorExpression'); prefix='2*('; suffix=')'; wanted='12+36'; replacement='12+38'; clip='calc';
-    } else {
-      await page.goto(base+'/#/settings');
-      input=page.locator('#profileDisplayName'); prefix='【'; suffix='】'; wanted='周三'; replacement='周五'; clip='prose';
-    }
-    for (const waitAfterSpeech of [800,32]) {
-      await input.fill(prefix+'旧'+suffix);
-      await input.evaluate((e,p)=>e.setSelectionRange(p.length,p.length+1),prefix);
-      await play(input,clip+'-first',clip+'-repair',waitAfterSpeech);
-      await page.waitForFunction(()=>window.liveEvidence?.painted,{},{timeout:28000}).catch(async error=>{
-        console.error(JSON.stringify(await page.evaluate(()=>({draft:window.liveEvidence,status:document.querySelector('.voiceToolPanel [role=status]')?.textContent}))));
-        throw error;
-      });
-      const r=await page.evaluate(()=>window.liveEvidence);
-      const first=r.changes.find(x=>x.at<r.firstEnd);
-      const paused=r.changes.find(x=>x.at<r.correctionStart && x.value.includes(wanted));
-      const corrected=r.changes.find(x=>x.at>=r.correctionStart && x.value.includes(replacement) && !x.value.includes(wanted) && !x.value.includes('不对'));
-      const row={kind,stop_delay_ms:waitAfterSpeech,first_ms:first && Math.round(first.at-r.firstStart),
-        pause_ms:paused && Math.round(Math.max(0,paused.at-r.firstEnd)),
-        repair_ms:corrected && Math.round(Math.max(0,corrected.at-r.end)),
-        stop_to_paint_ms:Math.round(r.painted-r.stopped),end_to_paint_ms:Math.round(r.painted-r.end),text:r.final,
-        capture_first_ms:Math.round(r.voicedFrames[0]-r.firstStart),
-        capture_tail_ms:Math.round(r.voicedFrames.at(-1)-r.end),
-        audio_clock_drift_ms:Math.round(r.end-r.scheduledEnd),
-        updates:r.changes.map(x=>({ms:Math.round(x.at-r.firstStart),text:x.value}))};
-      results.push(row);
-      console.log(JSON.stringify(row));
-      assert.ok(first && paused && corrected && r.final.startsWith(prefix) && r.final.endsWith(suffix),kind);
-      assert.ok(r.final.includes(replacement) && !r.final.includes(wanted) && !r.final.includes('不对'));
-      if (kind==='prose') assert.ok(r.final.includes('讨论安排在'));
-      assert.ok(row.first_ms<1000 && row.pause_ms<1000 && row.repair_ms<1000);
-      if (waitAfterSpeech===800) assert.ok(corrected.at<r.stopped);
-      else assert.ok(row.end_to_paint_ms<1000 && row.stop_to_paint_ms<1000);
-    }
-  }
+  await page.goto(base+'/#/settings');
+
+  await begin('前旧后',[1,2]);
+  await page.waitForTimeout(350);
+  assert.equal(uploads.length,0);
+  assert.equal(await field.inputValue(),'前旧后');
+  await cut.click(); await upload(1);
+  assert.deepEqual(uploads[0].context.textbox,{before:'前',selected:'旧',after:'后'});
+  // Continue speaking while recognition of the first segment waits.
+  await page.waitForTimeout(290); await cut.click();
+  await page.waitForTimeout(200); await cut.click();
+  assert.equal(uploads.length,1);
+  await end.waitFor();
+  reply(1,'甲'); await value('前甲后'); await upload(2);
+  assert.equal(uploads[1].context.textbox.before,'前甲');
+  assert.ok(uploads[1].wav.length > 3200);
+  replies[1]({status:502,json:{error:{code:'transcription_failed',message:'合成识别失败'}}});
+  const retry = button('重试转写'); await retry.waitFor();
+  await end.waitFor();
+  await retry.click(); await upload(3);
+  assert.ok(uploads[2].wav.equals(uploads[1].wav));
+  reply(3,'乙'); await upload(4); reply(4,'丙'); await value('前甲乙丙后');
+  await page.waitForTimeout(200);
+  await end.click(); await upload(5); reply(5,''); await value('前甲乙丙后');
+  await retry.waitFor({state:'hidden'});
+  assert.equal(await page.evaluate(()=>window.opens),1);
+  evidence.push('local capture, rapid cuts, ordered results, failed segment retry, silent tail');
+
+  await begin('新旧末',[1,2]);
+  await page.waitForTimeout(220); await cut.click(); await upload(6);
+  await button('取消').click(); reply(6,'迟到结果'); await value('新旧末');
+  evidence.push('cancellation and late result rejection');
+  totalMicPermissions = await page.evaluate(()=>window.opens);
+  assert.equal(streamingRequests,0);
   assert.deepEqual(errors,[]);
+  await writeFile(output,JSON.stringify({checks:evidence,uploads:uploads.length,streamingRequests,devices:totalMicPermissions},null,2));
+  console.log('PASS',evidence.join('; '));
 } finally {
-  await writeFile(output,JSON.stringify(results,null,2));
   await browser.close();
 }

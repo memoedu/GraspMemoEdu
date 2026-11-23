@@ -186,6 +186,52 @@ def direct_dictation(text, *, partial=False):
     return previous, False
 
 
+PAUSE = r'[,、。;:]*'
+
+
+def formula_notation(latex, context):
+    return latex if context.style in ('math', 'literal') else r'\(' + latex + r'\)'
+
+
+def structured_math(text, context):
+    vector = re.fullmatch(r'(列向量|竖(?:着)?的?向量|行向量|横(?:着)?的?向量)(?:为|是)?' + PAUSE + r'(.+)', text)
+    if vector:
+        parts = re.split(r'[,、;。]+', vector[2].strip(',、;。'))
+        values = [expression(piece, context) for piece in parts]
+        if len(values) >= 2 and all(values):
+            separator = r'\\' if vector[1][0] in '列竖' else '&'
+            return r'\begin{pmatrix}' + separator.join(values) + r'\end{pmatrix}'
+    derivative = re.fullmatch(
+        r'偏([A-Za-z])(?:比|除以)偏([A-Za-z])' + PAUSE + r'(?:(?:等于|=)' + PAUSE + r'(.+))?', text)
+    if derivative:
+        function = expression(derivative[1], context)
+        variable = expression(derivative[2], context)
+        right = expression(derivative[3], context) if derivative[3] else ''
+        if function and variable and (not derivative[3] or right):
+            return (r'\frac{\partial ' + function + r'}{\partial ' + variable + '}'
+                    + ('=' + right.replace('*', r'\cdot ') if right else ''))
+    if text.startswith('积分'):
+        limit = r'(?:负|-)?' + NUMBER
+        bounds = re.compile(r'从' + PAUSE + '(' + limit + ')' + PAUSE + '到' + PAUSE + '(' + limit + ')')
+        body = text[2:].strip(',、。;:')
+        limits = bounds.match(body)
+        if limits:
+            body = body[limits.end():].lstrip(',、。;:')
+        else:
+            suffix = re.search(bounds.pattern + '$', body)
+            if suffix:
+                limits, body = suffix, body[:suffix.start()].rstrip(',、。;:')
+        differential = re.fullmatch(r'(.+?)' + PAUSE + r'(?:微分|\*?[dD])' + PAUSE + r'([A-Za-z])', body)
+        if differential:
+            integrand = expression(differential[1], context)
+            variable = expression(differential[2], context)
+            values = [expression(bound, context) for bound in limits.groups()] if limits else []
+            if integrand and variable and all(values):
+                scripts = '_{' + values[0] + '}^{' + values[1] + '}' if values else ''
+                return r'\int' + scripts + ' ' + integrand.replace('*', r'\cdot ') + r'\,d' + variable
+    return None
+
+
 def quick_math(transcript, profile, context):
     """Only handle complete, unambiguous token streams; defer prose and scope to the model."""
     if profile not in {'calculator', 'answer'} or context.style == 'code':
@@ -229,14 +275,9 @@ def quick_math(transcript, profile, context):
                 if left and not prefix:
                     return left + OPERATORS[relation[3]] + right
                 return prefix + r'\(' + (left or r'\text{' + relation[2] + '}') + OPERATORS[relation[3]] + right + r'\)'
-        if compact.startswith('积分'):
-            pause = r'[,，、。;；:：]*'
-            integral = re.fullmatch('积分' + pause + r'(.+?)' + pause + r'(?:微分|\*?[dD])' + pause + r'([A-Za-z])', compact)
-            if integral:
-                body = expression(integral[1], context)
-                if body:
-                    latex = r'\int ' + body.replace('*', r'\cdot ') + r'\,d' + integral[2].lower()
-                    return latex if context.style in ('math', 'literal') else r'\(' + latex + r'\)'
+        latex = structured_math(compact, context)
+        if latex:
+            return formula_notation(latex, context)
     return expression(compact, context)
 
 
