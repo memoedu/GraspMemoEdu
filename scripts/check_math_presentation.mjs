@@ -36,11 +36,19 @@ for (const input of [matrix, 'Let ' + matrix + ' be the first update.',
   '$x+\n' + String.raw`\begin{bmatrix}1\\2\end{bmatrix}$`]) {
   const {html} = renderSourceMarkdown(input);
   assert.equal((html.match(/<mjx-container/g) || []).length, 1);
-  assert.match(html, /<p>[^<]*<span class="mathInline">/);
-  assert.doesNotMatch(html, /\$|\\mathbf/);
+  assert.match(html, /<p>[^<]*<span class="mathInline" data-tex=/);
+  assert.doesNotMatch(html.replace(/<[^>]+>/g, ''), /\$|\\mathbf/);
 }
 const protectedHtml = renderSourceHtml('<p>Vector ' + matrix + '</p><code>$x$</code><pre>\\(z\\)</pre>').html;
 assert.equal((protectedHtml.match(/<mjx-container/g) || []).length, 1);
 assert.match(protectedHtml, /<code>\$x\$<\/code><pre>\\\(z\\\)<\/pre>/);
 assert.equal((renderSourceMarkdown(currency).html.match(/<mjx-container/g) || []).length, 1);
 console.log('PASS explicit delimiters, matrix-valued options, escapes, currency and protected code');
+
+const native = '[math]x=\\begin{bmatrix}1\\\\2\\end{bmatrix}^T[/math]';
+for (const {html} of [renderSourceMarkdown(native), renderSourceHtml('<p>' + native + '</p>')]) {
+  assert.equal((html.match(/<mjx-container/g) || []).length, 1);
+  assert.match(html, /data-tex="x=\\begin\{bmatrix\}[^"]+\^T"/);
+  assert.doesNotMatch(html, /\[\/?math\]/i);
+}
+assert.match(renderSourceMarkdown('`[math]x[/math]`').html, /<code>\[math\]x\[\/math\]<\/code>/);

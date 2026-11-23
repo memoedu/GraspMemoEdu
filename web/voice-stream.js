@@ -1,4 +1,4 @@
-import {recordMicrophone} from './microphone-recorder.js?v=8ddf3b7f4bcfc277';
+import {recordMicrophone} from './microphone-recorder.js?v=3db089a1a95dfffb';
 
 function wave(frames, size) {
   const header = new ArrayBuffer(44), view = new DataView(header);
@@ -32,7 +32,7 @@ export async function streamMicrophone({request, profile, context, signal, maxDu
     signal.throwIfAborted();
     audio = new AudioContext({sampleRate: 16000});
     if (audio.sampleRate !== 16000) throw Error('Unsupported microphone sample rate');
-    await audio.audioWorklet.addModule(new URL('./voice-pcm.js?v=8ddf3b7f4bcfc277', import.meta.url));
+    await audio.audioWorklet.addModule(new URL('./voice-pcm.js?v=3db089a1a95dfffb', import.meta.url));
     await audio.resume();
     signal.throwIfAborted();
     node = new AudioWorkletNode(audio, 'voice-pcm', {channelCount: 1, channelCountMode: 'explicit'});

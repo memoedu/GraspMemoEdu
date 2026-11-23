@@ -12,7 +12,8 @@ import uuid
 from .catalog import Catalog
 from .config import Settings
 from .content_bundle import POINTER
-from .lesson_display import DIRECTORY, display_key, lesson_fields, read_display
+from .lesson_display import DIRECTORY, display_hash, display_key, lesson_fields, read_display
+from .mathacademy_formula_audit import FormulaAudit, ML_COURSES
 from .question_bank import QuestionBank
 from .test_materials import TestMaterials
 from .topic_install import digest, encoded, import_lock
@@ -93,25 +94,65 @@ def link_or_copy(source, destination):
         return shutil.copy2(source, destination)
 
 
-def verify_topic(path, tid, catalog, data):
+def repair_assets(source):
+    signature = MarkupSignature(source)
+    assets = Counter({entry: count for entry, count in signature.tags.items()
+                      if entry[0] == 'start' and (entry[1] in {'img', 'aside'}
+                         or any(name in {'data-control', 'data-blank-id', 'href'} for name, _ in entry[2]))})
+    code = Counter({entry: count for entry, count in signature.protected.items()
+                    if entry[0][1] in {'pre', 'code'}})
+    return assets, code
+
+
+def verify_topic(path, tid, catalog, data, *, previous=None):
     topic = catalog.topics[tid]
     spec = read_display(path)
-    if set(spec) != {'schema', 'topic_id', 'version', 'values'} or spec['topic_id'] != tid or spec['version'] != topic['version']:
+    if (set(spec) - {'tex_repairs'} != {'schema', 'topic_id', 'version', 'values'}
+            or spec['topic_id'] != tid or spec['version'] != topic['version']):
         raise ValueError(f'Localized Topic version differs: {tid}')
     bank = QuestionBank(topic, data)
     active = bank.active_revision()
     variants = [bank.question(qid, active) for qid in bank.load(active)['questions']] if active else []
     source = {display_key(kind, row[name]): (kind, row[name]) for row, name, kind in lesson_fields(topic, variants)}
-    if not isinstance(spec['values'], dict) or not spec['values'] or not spec['values'].keys() <= source.keys():
+    repairs = spec.get('tex_repairs', {})
+    # A display-only repair can carry archived translations that still serve
+    # pinned question revisions. Their previously installed bytes must match.
+    carried_values = (repairs and previous and
+                      all(previous.get(field) == spec[field] for field in ('topic_id', 'version', 'values')))
+    if (not isinstance(spec['values'], dict) or not isinstance(repairs, dict) or not (spec['values'] or repairs)
+            or not repairs.keys() <= source.keys()
+            or not carried_values and not spec['values'].keys() <= source.keys()):
         raise ValueError(f'Localization contains invalid source bindings: {tid}')
     for key, value in spec['values'].items():
         if not isinstance(value, str) or not value.strip() or '\x00' in value or len(value) > 2_000_000:
             raise ValueError(f'Invalid lesson display value: {tid}')
+        if key not in source:
+            continue  # The byte-identical archived entry was checked above.
         kind, original = source[key]
         if kind == 'title' and ('<' in value or '>' in value):
             raise ValueError(f'Expected plain text: {tid}')
         if kind == 'html' and MarkupSignature(value).signature() != MarkupSignature(original).signature():
             raise ValueError(f'Changed protected HTML: {tid}/{key}')
+    if repairs:
+        from .mathacademy_import import Renderer
+        renderer = Renderer()
+        try:
+            for key, repair in repairs.items():
+                kind, original = source[key]
+                current = spec['values'].get(key, original)
+                if (kind != 'html' or not isinstance(repair, dict)
+                        or set(repair) != {'before_sha256', 'markdown', 'html'}
+                        or repair['before_sha256'] != display_hash(current)
+                        or not isinstance(repair['markdown'], str) or not 0 < len(repair['markdown']) <= 100_000
+                        or not isinstance(repair['html'], str) or not 0 < len(repair['html']) <= 2_000_000
+                        or not FormulaAudit(current).errors or FormulaAudit(repair['html']).errors
+                        or repair_assets(current) != repair_assets(repair['html'])):
+                    raise ValueError(f'Invalid source-bound TeX repair: {tid}/{key}')
+                regenerated = renderer.render({'id': tid, 'field': {'_render': repair['markdown']}})['field']
+                if regenerated != repair['html']:
+                    raise ValueError(f'TeX repair differs from independently compiled source: {tid}/{key}')
+        finally:
+            renderer.close()
 
 
 def install(package, data):
@@ -144,7 +185,11 @@ def install(package, data):
             else:
                 if path.stem not in allowed:
                     raise ValueError('Localized Topic exceeds the explicit course scope')
-                verify_topic(path, path.stem, catalog, data)
+                if read_display(path).get('tex_repairs') and path.stem not in {
+                    row['id'] for cid in set(manifest['courses']) & ML_COURSES for row in catalog.course(cid)['topics']
+                }:
+                    raise ValueError('TeX recovery exceeds the Machine Learning scope')
+                verify_topic(path, path.stem, catalog, data, previous=read_display(root / DIRECTORY / name))
         if all((root / DIRECTORY / name).is_file() and digest((root / DIRECTORY / name).read_bytes()) == checksum
                for name, checksum in manifest['files'].items()):
             return {'status': 'unchanged', 'generation': json.loads(previous)['generation']}

@@ -17,6 +17,10 @@ def display_key(kind, source):
     return hashlib.sha256((kind + '\0' + source).encode()).hexdigest()
 
 
+def display_hash(value):
+    return hashlib.sha256(value.encode()).hexdigest()
+
+
 def display_fields(row, names):
     return [(row, name, 'title' if name in ('title', 'text') else 'html') for name in names
             if isinstance(row.get(name), str) and row[name].strip()]
@@ -66,6 +70,7 @@ class LessonDisplay:
     def __init__(self, data_dir, topic):
         self.preview = False
         self.values = {}
+        self.tex_repairs = {}
         tid = topic['id']
         if topic.get('source_adapter') != 'mathacademy' or not re.fullmatch(r'ma-topic-\d+', tid):
             return
@@ -75,11 +80,16 @@ class LessonDisplay:
         localized = cached_display(root / (tid + '.json'))
         if localized.get('topic_id') == tid and localized.get('version') == topic['version']:
             self.values = localized['values']
+            self.tex_repairs = localized.get('tex_repairs', {})
 
     def apply(self, result, bindings):
         for row, field, kind in bindings:
-            if value := self.values.get(display_key(kind, row[field])):
-                row[field] = value
+            key = display_key(kind, row[field])
+            value = self.values.get(key, row[field])
+            repair = self.tex_repairs.get(key) if kind == 'html' else None
+            if repair and repair['before_sha256'] == display_hash(value):
+                value = repair['html']
+            row[field] = value
         return result
 
     def introduction(self, intro):
@@ -93,7 +103,7 @@ class LessonDisplay:
             if len(fragments) == intro['_ma_body_count']:
                 return {**intro, 'title': title, 'html': fragments[intro['_ma_body_index']]}
             return {**intro, 'title': title}
-        if not self.values or EDITORIAL.match(intro['title']):
+        if not (self.values or self.tex_repairs) or EDITORIAL.match(intro['title']):
             return intro
         result = dict(intro)
         return self.apply(result, display_fields(result, ('title', 'html')))
@@ -105,7 +115,7 @@ class LessonDisplay:
         return self.apply(result, display_fields(result, ('title',)))
 
     def question(self, question):
-        if not self.values or EDITORIAL.match(question.get('title', '')):
+        if not (self.values or self.tex_repairs) or EDITORIAL.match(question.get('title', '')):
             return question
         result = deepcopy(question)
         return self.apply(result, question_fields(result))
