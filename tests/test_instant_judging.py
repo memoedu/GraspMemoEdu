@@ -62,6 +62,8 @@ class InstantJudgingTests(unittest.TestCase):
         course = synthetic_course(2)
         course['modules'][0]['example']['interaction'] = {'version': 1, 'type': 'text', 'grading': 'exact', 'answers': ['correct']}
         self.start(course, judge)
+        limits = self.app.state.public_limits
+        limits.max_pending = limits.daily.global_limit = 2
         futures = []; original_submit = ThreadPoolExecutor.submit
         def track(pool, function, *args, **kwargs):
             future = original_submit(pool, function, *args, **kwargs)
@@ -103,7 +105,8 @@ class InstantJudgingTests(unittest.TestCase):
                 self.start(course, judge)
                 state = self.choose()
                 payload = self.payload(state, answer=demo_answer(course['modules'][0]['example']))
-                with patch('graspmemoedu.api.ThreadPoolExecutor.submit', side_effect=AssertionError('Must not enqueue')):
+                with patch('graspmemoedu.api.ThreadPoolExecutor.submit', side_effect=AssertionError('Must not enqueue')), \
+                        patch.object(self.app.state.public_limits.daily, 'reserve', side_effect=AssertionError('Must not charge')):
                     result = self.call('POST', '/api/submit', payload)
                 self.assertEqual(result['status'], 'judged'); self.assertTrue(result['correct'])
                 judge.assert_not_called()
@@ -122,7 +125,8 @@ class InstantJudgingTests(unittest.TestCase):
         payload = {'request_id': str(uuid.uuid4()), 'expected_revision': state['revision'],
                    'question_id': state['practice']['id'], 'answer': demo_answer(question)}
         path = '/api/review/sessions/' + state['session_id'] + '/submit'
-        with patch('graspmemoedu.api.ThreadPoolExecutor.submit', side_effect=AssertionError('Must not enqueue')):
+        with patch('graspmemoedu.api.ThreadPoolExecutor.submit', side_effect=AssertionError('Must not enqueue')), \
+                patch.object(self.app.state.public_limits.daily, 'reserve', side_effect=AssertionError('Must not charge')):
             result = self.call('POST', path, payload)
         self.assertEqual(result['status'], 'judged'); self.assertTrue(result['correct'])
         self.assertEqual(self.call('POST', path, payload), result)
@@ -142,7 +146,8 @@ class InstantOtherReadersTests(unittest.TestCase):
             state = fixture.call('POST', '/api/continue' + fixture.scope, fixture.payload(state))
         backend = fixture.app.state.learning_services[(fixture.learner_id, 'atomic-english')]
         payload = fixture.payload(state, answer=demo_answer(backend.questions[state['current']['card_id']]))
-        with patch('graspmemoedu.api.ThreadPoolExecutor.submit', side_effect=AssertionError('Must not enqueue')):
+        with patch('graspmemoedu.api.ThreadPoolExecutor.submit', side_effect=AssertionError('Must not enqueue')), \
+                patch.object(fixture.app.state.public_limits.daily, 'reserve', side_effect=AssertionError('Must not charge')):
             result = fixture.call('POST', '/api/submit' + fixture.scope, payload)
         self.assertEqual(result['status'], 'judged'); self.assertTrue(result['correct'])
 
@@ -150,7 +155,8 @@ class InstantOtherReadersTests(unittest.TestCase):
         fixture = self.helper(training_tests.TrainingAPITests)
         state = fixture.open('exact')
         payload = {'attempt_id': state['attempt_id'], 'request_id': str(uuid.uuid4()), 'answer': '2'}
-        with patch('graspmemoedu.api.ThreadPoolExecutor.submit', side_effect=AssertionError('Must not enqueue')):
+        with patch('graspmemoedu.api.ThreadPoolExecutor.submit', side_effect=AssertionError('Must not enqueue')), \
+                patch.object(fixture.app.state.public_limits.daily, 'reserve', side_effect=AssertionError('Must not charge')):
             result = fixture.call('POST', '/api/training/submit', payload)
         self.assertEqual(result['submission_status'], 'judged'); self.assertEqual(result['phase'], 'done')
         self.assertTrue(result['result']['correct'])
@@ -160,7 +166,8 @@ class InstantOtherReadersTests(unittest.TestCase):
         fixture = self.helper(paper_tests.PaperTests); fixture.prime()
         paper = fixture.draft(fixture.open_paper())
         payload = {'paper_id': paper['id'], 'request_id': str(uuid.uuid4()), 'expected_revision': paper['revision']}
-        with patch('graspmemoedu.api.ThreadPoolExecutor.submit', side_effect=AssertionError('Must not enqueue')):
+        with patch('graspmemoedu.api.ThreadPoolExecutor.submit', side_effect=AssertionError('Must not enqueue')), \
+                patch.object(fixture.app.state.public_limits.daily, 'reserve', side_effect=AssertionError('Must not charge')):
             result = fixture.call('POST', '/api/review-papers/submit', payload)
         self.assertEqual(result['job_status'], 'judged'); self.assertEqual(result['phase'], 'done')
         self.assertEqual(fixture.call('POST', '/api/review-papers/submit', payload)['items'], result['items'])
@@ -170,10 +177,14 @@ class InstantOtherReadersTests(unittest.TestCase):
         backend = paper_tests.PaperService(fixture.service(), fixture.app.state.catalog,
             None, fixture.app.state.access_store.resolve(fixture.headers['X-Learning-Identity']),
             fixture.app.state.review_paper_types, lambda tid: None)
-        sid = backend.submit({'paper_id': paper['id'], 'request_id': str(uuid.uuid4()), 'expected_revision': paper['revision']}, 'math')
-        self.assertTrue(backend.instant_submission(sid))
         with backend.transaction() as con:
             items = backend._row(con, paper['id'])['items']
             items[0]['question']['interaction'] = {'version': 1, 'type': 'text', 'grading': 'semantic'}
             con.execute('UPDATE review_papers SET items=? WHERE id=?', (json.dumps(items), paper['id']))
-        self.assertFalse(backend.instant_submission(sid))
+        limits = fixture.app.state.public_limits
+        payload = {'paper_id': paper['id'], 'request_id': str(uuid.uuid4()), 'expected_revision': paper['revision']}
+        with patch.object(limits.daily, 'reserve', wraps=limits.daily.reserve) as reserve:
+            result = fixture.call('POST', '/api/review-papers/submit', payload)
+        self.assertIn(result['job_status'], ('pending', 'running', 'judged'))
+        self.assertEqual(reserve.call_count, 1)
+        self.assertEqual(reserve.call_args.kwargs['count'], 1)

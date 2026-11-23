@@ -207,6 +207,10 @@ class TrainingAPITests(unittest.TestCase):
         _, payload = self.answer(self.open('exact'))
         self.call('POST', '/api/training/submit', payload)
         with closing(sqlite3.connect(self.root / 'judge-daily-quota.sqlite3')) as con:
+            self.assertEqual(con.execute('SELECT COALESCE(SUM(count),0) FROM usage').fetchone()[0], 0)
+        _, payload = self.answer(self.open('essay'))
+        self.call('POST', '/api/training/submit', payload)
+        with closing(sqlite3.connect(self.root / 'judge-daily-quota.sqlite3')) as con:
             self.assertEqual(con.execute('SELECT COALESCE(SUM(count),0) FROM usage').fetchone()[0], 2)
 
     def test_public_boundary_rejects_missing_identity_and_management(self):

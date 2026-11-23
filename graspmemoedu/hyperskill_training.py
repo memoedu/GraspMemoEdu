@@ -156,7 +156,7 @@ class HyperskillLocalTraining(HyperskillTraining):
     def validate_check(self, con, run, event):
         pass
 
-    def submit_local(self, request_id, raw):
+    def submit_local(self, request_id, raw, *, semantic_judge=None):
         if not isinstance(request_id, str) or not re.fullmatch(r'[a-zA-Z0-9-]{16,64}', request_id):
             raise DomainError('invalid_request_id', '提交标识无效。', 422)
         references = AnswerStore(self.training).references(self.question)
@@ -185,7 +185,10 @@ class HyperskillLocalTraining(HyperskillTraining):
                         'question': self.question['question'] + '\n题内结构：' + packed(self.question['hyperskill_presentation']['dataset']),
                         'reference_answer': '\n\n'.join(r['answer_display'] for r in references),
                         'constraints': '依据原题要求和已被 Hyperskill 验证通过的答案判题；接受语义等价表达，保留代码符号和大小写要求。'}
-            correct, reason = judge_answer(self.training.judge, question, display)
+            if semantic_judge is None:
+                correct, reason = judge_answer(self.training.judge, question, display)
+            else:
+                correct, reason = semantic_judge(question, display)
             if correct is None:
                 raise DomainError('judge_unavailable', reason, 503)
         launched = self.launch()

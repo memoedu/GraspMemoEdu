@@ -60,7 +60,7 @@ class AcademyLearningService(AtomicLearningService):
                              'policy': POLICY}
         return result
 
-    def submit(self, payload):
+    def submit(self, payload, *, require_judge=None):
         raise DomainError('academy_check_required', '请在 IDEA 中检查此题，或使用本题的自主评分。', 409)
 
     def reveal(self, payload):

@@ -17,7 +17,7 @@ import uuid
 from fsrs import Card, ReviewLog, Scheduler
 
 from .fsrs_engine import FSRSEngine, utc_time
-from .judging import judge_answer
+from .judging import instant_question, judge_answer, local_verdict
 from .practice import PracticePolicy, REVIEW_POLICY, apply_practice_result
 from .practice_queue import VERSION as PRACTICE_QUEUE_VERSION
 from .service import DomainError, encode
@@ -536,7 +536,7 @@ class ReviewBackend:
             row = self._submission(con, submission_id)
             return self._submission_public(row, self._session(con, row['session']))
 
-    def submit(self, session_id, payload):
+    def submit(self, session_id, payload, *, require_judge=None):
         submission_id = self._request_id(payload.get('request_id'))
         answer = payload.get('answer')
         if not isinstance(answer, str) or not answer.strip() or len(answer) > 16384:
@@ -560,12 +560,14 @@ class ReviewBackend:
             if state['phase'] != 'answer':
                 raise DomainError('already_answered', '当前题目已经获得判定。')
             from .self_assessment import answer as assessed_answer
+            question = self.question_for_session(state, data['question_id'])
             try:
-                assessed_answer(self.question_for_session(state, data['question_id']), state, payload)
+                assessed_answer(question, state, payload)
                 if payload.get('self_rating') is None:
-                    parse_answer(self.question_for_session(state, data['question_id']), answer)
+                    parse_answer(question, answer)
             except (ValueError, TypeError, KeyError) as exc:
                 raise DomainError('invalid_answer', '请完成全部作答，且不要重复使用配对选项。', 422) from exc
+            verdict = local_verdict(question, state, payload, con, require_judge)
             stamp = self._now().isoformat()
             if old:
                 con.execute("UPDATE review_submissions SET status='pending',correct=NULL,reason=NULL,updated_at=?,run_token=NULL WHERE id=?", (stamp, submission_id))
@@ -574,8 +576,14 @@ class ReviewBackend:
                             (submission_id, *self.key, session_id, data['question_id'], answer,
                              fingerprint, 'pending', None, None, elapsed, stamp, stamp))
             state['pending_submission_id'] = submission_id
-            self._save_session(con, state)
             row = self._submission(con, submission_id)
+            if verdict is None:
+                self._save_session(con, state)
+            else:
+                self._finish_submission(con, state, row, *verdict, applies=True)
+                row = self._submission(con, submission_id)
+        if verdict is not None:
+            self.learning.flush_logs()
         return self._submission_public(row, state)
 
     def reveal(self, session_id, payload):
@@ -593,10 +601,11 @@ class ReviewBackend:
         return self._public(state)
 
     def instant_submission(self, submission_id):
-        from .judging import instant_question
+        from .self_assessment import verdict
         with closing(self.learning._connect()) as con:
             row = self._submission(con, submission_id)
-            return instant_question(self.question_for_session(self._session(con, row['session']), row['question']))
+            state = self._session(con, row['session'])
+            return verdict(state, submission_id) is not None or instant_question(self.question_for_session(state, row['question']))
 
     def process_submission(self, submission_id):
         """Worker entry point, sharing the exact Lesson judging contract."""
@@ -621,49 +630,53 @@ class ReviewBackend:
                        and state['status'] == 'in_progress' and state['phase'] == 'answer'
                        and state['pending_submission_id'] == submission_id
                        and state['order'][state['index']] == item['question'])
-            status = ('judged' if correct is not None else 'error') if applies else 'discarded'
-            con.execute('UPDATE review_submissions SET status=?,correct=?,reason=?,updated_at=? WHERE id=?',
-                        (status, correct, reason, self._now().isoformat(), submission_id))
-            if applies:
-                state['pending_submission_id'] = None
-                if correct is not None:
-                    policy = PracticePolicy.from_dict(state['policy'])
-                    previous_target = state['practice_target_count']
-                    must_pause, mastery = apply_practice_result(state, correct, policy)
-                    added_to_queue = 0
-                    if state.get('practice_queue_version') == PRACTICE_QUEUE_VERSION:
-                        added_to_queue = self.learning.practice_queue.record_result(
-                            con, self._module(state['module_id']), item['question'], correct,
-                            additions=policy.queue_additions(state['practice_error_count']),
-                            exclude=state['order'] if policy.adaptive_queue else ())
-                    state.update(phase='feedback', feedback={'correct': correct, 'reason': reason, 'submission_id': submission_id})
-                    if not correct:
-                        state['feedback']['learning_effect'] = {
-                            'queue_added': added_to_queue,
-                            'target_added': state['practice_target_count'] - previous_target,
-                            'paused': must_pause,
-                        }
-                    state['answers'].append({'question_id': item['question'], 'answer': item['answer'],
-                                             'correct': correct, 'elapsed_ms': item['elapsed_ms']})
-                    if mastery is not None:
-                        completed_at = self._now().isoformat()
-                        durations = [answer['elapsed_ms'] for answer in state['answers']]
-                        result = self._record_rating(con, module_id=state['module_id'], mastery=mastery,
-                                                     source='review', source_id=state['session_id'],
-                                                     completed_at=completed_at, policy_version=policy.version,
-                                                     duration_ms=sum(durations) if all(n is not None for n in durations) else None)
-                        state.update(status='completed', mastery=mastery, completed_at=completed_at, due_at=result['due_at'])
-                    self._save_session(con, state)
-                    self._event(con, 'review_answer_judged', session_id=state['session_id'], module_id=state['module_id'],
-                                submission_id=submission_id, correct=correct, mastery=state['mastery'])
-                    if must_pause:
-                        self._pause_topic(con, 'review_practice_error_limit')
-                else:
-                    self._save_session(con, state)
-                    self._event(con, 'review_judge_error', session_id=state['session_id'], submission_id=submission_id)
-            else:
-                self._event(con, 'review_late_judgement_discarded', session_id=state['session_id'], submission_id=submission_id)
+            self._finish_submission(con, state, item, correct, reason, applies=applies)
         self.learning.flush_logs()
+
+    def _finish_submission(self, con, state, item, correct, reason, *, applies):
+        submission_id = item['id']
+        status = ('judged' if correct is not None else 'error') if applies else 'discarded'
+        con.execute('UPDATE review_submissions SET status=?,correct=?,reason=?,updated_at=? WHERE id=?',
+                    (status, correct, reason, self._now().isoformat(), submission_id))
+        if applies:
+            state['pending_submission_id'] = None
+            if correct is not None:
+                policy = PracticePolicy.from_dict(state['policy'])
+                previous_target = state['practice_target_count']
+                must_pause, mastery = apply_practice_result(state, correct, policy)
+                added_to_queue = 0
+                if state.get('practice_queue_version') == PRACTICE_QUEUE_VERSION:
+                    added_to_queue = self.learning.practice_queue.record_result(
+                        con, self._module(state['module_id']), item['question'], correct,
+                        additions=policy.queue_additions(state['practice_error_count']),
+                        exclude=state['order'] if policy.adaptive_queue else ())
+                state.update(phase='feedback', feedback={'correct': correct, 'reason': reason, 'submission_id': submission_id})
+                if not correct:
+                    state['feedback']['learning_effect'] = {
+                        'queue_added': added_to_queue,
+                        'target_added': state['practice_target_count'] - previous_target,
+                        'paused': must_pause,
+                    }
+                state['answers'].append({'question_id': item['question'], 'answer': item['answer'],
+                                         'correct': correct, 'elapsed_ms': item['elapsed_ms']})
+                if mastery is not None:
+                    completed_at = self._now().isoformat()
+                    durations = [answer['elapsed_ms'] for answer in state['answers']]
+                    result = self._record_rating(con, module_id=state['module_id'], mastery=mastery,
+                                                 source='review', source_id=state['session_id'],
+                                                 completed_at=completed_at, policy_version=policy.version,
+                                                 duration_ms=sum(durations) if all(n is not None for n in durations) else None)
+                    state.update(status='completed', mastery=mastery, completed_at=completed_at, due_at=result['due_at'])
+                self._save_session(con, state)
+                self._event(con, 'review_answer_judged', session_id=state['session_id'], module_id=state['module_id'],
+                            submission_id=submission_id, correct=correct, mastery=state['mastery'])
+                if must_pause:
+                    self._pause_topic(con, 'review_practice_error_limit')
+            else:
+                self._save_session(con, state)
+                self._event(con, 'review_judge_error', session_id=state['session_id'], submission_id=submission_id)
+        else:
+            self._event(con, 'review_late_judgement_discarded', session_id=state['session_id'], submission_id=submission_id)
 
     def on_topic_paused(self, con, event_id, reason):
         prior = self._paused(con)

@@ -43,6 +43,8 @@ Portable backup creation and restoration share a 3,000,000,000-byte uncompressed
 
 Paid judging has a durable daily quota in `/var/lib/graspmemoedu/judge-daily-quota.sqlite3`, shared by Lesson and Review and by all visitors. Defaults: 2000 accepted judging attempts across the site per day, no per-account cap, and 100 per guest identity, resetting at 00:00 Asia/Shanghai. Account usage is still counted in the global total and the private report. An error-result retry can require another judging call and therefore another unit; exact idempotent replays do not. Rejected or malformed answers do not consume a unit. The production settings are in `/etc/systemd/system/graspmemoedu.service.d/99-judge-quota.conf` (source: `deploy/99-judge-quota.conf`). `GRASPMEMOEDU_JUDGE_DAILY_GLOBAL` and `GRASPMEMOEDU_JUDGE_DAILY_GUEST` require positive integers; `GRASPMEMOEDU_JUDGE_DAILY_ACCOUNT=0` disables only the per-account cap. After changing them, run `systemctl daemon-reload`, then restart only `graspmemoedu.service`. Existing 12/minute per learner and eight-pending limits remain. This caps accepted calls, not provider-side currency spend or charges from calls already in flight.
 
+Deterministic answers and self-assessments bypass paid-judge admission. Mixed review papers reserve quota for the answers that still need semantic judging.
+
 The private, read-only report lists every account and guest (including zero usage), showing `learner_id`, display name and daily accepted judging count. Query it on the server; never publish these identities through the public website:
 
 ```sh
