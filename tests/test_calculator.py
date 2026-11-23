@@ -4,8 +4,9 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from graspmemoedu.calculator import from_mathacademy, normalize, policy, presentation
+from graspmemoedu.calculator import MODULES, from_mathacademy, normalize, policy, presentation
 from graspmemoedu.author_import import prepare_topic
+from graspmemoedu.catalog import Catalog
 from graspmemoedu.mathacademy_import import question_model
 from graspmemoedu.service import LearningService
 from graspmemoedu.source_content import reading_blocks
@@ -106,6 +107,31 @@ class CalculatorSchemaTests(unittest.TestCase):
                          {'level': 'basic', 'disable_keys': ['add']})
         self.assertEqual(policy({'calculate': basic}, {'calculate': low}, mathacademy=True),
                          {'level': 'basic', 'disable_keys': ['add', 'sin']})
+
+    def test_catalog_unlocks_all_calculator_tools_for_current_and_future_ma_ml_topics(self):
+        topic = synthetic_course(1)
+        tid = topic['id']
+        example = topic['modules'][0]['example']
+        topic.update(source_adapter='mathacademy', introductions=[], content_order=[],
+                     calculate={'level': 'basic', 'disable_modules': ['matrix']})
+        example['calculate'] = {'level': 'none', 'override_ma_minimum': True, 'disable_keys': ['sin']}
+        courses = [('ma-course-72', 'Machine Learning I', True), ('ma-course-140', 'Renamed ML II', True),
+                   ('ma-course-999', 'Machine Learning III', True), ('ma-course-82', 'Algorithms', False),
+                   ('custom-ml', 'Machine Learning III', False)]
+        unrestricted = {'level': 'cas', 'enable_modules': sorted(MODULES - {'expression', 'symbolic'})}
+        for cid, title, full_access in courses:
+            with self.subTest(course=cid):
+                catalog = Catalog([{'id': cid, 'title': title, 'topics': [{'id': tid}]}], {tid: topic}, tid, {})
+                projected = catalog.topic(tid)
+                self.assertEqual(presentation(projected, example).get('calculate'), unrestricted if full_access else None)
+                self.assertEqual(projected['version'], topic['version'])
+                self.assertNotIn('_unrestricted_calculator', catalog.topics[tid])
+        with tempfile.TemporaryDirectory() as folder:
+            course = {'id': 'ma-course-140', 'title': 'Machine Learning II', 'topics': [{'id': tid}]}
+            catalog = Catalog([course], {tid: topic}, tid, {})
+            state = LearningService(catalog.topic(tid), Path(folder)).state()
+        step = next(step for step in state['steps'] if step['kind'] == 'example')
+        self.assertEqual(step['calculate'], unrestricted)
 
     def test_topic_author_format_keeps_metadata_only_on_questions(self):
         original = {'topic_format_version': 2, 'title': 'Calculator', 'id': 'calculator-fixture',

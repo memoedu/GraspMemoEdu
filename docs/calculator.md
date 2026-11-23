@@ -26,9 +26,11 @@ Topic v2 JSON 的根和 Example、Practice 节点都可写 `calculate`。Markdow
 
 模块 ID 和运算 ID 见 [站内工具目录](../web/calculator-policy.js)。例如 `matrix` 是模块，`matrix_inverse` 是其中一个操作，`sin` 是科学键。禁用项会同时作用于工具入口和计算引擎。手输及粘贴表达式会检查允许的运算、别名、符号和常数。切题会清空该次计算会话。
 
-MA 材料至少开放科学计算器。网站对已安装和今后导入的材料使用同一条规则。来源的 `None` 和 `Standard` 档位不参与计算器定档，`Scientific` 继续开放科学计算，`Graphing` 继续开放科学计算和独立函数绘图。更高档位及原有模块、按键限制继续有效。来源字段缺失或移除时同样适用。系统仍读取历史提示以识别档位，题面会隐藏自动生成的计算器提示。
+Math Academy 的 Machine Learning I、II，以及今后导入且源课程名以 `Machine Learning` 开头的同系列课程，开放 CAS 档和全部计算器模块。Topic 和单题的档位、禁用模块及禁用按键均不限制这些题目。阅读、学习和复习按同一个 Topic 使用此权限，共享 Topic 在各入口沿用同一配置。权限在读取课程目录时投影，无需重导现有 Topic。
 
-站内明确指定例外时，可在 MA 材料的 Topic 或单题上使用 `"calculate": {"level": "none", "override_ma_minimum": true}`，也可将档位设为 `basic`。Topic 例外覆盖 MA 原题的档位，单题带同一标记可覆盖 Topic 例外。MA 来源字段不能写入该标记。
+其余 MA 材料默认至少开放科学计算器。来源的 `None` 和 `Standard` 档位不参与计算器定档，`Scientific` 继续开放科学计算，`Graphing` 继续开放科学计算和独立函数绘图。更高档位及原有模块、按键限制继续有效。来源字段缺失或移除时同样适用。系统仍读取历史提示以识别档位，题面会隐藏自动生成的计算器提示。
+
+对于按题定档的 MA 材料，站内可在 Topic 或单题使用 `"calculate": {"level": "none", "override_ma_minimum": true}`，也可将档位设为 `basic`。Topic 例外覆盖 MA 原题的档位，单题带同一标记可覆盖 Topic 例外。MA 来源字段不能写入该标记。
 
 ## 计算范围
 

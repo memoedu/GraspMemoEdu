@@ -35,7 +35,8 @@ class MathAcademyLayoutTests(unittest.TestCase):
         scoped, other = catalogs
         topic = scoped.topic(tid)
         self.assertIs(scoped.topics[tid], original)
-        self.assertIs(other.topic(tid), original)
+        self.assertIs(other.topic(tid)['introductions'], original['introductions'])
+        self.assertIs(other.topic(tid)['content_order'], original['content_order'])
         self.assertEqual(topic['version'], original['version'])
         self.assertIs(topic['modules'], original['modules'])
         body = original['introductions'][1]['html']
