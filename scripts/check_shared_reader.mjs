@@ -66,7 +66,9 @@ await context.route('**/*',async route=>{
     else if(endpoint==='select'||endpoint==='continue'){
       const body=req.postDataJSON();const pages=state.steps,index=pages.findIndex(s=>s.id===state.current_step_id);
       const id=endpoint==='select'?body.step_id:pages[index+1]?.id;
-      state={...state,current_step_id:id,active_step_id:id,revision:state.revision+1};data=state;
+      const complete=endpoint==='continue' && pages[index+1]?.kind==='completion';
+      state={...state,current_step_id:id,active_step_id:id,revision:state.revision+1,
+        status:complete?'completed':state.status};data=state;
     } else if(endpoint==='training/bank')data={...bank,groups:bank.groups.map(g=>({...g,questions:undefined,question_count:g.questions.length,introduction_count:g.introductions?.length||0,completed_count:0}))};
     else if(endpoint==='training/group'){
       const group=bank.groups.find(g=>g.id===url.searchParams.get('group_id'));
@@ -100,6 +102,26 @@ try{
   await page.locator('#stepCard .primaryButton').click();await page.locator('#answerInput').waitFor({state:'attached'});
   assert.equal(await page.locator('#stepCard .questionTypeField').count(),1);
   assert.equal(await page.locator('#previousPageButton').count(),1);check('actual Lesson guidance, choice field and shared navigation');
+  const guidedState=state;
+  const finalFeedback={...example,kind:'practice',phase:'feedback',answer:'{"selected":"oA"}',
+    feedback:{correct:true},actions:['continue']};
+  const completion={id:'lesson-completion',kind:'completion',phase:'completed',visited:true,unlocked:true,actions:[]};
+  state={...state,current_step_id:finalFeedback.id,active_step_id:finalFeedback.id,steps:[finalFeedback,completion],
+    modules:['module-b','module-c','module-a'].map(id=>({...state.modules[0],id,status:'completed'}))};
+  await page.reload({waitUntil:'networkidle'});
+  const progress=page.locator('#lessonProgress');
+  const caption=page.locator('#progressCaption span').first();
+  await caption.waitFor();
+  assert.equal(await caption.textContent(),'已完成 2 / 3 个模块');
+  assert.equal(await progress.getAttribute('aria-valuenow'),'67');
+  assert.equal(await progress.locator('.progressSegment.in_progress').count(),1);
+  await page.getByRole('button',{name:'继续学习',exact:true}).click();
+  await page.locator('.completionHeading').waitFor();
+  assert.equal(await caption.textContent(),'已完成 3 / 3 个模块');
+  assert.equal(await progress.getAttribute('aria-valuenow'),'100');
+  assert.equal(await progress.locator('.progressSegment.completed').count(),3);
+  check('final feedback keeps the last module in progress until Continue');
+  state=guidedState;
   await page.goto(origin+'/#/subjects/math/courses/'+course.id,{waitUntil:'networkidle'});
   for (const [task, label] of [[pure,'引论'],[history,'学习任务'],[review,'复习任务']]) {
     const heading=page.locator(`[data-task-id="${task.id}"] .taskHeading strong`);
