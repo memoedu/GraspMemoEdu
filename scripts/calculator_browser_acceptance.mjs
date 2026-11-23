@@ -10,6 +10,12 @@ const {chromium} = require('playwright');
 await mkdir(output, {recursive: true});
 const browser = await chromium.launch({headless: true, channel: 'chrome'});
 const context = await browser.newContext({viewport: {width: 1440, height: 900}, locale: 'zh-CN'});
+await context.addInitScript(() => {
+  Object.defineProperty(navigator, 'clipboard', {value: {writeText: async value => {
+    if (window.rejectCalculatorClipboard) throw new DOMException('Denied', 'NotAllowedError');
+    window.copiedCalculatorText = value;
+  }}});
+});
 const page = await context.newPage();
 page.setDefaultTimeout(15000);
 const errors = [], workerRequests = [], checks = [];
@@ -38,6 +44,20 @@ const completions = page.locator('.inputCompletions');
 const option = label => completions.getByRole('option', {name: label, exact: true});
 const assign = dialog.getByRole('button', {name: '赋值', exact: true});
 const variable = name => dialog.getByRole('textbox', {name: `变量 ${name}`, exact: true});
+const copyResult = dialog.getByRole('button', {name: '复制结果', exact: true});
+const recall = dialog.getByRole('button', {name: '调用储值', exact: true});
+async function store(letter, result) {
+  await copyResult.click();
+  assert.equal(await page.evaluate(() => window.copiedCalculatorText), result);
+  assert.equal(await dialog.locator('[data-calculator-key="digit_7"]').isVisible(), false);
+  await dialog.getByRole('button', {name: `存入 ${letter}`, exact: true}).click();
+  assert.equal(await dialog.locator('[data-calculator-key="digit_7"]').isVisible(), true);
+}
+async function enter(expression, result) {
+  await expressionInput.fill(expression);
+  await calculate();
+  await text(result);
+}
 async function sidebarOrientation(cardSelector) {
   return toolbar.evaluate((element, selector) => {
     const card = document.querySelector(selector).getBoundingClientRect();
@@ -56,6 +76,12 @@ async function sidebarOrientation(cardSelector) {
 }
 async function text(value) {
   await outputBox.getByText(value, {exact: true}).waitFor();
+}
+function resultTypography() {
+  return outputBox.evaluate(result => {
+    const {fontFamily, fontSize, fontWeight, letterSpacing, lineHeight} = getComputedStyle(result);
+    return {fontFamily, fontSize, fontWeight, letterSpacing, lineHeight};
+  });
 }
 async function open() {
   await select('expression');
@@ -124,7 +150,8 @@ try {
   assert.ok(openFrameMs >= 0 && openFrameMs < 100, `Calculator took ${openFrameMs} ms to render`);
   assert.equal(workerStarts, 0);
   assert.deepEqual(workerRequests, []);
-  assert.equal(await dialog.locator('.calculatorHeader button').count(), 1);
+  assert.equal(await dialog.getByRole('button', {name: '关闭计算器', exact: true}).count(), 1);
+  assert.equal(await dialog.locator('.calculatorLayoutToggle').count(), 0);
   assert.equal(await dialog.evaluate(panel => {
     const {left, right} = panel.getBoundingClientRect();
     return left >= document.querySelector('.questionToolRail').getBoundingClientRect().right
@@ -148,12 +175,15 @@ try {
   await expressionInput.fill('1.2*10^24');
   await expressionInput.press('Enter');
   await text('1.2e+24');
+  const scientificTypography = await resultTypography();
   await notation.press('Space');
   await text('1200000000000000000000000');
+  assert.deepEqual(await resultTypography(), scientificTypography);
   assert.equal(await notation.getAttribute('aria-pressed'), 'true');
   await page.screenshot({path: path.join(output, 'decimal-result.png'), animations: 'disabled'});
   await notation.click();
   await text('1.2e+24');
+  assert.deepEqual(await resultTypography(), scientificTypography);
   assert.equal(await notation.getAttribute('aria-pressed'), 'false');
   await expressionInput.fill('-2.5*10^(-9)');
   await expressionInput.press('Enter');
@@ -164,15 +194,47 @@ try {
   await expressionInput.fill('10^100');
   await expressionInput.press('Enter');
   await text('1e+100');
+  const mobileTypography = await resultTypography();
   await notation.click();
   await text('1' + '0'.repeat(100));
+  assert.deepEqual(await resultTypography(), mobileTypography);
   assert.equal(await outputBox.evaluate(result => result.scrollWidth <= result.clientWidth), true);
   await page.setViewportSize({width: 1440, height: 900});
   await expressionInput.fill('2+3');
   await expressionInput.press('Enter');
   await text('5');
   await notation.waitFor({state: 'hidden'});
-  checks.push('FORMAT toggles large and small scalar results without another calculation.');
+  checks.push('FORMAT toggles large and small scalar results without recalculation or typography changes on desktop or mobile.');
+  await store('A', '5');
+  await expressionInput.fill('');
+  await recall.click();
+  assert.equal(await dialog.getByRole('button', {name: '调用 B', exact: true}).isDisabled(), true);
+  await page.screenshot({path: path.join(output, 'memory-recall.png')});
+  await dialog.getByRole('button', {name: '调用 A', exact: true}).press('Enter');
+  assert.equal(await expressionInput.inputValue(), 'A');
+  await enter('A*2', '10');
+  await store('A', '10');
+  await page.evaluate(() => { window.rejectCalculatorClipboard = true; });
+  await copyResult.click();
+  await dialog.getByText('剪贴板不可用，仍可储值。', {exact: true}).waitFor();
+  await dialog.getByRole('button', {name: '存入 B', exact: true}).click();
+  await enter('B', '10');
+  await page.evaluate(() => { window.rejectCalculatorClipboard = false; });
+  await expressionInput.fill('A+x');
+  await assign.click();
+  await variable('x').fill('2');
+  assert.equal(await variable('A').count(), 0);
+  await calculate(); await text('12');
+  await recall.click();
+  await dialog.locator('#calculatorRegisterPad').press('Escape');
+  assert.equal(await dialog.isVisible(), true);
+  await dialog.getByRole('button', {name: '关闭计算器'}).click();
+  await open();
+  assert.equal(await recall.isDisabled(), true);
+  await expressionInput.fill('A');
+  await assign.click();
+  await variable('A').waitFor();
+  checks.push('Store, overwrite, caret recall, clipboard copy, automatic binding, and fresh memory on reopen.');
   await expressionInput.fill('f');
   await option('floor').waitFor();
   await expressionInput.press('Tab');
@@ -335,6 +397,9 @@ try {
     await expressionInput.press('Escape');
     checks.push(`${width}px right calculator fits and keypad targets are at least 44px by 44px.`);
   }
+  await enter('2+3', '5');
+  await store('F', '5');
+  await enter('F+1', '6');
   await page.setViewportSize({width: 375, height: 840});
   await launch.press('End');
   assert.equal(await tool('modular').evaluate(button => button === document.activeElement), true);
@@ -345,6 +410,9 @@ try {
   assert.deepEqual(await toolIds(), ['expression']);
   assert.equal(await dialog.locator('[data-calculator-key="sin"]').count(), 0);
   assert.equal(await assign.count(), 0);
+  await enter('6*7', '42');
+  await store('D', '42');
+  await enter('D/2', '21');
   await dialog.getByRole('button', {name: '关闭计算器'}).click();
   await next.click();
   assert.equal(await toolbar.count(), 0);
@@ -354,6 +422,8 @@ try {
   await variable('x').fill('6');
   await calculate();
   await text('12');
+  await store('C', '12');
+  await enter('C+1', '13');
   await select('symbolic');
   await dialog.getByRole('combobox', {name: '运算'}).selectOption('antiderivative');
   await field('expression').fill('x^2');
