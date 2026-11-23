@@ -1,9 +1,9 @@
 const disabledFeaturesSwitch = '--disable-features=';
 const lockoutWorkaround = ['AutofillAiWalletPrivatePasses', 'AutofillAmbientAutofill'];
 
-export async function launchAcceptanceChrome(requirePlaywright) {
+export async function launchAcceptanceChrome(requirePlaywright, args = []) {
   const {chromium} = requirePlaywright('playwright');
-  const options = {channel: 'chrome', headless: true};
+  const options = {channel: 'chrome', headless: true, args};
   if (process.platform !== 'win32') return chromium.launch(options);
 
   // Preserve Playwright's defaults in a single switch. Chromium can overwrite
@@ -18,6 +18,6 @@ export async function launchAcceptanceChrome(requirePlaywright) {
     ...options,
     ignoreDefaultArgs: defaultSwitch ? [defaultSwitch] : [],
     // https://issues.chromium.org/issues/541310282
-    args: [disabledFeaturesSwitch + mergedFeatures.join(',')],
+    args: [...args, disabledFeaturesSwitch + mergedFeatures.join(',')],
   });
 }
