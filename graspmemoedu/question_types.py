@@ -289,7 +289,7 @@ def demo_answer(question):
         return question['reference_answer']
     kind = spec['type']
     if kind == 'composite':
-        if spec['grading'] != 'exact':
+        if spec['grading'] == 'unavailable' or not all(c.get('answers') for c in spec['controls']):
             return ''
         return json.dumps({'section': len(spec['sections']) - 1, 'values': {c['id']: c['answers'][0] for c in spec['controls']}})
     if kind == 'text':

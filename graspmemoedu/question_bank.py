@@ -1,7 +1,8 @@
 """Immutable question variants over a course, without migrating learning state.
 
 Each presented step/round pins a revision. A missing pin means original content,
-including when a bank is installed later. No source answers or explanations change.
+including when a bank is installed later. Corrections carry a complete answer
+side with their revised question, while the source stays immutable.
 """
 import hashlib
 import json
@@ -14,6 +15,8 @@ from .question_types import validate_interaction, present_choice
 from .idea_presentation import present_question
 
 REVISION = re.compile(r'[0-9a-f]{64}\Z')
+VARIANT_FIELDS = {'source_sha256', 'question', 'html', 'interaction'}
+CORRECTION_FIELDS = {'reference_answer', 'explanation_html', 'constraints'}
 
 
 def digest(value):
@@ -35,9 +38,10 @@ def validate_bank(bank, course):
     originals = source_questions(course)
     for qid, variant in bank['questions'].items():
         if (qid not in originals or not isinstance(variant, dict)
-                or set(variant) != {'source_sha256', 'question', 'html', 'interaction'}
+                or set(variant) not in (VARIANT_FIELDS, VARIANT_FIELDS | CORRECTION_FIELDS)
                 or variant['source_sha256'] != digest(originals[qid])
-                or not all(isinstance(variant[k], str) and variant[k].strip() for k in ('question', 'html'))
+                or not all(isinstance(variant[k], str) and variant[k].strip()
+                           for k in {'question', 'html'} | (variant.keys() & CORRECTION_FIELDS))
                 or not isinstance(variant['interaction'], dict)):
             raise ValueError('Question bank must bind each variant to an unchanged source question')
         validate_interaction(variant['interaction'], variant['question'])
