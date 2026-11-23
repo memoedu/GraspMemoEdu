@@ -22,6 +22,6 @@
 
 Topic 最新页上无输入光标时，结构化题目把语音识别原文直接交给答题转换。明确的数值、选项和配对可直接匹配；需要理解口述时，同一次模型调用完成口语整理和控件映射。只说第 2、3 空时，仅更新这两个空。自由文本答案和有光标的听写仍按对应输入位置整理文字。
 
-本地回归入口为 `tests/test_voice_stream.py`、`tests/test_training_audio.py` 和 `scripts/voice_input_browser_acceptance.mjs`。在已配置网站转写服务的隔离环境中，使用 `scripts/calculator_browser_fixture.py --voice` 准备合成题库，`scripts/voice_stream_browser_acceptance.py --help` 提供真实语音端到端验收入口。计时从合成录音最后一个可闻样本到公式绘制完成，另记停止按钮到写入的耗时。
+本地回归入口为 `tests/test_voice_stream.py`、`tests/test_training_audio.py` 和 `scripts/voice_input_browser_acceptance.mjs`。在已配置网站转写服务的隔离环境中，使用 `scripts/calculator_browser_fixture.py --voice` 准备合成题库，`scripts/voice_stream_fixture_audio.ps1 -OutputDirectory <空目录>` 生成测试录音。`scripts/voice_stream_browser_acceptance.py --help` 提供真实语音端到端验收入口。计时从合成录音最后一个可闻样本到公式绘制完成，另记停止按钮到写入的耗时。
 
 新增工具按钮时，在 `web/question-tools.js` 管理的工具栏中追加，沿用现有图标按钮样式和键盘导航。

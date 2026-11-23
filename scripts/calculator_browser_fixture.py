@@ -73,11 +73,14 @@ def main():
             'algebra': r'请写出由 \(x\) 和 \(y\) 组成的式子。',
             'pair': '在平面直角坐标系中，请写出点的坐标。',
             'iteration': r'沿用迭代记号 \(x^{new}, y^{new}, z^{new}\)。请写出所指的变量。',
+            'index': r'数列的第六项记作 \(y_{6}\)。请写出所指的变量。',
+            'order': '按口述顺序记录算式，保留乘法和减法。',
             'integral': r'用积分表示关于 \(x\) 的表达式，写出微分元。',
             'radius': '根据给出的圆，口述半径的关系。',
         }.items():
             group['questions'].append({**group['questions'][0], 'id': 'voice-' + name, 'question': stem,
-                                       'html': '<p>' + stem + '</p>', 'reference_answer': 'HIDDEN_REFERENCE'})
+                                       'html': '<p>' + stem + '</p><span hidden>HIDDEN_REFERENCE</span>',
+                                       'reference_answer': 'HIDDEN_REFERENCE'})
     group['questions'][0]['calculate'] = {'level': 'scientific', 'enable_modules': ['graph']}
     if args.conversion:
         for identifier, options in [('one-value', ['X1 = 3', 'X1 = 5']), ('two-values', ['X1 = 5, X2 = 3', 'X1 = 3，X2 = 5']),

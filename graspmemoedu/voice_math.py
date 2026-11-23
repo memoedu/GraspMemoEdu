@@ -137,7 +137,7 @@ def quick_math(transcript, profile, context):
                 body = expression(integral[1], context)
                 if body:
                     latex = r'\int ' + body.replace('*', r'\cdot ') + r'\,d' + integral[2].lower()
-                    return latex if context.style == 'math' else r'\(' + latex + r'\)'
+                    return latex if context.style in ('math', 'literal') else r'\(' + latex + r'\)'
     return expression(compact, context)
 
 

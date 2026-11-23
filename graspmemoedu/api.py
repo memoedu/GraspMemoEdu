@@ -441,6 +441,7 @@ def create_app(settings: Settings | None = None, service: LearningService | None
 
     @asynccontextmanager
     async def lifespan(app):
+        app.state.voice_streams.factory.prepare()
         TrainingService(training, settings.data_dir, 'recovery').recover_interrupted()
         with closing(sqlite3.connect(service.db_path)) as con:
             PaperService.recover(con)
@@ -453,6 +454,7 @@ def create_app(settings: Settings | None = None, service: LearningService | None
                 if recovered.review_backend is not None:
                     recovered.review_backend.recover_interrupted()
         yield
+        app.state.voice_streams.close()
         with admission_lock:
             executor_stopping.set()
         executor.shutdown(wait=False, cancel_futures=True)

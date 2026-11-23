@@ -15,7 +15,11 @@ export function setVoiceContext(element, question, style = 'mixed') {
   const parts = [question, ...(question.multi_step?.steps || [])];
   template.innerHTML = parts.map(part => typeof part.html === 'string' ? part.html : '').join('<br>');
   const shown = template.content;
-  for (const hidden of shown.querySelectorAll('script,style,template,[hidden],[aria-hidden="true"],input,textarea,select')) hidden.remove();
+  for (const hidden of shown.querySelectorAll('script,style,template,[hidden],[inert],[aria-hidden="true"],input,textarea,select')) hidden.remove();
+  for (const styled of shown.querySelectorAll('[style]')) {
+    if (styled.style.display === 'none' || styled.style.visibility === 'hidden') styled.remove();
+  }
+  for (const details of shown.querySelectorAll('details:not([open])')) details.replaceWith(details.querySelector('summary')?.textContent || '');
   const math = [];
   for (const node of shown.querySelectorAll('[data-tex],[data-math-source],math')) {
     const tex = node.getAttribute('data-tex') || node.getAttribute('data-math-source') ||
@@ -24,7 +28,7 @@ export function setVoiceContext(element, question, style = 'mixed') {
   }
   for (const image of shown.querySelectorAll('img')) image.replaceWith(image.alt || '');
   for (const block of shown.querySelectorAll('p,li,br,div,tr,h1,h2,h3,h4')) block.after('\n');
-  const stem = (shown.textContent.trim() || question.question || '').replace(/[^\S\n]+/g, ' ').replace(/\n\s*\n/g, '\n').trim();
+  const stem = (parts.some(part => part.html) ? shown.textContent : question.question || '').replace(/[^\S\n]+/g, ' ').replace(/\n\s*\n/g, '\n').trim();
   for (const match of stem.matchAll(/\\\(([\s\S]*?)\\\)|\\\[([\s\S]*?)\\\]|\$\$([\s\S]*?)\$\$|\$([^$\n]+)\$/g)) {
     math.push(match.slice(1).find(Boolean) || '');
   }

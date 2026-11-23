@@ -1,9 +1,9 @@
-import {getLanguage} from './i18n.js?v=3db089a1a95dfffb';
-import {activeFormulaField, prepareVoiceFormula} from './formula-input.js?v=3db089a1a95dfffb';
-import {microphoneIcon, recordingMime} from './microphone-recorder.js?v=3db089a1a95dfffb';
-import {streamMicrophone} from './voice-stream.js?v=3db089a1a95dfffb';
-import {voiceContext} from './voice-context.js?v=3db089a1a95dfffb';
-import {answerTarget, answerConversionChange} from './answer-conversion.js?v=3db089a1a95dfffb';
+import {getLanguage} from './i18n.js?v=ca08e18c2db32619';
+import {activeFormulaField, prepareVoiceFormula} from './formula-input.js?v=ca08e18c2db32619';
+import {microphoneIcon, recordingMime} from './microphone-recorder.js?v=ca08e18c2db32619';
+import {streamMicrophone} from './voice-stream.js?v=ca08e18c2db32619';
+import {voiceContext} from './voice-context.js?v=ca08e18c2db32619';
+import {answerTarget, answerConversionChange} from './answer-conversion.js?v=ca08e18c2db32619';
 
 const answerForms = new WeakSet();
 const textTypes = ['text', 'search', 'tel', 'url', 'email', 'number'];

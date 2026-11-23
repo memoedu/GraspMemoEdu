@@ -1,5 +1,6 @@
 import base64
-from threading import BoundedSemaphore
+from concurrent.futures import ThreadPoolExecutor
+from threading import BoundedSemaphore, Event
 import unittest
 from unittest.mock import Mock
 from uuid import uuid4
@@ -7,7 +8,7 @@ from uuid import uuid4
 from graspmemoedu.service import DomainError
 from graspmemoedu.voice_input import refine_voice
 from graspmemoedu.voice_math import VoiceContext, quick_math
-from graspmemoedu.voice_stream import Cancel, Chunk, Open, Sessions
+from graspmemoedu.voice_stream import Cancel, Chunk, Open, Outbox, Sessions
 
 
 class MathDictationTests(unittest.TestCase):
@@ -65,6 +66,23 @@ class Provider:
 
 
 class VoiceSessionTests(unittest.TestCase):
+    def test_capture_survives_slow_negotiation_and_immediate_stop(self):
+        opening = Event()
+        provider = Mock()
+        def connect():
+            assert opening.wait(timeout=1)
+            return provider
+        with ThreadPoolExecutor(max_workers=1) as workers:
+            output = Outbox(workers, connect)
+            output.write(b'first')
+            output.write(b'last')
+            opening.set()
+            output.finish()
+            output.close()
+        self.assertEqual([call.args[0] for call in provider.write.call_args_list], [b'first', b'last'])
+        provider.finish.assert_called_once()
+        provider.close.assert_called_once()
+
     def setUp(self):
         self.providers = []
         def factory(context, update):

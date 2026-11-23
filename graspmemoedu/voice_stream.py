@@ -3,7 +3,8 @@ import base64
 from concurrent.futures import Future, ThreadPoolExecutor
 from hashlib import sha256
 import os
-from threading import BoundedSemaphore, Lock, Thread, Timer
+from queue import Queue
+from threading import BoundedSemaphore, Event, Lock, Thread, Timer
 from time import monotonic
 from typing import Annotated, Literal
 from uuid import UUID
@@ -46,14 +47,72 @@ class Cancel(Message):
 Packet = Annotated[Open | Chunk | Cancel, Field(discriminator='op')]
 
 
-class Duplex:
-    def __init__(self, context, update):
-        from dashscope import Client
-        key = os.environ.get('GRASPMEMOEDU_ASR_API_KEY')
-        if not key or key == 'PENDING_LOCAL_ENTRY':
+class Recognizer:
+    """Per-site SDK client and two send workers. Each take gets a separate recognition task."""
+    def __init__(self):
+        self.client = None
+        self.workers = ThreadPoolExecutor(max_workers=2)
+        self.lock = Lock()
+
+    def prepare(self):
+        with self.lock:
+            if self.client is not None:
+                return
+            key = os.environ.get('GRASPMEMOEDU_ASR_API_KEY')
+            if key and key != 'PENDING_LOCAL_ENTRY':
+                from dashscope import Client
+                self.client = Client(api_key=key, region='cn-beijing', timeout=18)
+
+    def __call__(self, context, update):
+        self.prepare()
+        if self.client is None:
             raise DomainError('transcription_unavailable', '语音转写尚未配置。', 503)
-        self.client = Client(api_key=key, region='cn-beijing', timeout=18)
-        self.session = self.client.audio.asr.recognize(model='fun-asr-realtime', input=context.asr_input(),
+        return Outbox(self.workers, lambda: Duplex(self.client, context, update))
+
+    def close(self):
+        self.workers.shutdown(wait=True, cancel_futures=True)
+        if self.client:
+            self.client.close()
+
+
+class Outbox:
+    """Accept ordered PCM while the SDK negotiates task-started, then drain before finish-task."""
+    def __init__(self, workers, connect):
+        self.frames, self.aborted = Queue(), Event()
+        self.done = workers.submit(self.send, connect)
+
+    def send(self, connect):
+        provider = connect()
+        try:
+            while not self.aborted.is_set():
+                pcm = self.frames.get()
+                if pcm is None:
+                    if not self.aborted.is_set():
+                        provider.finish()
+                    break
+                provider.write(pcm)
+        finally:
+            provider.close()
+
+    def write(self, pcm):
+        if self.done.done():
+            self.done.result()
+            raise ValueError('Premature end of stream')
+        self.frames.put(pcm)
+
+    def finish(self):
+        self.frames.put(None)
+        self.done.result(timeout=35)
+
+    def close(self):
+        self.aborted.set()
+        self.frames.put(None)
+        self.done.cancel()
+
+
+class Duplex:
+    def __init__(self, client, context, update):
+        self.session = client.audio.asr.recognize(model='fun-asr-realtime', input=context.asr_input(),
             parameters={'max_sentence_silence': 320, 'heartbeat': True}, timeout=18)
         self.done = Future()
         try:
@@ -83,10 +142,7 @@ class Duplex:
         self.done.result(timeout=18)
 
     def close(self):
-        try:
-            self.session.close()
-        finally:
-            self.client.close()
+        self.session.close()
 
 
 class Take:
@@ -202,11 +258,22 @@ class Take:
 
 
 class Sessions:
-    def __init__(self, slots, reserve, factory=Duplex, formatter=format_voice):
-        self.slots, self.reserve, self.factory, self.formatter = slots, reserve, factory, formatter
+    def __init__(self, slots, reserve, factory=None, formatter=format_voice):
+        self.slots, self.reserve, self.formatter = slots, reserve, formatter
+        self.factory = factory if factory is not None else Recognizer()
         self.lock = Lock()
         self.active, self.receipts = {}, {}
         self.workers, self.capacity = ThreadPoolExecutor(max_workers=2), BoundedSemaphore(2)
+
+    def close(self):
+        with self.lock:
+            active = list(self.active.items())
+        for key, take in active:
+            with take.lock:
+                self.retire(key, take)
+        self.workers.shutdown(wait=True, cancel_futures=True)
+        if isinstance(self.factory, Recognizer):
+            self.factory.close()
 
     def speculate(self, fn, *args):
         if not self.capacity.acquire(blocking=False):

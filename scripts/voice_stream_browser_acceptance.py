@@ -56,7 +56,8 @@ RENDERED = """
 }
 """
 CASES = {'algebra': ('variable', 'x+3-y'), 'pair': ('coordinate', '(-1,1)'),
-         'iteration': ('script', 'y^{new}'), 'integral': ('integral', r'\intx^2+3\cdotx\,dx')}
+         'iteration': ('script', 'y^{new}'), 'index': ('script', 'y_{6}'),
+         'order': ('order', '7-3*2'), 'integral': ('integral', r'\intx^2+3\cdotx\,dx')}
 
 
 def main():
@@ -76,7 +77,13 @@ def main():
         page.add_init_script('(' + MIC + ')()')
         page.set_default_timeout(18000)
         try:
-            page.goto(args.base)
+            def failed_request(response):
+                path = urlsplit(response.url).path
+                if path.startswith('/api/') and response.status >= 400:
+                    print(f'fixture HTTP {response.status} {path}', flush=True)
+            page.on('response', failed_request)
+            page.goto(args.base + '/#/subjects/math/topic/calculator-fixture')
+            page.get_by_role('button', name='下一页', exact=True).last.wait_for()
             page.locator('#userMenuButton').click()
             page.locator('#identityButton').click()
             page.locator('#invitationCode').fill((args.fixture / 'fixture-invitation.txt').read_text().strip())
