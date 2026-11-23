@@ -432,6 +432,9 @@ export async function createFormulaEditor(host, options) {
   function enterFormula(pos, edit) {
     const math = view.nodeDOM(pos)?.querySelector?.('math-field');
     if (!math) { view.focus(); return; }
+    // MathLive transfers focus to its keyboard delegate asynchronously. Focus
+    // the visible host first so hiding the native field cannot cancel the transfer.
+    HTMLElement.prototype.focus.call(math, {preventScroll: true});
     math.focus();
     if (edit && math.value.includes('\\placeholder{}')) {
       math.position = 0;
