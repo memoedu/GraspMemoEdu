@@ -23,6 +23,7 @@ from .topic_structure import has_atomic, sectioned_training, atomic_state
 from .course_hierarchy import pending_hierarchy, project_hierarchy, course_scope
 from .topic_runtime import is_introduction, learning_units, reread_pending
 from .topic_composition import has_embedded_practice
+from .training_content import permission_id
 
 
 class DashboardStore:
@@ -30,6 +31,7 @@ class DashboardStore:
         self.atomic_clock = atomic_clock
         self.catalog, self.access_store = catalog, access_store
         self.subjects = subjects
+        self.training = training
         self.dependency_policy = DependencyPolicy(catalog, access_store, subjects, training)
         with closing(access_store._connect()) as con:
             con.executescript('''
@@ -50,6 +52,11 @@ class DashboardStore:
                 CREATE TABLE IF NOT EXISTS learner_subject_preferences (
                     learner_id TEXT NOT NULL REFERENCES access_principals(learner_id),
                     subject_id TEXT NOT NULL, selected_course_id TEXT NOT NULL, updated_at TEXT NOT NULL,
+                    PRIMARY KEY(learner_id,subject_id));
+                CREATE TABLE IF NOT EXISTS learner_free_study (
+                    learner_id TEXT NOT NULL REFERENCES access_principals(learner_id),
+                    subject_id TEXT NOT NULL, bank_ids TEXT NOT NULL,
+                    show_reviews INTEGER NOT NULL CHECK(show_reviews IN (0,1)),
                     PRIMARY KEY(learner_id,subject_id));
             ''')
             if 'course_hierarchy_enabled' not in {row['name'] for row in con.execute('PRAGMA table_info(learner_preferences)')}:
@@ -173,6 +180,45 @@ class DashboardStore:
                         ON CONFLICT(learner_id) DO UPDATE SET selected_course_id=excluded.selected_course_id,
                         updated_at=excluded.updated_at''', (access['learner_id'], course_id, now()))
         return {'selected_course_id': course_id}
+
+    def free_study_banks(self, access, subject_id):
+        self.subjects.authorize_subject(access, subject_id)
+        allowed = self._allowed_topics(access)
+        return [{'id': bank['id'], 'title': bank['title']} for bank in self.training.banks.values()
+                if bank['subject_id'] == subject_id and permission_id(bank['id']) in allowed]
+
+    def free_study(self, access):
+        with closing(self.access_store._connect()) as con:
+            rows = {row['subject_id']: row for row in con.execute('''SELECT subject_id,bank_ids,show_reviews
+                FROM learner_free_study WHERE learner_id=?''', (access['learner_id'],))}
+        entries = []
+        for subject_id in self.subjects.subjects:
+            if subject_id not in rows or not self.subjects.subject_visible(subject_id, access):
+                continue
+            row = rows[subject_id]
+            bank_ids = set(json.loads(row['bank_ids']))
+            banks = [bank for bank in self.free_study_banks(access, subject_id) if bank['id'] in bank_ids]
+            selected = self._selection(access, subject_id)
+            course = self.catalog.courses[selected] if selected else None
+            course = {'id': selected, 'title': course['title']} if course and self.access_store.test_materials.course_visible(course, access) else None
+            entries.append({'subject_id': subject_id, 'banks': banks, 'course': course,
+                            'show_reviews': bool(row['show_reviews'])})
+        return {'subjects': entries}
+
+    def update_free_study(self, access, subject_id, enabled, bank_ids, show_reviews):
+        allowed = {bank['id'] for bank in self.free_study_banks(access, subject_id)}
+        if enabled and not allowed.issuperset(bank_ids):
+            raise DomainError('free_study_bank_forbidden', '所选题库已不可用，请重新打开组件市场。', 403)
+        with self.access_store._transaction() as con:
+            key = (access['learner_id'], subject_id)
+            if enabled:
+                con.execute('''INSERT INTO learner_free_study (learner_id, subject_id, bank_ids, show_reviews)
+                    VALUES (?, ?, ?, ?) ON CONFLICT(learner_id, subject_id) DO UPDATE SET
+                    bank_ids=excluded.bank_ids, show_reviews=excluded.show_reviews''',
+                    (*key, json.dumps(list(dict.fromkeys(bank_ids))), int(show_reviews)))
+            else:
+                con.execute('DELETE FROM learner_free_study WHERE learner_id=? AND subject_id=?', key)
+        return self.free_study(access)
 
     def _snapshot(self, con, learner_id, topic_id):
         topic = self.catalog.topic(topic_id)
@@ -299,14 +345,15 @@ class DashboardStore:
             task.update(completed_at=state['completed_at'], mastery=state['mastery'], result='completed', progress=100)
         return task
 
-    def _reviews(self, con, access, course, snapshots):
+    def _reviews(self, con, access, course, snapshots, *, course_tasks_only=False):
         tasks, history, wakeups, paused = [], [], [], set()
-        if not self._has_reviews(con) and not any(has_atomic(self.catalog.topic(t)) for t in snapshots):
+        has_reviews = self._has_reviews(con)
+        if not has_reviews and (course_tasks_only or not any(has_atomic(self.catalog.topic(t)) for t in snapshots)):
             return tasks, history, None, paused
         current_time = now()
         for topic_id, snapshot in snapshots.items():
             topic = self.catalog.topic(topic_id)
-            if has_atomic(topic):
+            if has_atomic(topic) and not course_tasks_only:
                 from .atomic_api import review_summary
                 state = snapshot['state']
                 if atomic_state(state).get('pause'):
@@ -323,17 +370,18 @@ class DashboardStore:
                                   'start_href': (('#/topic/' + quote(topic_id, safe='')) if summary['active']
                                                  else '#/reviews') if sectioned_training(topic)
                                                  else '#/review/' + quote(topic_id, safe='') + '/atomic'})
-                if not sectioned_training(topic) or not topic.get('modules'):
-                    continue
-            if not self._has_reviews(con):
+            if has_atomic(topic) and (not sectioned_training(topic) or not topic.get('modules')):
+                continue
+            if not has_reviews:
                 continue
             key = (access['learner_id'], topic_id)
             is_paused = snapshot['status'] == 'paused' or con.execute(
                 'SELECT 1 FROM review_topic_pauses WHERE learner=? AND topic=?', key).fetchone()
             if is_paused:
                 paused.add(topic_id)
-            rows = con.execute('SELECT * FROM review_sessions WHERE learner=? AND topic=? AND version=?',
-                               (*key, topic['version'])).fetchall()
+            rows = con.execute('''SELECT * FROM review_sessions WHERE learner=? AND topic=? AND version=?
+                AND (status='in_progress' OR (NOT ? AND status='completed'))''',
+                               (*key, topic['version'], course_tasks_only)).fetchall()
             active = None
             for row in rows:
                 state = json.loads(row['body'])
@@ -345,7 +393,7 @@ class DashboardStore:
                 cooldown = ((snapshot['state'] or {}).get('cooldown') or {}).get('resume_at')
                 if cooldown:
                     wakeups.append(cooldown)
-                if snapshot['status'] == 'completed':
+                if not course_tasks_only and snapshot['status'] == 'completed':
                     held = self._task(course, topic_id, snapshot, self._allowed_topics(access))
                     held.update(id='paused:' + topic_id, status='paused', locked=True, result=None, completed_at=None)
                     tasks.append(held)
@@ -361,6 +409,41 @@ class DashboardStore:
                     tasks.append(self._review_task(course, topic_id, card['module'], due_at=card['due_at']))
         tasks.sort(key=lambda task: (task['due_at'] or '', task['id']))
         return tasks, history, min(wakeups, default=None), paused
+
+    def free_study_course_reviews(self, access, subject_id):
+        """Due and in-progress course reviews. Atomic cards use the subject inbox."""
+        self.subjects.authorize_subject(access, subject_id)
+        self._feature(access, 'learn')
+        allowed = self._allowed_topics(access)
+        tasks = {}
+        with closing(self.access_store._connect()) as con:
+            con.execute('BEGIN')
+            if not self._has_reviews(con):
+                return {'tasks': []}
+            learner, current_time = access['learner_id'], now()
+            candidates = {(row['topic'], row['version']) for row in con.execute('''
+                SELECT topic,version FROM review_sessions WHERE learner=? AND status='in_progress'
+                UNION SELECT topic,version FROM review_cards WHERE learner=? AND active_session IS NULL
+                    AND julianday(due_at)<=julianday(?)''', (learner, learner, current_time))}
+            for course_id in sorted(self.subjects.course_ids(subject_id)):
+                course = self.catalog.courses[course_id]
+                if course.get('placement') == 'question_bank' or not self.access_store.test_materials.course_visible(course, access):
+                    continue
+                snapshots = {}
+                for item in course['topics']:
+                    tid = item['id']
+                    if tid in allowed and (tid, self.catalog.topic(tid)['version']) in candidates:
+                        snapshots[tid] = self._snapshot(con, learner, tid)
+                if not snapshots:
+                    continue
+                due, _, _, _ = self._reviews(con, access, course, snapshots, course_tasks_only=True)
+                dependencies = self._dependencies(course_id)
+                for task in due:
+                    task['dependency_ready'] = not self.dependency_policy.missing_count(
+                        con, access, task['topic_id'], dependencies, current_time)
+                    if task['id'] not in tasks or task['dependency_ready']:
+                        tasks[task['id']] = task
+        return {'tasks': sorted(tasks.values(), key=lambda task: (not task['started'], task['due_at'] or '', task['id']))}
 
     @staticmethod
     def _decode_cursor(cursor, course_id, learner_id):

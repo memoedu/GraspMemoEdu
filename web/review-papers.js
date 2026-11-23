@@ -1,22 +1,42 @@
-import {t, translateMessage} from './i18n.js?v=a699ae52c606496a';
-import {setQuestionTools} from './question-tools.js?v=a699ae52c606496a';
-import {voiceAnswerPending} from './voice-input.js?v=a699ae52c606496a';
-import {answerEditor, readerFrame, renderReviewReader, renderMultiStep, staticStepBlanks} from './learning-ui.js?v=a699ae52c606496a';
-import {answerReady, questionInput, choiceTypeField} from './question-input.js?v=a699ae52c606496a';
-import {createLearningCache} from './learning-cache.js?v=a699ae52c606496a';
-import {helpableContent, reportableContent} from './content-report.js?v=a699ae52c606496a';
-import {prepareMathContent} from './math-presentation.js?v=a699ae52c606496a';
+import {t, translateMessage} from './i18n.js?v=a9d56b88c5ca1fa2';
+import {setQuestionTools} from './question-tools.js?v=a9d56b88c5ca1fa2';
+import {voiceAnswerPending} from './voice-input.js?v=a9d56b88c5ca1fa2';
+import {answerEditor, readerFrame, renderReviewReader, renderMultiStep, staticStepBlanks} from './learning-ui.js?v=a9d56b88c5ca1fa2';
+import {answerReady, questionInput, choiceTypeField} from './question-input.js?v=a9d56b88c5ca1fa2';
+import {createLearningCache} from './learning-cache.js?v=a9d56b88c5ca1fa2';
+import {helpableContent, reportableContent} from './content-report.js?v=a9d56b88c5ca1fa2';
+import {prepareMathContent} from './math-presentation.js?v=a9d56b88c5ca1fa2';
 
 const node = (tag, cls = '', text) => { const x = document.createElement(tag); x.className = cls; if (text !== undefined) x.textContent = text; return x; };
 const button = (label, cls, action) => { const x = node('button', cls, label); x.type = 'button'; x.addEventListener('click', action); return x; };
 const html = content => { const x = node('div', 'courseContent'); x.innerHTML = content || ''; return prepareMathContent(x); };
-import {createContentTimer} from './content-timer.js?v=a699ae52c606496a';
-import {renderReviewDirectory, paperNumber} from './review-directory.js?v=a699ae52c606496a';
-import {selfAssessment, referenceAnswer, prepareAnswerContent} from './self-assessment.js?v=a699ae52c606496a';
-import {chunkPeek} from './memory-chunk.js?v=a699ae52c606496a';
-import {pointAssessment} from './point-assessment.js?v=a699ae52c606496a';
-import {trainingAudio} from './training-audio.js?v=a699ae52c606496a';
-import {learningHint} from './beginner-hints.js?v=a699ae52c606496a';
+import {createContentTimer} from './content-timer.js?v=a9d56b88c5ca1fa2';
+import {renderReviewDirectory, paperNumber} from './review-directory.js?v=a9d56b88c5ca1fa2';
+import {selfAssessment, referenceAnswer, prepareAnswerContent} from './self-assessment.js?v=a9d56b88c5ca1fa2';
+import {chunkPeek} from './memory-chunk.js?v=a9d56b88c5ca1fa2';
+import {pointAssessment} from './point-assessment.js?v=a9d56b88c5ca1fa2';
+import {trainingAudio} from './training-audio.js?v=a9d56b88c5ca1fa2';
+import {learningHint} from './beginner-hints.js?v=a9d56b88c5ca1fa2';
+
+export function createReviewTaskStarter({request, href, isCurrent}) {
+  const requests = new Map();
+  const paperPath = id => `/reviews/${encodeURIComponent(id)}`;
+  return async item => {
+    if (item.external || item.material && item.source.kind !== 'atomic') {
+      location.hash = href('/banks/' + encodeURIComponent(item.bank_id) + '/' + encodeURIComponent(item.group_id)
+        + '?question=' + encodeURIComponent(item.question_id) + (item.external ? '&review=1' : '&card=1'));
+    } else if (item.material || item.can_resume) {
+      const card = item.material ? '?card=' + encodeURIComponent(item.card_id) : '';
+      location.hash = href('/review/' + encodeURIComponent(item.topic_id) + '/atomic' + card);
+    } else if (item.active) {
+      location.hash = href(paperPath(item.id));
+    } else {
+      if (!requests.has(item.id)) requests.set(item.id, {request_id: crypto.randomUUID(), candidate_id: item.id});
+      const opened = await request('review-papers/open', {method: 'POST', body: requests.get(item.id)});
+      if (isCurrent()) location.hash = href(paperPath(opened.id));
+    }
+  };
+}
 
 export function createPaperView({root, request, href, getAccess, formatDate, progressChanged, courseSidebar, taskTree}) {
   const template = document.getElementById('appLayout').cloneNode(true);
@@ -70,7 +90,6 @@ export function createPaperView({root, request, href, getAccess, formatDate, pro
   const read = (kind, suffix) => cache?.read(localStorage, key(kind, suffix));
   const save = (kind, suffix, value) => cache?.write(localStorage, key(kind, suffix), value);
   const post = (path, body) => request(`review-papers/${path}`, {method: 'POST', body});
-  const path = id => href(`/reviews/${encodeURIComponent(id)}`);
   const anchor = (label, target, cls = '') => { const x = node('a', cls, label); x.href = target; return x; };
   function content(item, kind, value) {
     const element = html(value), context = item.content_context;
@@ -116,25 +135,8 @@ export function createPaperView({root, request, href, getAccess, formatDate, pro
   }
   async function inbox(allMaterials = false) {
     const e = ++epoch, data = await request('review-papers/inbox' + (allMaterials ? '?materials=1' : '')); if (e !== epoch) return;
-    const requests = new Map();
-    const body = renderReviewDirectory(root, data, {courseSidebar, taskTree, href, start: async item => {
-      if (item.external) {
-        location.hash = href('/banks/' + encodeURIComponent(item.bank_id) + '/' + encodeURIComponent(item.group_id)
-          + '?question=' + encodeURIComponent(item.question_id) + '&review=1');
-        return;
-      }
-      if (item.material) {
-        location.hash = href(item.source.kind === 'atomic'
-          ? '/review/' + encodeURIComponent(item.topic_id) + '/atomic?card=' + encodeURIComponent(item.card_id)
-          : '/banks/' + encodeURIComponent(item.bank_id) + '/' + encodeURIComponent(item.group_id) + '?question=' + encodeURIComponent(item.question_id) + '&card=1');
-        return;
-      }
-      if (item.can_resume) { location.hash = href('/review/' + encodeURIComponent(item.topic_id) + '/atomic'); return; }
-      if (item.active) { location.hash = path(item.id); return; }
-      if (!requests.has(item.id)) requests.set(item.id, {request_id: crypto.randomUUID(), candidate_id: item.id});
-      const opened = await post('open', requests.get(item.id));
-      if (e === epoch) location.hash = path(opened.id);
-    }});
+    const start = createReviewTaskStarter({request, href, isCurrent: () => e === epoch});
+    const body = renderReviewDirectory(root, data, {courseSidebar, taskTree, href, start});
     if (getAccess()?.is_admin) body.prepend(anchor(t(allMaterials ? 'paper.back' : 'admin.allCards'), href(allMaterials ? '/reviews' : '/reviews?materials=1'), 'secondaryButton'));
     if (data.next_due_at) body.append(node('p', 'inputHint', t('atomic.availableAt', {time: formatDate(data.next_due_at)})));
     function refresh() {
