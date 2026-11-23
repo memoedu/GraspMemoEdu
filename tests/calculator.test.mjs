@@ -44,6 +44,28 @@ const run = (module, operation, input, config = cas, options = {}) =>
 const evaluate = (expression, config = basic, options) => run('expression', 'evaluate', {expression}, config, options);
 const approx = (a, b, tolerance = 1e-10) => assert.ok(Math.abs(a - b) < tolerance, `${a} != ${b}`);
 
+test('letter registers work at every tier and take precedence over expression assignments', async () => {
+  for (const level of ['basic', 'scientific', 'advanced', 'cas']) {
+    const config = {level};
+    assert.equal((await evaluate('2*A+B', config, {memory: {A: 8, B: 0}})).numeric, 16);
+    assert.equal((await evaluate('A*3', config, {memory: {A: 1 / 3}})).numeric, 1);
+  }
+  const scientific = {level: 'scientific'};
+  const options = {memory: {A: 8}};
+  assert.deepEqual(await run('expression', 'assign_variables', {expression: 'A+x+B'}, scientific, options),
+    {variables: ['x', 'B']});
+  assert.equal((await run('expression', 'evaluate', {expression: 'A+x', assignments: {A: '999', x: 'A/2'}},
+    scientific, options)).numeric, 12);
+  await assert.rejects(evaluate('A+x', scientific, options), {code: 'unassigned'});
+  await assert.rejects(evaluate('A', scientific), {code: 'unassigned'});
+  await assert.rejects(evaluate('A', {...scientific, disable_keys: ['memory_registers']}, options), {code: 'unassigned'});
+  assert.equal((await evaluate('A', {...scientific, disable_keys: ['assign_variables']}, options)).numeric, 8);
+  await assert.rejects(evaluate('A=A+1', scientific, options), {code: 'restricted'});
+  const complex = (await evaluate('2+3*i', scientific)).complex;
+  assert.deepEqual((await evaluate('2*A', scientific, {memory: {A: complex}})).complex, {re: 4, im: 6});
+  await assert.rejects(evaluate('A', basic, {memory: {A: complex}}), {code: 'restricted'});
+});
+
 test('toolbar lists available worksheets without duplicating scientific constants', () => {
   const ids = config => calculatorWorksheets(config).map(([id]) => id);
   assert.deepEqual(ids(undefined), []);
