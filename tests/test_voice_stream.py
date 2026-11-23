@@ -144,10 +144,12 @@ class VoiceSessionTests(unittest.TestCase):
     def setUp(self):
         self.providers = []
         self.history = []
+        self.contexts = []
         def factory(context, update, *, live=False, previous=''):
             provider = Provider(context, update)
             self.providers.append(provider)
             self.history.append(previous)
+            self.contexts.append(context)
             return provider
         self.reserve = Mock()
         self.registry = Sessions(BoundedSemaphore(2), self.reserve, factory, lambda t, p, c: t)
@@ -160,8 +162,8 @@ class VoiceSessionTests(unittest.TestCase):
     def call(self, packet, scope='account-session'):
         return self.registry.handle(self.account, scope, packet)
 
-    def packet(self, op, offset=0, pcm=b''):
-        return Chunk(op=op, take=self.start.take, offset=offset, pcm=base64.b64encode(pcm).decode())
+    def packet(self, op, offset=0, pcm=b'', part=None):
+        return Chunk(op=op, take=self.start.take, offset=offset, pcm=base64.b64encode(pcm).decode(), part=part)
 
     def test_revisions_are_private_and_tail_and_retries_commit_once(self):
         self.call(self.start)
@@ -221,6 +223,29 @@ class VoiceSessionTests(unittest.TestCase):
         self.call(self.start.model_copy(update={'live': True, 'profile': 'answer_commands'}))
         self.assertEqual(self.call(self.packet('audio', pcm=b'ab')), {'offset': 2})
         self.assertEqual(self.call(self.packet('finish', 2))['text'], '二加七')
+
+    def test_manual_cuts_hide_revisions_and_keep_context_without_replaying_prior_audio(self):
+        self.call(Cancel(op='cancel', take=self.start.take))
+        self.registry.formatter = format_voice
+        self.call(self.start.model_copy(update={'manual': True, 'live': True}))
+        audio = self.packet('audio', pcm=b'ab')
+        self.assertEqual(self.call(audio), {'offset': 2})
+        self.assertEqual(self.providers[-1].received, [b'ab'])
+        paused = self.call(self.packet('pause', 2))
+        self.assertEqual(paused, {'offset': 2})
+        cut = self.packet('cut', 2, part=0)
+        self.assertEqual(self.call(cut), {'offset': 2, 'text': '2+7'})
+        self.assertEqual(self.call(cut), {'offset': 2, 'text': '2+7'})
+        self.assertEqual(self.call(self.packet('cut', 2, part=1)), {'offset': 2, 'text': ''})
+        with self.assertRaises(DomainError):
+            self.call(self.packet('cut', 2, part=4))
+        self.assertEqual(self.call(self.packet('audio', 2, b'cd')), {'offset': 4})
+        self.assertEqual(self.providers[-1].received, [b'cd'])
+        self.assertIn('2+7', self.contexts[-1].textbox.before)
+        self.providers[-1].final = '四加六'
+        finish = self.packet('finish', 4, part=2)
+        self.assertEqual(self.call(finish), {'offset': 4, 'text': '4+6'})
+        self.assertEqual(self.call(finish), {'offset': 4, 'text': '4+6'})
 
     def test_natural_pause_drains_the_provider_and_keeps_the_recording_and_context(self):
         self.call(Cancel(op='cancel', take=self.start.take))

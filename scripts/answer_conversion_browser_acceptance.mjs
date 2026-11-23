@@ -26,6 +26,16 @@ await page.route('**/api/voice-input/transcribe?*', route => {
   uploads++;
   return route.fulfill({json: {text: silence ? '' : transcript}});
 });
+await page.route('**/api/voice-input/stream?*', route => {
+  const p = route.request().postDataJSON();
+  if (p.op === 'open') assert.equal(p.profile, 'answer_commands');
+  const offset = (p.offset || 0) + Buffer.from(p.pcm || '', 'base64').length;
+  if (p.op === 'cut' || p.op === 'finish') {
+    uploads++;
+    return route.fulfill({json:{offset,text:silence ? '' : transcript}});
+  }
+  return route.fulfill({json:{offset}});
+});
 const phrase = page.locator('.answerConversion textarea:visible');
 const answer = page.locator('#answerInput');
 const mic = page.getByRole('button', {name: '录音输入'});
@@ -269,7 +279,7 @@ async function speak() {
   assert.equal(uploads, initialUploads + 1);
   assert.equal(await answer.inputValue(), initial);
   assert.equal(requests.filter(p => p === '/api/answer-conversion').length, conversions);
-  assert.ok(!requests.includes('/api/voice-input/stream'));
+  assert.equal(requests.includes('/api/voice-input/stream'), mode !== 'fallback');
   silence = true;
   await stop.click();
 }

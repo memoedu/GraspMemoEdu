@@ -109,7 +109,7 @@ try {
   await button('取消').click(); reply(6,'迟到结果'); await value('新旧末');
   evidence.push('cancellation and late result rejection');
   totalMicPermissions = await page.evaluate(()=>window.opens);
-  assert.equal(streamingRequests,0);
+  assert.equal(streamingRequests,totalMicPermissions,'only the failed connection attempt occurred on each take');
   assert.deepEqual(errors,[]);
   await writeFile(output,JSON.stringify({checks:evidence,uploads:uploads.length,streamingRequests,devices:totalMicPermissions},null,2));
   console.log('PASS',evidence.join('; '));

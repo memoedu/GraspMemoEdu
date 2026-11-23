@@ -8,8 +8,31 @@ from urllib.parse import urlsplit
 from playwright.sync_api import sync_playwright
 
 MIC = """
-() => {
+(delay) => {
+  let loading;
+  const addModule = AudioWorklet.prototype.addModule;
+  AudioWorklet.prototype.addModule = async function (...args) {
+    loading = performance.now();
+    if (delay) await new Promise(done => setTimeout(done, delay));
+    return addModule.apply(this, args);
+  };
+  document.addEventListener('click', event => {
+    if (event.target.closest('button')?.getAttribute('aria-label') === '录音输入') {
+      window.micTiming = {clicked: performance.now(), loading: null, microphone: null};
+      const observer = new MutationObserver(() => {
+        const stop = [...document.querySelectorAll('.voiceToolPanel button')].find(b => b.textContent === '结束录音');
+        if (stop && !stop.hidden && stop.offsetWidth) {
+          micTiming.ready = performance.now();
+          micTiming.loading = loading;
+          observer.disconnect();
+        }
+      });
+      observer.observe(document.body, {subtree:true,attributes:true,childList:true,attributeFilter:['hidden']});
+    }
+  }, true);
   Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {value: async () => {
+    micTiming.microphone = performance.now();
+    if (delay) await new Promise(done => setTimeout(done, delay));
     const clock = new AudioContext({sampleRate: 16000, latencyHint: 'interactive', sinkId: {type: 'none'}});
     await clock.resume();
     const sink = clock.createMediaStreamDestination();
@@ -37,6 +60,7 @@ async encoded => {
   source.onended = () => {
     voiceTimes.voiceEnd = performance.now();
     setTimeout(() => {
+      voiceTimes.beforeStop = answer.value;
       voiceTimes.stopped = performance.now();
       [...document.querySelectorAll('button')].find(b => b.textContent === '结束录音' && b.offsetWidth).click();
     }, 32);
@@ -79,7 +103,8 @@ def main():
     cli.add_argument('--base', default='http://127.0.0.1:18791')
     cli.add_argument('--chromium')
     cli.add_argument('--cases', nargs='+', choices=CASES, default=list(CASES))
-    cli.add_argument('--baseline', action='store_true', help='Compare a site running the former streaming input')
+    cli.add_argument('--transport', choices=('background', 'file', 'legacy'), default='background')
+    cli.add_argument('--setup-delay-ms', type=int, default=0, help='Inject the same latency into permission and worklet loading')
     args = cli.parse_args()
     if urlsplit(args.base).hostname not in ('127.0.0.1', 'localhost'):
         cli.error('Use a loopback synthetic fixture')
@@ -88,7 +113,7 @@ def main():
     with sync_playwright() as pw:
         browser = pw.chromium.launch(executable_path=args.chromium, args=['--autoplay-policy=no-user-gesture-required'])
         page = browser.new_page(locale='zh-CN')
-        page.add_init_script('(' + MIC + ')()')
+        page.add_init_script(f'({MIC})({args.setup_delay_ms})')
         page.set_default_timeout(18000)
         try:
             def failed_request(response):
@@ -105,7 +130,7 @@ def main():
             page.locator('#identitySubmitButton').wait_for(state='hidden')
             packets = []
             def observe(request):
-                api = '/api/voice-input/stream' if args.baseline else '/api/voice-input/transcribe'
+                api = '/api/voice-input/transcribe' if args.transport == 'file' else '/api/voice-input/stream'
                 if urlsplit(request.url).path == api and request.method == 'POST':
                     body = request.post_data_json
                     packets.append(body)
@@ -123,6 +148,7 @@ def main():
                 answer.focus()
                 page.get_by_role('button', name='录音输入', exact=True).click()
                 page.get_by_role('button', name='结束录音', exact=True).wait_for()
+                timing = page.evaluate('micTiming')
                 page.evaluate(PLAY, base64.b64encode((args.audio / (clip + '.wav')).read_bytes()).decode('ascii'))
                 try:
                     page.wait_for_function(RENDERED, timeout=35000)
@@ -136,9 +162,13 @@ def main():
                     continue
                 result = page.evaluate("""() => {const t=voiceTimes; return {speech_ms:t.duration,
                   end_to_paint_ms:Math.round(t.painted-t.voiceEnd), stop_to_paint_ms:Math.round(t.painted-t.stopped),
-                  stop_to_input_ms:Math.round(t.inserted-t.stopped), text:document.querySelector('#trainingAnswer').value};}""")
-                if args.baseline:
+                  stop_to_input_ms:Math.round(t.inserted-t.stopped), beforeStop:t.beforeStop,
+                  text:document.querySelector('#trainingAnswer').value};}""")
+                if args.transport != 'file':
                     assert any(packet.get('op') == 'finish' for packet in packets), key
+                    if args.transport == 'background':
+                        assert packets[0]['manual'] and any(packet.get('op') == 'audio' for packet in packets), key
+                        assert result['beforeStop'] == (before + '旧值' + after if key in TEXTBOX else ''), key
                 else:
                     assert len(packets) == 1 and packets[0]['segmented'], key
                 assert result['stop_to_input_ms'] >= 0 and packets[0]['context']['stem']
@@ -159,7 +189,9 @@ def main():
                 if key in TEXTBOX:
                     passed &= result['text'] == before + expected + after
                 if not passed: failures.append(key)
-                result.update(case=key, audio_posts=len(packets), passed=passed)
+                assert timing['ready'] >= timing['clicked']
+                result.update(case=key, audio_posts=len(packets), mic_open_ms=round(timing['ready']-timing['clicked']),
+                              setup_gap_ms=round(timing['loading']-timing['microphone']), passed=passed)
                 evidence.append(result)
                 print(json.dumps(result, ensure_ascii=False), flush=True)
         finally:

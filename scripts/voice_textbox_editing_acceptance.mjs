@@ -15,10 +15,15 @@ const button = name=>page.getByRole('button',{name,exact:true});
 let transcript = '', began;
 const errors=[];
 page.on('pageerror',e=>errors.push(String(e)));
-await page.route(/\/api\/voice-input\/transcribe(?:\?|$)/,async route=>{
-  began=route.request().postDataJSON();
-  assert.equal(began.segmented,true);
-  await route.fulfill({json:{text:transcript}});
+await page.route(/\/api\/voice-input\/stream(?:\?|$)/, async route => {
+  const packet = route.request().postDataJSON();
+  if (packet.op === 'open') {
+    began = packet;
+    assert.equal(began.manual, true);
+  }
+  const offset = (packet.offset || 0) + Buffer.from(packet.pcm || '', 'base64').length;
+  const boundary = packet.op === 'cut' || packet.op === 'finish';
+  await route.fulfill({json: boundary ? {offset, text: transcript} : {offset}});
 });
 async function cut(text) {
   transcript=text;

@@ -67,11 +67,30 @@ def exercise(context, base, invitation, fallback, force_mp4, mp4_fixture, *, use
     context.add_init_script(f'({MICROPHONE})({json.dumps([fallback, force_mp4, mp4_fixture])})')
     page = context.new_page()
     opened, uploads, errors = [], [], []
+    frames = bytearray()
+    offset = 0
     page.on('pageerror', lambda error: errors.append(str(error)))
 
     def stream(route):
-        opened.append(True)
-        route.abort()
+        nonlocal offset
+        packet = route.request.post_data_json
+        operation = packet['op']
+        opened.append(operation)
+        if operation == 'open':
+            assert packet['manual']
+            route.fulfill(json={'offset': 0})
+            return
+        assert packet['offset'] == offset
+        pcm = base64.b64decode(packet['pcm'])
+        frames.extend(pcm)
+        offset += len(pcm)
+        if operation in ('cut', 'finish'):
+            assert len(frames) > 4800
+            frames.clear()
+            uploads.append('audio/wav')
+            route.fulfill(json={'offset': offset, 'text': '第一段' if len(uploads) == 1 else '第二段'})
+        else:
+            route.fulfill(json={'offset': offset})
 
     def recorded(route):
         payload = VoiceRecording.model_validate(route.request.post_data_json)
@@ -114,12 +133,13 @@ def exercise(context, base, invitation, fallback, force_mp4, mp4_fixture, *, use
     bounds = timer.bounding_box()
     assert 0 <= bounds['x'] and bounds['x'] + bounds['width'] <= context.pages[0].viewport_size['width']
     expect(timer).to_have_text('00 分钟: 01 秒 / 2 分钟')
-    assert not uploads and not opened
+    assert not uploads
+    assert ('audio' in opened) != fallback
     button('暂停录音').click()
     paused = timer.inner_text()
     page.evaluate('window.clockAdvance += 5000')
     assert timer.inner_text() == paused
-    assert not uploads and not opened
+    assert not uploads
     button('转写').tap()
     expect(field).to_have_value('第一段')
     button('继续录音').click()
@@ -135,7 +155,7 @@ def exercise(context, base, invitation, fallback, force_mp4, mp4_fixture, *, use
         status = page.locator('.voiceToolPanel [role="status"]').text_content()
         raise AssertionError((status, opened, uploads, errors)) from error
     assert page.evaluate('window.micCalls') == 1 and not errors, errors
-    assert not opened
+    assert (not opened) == fallback
     assert uploads == [('audio/mp4' if force_mp4 else 'audio/webm') if fallback else 'audio/wav'] * 2
     return {'fallback': fallback, 'media': uploads[0], 'automatic_stop': use_limit,
             'fixture_encoder': page.evaluate('window.fixtureRecorder')}
