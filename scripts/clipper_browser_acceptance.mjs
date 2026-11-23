@@ -3,13 +3,13 @@ import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {createRequire} from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
+import {launchAcceptanceChrome} from './launch_acceptance_chrome.mjs';
 
 const [output, fixture, base = 'http://127.0.0.1:18891'] = process.argv.slice(2);
 const require = createRequire(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
-const {chromium} = require('playwright');
 const [first, second] = JSON.parse(await readFile(path.join(fixture, 'browser-fixtures.json'), 'utf8'));
 await mkdir(output, {recursive: true});
-const browser = await chromium.launch({headless: true, channel: 'chrome'});
+const browser = await launchAcceptanceChrome(require);
 const errors = [], checks = [];
 const context = await browser.newContext({viewport: {width: 1280, height: 900}, locale: 'zh-CN'});
 await context.addInitScript(() => {
@@ -118,6 +118,18 @@ try {
   await popup.getByText('已存入个人自由学习。', {exact: true}).waitFor();
   checks.push('topmost dock survives page interaction and preserves content on minimize and popout');
 
+  for (const [selector, expected] of [
+    ['p:has-text("Legacy SVG") mjx-container', '\\frac{1}{2}'],
+    ['p:has-text("Native MathML") math', '{m}^{3}'],
+  ]) {
+    await open('摘', selector, true);
+    await popup.getByRole('button', {name: '保存摘录'}).click();
+    await popup.getByText('已存入个人自由学习。', {exact: true}).waitFor();
+    await popup.waitForFunction(tex => [...document.querySelectorAll('.clipperSource [data-math-source]')]
+      .some(formula => formula.dataset.mathSource.includes(tex)), expected, {timeout: 9000});
+  }
+  checks.push('legacy SVG and native MathML remain selectable without stored LaTeX');
+
   await open('卡', inlineSelector);
   await popup.getByRole('button', {name: '选区加入正面'}).click();
   assert.match(await popup.getByLabel('正面', {exact: true}).inputValue(), /\\frac\{a\}\{b\}/);
@@ -149,13 +161,14 @@ try {
   await main.getByRole('button', {name: '良好', exact: true}).click();
   await main.getByText('目前没有到期的个人卡片。').waitFor();
   await main.getByRole('button', {name: '摘录', exact: true}).click();
-  await main.locator('.clipperLibraryItem').waitFor();
+  await main.locator('.clipperLibraryItem').first().waitFor();
   for (const label of ['导出今天', '导出全部']) {
     const download = main.waitForEvent('download');
     await main.getByRole('button', {name: label}).click();
     const file = await download;
     const markdown = await readFile(await file.path(), 'utf8');
     assert.match(markdown, /\$x\^2\$/);
+    assert.match(markdown, /\$\\frac\{1\}\{2\}\$/);
   }
   await main.screenshot({path: path.join(output, 'free-study-clips.png')});
   checks.push('site FSRS review and both RemNote markdown downloads');

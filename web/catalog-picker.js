@@ -1,6 +1,6 @@
-import {t, translateMessage} from './i18n.js?v=bd33ab0f81c0cf93';
-import {subjectLabel, subjectPalette} from './subjects.js?v=bd33ab0f81c0cf93';
-import {appendCatalogOutline} from './catalog-outline.js?v=bd33ab0f81c0cf93';
+import {t, translateMessage} from './i18n.js?v=433aee787fec0675';
+import {subjectLabel, subjectPalette} from './subjects.js?v=433aee787fec0675';
+import {appendCatalogOutline} from './catalog-outline.js?v=433aee787fec0675';
 
 const node = (tag, cls, text) => {
   const item = document.createElement(tag); item.className = cls;
