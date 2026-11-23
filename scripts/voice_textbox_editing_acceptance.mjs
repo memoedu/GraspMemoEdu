@@ -123,7 +123,7 @@ try {
     chatUrl.search=new URL(formulaUrl).search;
     const [{attachFormulaEditing},{attachChatEditor}]=await Promise.all([import(formulaUrl),import(chatUrl.href)]);
     const field=document.createElement('textarea');
-    field.id='voice-test-chat';field.maxLength=4000;field.value='首尾';
+    field.id='voice-test-chat';field.value='首尾';
     document.querySelector('#profileDisplayName').after(field);
     attachChatEditor(field,{editor:'合成答疑',hint:'',math:'公式',preview:'预览'},{attachFormula:attachFormulaEditing});
   });

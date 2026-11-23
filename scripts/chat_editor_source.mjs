@@ -101,7 +101,7 @@ export function attachChatEditor(input, labels, options = {}) {
       if (input.value !== value) {input.value = value; input.dispatchEvent(new Event('input', {bubbles: true}));}
       if (!preview.hidden) renderChatMarkdown(preview, input.value);
     }),
-    EditorState.transactionFilter.of(transaction => transaction.newDoc.length > input.maxLength ? [] : transaction),
+    EditorState.transactionFilter.of(transaction => input.maxLength >= 0 && transaction.newDoc.length > input.maxLength ? [] : transaction),
     EditorView.theme({'.cm-content': {minHeight: '170px', padding: '12px', fontFamily: 'inherit'},
       '&.cm-focused': {outline: '2px solid var(--link-color)'}, '.cm-scroller': {overflow: 'auto'}})
   ]})});
@@ -126,8 +126,9 @@ export function attachChatEditor(input, labels, options = {}) {
           return true;
         },
         insert(text) {
-          if (!valid() || doc.length+text.length-(to-from)>input.maxLength) return false;
-          view.dispatch({changes:{from,to,insert:text},selection:{anchor:from+text.length},annotations:isolateHistory.of('full')});
+          if (!valid() || input.maxLength >= 0 && doc.length + text.length - (to - from) > input.maxLength) return false;
+          view.dispatch({changes: {from, to, insert: text}, selection: {anchor: from + text.length},
+            annotations: isolateHistory.of('full')});
           return true;
         },
       };
