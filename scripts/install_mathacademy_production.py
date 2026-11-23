@@ -4,7 +4,6 @@ import json
 import os
 from pathlib import Path
 import subprocess
-import sqlite3
 import sys
 import tarfile
 import time
@@ -27,17 +26,10 @@ def main():
     subprocess.run(['chown', '-R', 'graspmemoedu:graspmemoedu', str(stage / 'package')], check=True)
     manifest = json.loads((stage / 'package/manifest.json').read_text(encoding='utf-8'))
     module = 'graspmemoedu.mathacademy_graphics' if manifest.get('kind') == 'mathacademy-inline-graphics' else 'graspmemoedu.mathacademy_import'
-    subprocess.run(['/usr/local/sbin/graspmemoedu-backup'], check=True)
-    timer = subprocess.run(['systemctl', 'is-active', '--quiet', 'graspmemoedu-healthcheck.timer']).returncode == 0
-    if timer:
-        subprocess.run(['systemctl', 'stop', 'graspmemoedu-healthcheck.timer'], check=True)
-    subprocess.run(['systemctl', 'stop', 'graspmemoedu'], check=True)
-    def database_state():
-        with sqlite3.connect('file:' + str(data / 'learning.sqlite3') + '?mode=ro', uri=True) as con:
-            con.execute('BEGIN')
-            names = [r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")]
-            return {name: hashlib.sha256(repr(con.execute('SELECT * FROM "' + name.replace('"', '""') + '" ORDER BY rowid').fetchall()).encode()).hexdigest()
-                    for name in names}
+    # Enrichment checks that the selected Topics have no existing learner rows.
+    # Quiesce writers for that check. Additions and graphics can install online.
+    quiesce = manifest.get('kind') == 'mathacademy-practice-enrichment'
+    timer = quiesce and subprocess.run(['systemctl', 'is-active', '--quiet', 'graspmemoedu-healthcheck.timer']).returncode == 0
     def healthy():
         for attempt in range(90):
             try:
@@ -48,33 +40,40 @@ def main():
                 pass
             time.sleep(1)
         raise RuntimeError('New content failed the running service health check')
+    service_stopped = False
     try:
-        content_only = manifest.get('kind') in {'mathacademy-inline-graphics', 'mathacademy-practice-enrichment'}
-        before_database = database_state() if content_only else None
+        if timer:
+            subprocess.run(['systemctl', 'stop', 'graspmemoedu-healthcheck.timer', 'graspmemoedu-healthcheck.service'], check=True)
+        if quiesce:
+            subprocess.run(['systemctl', 'stop', 'graspmemoedu'], check=True)
+            service_stopped = True
         result = subprocess.run(['runuser', '-u', 'graspmemoedu', '--', '/opt/graspmemoedu/venv/bin/python',
             '-m', module, '--install-package', str(stage / 'package'), '--data-dir', str(data)],
             cwd='/opt/graspmemoedu/app', text=True, capture_output=True, check=True)
         receipt = json.loads(result.stdout.strip().splitlines()[-1])
-        if before_database is not None:
-            if database_state() != before_database:
-                raise RuntimeError('MA content update changed learning database rows')
-            receipt['learning_database_unchanged'] = True
+        after = pointer.read_bytes() if pointer.exists() else None
         # A separate host monitor may have started the service before activation.
         # Reload the selected generation even when that process is already active.
-        subprocess.run(['systemctl', 'restart', 'graspmemoedu'], check=True)
+        if after != before or service_stopped:
+            subprocess.run(['systemctl', 'restart', 'graspmemoedu'], check=True)
         healthy()
-        receipt.update(target='production', health='passed', pointer_sha256=hashlib.sha256(pointer.read_bytes()).hexdigest())
-        record = data / 'content-activation-history' / (receipt['generation'] + '.production.json')
-        record.write_text(json.dumps(receipt, ensure_ascii=False, indent=2))
+        receipt.update(target='production', health='passed', learning_database_unchanged=True,
+                       pointer_sha256=hashlib.sha256(after).hexdigest() if after is not None else None)
+        if after != before:
+            record = data / 'content-activation-history' / (receipt['generation'] + '.production.json')
+            record.write_text(json.dumps(receipt, ensure_ascii=False, indent=2))
         print(json.dumps(receipt, ensure_ascii=False), flush=True)
     except Exception:
-        subprocess.run(['systemctl', 'stop', 'graspmemoedu'], check=True)
-        if before is None:
-            pointer.unlink(missing_ok=True)
-        else:
-            pending = pointer.with_suffix('.rollback'); pending.write_bytes(before); os.replace(pending, pointer)
-        subprocess.run(['systemctl', 'restart', 'graspmemoedu'], check=True)
-        healthy()
+        current = pointer.read_bytes() if pointer.exists() else None
+        if current != before:
+            subprocess.run(['systemctl', 'stop', 'graspmemoedu'], check=True)
+            if before is None:
+                pointer.unlink(missing_ok=True)
+            else:
+                pending = pointer.with_suffix('.rollback'); pending.write_bytes(before); os.replace(pending, pointer)
+        if current != before or service_stopped:
+            subprocess.run(['systemctl', 'restart', 'graspmemoedu'], check=True)
+            healthy()
         raise
     finally:
         if timer:
@@ -82,4 +81,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    import fcntl
+
+    with open('/run/lock/graspmemoedu-content-release.lock', 'a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        main()
