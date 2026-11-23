@@ -3,7 +3,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import {mathAt} from '../web/math-syntax.js';
+import {escapedAt, mathAt, mathSpans} from '../web/math-syntax.js';
 
 const bundled = process.env.CODEX_NODE_MODULES || path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules');
 const mathRuntime = process.env.MATH_TOPIC_PDF_RUNTIME || 'D:/Caches/MathTopicPdf/node_modules';
@@ -20,7 +20,7 @@ const resources = new Set();
 const headings = new Map();
 const ASSET_ROOT = 'https://guide-asset.invalid/';
 
-function math(latex, display) {
+function mathHtml(latex, display) {
   if (/\\(?:href|url|html\w*|includegraphics|class|style|cssId|require)\b/i.test(latex)) throw new Error('Active TeX is not supported');
   if (!document) {
     const { mathjax } = mr('mathjax-full/js/mathjax.js');
@@ -40,10 +40,71 @@ function math(latex, display) {
   }
   const rendered = adaptor.outerHTML(document.convert(latex, { display, em: 15, ex: 7.5, containerWidth: 732 }));
   if (/data-mml-node="merror"|data-mjx-error|<(?:script|iframe|foreignObject|image)\b|\son\w+\s*=|(?:href|src)="(?:https?:|\/\/|data:|javascript:)|(?:url|expression)\s*\(|@import/i.test(rendered)) throw new Error('Invalid math');
-  const marker = `GUIDEMATHPLACEHOLDER${formulas.length}END`;
   const tag = display ? 'div' : 'span';
-  formulas.push({ marker, html: `<${tag} class="${display ? 'mathDisplay' : 'mathInline'}" aria-label="${escape(latex)}">${rendered}</${tag}>` });
+  return `<${tag} class="${display ? 'mathDisplay' : 'mathInline'}" aria-label="${escape(latex)}">${rendered}</${tag}>`;
+}
+
+function math(latex, display) {
+  const marker = `GUIDEMATHPLACEHOLDER${formulas.length}END`;
+  formulas.push({marker, html: mathHtml(latex, display)});
   return display ? `<p>${marker}</p>\n` : marker;
+}
+
+const literal = value => escape(value).replace(/\r?\n/g, '<br>');
+
+function normalizeAnswerMath(value) {
+  // Some older structured answers persisted the transport escaping as text.
+  // A real matrix's double backslashes are row boundaries.
+  if (/\\\\begin\{[^{}]+\}[\s\S]*\\\\end\{/.test(value)) return value.replace(/\\\\/g, '\\');
+  if (/\\begin\{|\\end\{/.test(value)) return value;
+  return value.replace(/(?<!\\)\\\\(?=[A-Za-z()[\]])/g, '\\');
+}
+
+function bareAnswerMath(value) {
+  if (/[$\x60\r\n]|<\/?[A-Za-z][^>]*>/.test(value)) return false;
+  const symbols = value.trim().replace(/\\(?:text|textrm|operatorname)\{[^{}]*\}/g, 'λ')
+    .replace(/\\[A-Za-z]+/g, 'λ').replace(/\b(?:sin|cos|tan|ln|log|exp)\b/g, 'λ');
+  if (/(?:[A-Za-z]{2,}\s+[A-Za-z]{2,}|[^\x00-\x7FΑ-Ωα-ω×÷−≤≥≠±∞∈∫√∑π])/.test(symbols)) return false;
+  if (!/\\[A-Za-z]+/.test(value) && !/\p{L}[\d\s]*(?:[=^_+*/<>≤≥≠-])|\d+[+\-*/=]\p{L}/u.test(symbols)) return false;
+  return !/[A-Za-z]{3,}/.test(symbols) && /^[\d\p{L}\s+*/=^_{}()[\],.:;|!%&<>\-×÷−≤≥≠±∞∈∫√∑π\\]+$/u.test(symbols);
+}
+
+function answerTextHtml(value, allowBare = true) {
+  const render = (tex, display, fallback) => {
+    try { return mathHtml(normalizeAnswerMath(tex), display); }
+    catch { return literal(fallback); }
+  };
+  const native = [...value.matchAll(/\[math\]([\s\S]+?)\[\/math\]/gi)]
+    .filter(match => !escapedAt(value, match.index))
+    .map(match => ({from: match.index, to: match.index + match[0].length, raw: match[0], latex: match[1], display: false}));
+  const spans = [...mathSpans(value), ...native].sort((a, b) => a.from - b.from);
+  if (!spans.length) {
+    if (!allowBare) return literal(value);
+    const candidate = normalizeAnswerMath(value).trim();
+    const legacy = mathAt(candidate);
+    if (legacy?.to === candidate.length) return render(legacy.latex, legacy.display, value);
+    return bareAnswerMath(candidate) ? render(candidate, false, value) : literal(value);
+  }
+  let offset = 0, output = '';
+  for (const {from, to, raw, latex, display} of spans) {
+    if (from < offset) continue;
+    output += literal(value.slice(offset, from)) + render(latex, display, raw);
+    offset = to;
+  }
+  return output + literal(value.slice(offset));
+}
+
+function answerHtml(value) {
+  if (!value.includes('\x60')) return answerTextHtml(value);
+  let offset = 0, output = '';
+  for (const match of value.matchAll(/(\x60+)[\s\S]*?\1(?!\x60)/g)) {
+    output += answerTextHtml(value.slice(offset, match.index), false) + literal(match[0]);
+    offset = match.index + match[0].length;
+  }
+  const last = value.slice(offset);
+  const openCode = last.indexOf('\x60');
+  return output + (openCode < 0 ? answerTextHtml(last, false)
+    : answerTextHtml(last.slice(0, openCode), false) + literal(last.slice(openCode)));
 }
 
 function resourceUrl(raw, isImage) {
@@ -103,7 +164,15 @@ const marked = new Marked({
 
 let input = '';
 for await (const chunk of process.stdin) input += chunk;
-const { markdown } = JSON.parse(input);
+const {markdown, answer_values} = JSON.parse(input);
+if (Array.isArray(answer_values)) {
+  if (Buffer.byteLength(input) > 1024 * 1024 || answer_values.some(value => typeof value !== 'string')) {
+    throw new Error('Invalid answer render input');
+  }
+  const answer_html = answer_values.map(answerHtml);
+  process.stdout.write(JSON.stringify({html: '', answer_html, resources: [],
+    math_css: document ? adaptor.textContent(svg.styleSheet(document)) : ''}));
+} else {
 if (typeof markdown !== 'string' || Buffer.byteLength(markdown) > 1024 * 1024) throw new Error('Guide source is too large');
 let html = sanitizeHtml(marked.parse(markdown), {
   allowedTags: [...sanitizeHtml.defaults.allowedTags, 'img', 'del', 'details', 'summary'],
@@ -121,3 +190,4 @@ let html = sanitizeHtml(marked.parse(markdown), {
 });
 for (const formula of formulas) html = html.replaceAll(`<p>${formula.marker}</p>`, formula.html).replaceAll(formula.marker, formula.html);
 process.stdout.write(JSON.stringify({ html, math_css: document ? adaptor.textContent(svg.styleSheet(document)) : '', resources: [...resources] }));
+}
