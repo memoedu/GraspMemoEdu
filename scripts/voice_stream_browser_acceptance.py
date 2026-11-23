@@ -57,7 +57,8 @@ RENDERED = """
 """
 CASES = {'algebra': ('variable', 'x+3-y'), 'pair': ('coordinate', '(-1,1)'),
          'iteration': ('script', 'y^{new}'), 'index': ('script', 'y_{6}'),
-         'order': ('order', '7-3*2'), 'integral': ('integral', r'\intx^2+3\cdotx\,dx')}
+         'order': ('order', '7-3*2'), 'integral': ('integral', r'\intx^2+3\cdotx\,dx'),
+         'reading-one': ('reading', 'q=5'), 'reading-two': ('reading', 'p=5')}
 
 
 def main():

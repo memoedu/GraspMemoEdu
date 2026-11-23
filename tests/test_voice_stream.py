@@ -44,6 +44,10 @@ class MathDictationTests(unittest.TestCase):
         integral = quick_math('积分，t的立方加五乘t，微分t', 'answer', VoiceContext())
         self.assertEqual(integral, r'\(\int t^3+5\cdot t\,dt\)')
         self.assertIsNone(quick_math('把积分的结果算出来', 'answer', VoiceContext()))
+        named = VoiceContext(stem='两次测量分别记为 a 和 b，更新后的读数用 b 表示。', symbols=['a', 'b'])
+        self.assertEqual(quick_math('更新后的读数等于五。', 'answer', named), 'b=5')
+        named.stem = '温度用 a 表示，若改用另一套单位，温度用 b 表示。'
+        self.assertIsNone(quick_math('温度等于五', 'answer', named))
 
 
 class Provider:

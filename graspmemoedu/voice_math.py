@@ -94,6 +94,20 @@ def marked_symbol(compact, context):
     return matches[0] if len(matches) == 1 else None
 
 
+def named_quantity(label, context):
+    """Read an explicit name/symbol binding; defer ambiguous or indirect references."""
+    stem = re.sub(r'\\[()[\]]|\$|\s+', '', context.stem)
+    name = re.escape(label)
+    matches = []
+    for symbol in context.symbols:
+        item = re.escape(symbol) + r'(?![a-zA-Z0-9_^])'
+        if (re.search(name + r'(?:记[为作]|定义为|表示为|为)' + item, stem)
+                or re.search(name + r'(?:可)?用' + item + r'(?:来)?表示', stem)
+                or re.search(r'(?<![a-zA-Z0-9])' + item + r'(?:表示|代表)' + name, stem)):
+            matches.append(symbol)
+    return matches[0] if len(matches) == 1 else None
+
+
 def quick_math(transcript, profile, context):
     """Only handle complete, unambiguous token streams; defer prose and scope to the model."""
     if profile not in {'calculator', 'answer'} or context.style == 'code':
@@ -129,8 +143,13 @@ def quick_math(transcript, profile, context):
         if relation and relation[2] in context.stem and context.style == 'mixed':
             right = expression(relation[4], context)
             if right:
+                left = named_quantity(relation[2], context)
+                if not left and context.symbols:
+                    return None
                 prefix = relation[1] + '，' if relation[1] else ''
-                return prefix + r'\(\text{' + relation[2] + '}' + OPERATORS[relation[3]] + right + r'\)'
+                if left and not prefix:
+                    return left + OPERATORS[relation[3]] + right
+                return prefix + r'\(' + (left or r'\text{' + relation[2] + '}') + OPERATORS[relation[3]] + right + r'\)'
         if compact.startswith('积分'):
             integral = re.fullmatch(r'积分[,，、]?(.+?)[,，、]?(?:微分|\*?[dD])([A-Za-z])', compact)
             if integral:
