@@ -1,7 +1,7 @@
-import {refreshCompletionSurface, setCompletionSurface, setInputCompletions} from './autocomplete.js?v=17a5c57bb9bc8d86';
-import {formulaSpans, formulaTemplates, formulaToken, matchesCompletion} from './formula-catalog.js?v=17a5c57bb9bc8d86';
-import {getLanguage} from './i18n.js?v=17a5c57bb9bc8d86';
-import previews from './vendor/formula/previews.mjs?v=17a5c57bb9bc8d86';
+import {refreshCompletionSurface, setCompletionSurface, setInputCompletions} from './autocomplete.js?v=8ddf3b7f4bcfc277';
+import {formulaSpans, formulaTemplates, formulaToken, matchesCompletion} from './formula-catalog.js?v=8ddf3b7f4bcfc277';
+import {getLanguage} from './i18n.js?v=8ddf3b7f4bcfc277';
+import previews from './vendor/formula/previews.mjs?v=8ddf3b7f4bcfc277';
 
 const local = (zh, en) => getLanguage() === 'en' ? en : zh;
 const style = 'formulaSourceHidden';
@@ -24,8 +24,12 @@ export function activeFormulaField(element) {
 }
 
 function load() {
-  runtime ||= import('./vendor/formula/editor.mjs?v=17a5c57bb9bc8d86').catch(error => { runtime = null; throw error; });
+  runtime ||= import('./vendor/formula/editor.mjs?v=8ddf3b7f4bcfc277').catch(error => { runtime = null; throw error; });
   return runtime;
+}
+
+export function prepareVoiceFormula() {
+  void load().catch(() => {});
 }
 
 // Native controls own the literal draft used for exact grading, command conversion,

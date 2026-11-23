@@ -1,5 +1,6 @@
-import {getLanguage} from './i18n.js?v=17a5c57bb9bc8d86';
-import {calculatorToolGroups} from './calculator.js?v=17a5c57bb9bc8d86';
+import {setVoiceContext} from './voice-context.js?v=8ddf3b7f4bcfc277';
+import {getLanguage} from './i18n.js?v=8ddf3b7f4bcfc277';
+import {calculatorToolGroups} from './calculator.js?v=8ddf3b7f4bcfc277';
 
 const toolbars = new WeakMap();
 const svgNamespace = 'http://www.w3.org/2000/svg';
@@ -153,5 +154,6 @@ export function setQuestionTools(anchor, question) {
     workspace.append(anchor);
   }
   anchor.after(rail);
+  setVoiceContext(anchor.parentElement, question);
   toolbars.set(anchor, rail);
 }

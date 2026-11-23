@@ -19,6 +19,7 @@ def main():
     parser.add_argument('output', type=Path)
     parser.add_argument('--port', type=int, default=18885)
     parser.add_argument('--conversion', action='store_true')
+    parser.add_argument('--voice', action='store_true', help='include synthetic mathematical dictation questions')
     args = parser.parse_args()
     root = args.output.resolve()
     if not root.is_relative_to(Path('D:/Artifacts/GraspMemoEdu').resolve()):
@@ -67,6 +68,16 @@ def main():
             {'id': topic['id'], 'path': 'topic.json'}]}]}), encoding='utf-8')
     bank = training_bank()
     group = bank['groups'][1]
+    if args.voice:
+        for name, stem in {
+            'algebra': r'请写出由 \(x\) 和 \(y\) 组成的式子。',
+            'pair': '在平面直角坐标系中，请写出点的坐标。',
+            'iteration': r'沿用迭代记号 \(x^{new}, y^{new}, z^{new}\)。请写出所指的变量。',
+            'integral': r'用积分表示关于 \(x\) 的表达式，写出微分元。',
+            'radius': '根据给出的圆，口述半径的关系。',
+        }.items():
+            group['questions'].append({**group['questions'][0], 'id': 'voice-' + name, 'question': stem,
+                                       'html': '<p>' + stem + '</p>', 'reference_answer': 'HIDDEN_REFERENCE'})
     group['questions'][0]['calculate'] = {'level': 'scientific', 'enable_modules': ['graph']}
     if args.conversion:
         for identifier, options in [('one-value', ['X1 = 3', 'X1 = 5']), ('two-values', ['X1 = 5, X2 = 3', 'X1 = 3，X2 = 5']),

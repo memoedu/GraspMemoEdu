@@ -46,6 +46,7 @@ from .self_assessment import enabled as self_rating_enabled, protect as protect_
 from .response_content import compact_response, learning_response
 from .context_library_api import register_context_library_routes, PUBLIC_PATHS as CONTEXT_PATHS
 from .voice_input import VOICE_PATH, VOICE_BODY_LIMIT
+from .voice_stream import STREAM_PATH, STREAM_BODY_LIMIT
 from .answer_conversion import ANSWER_CONVERSION_PATH, register_answer_conversion
 
 
@@ -462,7 +463,7 @@ def create_app(settings: Settings | None = None, service: LearningService | None
     # The subsequently registered boundary middleware wraps this body limiter.
     body_limits = {'/api/help-requests': 65536, '/api/help-images': 3 * 1024 * 1024,
                    '/api/training-audio/transcribe': 6 * 1024 * 1024, VOICE_PATH: VOICE_BODY_LIMIT,
-                   ANSWER_CONVERSION_PATH: 65536}
+                   ANSWER_CONVERSION_PATH: STREAM_BODY_LIMIT, STREAM_PATH: STREAM_BODY_LIMIT}
     app.add_middleware(BodyLimitMiddleware, maximum=16384, path_limits=body_limits)
     app.state.service = service
     app.state.settings = settings

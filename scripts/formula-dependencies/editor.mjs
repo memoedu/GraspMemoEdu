@@ -567,7 +567,8 @@ export async function createFormulaEditor(host, options) {
       }
       return text => {
         if (doc !== view.state.doc || !view.state.selection.eq(selection) || !view.dom.isConnected || !options.enabled()) return false;
-        const tr = view.state.tr.insertText(text.replace(/[\r\n]+/g, ' '), selection.from, selection.to);
+        const parsed = view.state.schema.nodeFromJSON(documentJSON(text, true, !options.answer));
+        const tr = closeHistory(view.state.tr.replaceSelection(Slice.maxOpen(parsed.content)));
         if (serialize(tr.doc).length > options.maxLength()) return false;
         view.dispatch(tr);
         return true;

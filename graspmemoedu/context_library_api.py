@@ -12,10 +12,12 @@ from .learning_storage import MemoryLearningStore
 from .service import DomainError
 from .training_audio import FunASRTranscriber, audio_question, decode_recording, read_audio
 from .voice_input import VOICE_PATH, VoiceRecording, recorded_wave, refine_voice
+from .voice_math import quick_math
+from .voice_stream import STREAM_PATH, register_voice_stream
 
 PUBLIC_PATHS = {'/api/context-library', '/api/context-library/material', '/api/context-library/lookup',
                 '/api/context-library/marks', '/api/training-audio', '/api/training-audio/status',
-                '/api/training-audio/transcribe', VOICE_PATH}
+                '/api/training-audio/transcribe', VOICE_PATH, STREAM_PATH}
 
 
 class ReadingQuote(BaseModel):
@@ -171,10 +173,9 @@ def register_context_library_routes(app, catalog, access_store, subjects, *, act
             raise DomainError('audio_version_changed', '题目版本已变化，请刷新后重新录音。', 409)
         return recorded_text(access, lambda: decode_recording(payload.data_base64))
 
-    def recorded_text(access, decode):
+    def reserve_recording(access):
         if not bool(getattr(transcriber, 'configured', True)):
             raise DomainError('transcription_unavailable', '语音转写尚未配置；可直接填写文字答案。', 503)
-        data = decode()
         limits = app.state.public_limits
         limits.consume(('audio-transcription', access['learner_id']), limits.submissions_per_minute)
         # Reserve before the external call, outside the SQLite write lock.
@@ -182,6 +183,12 @@ def register_context_library_routes(app, catalog, access_store, subjects, *, act
         if limits.daily:
             with limits.daily.reserve(access['learner_id'], access['role']):
                 pass
+
+    app.state.voice_streams = register_voice_stream(app, access_store, voice_slots, reserve_recording)
+
+    def recorded_text(access, decode):
+        data = decode()
+        reserve_recording(access)
         result = transcriber(data)
         if not isinstance(result, dict) or not isinstance(result.get('text'), str) or not result['text'].strip():
             raise DomainError('transcription_failed', '未获得有效转写，请重试或直接填写答案。', 502)
@@ -200,6 +207,10 @@ def register_context_library_routes(app, catalog, access_store, subjects, *, act
             if payload.profile == 'answer_commands':
                 # The command interpreter takes the original ASR text, including ordinals and corrections.
                 return {'text': result['text']}
-            return {'text': voice_refiner(result['text'], payload.profile)}
+            text = result['text']
+            if payload.context is not None:
+                value = quick_math(text, payload.profile, payload.context)
+                return {'text': value or voice_refiner(text, payload.profile, context=payload.context)}
+            return {'text': voice_refiner(text, payload.profile)}
         finally:
             voice_slots.release()
