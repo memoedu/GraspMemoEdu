@@ -90,6 +90,14 @@ class CourseSelection(BaseModel):
     course_id: str = Field(min_length=1, max_length=128)
 
 
+class FreeStudyUpdate(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    subject_id: str = Field(min_length=1, max_length=128)
+    enabled: bool = Field(strict=True)
+    bank_ids: list[str] = Field(default_factory=list)
+    show_reviews: bool = Field(default=False, strict=True)
+
+
 class ProfileUpdate(BaseModel):
     model_config = ConfigDict(extra='forbid')
     display_name: str | None = Field(default=None, min_length=1, max_length=100)
@@ -543,7 +551,8 @@ def create_app(settings: Settings | None = None, service: LearningService | None
                         '/api/help-images', '/api/presence',
                         '/api/materials', '/api/materials/open', '/api/materials/content',
                         '/api/state', '/api/demo-answer', '/api/guest/reset', '/api/choose', '/api/continue', '/api/select', '/api/pause', '/api/skip', '/api/submit', '/api/reveal',
-                        '/api/subjects', '/api/catalog', '/api/catalog/select', '/api/dashboard', '/api/profile', '/api/feedback', '/api/help-requests', '/api/guide', '/api/atomic/reviews'}
+                        '/api/subjects', '/api/catalog', '/api/catalog/select', '/api/dashboard', '/api/profile', '/api/feedback', '/api/help-requests', '/api/guide', '/api/atomic/reviews',
+                        '/api/free-study', '/api/free-study/banks', '/api/free-study/course-reviews'}
         public_paths.update(TRAINING_PATHS)
         public_paths.update(ACADEMY_PATHS)
         public_paths.update(PAPER_PATHS)
@@ -686,6 +695,30 @@ def create_app(settings: Settings | None = None, service: LearningService | None
     def subject_catalog(request: Request):
         access = access_store.resolve(request.headers.get('x-learning-identity'))
         return subjects.public(access)
+
+    @app.get('/api/free-study')
+    def free_study(request: Request):
+        access = access_store.resolve(request.headers.get('x-learning-identity'))
+        return dashboard_store.free_study(access)
+
+    @app.post('/api/free-study')
+    def update_free_study(payload: FreeStudyUpdate, request: Request):
+        access = access_store.resolve(request.headers.get('x-learning-identity'))
+        return dashboard_store.update_free_study(access, **payload.model_dump())
+
+    @app.get('/api/free-study/banks')
+    def free_study_banks(request: Request, subject_id: str):
+        access = access_store.resolve(request.headers.get('x-learning-identity'))
+        return {'banks': dashboard_store.free_study_banks(access, subject_id)}
+
+    @app.get('/api/free-study/course-reviews')
+    def free_study_course_reviews(request: Request, subject_id: str):
+        access = access_store.resolve(request.headers.get('x-learning-identity'))
+        subjects.authorize_subject(access, subject_id)
+        if 'learn' not in access['features']:
+            raise DomainError('feature_forbidden', '当前账号没有使用此功能的权限。', 403)
+        recover_cooldowns(access)
+        return dashboard_store.free_study_course_reviews(access, subject_id)
 
     @app.post('/api/catalog/select')
     def select_course(payload: CourseSelection, request: Request):

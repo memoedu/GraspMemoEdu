@@ -2,6 +2,8 @@
 
 协作开发、Agent 提交与合并规则见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
+首页学科入口下方的「课程之外自由学习」是按学习者保存的个人页面。组件市场可添加学科、勾选题库并分别开启复习。每个学科的课程入口跟随该科当前选课，复习区沿用该科的课程复习、到期卡片和复习卷。移除学科只移除页面配置，学习记录继续保留。已登录账号跨设备共享这份配置，游客配置随原游客身份保存。
+
 计算机科学的指南包含 [IntelliJ IDEA 安装小节](https://memoedu.github.io/GraspMemoEdu-Pages/#/subjects/cs/guide?section=idea-setup)，使用 GraspMemoEdu 插件的题目也提供入口。账号首次点击打开此类题目时，如果还没有成功打开的记录，网站引导到该小节一次。返回原题可继续尝试，插件实际打开题目后回传连接结果。插件安装包在 [GraspMemoEdu-IDEA](https://github.com/memoedu/GraspMemoEdu-IDEA) 发布，维护源码及课程配置约定见 [Academy Bridge](docs/academy-bridge.md)。
 
 数学题库复习的同组变式由服务器按需补充：学习者未见变式为零时，每批生成两题，经一次 AI 审核及离线编译后自动入库；课程生产保持原流程。配置、运行和故障恢复见 [变式补题](docs/review-variant-production.md)。
