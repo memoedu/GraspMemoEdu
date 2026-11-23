@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {calculate} from '../web/calculator-engine.js';
+import {calculate, calculateImmediate} from '../web/calculator-engine.js';
 import {expandScientificNotation} from '../web/calculator-panel.js';
 import {calculatorWorksheets, expressionCompletions, expressionExtensions, permitsModule, scientificCategories, tools} from '../web/calculator-policy.js';
 import {formulaTemplates, matchesCompletion, nativeFormulaSample} from '../web/formula-catalog.js';
@@ -60,10 +60,43 @@ test('letter registers work at every tier and take precedence over expression as
   await assert.rejects(evaluate('A', scientific), {code: 'unassigned'});
   await assert.rejects(evaluate('A', {...scientific, disable_keys: ['memory_registers']}, options), {code: 'unassigned'});
   assert.equal((await evaluate('A', {...scientific, disable_keys: ['assign_variables']}, options)).numeric, 8);
-  await assert.rejects(evaluate('A=A+1', scientific, options), {code: 'restricted'});
+  assert.deepEqual(await evaluate('A=A+1', scientific, options), {text: '9', numeric: 9, register: 'A'});
   const complex = (await evaluate('2+3*i', scientific)).complex;
   assert.deepEqual((await evaluate('2*A', scientific, {memory: {A: complex}})).complex, {re: 4, im: 6});
   await assert.rejects(evaluate('A', basic, {memory: {A: complex}}), {code: 'restricted'});
+});
+
+test('named storage accepts common letters and scripts without confusing superscripts with powers', async () => {
+  for (const level of ['basic', 'scientific', 'advanced', 'cas']) {
+    const config = {level};
+    assert.deepEqual(await evaluate('θ=5', config), {text: '5', numeric: 5, register: 'θ'});
+    assert.deepEqual(await evaluate('ρ₁=2', config), {text: '2', numeric: 2, register: 'ρ_1'});
+    assert.equal((await evaluate('ρ_{1}+θ', config, {memory: {'ρ_1': 2, θ: 5}})).numeric, 7);
+    assert.equal((await evaluate('变量+Ж', config, {memory: {变量: 4, Ж: 3}})).numeric, 7);
+    assert.deepEqual(await evaluate('u^{2}=7', config), {text: '7', numeric: 7, register: 'u²'});
+    assert.equal((await evaluate('u²+u^2', config, {memory: {'u²': 7, u: 2}})).numeric, 11);
+  }
+  await assert.rejects(evaluate('pi=3'), {code: 'restricted'});
+  await assert.rejects(evaluate('Ans=3'), {code: 'restricted'});
+  await assert.rejects(evaluate('x=2=4'), {code: 'restricted'});
+  await assert.rejects(evaluate('x=3', {...basic, disable_keys: ['memory_registers']}), {code: 'restricted'});
+});
+
+test('local arithmetic preserves operation precedence, formatting and calculator permissions', () => {
+  assert.deepEqual(calculateImmediate('(2+3)*4-9/3', basic), {text: '17', numeric: 17});
+  assert.deepEqual(calculateImmediate('2×(-4)+1', basic), {text: '-7', numeric: -7});
+  assert.equal(calculateImmediate('1/3', basic).text, '0.33333333333333');
+  assert.equal(calculateImmediate('2.64935064935065+0', basic).text, '2.6493506493507');
+  assert.equal(calculateImmediate('1/10000', basic).text, '1e-4');
+  assert.equal(calculateImmediate('1000*1000', basic).text, '1e+6');
+  assert.equal(calculateImmediate('α+3', basic, {α: 4}).numeric, 7);
+  assert.equal(calculateImmediate('sin(2)', basic), null);
+  assert.equal(calculateImmediate('-2^2+2^3^2', basic).numeric, 508);
+  assert.equal(calculateImmediate('(-4)^0.5', basic), null);
+  assert.equal(calculateImmediate('Ans+2', basic, {}, 5).numeric, 7);
+  assert.throws(() => calculateImmediate('2+3', {...basic, disable_keys: ['add']}), {code: 'restricted'});
+  assert.throws(() => calculateImmediate('2+3', {...basic, disable_keys: ['digit_3']}), {code: 'restricted'});
+  assert.throws(() => calculateImmediate('1/0', basic), {code: 'domain'});
 });
 
 test('standalone and integrated tools cover every authorized operation', () => {
@@ -122,7 +155,7 @@ test('scientific and higher calculators discover variables and evaluate with num
   const banned = {level: 'scientific', disable_keys: ['assign_variables']};
   await assert.rejects(discover('x', banned), {code: 'restricted'});
   await assert.rejects(run('expression', 'evaluate', {expression: 'x', assignments: {x: '2'}}, banned), {code: 'restricted'});
-  await assert.rejects(discover('x=1'), {code: 'restricted'});
+  assert.deepEqual(await discover('x=y+1'), {variables: ['y']});
   await assert.rejects(discover('x+y', {level: 'scientific', disable_keys: ['add']}), {code: 'restricted'});
   await assert.rejects(run('expression', 'evaluate', {expression: 'x', assignments: {x: 'sin(2)'}},
     {level: 'scientific', disable_keys: ['sin']}), {code: 'restricted'});
@@ -183,7 +216,7 @@ test('disabled operations are blocked for typed and pasted input, aliases and to
     ['sqrt(4)', 'sqrt'], ['ln(2)', 'ln'], ['log(2)', 'ln'], ['(2+2)', 'open']]) {
     await assert.rejects(evaluate(input, {...cas, disable_keys: [key]}), {code: 'restricted'});
   }
-  for (const expression of ['1;2', 'a=4', 'unknown(2)', 'det([[1]])', 'mod(2,1)'])
+  for (const expression of ['1;2', 'a=4=5', 'unknown(2)', 'det([[1]])', 'mod(2,1)'])
     await assert.rejects(evaluate(expression, cas), {code: 'restricted'});
   await assert.rejects(run('probability', 'normal_cdf', {}, {...cas, disable_modules: ['probability']}), {code: 'restricted'});
   await assert.rejects(run('matrix', 'matrix_inverse', {}, {...cas, disable_keys: ['matrix_inverse']}), {code: 'restricted'});
