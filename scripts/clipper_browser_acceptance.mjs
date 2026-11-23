@@ -3,13 +3,13 @@ import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {createRequire} from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
+import {launchAcceptanceChrome} from './launch_acceptance_chrome.mjs';
 
 const [output, fixture, base = 'http://127.0.0.1:18891'] = process.argv.slice(2);
 const require = createRequire(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
-const {chromium} = require('playwright');
 const [first, second] = JSON.parse(await readFile(path.join(fixture, 'browser-fixtures.json'), 'utf8'));
 await mkdir(output, {recursive: true});
-const browser = await chromium.launch({headless: true, channel: 'chrome'});
+const browser = await launchAcceptanceChrome(require);
 const errors = [], checks = [];
 const context = await browser.newContext({viewport: {width: 1280, height: 900}, locale: 'zh-CN'});
 await context.addInitScript(() => {

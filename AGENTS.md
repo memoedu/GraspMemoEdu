@@ -21,6 +21,7 @@
 - 正式启动由腾讯云 `graspmemoedu.service` 管理，只监听 127.0.0.1:18768。Windows 启动脚本仅用于显式指定的隔离开发目录。8765 属于 AnkiConnect，不要终止。
 - 活动开发源码仅在本仓库；正式数据在腾讯云 `/var/lib/graspmemoedu`，本机 `D:/AppData/GraspMemoEdu` 仅作回滚快照及原稿存档，证据在 `D:/Artifacts/GraspMemoEdu`。课程正文、答案表、数据库、配对信息和密钥不进入 Git。
 - 修改后运行 `D:/AppData/GraspMemoEdu/venv/Scripts/python.exe -m unittest discover -s tests -v`。实际学习流程须用独立验收目录和真实判题核验，不能消耗正式进度。
+- 白板、简藏及同类临时 Playwright 验收复用 [Chrome 启动入口](scripts/launch_acceptance_chrome.mjs)。该入口保留 Playwright 的默认参数，并在 Windows 上规避 Chromium 启动临时配置时触发的系统密码验证失败（[Chromium #541310282](https://issues.chromium.org/issues/541310282)）。
 - 课程默认只做机械导入：解析结构、按字段注入、搬运附件及校验来源一致性；不得逐题检查数学、答案、图注或配图细节。API 仅可用于极少量抽样，检查整体性损坏，不作为逐题语义门禁。后续只局部修复，不整篇重跑，不增加全量细节检查。
 - 界面术语以 `docs/ui-language.md` 为准，完整对照表从生产词库生成并检查；Introduction 为“指导”（含 v2），纯引论 Topic 类型标为“引论”，Guide 为“指南”；指导的自定义标题保留。纯范式 Topic 按原顺序呈现独立正文，到达例题时先选择是否掌握。缺少明确归属时，Example 及其 Practice 绑定前面最近的一个 Introduction。混合 Topic 按每节指导、原子初学、范式训练推进，只在继续/下一页插入当前节可推送的到期卡；进入下一节后不再插上一节卡，范式暂停不阻断原子复习，详见 `docs/unified-topic.md`。UI 本地化不得翻译课程正文、答案或解析。
 - 作者 Markdown / v2 JSON 导入使用 `Import-Topic.ps1` 或 `author-prepare` / `author-install`，规范见 `docs/author-import.md` 和 `docs/topic-format-v2.md`。复用原转换器，原稿 Explanation 机械映射为判题参考，不经 LLM 改写；来源包留本机。普通 Topic 只新增，纯引论允许同 ID 更新并保留旧版本与学习进度；不自动扩大账号权限，安装后重载后端。纯引论无定时复习、不进入知识图谱，已学过且教学内容变化才推送重读。
