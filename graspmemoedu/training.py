@@ -9,7 +9,7 @@ import sqlite3
 from uuid import NAMESPACE_URL, uuid5
 
 from .fsrs_engine import FSRSEngine, utc_time
-from .judging import judge_answer
+from .judging import instant_question, judge_answer
 from .question_types import parse_answer, public_interaction, display_answer, present_choice, is_reproduction, demo_answer
 from .service import DomainError
 from .learning_storage import administrator
@@ -337,7 +337,7 @@ class TrainingService:
             fields['step_id'] = data['step_id']
         return hashlib.sha256(packed(fields).encode()).hexdigest()
 
-    def submit(self, data):
+    def submit(self, data, *, require_judge=None):
         with self.transaction() as con:
             row = self._attempt(con, data['attempt_id'])
             if row['phase'] != 'done':
@@ -376,15 +376,10 @@ class TrainingService:
                 parse_answer(question, answer)
             except (ValueError, TypeError, KeyError):
                 raise DomainError('invalid_answer', '请完整填写此题的答案。', 422)
-            fp = self.submission_fingerprint(data)
-            old = con.execute('SELECT * FROM training_submissions WHERE id=?', (data['request_id'],)).fetchone()
-            if old:
-                if old['learner'] != self.learner_id or old['fingerprint'] != fp:
-                    raise DomainError('request_conflict', '请求标识已用于另一项作答。', 409)
-                if old['status'] != 'error':
-                    return old['id']
             if row['phase'] != 'answer' or row['submission_id'] and row['submission_id'] != data['request_id']:
                 raise DomainError('training_already_answered', '本次作答已提交；需要重做时请开始新一次训练。', 409)
+            if require_judge is not None and not instant_question(question):
+                require_judge(1)
             con.execute('''INSERT INTO training_submissions VALUES (?,?,?,?,?,?,'pending',NULL)
                 ON CONFLICT(id) DO UPDATE SET status='pending',reason=NULL''',
                 (data['request_id'], self.learner_id, row['id'], fp, answer, data.get('elapsed_ms')))
@@ -474,7 +469,6 @@ class TrainingService:
         return result
 
     def instant_submission(self, submission_id):
-        from .judging import instant_question
         with closing(self._connect()) as con:
             row = con.execute('SELECT attempt FROM training_submissions WHERE id=? AND learner=?',
                               (submission_id, self.learner_id)).fetchone()

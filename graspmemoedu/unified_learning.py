@@ -271,7 +271,7 @@ class UnifiedLearningService(OrderedLearningService):
             raise DomainError('locked_step', '请先完成当前原子卡。', 403)
         super()._guard(state, payload, **options)
 
-    def _dispatch(self, method, payload):
+    def _dispatch(self, method, payload, **options):
         with closing(self._connect()) as con:
             state = self._load(con)
             atomic = state['display'] == 'atomic'
@@ -283,13 +283,13 @@ class UnifiedLearningService(OrderedLearningService):
                 if row:
                     atomic = row['question'] in self.atomic.questions
         target = self.atomic if atomic else super()
-        return getattr(target, method)(payload)
+        return getattr(target, method)(payload, **options)
 
     def choose(self, payload):
         return self._dispatch('choose', payload)
 
-    def submit(self, payload):
-        return self._dispatch('submit', payload)
+    def submit(self, payload, *, require_judge=None):
+        return self._dispatch('submit', payload, require_judge=require_judge)
 
     def reveal(self, payload):
         return self._dispatch('reveal', payload)

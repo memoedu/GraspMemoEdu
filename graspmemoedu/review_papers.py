@@ -6,7 +6,7 @@ import sqlite3
 
 from .topic_structure import has_atomic, atomic_backend
 from .fsrs_engine import utc_time
-from .judging import judge_answer
+from .judging import instant_question, judge_answer
 from .question_types import parse_answer, public_interaction, display_answer
 from .review_cards import initialize_points, assemble, eligible_presentations
 from .review_sources import ReviewSources, fingerprint
@@ -443,19 +443,16 @@ class PaperService:
             reveal_question(question, item)
             con.execute('UPDATE review_papers SET items=?,revision=revision+1 WHERE id=?', (packed(paper['items']), paper_id))
 
-    def submission_size(self, data):
-        with closing(self._connect()) as con:
-            old = con.execute('SELECT * FROM paper_submissions WHERE id=?', (data['request_id'],)).fetchone()
-            if old:
-                if old['learner'] != self.learner_id or old['fingerprint'] != fingerprint(data):
-                    raise DomainError('request_conflict', '提交标识已用于不同内容。', 409)
-                return (len(json.loads(old['items'])) - len(json.loads(old['verdicts']))) if old['status'] == 'error' else 0
-            paper = self._row(con, data['paper_id'])
-            indices = ([data['index']] if data.get('index') is not None and not self._hard_expired(paper)
-                       else [i for i, item in enumerate(paper['items']) if not item.get('result')])
-            return sum(self._answered(paper['items'][i]) for i in indices) if self._hard_expired(paper) else len(indices)
+    @staticmethod
+    def _submission_question(item, request):
+        progress = item.get('multi_step_progress', [])
+        return multi_step.step_question(item['question'], len(progress), progress) if request.get('step_id') else item['question']
 
-    def submit(self, data, subject=None):
+    def _judge_count(self, paper, indices, verdicts, request):
+        return sum(str(i) not in verdicts and not instant_question(self._submission_question(paper['items'][i], request))
+                   for i in indices)
+
+    def submit(self, data, subject=None, *, require_judge=None):
         with self.transaction() as con:
             self._expire(con)
             paper = self._row(con, data['paper_id'], subject)
@@ -469,6 +466,11 @@ class PaperService:
                     return old['id']
                 if paper['job'] != old['id'] or paper['phase'] not in ('grading', 'answer'):
                     raise DomainError('stale_revision', '这次提交已失效。', 409)
+                if require_judge is not None:
+                    count = self._judge_count(paper, json.loads(old['items']), json.loads(old['verdicts']),
+                                              json.loads(old['request_data']))
+                    if count:
+                        require_judge(count)
                 con.execute("UPDATE paper_submissions SET status='pending',reason='' WHERE id=?", (old['id'],))
                 con.execute("UPDATE review_papers SET phase='grading' WHERE id=?", (paper['id'],))
                 return old['id']
@@ -505,9 +507,14 @@ class PaperService:
                         verdicts[str(i)] = [False, '限时已到，本题未完成作答。']
                         continue
                     raise DomainError('incomplete_paper', f'请先完成第 {i + 1} 题。', 422)
+            request = {**data, 'step_id': None} if timed_out else data
+            if require_judge is not None:
+                count = self._judge_count(paper, indices, verdicts, request)
+                if count:
+                    require_judge(count)
             con.execute('INSERT INTO paper_submissions VALUES (?,?,?,?,?,?,?,?,?)',
                         (data['request_id'], self.learner_id, paper['id'], fingerprint(data), 'pending', packed(indices), packed(verdicts), '',
-                         packed({**data, 'step_id': None} if timed_out else data)))
+                         packed(request)))
             if not data.get('step_id') and set(indices) == {i for i, item in enumerate(paper['items']) if not item.get('result')}:
                 paper['metadata']['submitted_at'] = paper['metadata']['timing']['deadline_at'] if timed_out else self._now().isoformat()
             con.execute("UPDATE review_papers SET phase='grading',revision=revision+1,job=?,metadata=? WHERE id=?",
@@ -515,20 +522,14 @@ class PaperService:
         return data['request_id']
 
     def instant_submission(self, submission_id):
-        from .judging import instant_question
         with closing(self._connect()) as con:
             job = con.execute('SELECT * FROM paper_submissions WHERE id=? AND learner=?',
                               (submission_id, self.learner_id)).fetchone()
             if not job:
                 return False
             paper = self._row(con, job['paper'])
-            verdicts = json.loads(job['verdicts'])
-            request = json.loads(job['request_data'])
-            def projected(item):
-                progress = item.get('multi_step_progress', [])
-                return multi_step.step_question(item['question'], len(progress), progress) if request.get('step_id') else item['question']
-            return all(str(i) in verdicts or instant_question(projected(paper['items'][i]))
-                       for i in json.loads(job['items']))
+            return not self._judge_count(paper, json.loads(job['items']), json.loads(job['verdicts']),
+                                         json.loads(job['request_data']))
 
     def process_submission(self, submission_id):
         with self.transaction() as con:
@@ -544,8 +545,7 @@ class PaperService:
                 if str(index) in verdicts:
                     continue
                 item = paper['items'][index]
-                progress = item.get('multi_step_progress', [])
-                question = multi_step.step_question(item['question'], len(progress), progress) if request.get('step_id') else item['question']
+                question = self._submission_question(item, request)
                 correct, reason = judge_answer(self.training.judge, question, item['answer'])
                 if correct is None:
                     raise DomainError('judge_error', reason, 503)

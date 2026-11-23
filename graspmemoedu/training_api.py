@@ -4,7 +4,6 @@ from contextlib import closing
 from fastapi import Request
 from pydantic import BaseModel, ConfigDict, Field
 
-from .public_limits import PublicLimitError
 from .service import DomainError
 from .training import TrainingService
 from .training_content import permission_id
@@ -50,7 +49,7 @@ class Preferences(BaseModel):
 
 
 def register_training_routes(app, training, access_store, subjects, service_for,
-                             admission_lock, limits, schedule, outstanding_count, clock=None, dependencies=None):
+                             limits, admit_submission, finish_pending, clock=None, dependencies=None):
     settings = app.state.settings
 
     def backend_for(access, scope_digest=None):
@@ -170,25 +169,8 @@ def register_training_routes(app, training, access_store, subjects, service_for,
     def submit(payload: Answer, request: Request):
         access, backend = attempt_context(request, payload.attempt_id, 'submit_answer')
         data = payload.model_dump(exclude_none=True)
-        with admission_lock:
-            with closing(backend._connect()) as con:
-                old = con.execute('SELECT * FROM training_submissions WHERE id=?', (payload.request_id,)).fetchone()
-                outstanding = outstanding_count(con)
-            replay = old and (old['status'] != 'error' or old['learner'] != backend.learner_id
-                              or old['fingerprint'] != backend.submission_fingerprint(data))
-            if replay:
-                submission_id = backend.submit(data)
-            else:
-                if outstanding >= limits.max_pending:
-                    raise PublicLimitError('judge_capacity', '当前判题队列已满，请稍后重试；本次未计入作答。', 2)
-                key = 'submit:' + backend.learner_id
-                if request.state.public_transport:
-                    limits.check(key, limits.submissions_per_minute)
-                with limits.daily.reserve(backend.learner_id, access['role']):
-                    submission_id = backend.submit(data)
-                if request.state.public_transport:
-                    limits.record(key)
-            schedule(backend, submission_id)
+        submission_id = admit_submission(request, backend, access, lambda require: backend.submit(data, require_judge=require))
+        finish_pending(backend, submission_id)
         return state(request, access, backend, payload.attempt_id)
 
     @app.post('/api/training/notebook')
@@ -200,14 +182,19 @@ def register_training_routes(app, training, access_store, subjects, service_for,
     @app.post('/api/training/hyperskill-submit')
     def hyperskill_submit(payload: Answer, request: Request):
         access, backend = attempt_context(request, payload.attempt_id, 'submit_answer')
-        key = 'submit:' + backend.learner_id
-        if request.state.public_transport:
-            limits.check(key, limits.submissions_per_minute)
         from .hyperskill_training import HyperskillLocalTraining
-        with limits.daily.reserve(backend.learner_id, access['role']):
-            HyperskillLocalTraining(backend, payload.attempt_id).submit_local(payload.request_id, payload.answer)
-        if request.state.public_transport:
-            limits.record(key)
+        from .judging import judge_answer
+
+        def semantic_judge(question, answer):
+            key = 'submit:' + backend.learner_id
+            if request.state.public_transport:
+                limits.consume(key, limits.submissions_per_minute)
+            with limits.daily.reserve(backend.learner_id, access['role']):
+                pass
+            return judge_answer(backend.judge, question, answer)
+
+        HyperskillLocalTraining(backend, payload.attempt_id).submit_local(
+            payload.request_id, payload.answer, semantic_judge=semantic_judge)
         return state(request, access, backend, payload.attempt_id)
 
     @app.get('/api/training/submission')

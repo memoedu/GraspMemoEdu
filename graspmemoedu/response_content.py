@@ -11,7 +11,7 @@ import re
 from collections import OrderedDict
 from threading import Lock
 
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 
 REVISION = re.compile(r"(?:1|[a-f0-9]{64})\Z")
 PATHS = {
@@ -114,7 +114,7 @@ def pack_content(value, known):
             "texts": text_delta(texts, revision, known)}
 
 
-async def compact_response(request, response):
+def compact_options(request):
     known = request.query_params.get("content_revision", "")
     access_known = request.query_params.get("access_revision", "")
     state_known = request.query_params.get("state_revision", "")
@@ -122,24 +122,45 @@ async def compact_response(request, response):
     access_opt = request.url.path.startswith("/api/") and REVISION.fullmatch(access_known)
     state_opt = (request.method == "GET" and REVISION.fullmatch(state_known)
                  and (request.url.path in READ_PATHS or eligible(request.url.path, "GET")))
-    if (not (content_opt or access_opt or state_opt) or response.status_code != 200
+    return (known if content_opt else None, access_known if access_opt else None, state_known if state_opt else None)
+
+
+def compact_value(value, known, access_known, state_known):
+    if access_known:
+        value = compact_access(value, access_known)
+    if state_known:
+        revision, clocks = read_fingerprint(value)
+        if revision == state_known:
+            return {"$gme_state": 1, "revision": revision, "clocks": clocks}
+    if known:
+        value = pack_content(value, known)
+    if state_known:
+        value = {"$gme_state": 1, "revision": revision, "value": value}
+    return value
+
+
+def learning_response(request, value):
+    # These projections already contain JSON data. Compact the authorized
+    # view before encoding, on the same request worker as the projection.
+    try:
+        response = JSONResponse(compact_value(value, *compact_options(request)))
+    except (ValueError, TypeError, RecursionError):
+        return value
+    request.state.learning_response_encoded = True
+    return response
+
+
+async def compact_response(request, response):
+    if getattr(request.state, "learning_response_encoded", False):
+        return response
+    options = compact_options(request)
+    if (not any(options) or response.status_code != 200
             or "application/json" not in response.headers.get("content-type", "")
             or response.headers.get("content-encoding")):
         return response
     body = b"".join([part async for part in response.body_iterator])
     try:
-        result = json.loads(body)
-        if access_opt:
-            result = compact_access(result, access_known)
-        if state_opt:
-            revision, clocks = read_fingerprint(result)
-        if state_opt and revision == state_known:
-            result = {"$gme_state": 1, "revision": revision, "clocks": clocks}
-        else:
-            if content_opt:
-                result = pack_content(result, known)
-            if state_opt:
-                result = {"$gme_state": 1, "revision": revision, "value": result}
+        result = compact_value(json.loads(body), *options)
         body = json.dumps(result, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode()
     except (ValueError, TypeError, RecursionError):
         # A representation optimization must not turn a valid response into an error.

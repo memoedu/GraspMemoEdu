@@ -1,7 +1,6 @@
 """Eligibility and original scoring policies across all reproduction readers."""
 from contextlib import closing
 from datetime import timedelta
-import time
 import unittest
 import uuid
 from unittest.mock import patch
@@ -53,12 +52,9 @@ class BankAssessmentTests(unittest.TestCase):
         self.assertTrue(shown['current']['revealed'])
         self.assertEqual(shown['learned_count'], 0)
         data = self.payload(shown, answer='自主评分：3', self_rating=3)
-        with patch('graspmemoedu.atomic.judge_answer', side_effect=AssertionError('Self assessment must not invoke a judge')):
+        with patch('graspmemoedu.api.ThreadPoolExecutor.submit', side_effect=AssertionError('Must not enqueue')), \
+                patch.object(self.app.state.public_limits.daily, 'reserve', side_effect=AssertionError('Must not charge')):
             result = self.call('POST', '/api/submit' + scope, data)
-            for _ in range(100):
-                result = self.call('GET', '/api/submissions/' + data['request_id'] + scope)
-                if result['status'] == 'judged': break
-                time.sleep(.01)
         self.assertEqual(result['status'], 'judged')
         self.assertTrue(result['correct'])
         self.assertEqual(list(result['state']['current']['ratings'].values()), [None])
@@ -78,14 +74,9 @@ class BankAssessmentTests(unittest.TestCase):
         self.call('POST', '/api/submit' + scope, self.payload(state, answer='5', self_rating=5), 403)
         shown = self.call('POST', '/api/reveal' + scope, self.payload(state))
         data = self.payload(shown, answer='自主评分：5', self_rating=5)
-        with patch('graspmemoedu.atomic.judge_answer', side_effect=AssertionError('No judge')), \
+        with patch('graspmemoedu.api.ThreadPoolExecutor.submit', side_effect=AssertionError('Must not enqueue')), \
                 patch('graspmemoedu.fsrs_engine.FSRSEngine.schedule', side_effect=AssertionError('No FSRS rating 5')):
             result = self.call('POST', '/api/submit' + scope, data)
-            for _ in range(100):
-                if result['status'] == 'judged':
-                    break
-                time.sleep(.01)
-                result = self.call('GET', '/api/submissions/' + data['request_id'] + scope)
         self.assertEqual(result['status'], 'judged')
         self.assertTrue(result['state']['current']['stop_requested'])
         self.assertEqual(result['state']['current']['ratings'], {'a': None})
@@ -152,12 +143,10 @@ class CourseAssessmentTests(unittest.TestCase):
         self.assertEqual(shown['modules'][0]['status'], 'in_progress')
         self.assertNotIn('reference_answer', next(s for s in shown['steps'] if s['active']))
         request = data(shown, answer='自主评分：2', self_rating=2)
-        with patch('graspmemoedu.service.judge_answer', side_effect=AssertionError('No judge')):
+        with patch('graspmemoedu.api.ThreadPoolExecutor.submit', side_effect=AssertionError('Must not enqueue')), \
+                patch.object(self.app.state.public_limits.daily, 'reserve', side_effect=AssertionError('Must not charge')):
             result = self.call('POST', '/api/submit', request)
-            for _ in range(100):
-                result = self.call('GET', '/api/submissions/' + request['request_id'])
-                if result['status'] == 'judged': break
-                time.sleep(.01)
+        self.assertEqual(result['status'], 'judged')
         self.assertTrue(result['correct'])
         self.assertEqual(result['state']['modules'][0]['mastery'], 4)
 
@@ -166,11 +155,10 @@ class CourseAssessmentTests(unittest.TestCase):
         base = '/api/review/sessions/' + state['session_id']
         shown = self.call('POST', base + '/reveal', self.payload(state))
         request = self.payload(shown, answer='自主评分：1', self_rating=1)
-        result = self.call('POST', base + '/submit', request)
-        for _ in range(100):
-            result = self.call('GET', '/api/review/submissions/' + request['request_id'])
-            if result['status'] == 'judged': break
-            time.sleep(.01)
+        with patch('graspmemoedu.api.ThreadPoolExecutor.submit', side_effect=AssertionError('Must not enqueue')), \
+                patch.object(self.app.state.public_limits.daily, 'reserve', side_effect=AssertionError('Must not charge')):
+            result = self.call('POST', base + '/submit', request)
+        self.assertEqual(result['status'], 'judged')
         self.assertFalse(result['correct'])
         self.assertEqual(result['state']['practice_error_count'], 1)
         next_state = self.call('POST', base + '/continue', self.payload(result['state']))

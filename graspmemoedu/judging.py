@@ -7,6 +7,20 @@ def instant_question(question):
     return not is_reproduction(question)
 
 
+def local_verdict(question, target, payload, require_judge):
+    """Resolve a validated answer locally or request admission before enqueuing it."""
+    if require_judge is None:
+        return None
+    from .self_assessment import verdict
+    assessed = verdict(target, payload['request_id'])
+    if assessed is not None:
+        return assessed
+    if instant_question(question):
+        return judge_answer(None, question, payload['answer'])
+    require_judge(1)
+    return None
+
+
 def judge_answer(judge, question, answer):
     # Call this outside any database transaction.
     try:

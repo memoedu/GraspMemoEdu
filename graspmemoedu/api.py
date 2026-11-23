@@ -44,10 +44,17 @@ from .review_paper_api import register_paper_routes, PUBLIC_PATHS as PAPER_PATHS
 from .review_papers import PaperService
 from .content_references import ContentReferenceIndex
 from .self_assessment import enabled as self_rating_enabled, protect as protect_assessment
-from .response_content import compact_response
+from .response_content import compact_response, learning_response
 from .context_library_api import register_context_library_routes, PUBLIC_PATHS as CONTEXT_PATHS
 from .voice_input import VOICE_PATH, VOICE_BODY_LIMIT
 from .answer_conversion import ANSWER_CONVERSION_PATH, register_answer_conversion
+
+
+class JudgeAdmissionRequired(Exception):
+    """A validated submission needs a paid judge before it can be saved."""
+
+    def __init__(self, count):
+        self.count = count
 
 
 class Action(BaseModel):
@@ -353,6 +360,45 @@ def create_app(settings: Settings | None = None, service: LearningService | None
         return max(len(scheduled_submissions), sum(con.execute(f"SELECT COUNT(*) FROM {table} WHERE status IN ('pending','running')").fetchone()[0]
                    for table in ('submissions', 'review_submissions', 'training_submissions', 'paper_submissions') if table in tables))
 
+    def admit_submission(request, learner, access, submit):
+        def require_judge(count):
+            raise JudgeAdmissionRequired(count)
+
+        try:
+            return submit(require_judge)
+        except JudgeAdmissionRequired:
+            pass
+        # Keep queue admission and quota before the SQLite write transaction.
+        # Recheck after taking the lock so a concurrent replay is never charged.
+        with admission_lock:
+            try:
+                return submit(require_judge)
+            except JudgeAdmissionRequired as required:
+                count = required.count
+            with closing(learner._connect()) as con:
+                if outstanding_count(con) >= public_limits.max_pending:
+                    raise PublicLimitError('judge_capacity', '当前判题队列已满，请稍后重试；本次未计入作答。', 2)
+            key = 'submit:' + learner.learner_id
+            if request.state.public_transport:
+                public_limits.check(key, public_limits.submissions_per_minute)
+            with public_limits.daily.reserve(learner.learner_id, access['role'], count=count):
+                result = submit(lambda count: None)
+            if request.state.public_transport:
+                public_limits.record(key)
+            return result
+
+    def finish_pending(learner, submission_id, review=False):
+        backend = learner.review_backend if review else learner
+        table = 'review_submissions' if review else getattr(learner, 'submission_table', 'submissions')
+        with closing(learner._connect()) as con:
+            row = con.execute(f'SELECT status FROM {table} WHERE id=?', (submission_id,)).fetchone()
+        if row and row['status'] == 'pending':
+            if backend.instant_submission(submission_id):
+                backend.process_submission(submission_id)
+            else:
+                with admission_lock:
+                    schedule(learner, submission_id, review)
+
     def schedule(learner, submission_id, review=False):
         # Called under admission_lock. A transport retry never adds another queue item.
         table = 'review_submissions' if review else getattr(learner, 'submission_table', 'submissions')
@@ -365,11 +411,6 @@ def create_app(settings: Settings | None = None, service: LearningService | None
         with closing(learner._connect()) as con:
             row = con.execute(f'SELECT status FROM {table} WHERE id=?', (submission_id,)).fetchone()
         if not row or row['status'] != 'pending':
-            return
-        backend = learner.review_backend if review else learner
-        if backend.instant_submission(submission_id):
-            # Mechanical answers never wait behind an AI worker or a browser poll.
-            backend.process_submission(submission_id)
             return
         scheduled_submissions.add(key)
 
@@ -805,24 +846,24 @@ def create_app(settings: Settings | None = None, service: LearningService | None
             # A bookmark redirect must not initialize or advance the retired Topic.
             return {'training_target': target, 'access': access}
         access, learner = identity(request)
-        return public_state(learner.state(), access, learner)
+        return learning_response(request, public_state(learner.state(), access, learner))
 
     @app.post('/api/choose')
     def choose(payload: Choice, request: Request):
         access, learner = identity(request, 'learn')
         if payload.choice == 'attempt_example':
             access_store.authorize(access, learner.topic_id, 'submit_answer')
-        return public_state(learner.choose(payload.model_dump()), access, learner)
+        return learning_response(request, public_state(learner.choose(payload.model_dump()), access, learner))
 
     @app.post('/api/continue')
     def advance(payload: Action, request: Request):
         access, learner = identity(request, 'learn')
-        return public_state(learner.advance(payload.model_dump()), access, learner)
+        return learning_response(request, public_state(learner.advance(payload.model_dump()), access, learner))
 
     @app.post('/api/select')
     def select(payload: Action, request: Request):
         access, learner = identity(request, 'review_history')
-        return public_state(learner.select(payload.model_dump()), access, learner)
+        return learning_response(request, public_state(learner.select(payload.model_dump()), access, learner))
 
     @app.post('/api/pause')
     def pause(payload: Pause, request: Request):
@@ -841,28 +882,11 @@ def create_app(settings: Settings | None = None, service: LearningService | None
             with closing(learner._connect()) as con:
                 if not self_rating_enabled(access, con):
                     raise DomainError('feature_forbidden', '自主评分仅对高阶学习者开放。', 403)
-        with admission_lock:
-            with closing(learner._connect()) as con:
-                old = con.execute('SELECT * FROM submissions WHERE id=?', (data['request_id'],)).fetchone()
-                outstanding = outstanding_count(con)
-            replay_or_conflict = old and (old['status'] != 'error' or old['learner'] != learner.learner_id
-                                         or old['topic'] != learner.topic_id or old['fingerprint'] != learner._fingerprint('submit', data))
-            if replay_or_conflict:
-                result = learner.submit(data)
-            else:
-                if outstanding >= public_limits.max_pending:
-                    raise PublicLimitError('judge_capacity', '当前判题队列已满，请稍后重试；本次未计入作答。', 2)
-                quota_key = 'submit:' + learner.learner_id
-                if request.state.public_transport:
-                    public_limits.check(quota_key, public_limits.submissions_per_minute)
-                with public_limits.daily.reserve(learner.learner_id, access['role']):
-                    result = learner.submit(data)
-                if request.state.public_transport:
-                    public_limits.record(quota_key)
-            if result['status'] == 'pending':
-                schedule(learner, result['submission_id'])
-                result = learner.submission(result['submission_id'])
-        return public_submission(result, access, learner)
+        result = admit_submission(request, learner, access, lambda require: learner.submit(data, require_judge=require))
+        if result['status'] == 'pending':
+            finish_pending(learner, result['submission_id'])
+            result = learner.submission(result['submission_id'])
+        return learning_response(request, public_submission(result, access, learner))
 
     @app.post('/api/reveal')
     def reveal(payload: Action, request: Request):
@@ -870,13 +894,13 @@ def create_app(settings: Settings | None = None, service: LearningService | None
         with closing(learner._connect()) as con:
             if not self_rating_enabled(access, con):
                 raise DomainError('feature_forbidden', 'Show Answer 仅对高阶学习者开放。', 403)
-        return public_state(learner.reveal(payload.model_dump()), access, learner)
+        return learning_response(request, public_state(learner.reveal(payload.model_dump()), access, learner))
 
     @app.get('/api/submissions/{submission_id}')
     def submission(submission_id: str, request: Request):
         access, learner = identity(request, 'submit_answer')
         result = learner.submission(submission_id)
-        return public_submission(result, access, learner)
+        return learning_response(request, public_submission(result, access, learner))
 
     from .materials import register_material_routes
     register_help_routes(app, catalog, access_store, subjects)
@@ -889,13 +913,13 @@ def create_app(settings: Settings | None = None, service: LearningService | None
     from .academy_api import register_academy_routes
     register_academy_routes(app, settings, access_store, service_for, identity, public_state, Action, dependency_policy, atomic_clock)
     register_training_routes(app, training, access_store, subjects, service_for,
-                             admission_lock, public_limits, schedule, outstanding_count, clock=atomic_clock,
+                             public_limits, admit_submission, finish_pending, clock=atomic_clock,
                              dependencies=dependency_policy)
     register_paper_routes(app, training, catalog, dependency_policy, access_store, subjects, service_for,
-                         admission_lock, public_limits, schedule, outstanding_count, clock=atomic_clock)
+                         admit_submission, finish_pending, clock=atomic_clock)
     register_guide_routes(app, settings, access_store, subjects)
     register_guest_reset_routes(app, identity, public_state, Action)
-    register_review_routes(app, identity, admission_lock, public_limits, schedule, outstanding_count, dependency_policy, references_for)
+    register_review_routes(app, identity, admit_submission, finish_pending, dependency_policy, references_for)
     def reading_service(access, request):
         return service_for(access['learner_id'], requested_topic(request), request.headers.get('x-learning-identity'))
 

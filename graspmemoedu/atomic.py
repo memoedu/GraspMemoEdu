@@ -12,7 +12,7 @@ from fsrs import Card
 
 from .atomic_content import GAP_SECONDS, MODE, policy_for, point_chunks, chunk_presentation, card_chunks, learning_presentation
 from .fsrs_engine import FSRSEngine, utc_time
-from .judging import judge_answer
+from .judging import instant_question, judge_answer, local_verdict
 from .question_types import public_interaction, parse_answer, display_answer
 from .service import DomainError, LearningService, encode
 from .review_cards import eligible_presentations, register_point, reserved_points, point_id as global_point_id
@@ -328,7 +328,7 @@ class AtomicLearningService(LearningService):
         state['history'].append(dict(active))
         state['phase'] = 'feedback'
 
-    def submit(self, payload):
+    def submit(self, payload, *, require_judge=None):
         request_id = payload.get('request_id')
         if not isinstance(request_id, str) or not request_id.strip() or len(request_id) > 128:
             raise DomainError('invalid_request', '请求缺少有效标识。', 422)
@@ -348,14 +348,16 @@ class AtomicLearningService(LearningService):
             if not isinstance(answer, str) or not answer.strip() or len(answer) > 16384:
                 raise DomainError('invalid_answer', '请填写完整答案。', 422)
             from .self_assessment import answer as assessed_answer
+            question = self.questions[active['card_id']]
             try:
-                assessed_answer(self.questions[active['card_id']], active, payload, allow_stop=True)
+                assessed_answer(question, active, payload, allow_stop=True)
                 if payload.get('self_rating') is None:
-                    parse_answer(self.questions[active['card_id']], answer)
+                    parse_answer(question, answer)
             except (ValueError, TypeError) as exc:
                 raise DomainError('invalid_answer', '请填写完整且有效的答案。', 422) from exc
             if con.execute('SELECT 1 FROM actions WHERE learner=? AND topic=? AND id=?', (*self.key, request_id)).fetchone():
                 raise DomainError('idempotency_conflict', '请求标识已用于其他操作。')
+            verdict = local_verdict(question, active, payload, require_judge)
             timestamp = self._time().isoformat()
             if old:
                 con.execute("UPDATE submissions SET status='pending',reason=NULL,updated_at=? WHERE id=?", (timestamp, request_id))
@@ -364,9 +366,15 @@ class AtomicLearningService(LearningService):
                             (request_id, *self.key, active['id'], active['id'], active['card_id'], answer,
                              fingerprint, 'pending', None, None, timestamp, timestamp, payload.get('elapsed_ms')))
             state['pending_submission_id'] = request_id
-            self._save(con, state)
             row = con.execute('SELECT * FROM submissions WHERE id=?', (request_id,)).fetchone()
-            return self._submission_public(row, state)
+            if verdict is None:
+                self._save(con, state)
+            else:
+                self._finish_atomic_submission(con, state, row, *verdict, applies=True)
+                row = con.execute('SELECT * FROM submissions WHERE id=?', (request_id,)).fetchone()
+        if verdict is not None:
+            self.flush_logs()
+        return self._submission_public(row, state)
 
     def reveal(self, payload):
         from .self_assessment import reveal
@@ -411,11 +419,14 @@ class AtomicLearningService(LearningService):
             return self._submission_public(row, state)
 
     def instant_submission(self, submission_id):
-        from .judging import instant_question
+        from .self_assessment import verdict
         with closing(self._connect()) as con:
             row = con.execute('SELECT question FROM submissions WHERE id=? AND learner=? AND topic=?',
                               (submission_id, *self.key)).fetchone()
-            return bool(row and instant_question(self.questions[row['question']]))
+            if not row:
+                return False
+            return (instant_question(self.questions[row['question']])
+                    or verdict(self._load(con).get('active') or {}, submission_id) is not None)
 
     def process_submission(self, submission_id):
         with self._transaction() as con:
@@ -436,15 +447,18 @@ class AtomicLearningService(LearningService):
             state = self._load(con)
             applies = (not state['pause'] and state['pending_submission_id'] == submission_id
                        and state['active'] and state['active']['id'] == item['step'])
-            status = 'discarded' if not applies else 'error' if correct is None else 'judged'
-            con.execute('UPDATE submissions SET status=?,correct=?,reason=?,updated_at=? WHERE id=?',
-                        (status, correct, reason, self._time().isoformat(), submission_id))
-            if applies:
-                state['pending_submission_id'] = None
-                if correct is not None:
-                    self._grade(con, state, item, correct, reason)
-                self._save(con, state)
+            self._finish_atomic_submission(con, state, item, correct, reason, applies=applies)
         self.flush_logs()
+
+    def _finish_atomic_submission(self, con, state, item, correct, reason, *, applies):
+        status = 'discarded' if not applies else 'error' if correct is None else 'judged'
+        con.execute('UPDATE submissions SET status=?,correct=?,reason=?,updated_at=? WHERE id=?',
+                    (status, correct, reason, self._time().isoformat(), item['id']))
+        if applies:
+            state['pending_submission_id'] = None
+            if correct is not None:
+                self._grade(con, state, item, correct, reason)
+            self._save(con, state)
 
     def _pause_atomic(self, con, state, reason):
         event_id = self._event(con, state, 'atomic_paused', reason=reason)

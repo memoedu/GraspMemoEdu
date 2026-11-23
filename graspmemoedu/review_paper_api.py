@@ -67,7 +67,7 @@ class Preference(Model):
 
 
 def register_paper_routes(app, training, catalog, dependencies, access_store, subjects,
-                          service_for, admission_lock, limits, schedule, outstanding_count, clock=None):
+                          service_for, admit_submission, finish_pending, clock=None):
     app.state.review_paper_types = load_paper_types()
 
     def context(request, feature=None):
@@ -90,23 +90,9 @@ def register_paper_routes(app, training, catalog, dependencies, access_store, su
             raise DomainError('subject_required', '请先选择学科。', 422)
 
     def admit(request, backend, data, subject):
-        with admission_lock:
-            size = backend.submission_size(data)
-            with closing(backend._connect()) as con:
-                outstanding = outstanding_count(con)
-            if size and outstanding >= limits.max_pending:
-                raise PublicLimitError('judge_capacity', '当前判题队列已满，请稍后重试；本次未计入作答。', 2)
-            key = 'submit:' + backend.learner_id
-            if size and request.state.public_transport:
-                limits.check(key, limits.submissions_per_minute)
-            if size:
-                with limits.daily.reserve(backend.learner_id, backend.access['role'], count=size):
-                    submission_id = backend.submit(data, subject)
-                if request.state.public_transport:
-                    limits.record(key)
-            else:
-                submission_id = backend.submit(data, subject)
-            schedule(backend, submission_id)
+        submission_id = admit_submission(request, backend, backend.access,
+                                         lambda require: backend.submit(data, subject, require_judge=require))
+        finish_pending(backend, submission_id)
 
     def enforce_timeout(request, backend, paper_id, subject):
         if 'submit_answer' not in backend.access['features']:

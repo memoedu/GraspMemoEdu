@@ -10,7 +10,7 @@ import sqlite3
 import threading
 import uuid
 
-from .judging import judge_answer
+from .judging import instant_question, judge_answer, local_verdict
 from .practice import (LESSON_POLICY, LEGACY_LESSON_POLICY, SEQUENTIAL_LESSON_POLICY,
                        PracticePolicy, apply_practice_result)
 from .practice_queue import PersistentPracticeQueue
@@ -639,7 +639,7 @@ class LearningService:
         self.flush_logs()
         return self._public(state)
 
-    def submit(self, payload):
+    def submit(self, payload, *, require_judge=None):
         submission_id = payload.get('request_id')
         if not isinstance(submission_id, str) or not submission_id.strip() or len(submission_id) > 128:
             raise DomainError('invalid_request', '缺少有效提交标识。', 422)
@@ -665,12 +665,14 @@ class LearningService:
             if not isinstance(answer, str) or not answer.strip() or len(answer) > 16384:
                 raise DomainError('invalid_answer', '请输入有效答案（最多 2000 字）。', 422)
             from .self_assessment import answer as assessed_answer
+            question = self.question_for_step(step)
             try:
-                assessed_answer(self.question_for_step(step), step, payload)
+                assessed_answer(question, step, payload)
                 if payload.get('self_rating') is None:
-                    parse_answer(self.question_for_step(step), answer)
+                    parse_answer(question, answer)
             except (ValueError, TypeError, KeyError) as exc:
                 raise DomainError('invalid_answer', '请完成全部作答，且不要重复使用配对选项。', 422) from exc
+            verdict = local_verdict(question, step, payload, require_judge)
             if old:
                 con.execute("UPDATE submissions SET status='pending',correct=NULL,reason=NULL,updated_at=? WHERE id=?", (now(), submission_id))
             else:
@@ -680,8 +682,14 @@ class LearningService:
                             (submission_id, *self.key, state['attempt_id'], step['id'], step['question_id'],
                              answer, fingerprint, 'pending', None, None, now(), now(), elapsed_ms))
             state['pending_submission_id'] = submission_id
-            self._save(con, state)
+            if verdict is None:
+                self._save(con, state)
+            else:
+                item = dict(con.execute('SELECT * FROM submissions WHERE id=?', (submission_id,)).fetchone())
+                self._finish_submission(con, state, item, *verdict)
             row = con.execute('SELECT * FROM submissions WHERE id=?', (submission_id,)).fetchone()
+        if verdict is not None:
+            self.flush_logs()
         return self._submission_public(row, state)
 
     def reveal(self, payload):
@@ -712,11 +720,14 @@ class LearningService:
             return self._submission_public(row, self._load(con))
 
     def instant_submission(self, submission_id):
-        from .judging import instant_question
+        from .self_assessment import verdict
         with closing(self._connect()) as con:
             row = con.execute('SELECT step FROM submissions WHERE id=? AND learner=? AND topic=?',
                               (submission_id, *self.key)).fetchone()
-            return bool(row and instant_question(self.question_for_step(self._step(self._load(con), row['step']))))
+            if not row:
+                return False
+            step = self._step(self._load(con), row['step'])
+            return verdict(step, submission_id) is not None or instant_question(self.question_for_step(step))
 
     def process_submission(self, submission_id):
         with self._transaction() as con:
@@ -733,7 +744,6 @@ class LearningService:
             question = self.question_for_step(saved)
         from .self_assessment import verdict as self_verdict
         correct, reason = self_verdict(saved, submission_id) or judge_answer(self.judge, question, item['answer'])
-        valid = correct is not None
         with self._transaction() as con:
             state = self._load(con)
             latest = con.execute('SELECT status FROM submissions WHERE id=?', (submission_id,)).fetchone()
@@ -741,63 +751,69 @@ class LearningService:
                 return
             applies = (state['status'] == 'in_progress' and state['attempt_id'] == item['attempt']
                        and state['active_step_id'] == item['step'] and state['pending_submission_id'] == submission_id)
-            status = ('judged' if valid else 'error') if applies else 'discarded'
-            con.execute('UPDATE submissions SET status=?,correct=?,reason=?,updated_at=? WHERE id=?',
-                        (status, correct, reason, now(), submission_id))
-            if not applies:
+            if applies:
+                self._finish_submission(con, state, item, correct, reason)
+            else:
+                con.execute("UPDATE submissions SET status='discarded',correct=?,reason=?,updated_at=? WHERE id=?",
+                            (correct, reason, now(), submission_id))
                 self._event(con, state, 'late_judgement_discarded', submission_id=submission_id,
                             original_attempt_id=item['attempt'], correct=correct)
-            else:
-                state['pending_submission_id'] = None
-                if valid:
-                    step, attempt = self._step(state), self._attempt(state)
-                    step.update(phase='feedback', answer=item['answer'], feedback={
-                        'correct': correct, 'reason': reason, 'submission_id': submission_id})
-                    policy = PracticePolicy.from_dict(attempt['practice_policy']) if 'practice_policy' in attempt else LEGACY_LESSON_POLICY
-                    module = self.course['modules'][attempt['module_index']]
-                    is_example = step['kind'] == 'example'
-                    direct_example = is_example and attempt['learning_path'] != 'guided_example'
-                    if is_example:
-                        attempt['example_result'].update(correct=correct, submission_id=submission_id)
-                        if not direct_example or policy.adaptive_queue:
-                            self.practice_queue.enqueue_example(con, module)
-                    if direct_example:
-                        attempt['learning_path'] = 'direct_example' if correct else 'example_incorrect'
-                        if correct:
-                            self._complete(con, state, 4)
-                            step['feedback']['learning_effect'] = {'example_passed': True}
-                    if not direct_example or (policy.adaptive_queue and not correct):
-                        previous_target = attempt['practice_target_count']
-                        must_pause, mastery = apply_practice_result(attempt, correct, policy)
-                        added_to_queue = 0
-                        if (attempt.get('practice_queue_version') == self.practice_queue.VERSION
-                                and (not is_example or policy.adaptive_queue)
-                                and (not must_pause or policy.version == LEGACY_LESSON_POLICY.version)):
-                            reserved = ()
-                            if policy.adaptive_queue:
-                                reserved = {s['question_id'] for s in state['steps']
-                                            if s['attempt_id'] == attempt['id'] and s['question_id']}
-                                reserved.update(self.practice_queue.lesson_seeds(module))
-                            added_to_queue = self.practice_queue.record_result(
-                                con, module, item['question'], correct,
-                                additions=policy.queue_additions(attempt['practice_error_count']),
-                                exclude=reserved)
-                        if not correct:
-                            step['feedback']['learning_effect'] = {
-                                'queue_added': added_to_queue,
-                                'target_added': attempt['practice_target_count'] - previous_target,
-                                'paused': must_pause,
-                            }
-                        if must_pause:
-                            self._pause(con, state, 'practice_error_limit', submission={**item, 'correct': correct, 'reason': reason})
-                        elif mastery is not None:
-                            self._complete(con, state, mastery)
-                    self._event(con, state, 'answer_judged', submission_id=submission_id,
-                                question_id=item['question'], correct=correct)
-                else:
-                    self._event(con, state, 'judge_error', submission_id=submission_id, mastery=None)
-                self._save(con, state)
         self.flush_logs()
+
+    def _finish_submission(self, con, state, item, correct, reason):
+        submission_id = item['id']
+        valid = correct is not None
+        con.execute('UPDATE submissions SET status=?,correct=?,reason=?,updated_at=? WHERE id=?',
+                    ('judged' if valid else 'error', correct, reason, now(), submission_id))
+        state['pending_submission_id'] = None
+        if valid:
+            step, attempt = self._step(state), self._attempt(state)
+            step.update(phase='feedback', answer=item['answer'], feedback={
+                'correct': correct, 'reason': reason, 'submission_id': submission_id})
+            policy = PracticePolicy.from_dict(attempt['practice_policy']) if 'practice_policy' in attempt else LEGACY_LESSON_POLICY
+            module = self.course['modules'][attempt['module_index']]
+            is_example = step['kind'] == 'example'
+            direct_example = is_example and attempt['learning_path'] != 'guided_example'
+            if is_example:
+                attempt['example_result'].update(correct=correct, submission_id=submission_id)
+                if not direct_example or policy.adaptive_queue:
+                    self.practice_queue.enqueue_example(con, module)
+            if direct_example:
+                attempt['learning_path'] = 'direct_example' if correct else 'example_incorrect'
+                if correct:
+                    self._complete(con, state, 4)
+                    step['feedback']['learning_effect'] = {'example_passed': True}
+            if not direct_example or (policy.adaptive_queue and not correct):
+                previous_target = attempt['practice_target_count']
+                must_pause, mastery = apply_practice_result(attempt, correct, policy)
+                added_to_queue = 0
+                if (attempt.get('practice_queue_version') == self.practice_queue.VERSION
+                        and (not is_example or policy.adaptive_queue)
+                        and (not must_pause or policy.version == LEGACY_LESSON_POLICY.version)):
+                    reserved = ()
+                    if policy.adaptive_queue:
+                        reserved = {s['question_id'] for s in state['steps']
+                                    if s['attempt_id'] == attempt['id'] and s['question_id']}
+                        reserved.update(self.practice_queue.lesson_seeds(module))
+                    added_to_queue = self.practice_queue.record_result(
+                        con, module, item['question'], correct,
+                        additions=policy.queue_additions(attempt['practice_error_count']),
+                        exclude=reserved)
+                if not correct:
+                    step['feedback']['learning_effect'] = {
+                        'queue_added': added_to_queue,
+                        'target_added': attempt['practice_target_count'] - previous_target,
+                        'paused': must_pause,
+                    }
+                if must_pause:
+                    self._pause(con, state, 'practice_error_limit', submission={**item, 'correct': correct, 'reason': reason})
+                elif mastery is not None:
+                    self._complete(con, state, mastery)
+            self._event(con, state, 'answer_judged', submission_id=submission_id,
+                        question_id=item['question'], correct=correct)
+        else:
+            self._event(con, state, 'judge_error', submission_id=submission_id, mastery=None)
+        self._save(con, state)
 
     def _complete(self, con, state, mastery):
         attempt = self._attempt(state)
