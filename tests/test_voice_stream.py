@@ -8,7 +8,7 @@ from uuid import uuid4
 from graspmemoedu.service import DomainError
 from graspmemoedu.voice_input import format_voice, live_text, refine_voice
 from graspmemoedu.voice_math import VoiceContext, quick_math
-from graspmemoedu.voice_stream import Cancel, Chunk, Open, Outbox, Sessions
+from graspmemoedu.voice_stream import MAX_AUDIO, Cancel, Chunk, Open, Outbox, Sessions
 
 
 class MathDictationTests(unittest.TestCase):
@@ -271,6 +271,33 @@ class VoiceSessionTests(unittest.TestCase):
             self.assertEqual(self.call(self.packet('finish', offset + len(voice)))['text'], '周五。')
             self.assertEqual(b''.join(self.providers[-2].received + self.providers[-1].received),
                              voice + silence + bytes(8000) + voice)
+
+    def test_independent_cuts_reset_offsets_limits_and_only_use_new_audio(self):
+        self.call(Cancel(op='cancel', take=self.start.take))
+        self.reserve.reset_mock()
+        context = VoiceContext(stem=self.start.context.stem,
+                               textbox={'before': '前文', 'selected': '旧文', 'after': '后文'})
+        self.registry.formatter = format_voice
+        self.call(self.start.model_copy(update={'manual': True, 'independent': True, 'context': context}))
+        with patch('graspmemoedu.voice_stream.SpeechBoundary.reached', return_value=False):
+            for offset in range(0, MAX_AUDIO, 64000):
+                self.assertEqual(self.call(self.packet('audio', offset, bytes(64000), part=0)),
+                                 {'offset': offset + 64000})
+        first = self.packet('cut', MAX_AUDIO, part=0)
+        self.assertEqual(self.call(first), {'offset': MAX_AUDIO, 'text': '2+7'})
+        self.assertEqual(self.call(first), {'offset': MAX_AUDIO, 'text': '2+7'})
+        self.assertEqual(self.call(self.packet('cut', part=1)), {'offset': 0, 'text': ''})
+        with self.assertRaises(DomainError):
+            self.call(self.packet('audio', pcm=b'cd', part=1))
+        self.assertEqual(self.call(self.packet('audio', pcm=b'cd', part=2)), {'offset': 2})
+        self.assertEqual(self.providers[-1].received, [b'cd'])
+        textbox = self.contexts[-1].textbox
+        self.assertEqual(textbox.before, '前文 2+7')
+        self.assertEqual(textbox.selected, '')
+        self.assertEqual(textbox.after, '后文')
+        self.providers[-1].final = '四加六'
+        self.assertEqual(self.call(self.packet('finish', 2, part=2)), {'offset': 2, 'text': '4+6'})
+        self.assertEqual(self.reserve.call_count, 2)
 
     def test_cancel_is_idempotent_and_releases_slot(self):
         cancel = Cancel(op='cancel', take=self.start.take)
