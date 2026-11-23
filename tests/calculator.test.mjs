@@ -1,9 +1,23 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {calculate} from '../web/calculator-engine.js';
+import {expandScientificNotation} from '../web/calculator-panel.js';
 import {calculatorWorksheets, expressionCompletions, permitsModule, tools} from '../web/calculator-policy.js';
 import {formulaTemplates, matchesCompletion, nativeFormulaSample} from '../web/formula-catalog.js';
 import previews from '../web/vendor/formula/previews.mjs';
+
+test('plain decimal display preserves the digits and sign of a scientific result', () => {
+  for (const [scientific, decimal] of [
+    ['1.2e+24', '12' + '0'.repeat(23)],
+    ['-2.5e-9', '-0.0000000025'],
+    ['1.234e+1', '12.34'],
+    ['-7.3E+308', '-73' + '0'.repeat(307)],
+    ['5e-324', '0.' + '0'.repeat(323) + '5'],
+  ]) assert.equal(expandScientificNotation(scientific), decimal);
+  for (const result of ['256', '1e+309', '1e-325', '1e10000', '2e+8 + 1i', '2e+8 m²', '[1e+25]']) {
+    assert.equal(expandScientificNotation(result), null);
+  }
+});
 
 test('formula and calculator suggestions match insertions and each math choice has a built preview', () => {
   const native = expressionCompletions({level: 'cas'}, {equation: true});
