@@ -45,6 +45,7 @@ from .content_references import ContentReferenceIndex
 from .self_assessment import enabled as self_rating_enabled, protect as protect_assessment
 from .response_content import compact_response, learning_response
 from .context_library_api import register_context_library_routes, PUBLIC_PATHS as CONTEXT_PATHS
+from .clipper import register_clipper_routes, PATHS as CLIPPER_PATHS, BODY_LIMITS as CLIPPER_BODY_LIMITS
 from .voice_input import VOICE_PATH, VOICE_BODY_LIMIT
 from .voice_stream import STREAM_PATH, STREAM_BODY_LIMIT
 from .answer_conversion import ANSWER_CONVERSION_PATH, register_answer_conversion
@@ -476,6 +477,7 @@ def create_app(settings: Settings | None = None, service: LearningService | None
                    '/api/training-audio/transcribe': 6 * 1024 * 1024, VOICE_PATH: VOICE_BODY_LIMIT,
                    ANSWER_CONVERSION_PATH: STREAM_BODY_LIMIT, STREAM_PATH: STREAM_BODY_LIMIT,
                    WHITEBOARD_PATH: WHITEBOARD_LIMIT}
+    body_limits.update(CLIPPER_BODY_LIMITS)
     app.add_middleware(BodyLimitMiddleware, maximum=16384, path_limits=body_limits)
     app.state.service = service
     app.state.settings = settings
@@ -560,6 +562,7 @@ def create_app(settings: Settings | None = None, service: LearningService | None
         public_paths.update(PAPER_PATHS)
         public_paths.update(ADMIN_PAUSE_PATHS)
         public_paths.update(CONTEXT_PATHS)
+        public_paths.update(CLIPPER_PATHS)
         public_paths.add(ANSWER_CONVERSION_PATH)
         public_paths.add(WHITEBOARD_PATH)
         student_path = admin_student_route(path)
@@ -968,6 +971,8 @@ def create_app(settings: Settings | None = None, service: LearningService | None
         return {**result, 'learning_url': f"#/subjects/{topic['subject_id']}/topic/{topic['id']}"}
 
     from .context_dictionary import lookup_word
+    register_clipper_routes(app, access_store, dashboard_store.profile,
+                            lambda word: lookup_word(word, data_dir=settings.data_dir / 'context-dictionary'))
     register_answer_conversion(app, access_store)
     register_whiteboard_ocr(app, access_store)
     register_context_library_routes(app, catalog, access_store, subjects,

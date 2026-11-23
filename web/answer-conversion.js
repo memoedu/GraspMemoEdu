@@ -1,6 +1,6 @@
-import {setVoiceContext, voiceContext} from './voice-context.js?v=e65614ed86a4941d';
-import {getLanguage} from './i18n.js?v=e65614ed86a4941d';
-import {attachLiteralAnswer} from './formula-input.js?v=e65614ed86a4941d';
+import {setVoiceContext, voiceContext} from './voice-context.js?v=bdc2650e64c982b1';
+import {getLanguage} from './i18n.js?v=bdc2650e64c982b1';
+import {attachLiteralAnswer} from './formula-input.js?v=bdc2650e64c982b1';
 
 const targets = new WeakMap();
 const local = (zh, en) => getLanguage() === 'en' ? en : zh;
