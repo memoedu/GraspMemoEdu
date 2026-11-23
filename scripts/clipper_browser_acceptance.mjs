@@ -53,6 +53,11 @@ const formulaSelector = phraseSelector + ' [data-tex]';
 const inlineSelector = 'p:has-text("Inline")';
 let popup = null;
 
+async function waitClipperStyles(page) {
+  await page.waitForFunction(() => [...document.querySelectorAll('link[data-clipper-styles]')]
+    .filter(link => /\/clipper\.css\b/.test(link.href)).every(link => link.sheet));
+}
+
 async function account(invite) {
   await main.locator('#userMenuButton').click();
   await main.locator('#identityButton').click();
@@ -123,8 +128,7 @@ try {
   assert.match(await popup.locator('.clipperSource').innerHTML(), /x\^2/);
   if (!inPage) assert.equal(Math.round((await popup.locator(workspace).boundingBox()).y), 0);
   checks.push('formula-only excerpt uses original LaTeX');
-  await popup.waitForFunction(() => [...document.querySelectorAll('link[data-clipper-styles]')]
-    .filter(link => /\/clipper\.css\b/.test(link.href)).every(link => link.sheet));
+  await waitClipperStyles(popup);
   for (const width of [320, 375, 414, 768]) {
     await popup.setViewportSize({width, height: 660});
     const size = await popup.evaluate(() => new Promise(resolve => requestAnimationFrame(() =>
@@ -171,6 +175,15 @@ try {
     const reopened = main.waitForEvent('popup');
     await dock.getByRole('button', {name: '普通窗口', exact: true}).click();
     popup = await reopened;
+    await waitClipperStyles(popup);
+    const bounds = await popup.locator(workspace).evaluate(element => {
+      const rect = element.getBoundingClientRect();
+      return {width: Math.round(rect.width), height: Math.round(rect.height),
+        expectedWidth: Math.round(document.body.getBoundingClientRect().width), expectedHeight: innerHeight};
+    });
+    assert.equal(bounds.width, bounds.expectedWidth);
+    assert.equal(bounds.height, bounds.expectedHeight);
+    checks.push('reopened popup fits its own viewport');
   }
   await popup.getByText('已存入个人自由学习。', {exact: true}).waitFor();
   checks.push('dock survives page interaction and preserves the workspace on minimize and restore');
