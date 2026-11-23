@@ -1,11 +1,13 @@
 """Temporary website dictation. This endpoint has no learning or archive side effect."""
 import base64
+from contextlib import ExitStack
 from functools import lru_cache
 import io
 import json
 from pathlib import Path
 import re
 import subprocess
+from tempfile import TemporaryDirectory
 from typing import Literal
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
@@ -15,13 +17,16 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .judge import independent_settings
 from .service import DomainError
-from .training_audio import decode_recording
+from .training_audio import MAX_RECORDING_SECONDS, decode_recording
 from .voice_math import VoiceContext, direct_dictation, quick_math
 
 
 VOICE_PATH = '/api/voice-input/transcribe'
 VOICE_BODY_LIMIT = 6 * 1024 * 1024
 RECORDER_FORMATS = {'audio/mp4': 'mov', 'audio/webm': 'matroska', 'audio/ogg': 'ogg'}
+PCM_BYTES_PER_SECOND = 16000 * 2
+# Allow a short encoder tail or stop-event delay, while keeping the ASR input at 120 s.
+RECORDER_TAIL_SECONDS = 1
 FORMULA = re.compile(r'[0-9A-Za-z_+*/^!%.,;:()\[\]=<>|&~\-π∞≤≥≠√×÷−%]+')
 FUNCTIONS = set('abs acos acosh asin asinh atan atanh cbrt ceil cos cosh exp floor ln log log10 log2 max min mod nCr nPr pi pow round sign sin sinh sqrt tan tanh ans'.split())
 
@@ -40,22 +45,38 @@ def recorded_wave(payload):
         return decode_recording(payload.data_base64)
     try:
         source = base64.b64decode(payload.data_base64, validate=True)
-        # Bound decoding time and PCM output. Read only the submitted bytes.
-        pcm = subprocess.run(['ffmpeg', '-nostdin', '-v', 'error', '-protocol_whitelist', 'pipe',
-                              '-f', RECORDER_FORMATS[payload.mime_type], '-threads', '1', '-i', 'pipe:0',
-                              '-map', '0:a:0', '-vn', '-t', '120.1', '-ac', '1', '-ar', '16000',
-                              '-f', 's16le', 'pipe:1'], input=source, capture_output=True, timeout=15, check=True).stdout
-        if not pcm or len(pcm) % 2 or len(pcm) > 120 * 16000 * 2:
-            raise ValueError('Invalid duration')
+        if not source:
+            raise DomainError('voice_recording_empty', '没有录到声音，请检查麦克风后重新录音。', 422)
+        demuxer = RECORDER_FORMATS[payload.mime_type]
+        input_args = ['-protocol_whitelist', 'pipe', '-f', demuxer, '-i', 'pipe:0']
+        with ExitStack() as cleanup:
+            if demuxer == 'mov':
+                # MP4 metadata can follow the audio. A pipe cannot seek back to those samples.
+                staging = cleanup.enter_context(TemporaryDirectory(prefix='graspmemoedu-voice-'))
+                recording = Path(staging) / 'recording.mp4'
+                recording.write_bytes(source)
+                input_args = ['-protocol_whitelist', 'file,pipe', '-f', demuxer,
+                              '-enable_drefs', '0', '-i', str(recording)]
+            limit = MAX_RECORDING_SECONDS + RECORDER_TAIL_SECONDS
+            pcm = subprocess.run(['ffmpeg', '-nostdin', '-v', 'error', '-xerror', *input_args, '-threads', '1',
+                                  '-map', '0:a:0', '-vn', '-t', str(limit + 1), '-ac', '1', '-ar', '16000',
+                                  '-f', 's16le', 'pipe:1'], input=source if demuxer != 'mov' else None,
+                                 capture_output=True, timeout=15, check=True).stdout
+        if not pcm:
+            raise DomainError('voice_recording_empty', '没有录到声音，请检查麦克风后重新录音。', 422)
+        if len(pcm) > limit * PCM_BYTES_PER_SECOND:
+            raise DomainError('voice_recording_too_long', '录音超过 2 分钟，请分段录制。', 422)
         output = io.BytesIO()
         with wave.open(output, 'wb') as wav:
             wav.setparams((1, 2, 16000, 0, 'NONE', 'not compressed'))
-            wav.writeframes(pcm)
+            wav.writeframes(pcm[:MAX_RECORDING_SECONDS * PCM_BYTES_PER_SECOND])
         return output.getvalue()
     except FileNotFoundError:
         raise DomainError('transcription_unavailable', '录音转换服务暂不可用。', 503) from None
-    except (ValueError, OSError, subprocess.SubprocessError):
-        raise DomainError('invalid_recording', '录音为空、格式无效或超过 120 秒，请重新录音。', 422) from None
+    except subprocess.TimeoutExpired:
+        raise DomainError('voice_decode_timeout', '录音解码超时，可重试转写。', 503) from None
+    except (ValueError, OSError, subprocess.CalledProcessError):
+        raise DomainError('invalid_recording', '无法读取这段录音，请重新录音。', 422) from None
 
 
 @lru_cache

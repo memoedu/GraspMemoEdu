@@ -29,15 +29,17 @@ async encoded => {
   source.buffer = sample; source.connect(sink);
   const answer = document.querySelector('#trainingAnswer');
   const start = clock.currentTime + .05, duration = end / sample.sampleRate;
-  const voiceEnd = performance.now() + (start - clock.currentTime + duration) * 1000;
-  window.voiceTimes = {voiceEnd, duration: Math.round(duration * 1000)};
+  window.voiceTimes = {duration: Math.round(duration * 1000)};
   answer.addEventListener('input', () => {
     if (answer.value.trim() && !voiceTimes.inserted) voiceTimes.inserted = performance.now();
   });
-  source.onended = () => setTimeout(() => {
-    voiceTimes.stopped = performance.now();
-    [...document.querySelectorAll('button')].find(b => b.textContent === '结束录音' && b.offsetWidth).click();
-  }, 32);
+  source.onended = () => {
+    voiceTimes.voiceEnd = performance.now();
+    setTimeout(() => {
+      voiceTimes.stopped = performance.now();
+      [...document.querySelectorAll('button')].find(b => b.textContent === '结束录音' && b.offsetWidth).click();
+    }, 32);
+  };
   source.start(start, 0, duration);
 }
 """

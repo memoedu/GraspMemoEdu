@@ -4,7 +4,9 @@ import hashlib
 import io
 import json
 from pathlib import Path
+import shutil
 import struct
+import subprocess
 import unittest
 import wave
 from contextlib import closing
@@ -13,6 +15,7 @@ from graspmemoedu.context_library_api import register_context_library_routes
 from graspmemoedu.service import DomainError
 from graspmemoedu.training_audio import (FunASRTranscriber, _sentences, decode_recording, public_audio, read_audio,
                                         validate_audio, audio_backup_blobs, validate_audio_archive)
+from graspmemoedu.voice_input import VoiceRecording, recorded_wave
 from tests.fixtures import temporary_test_directory
 from tests import test_context_library
 from tests import test_site_backup
@@ -23,6 +26,49 @@ def wav_bytes(seconds=.1, rate=16000):
     with wave.open(stream, 'wb') as wav:
         wav.setnchannels(1); wav.setsampwidth(2); wav.setframerate(rate); wav.writeframes(b'\0\0' * int(seconds * rate))
     return stream.getvalue()
+
+
+@unittest.skipUnless(shutil.which('ffmpeg'), 'browser recording tests require FFmpeg')
+class BrowserRecordingTests(unittest.TestCase):
+    def decode(self, data, mime='audio/mp4'):
+        payload = VoiceRecording(profile='general', mime_type=mime, data_base64=base64.b64encode(data).decode())
+        with wave.open(io.BytesIO(recorded_wave(payload)), 'rb') as audio:
+            self.assertEqual(audio.getframerate(), 16000)
+            result = audio.readframes(audio.getnframes())
+            self.assertTrue(any(result))
+            return len(result) / 32000
+
+    def encode(self, output, seconds, codec, *args):
+        subprocess.run(['ffmpeg', '-nostdin', '-v', 'error', '-f', 'lavfi', '-i', 'sine=frequency=440:sample_rate=48000',
+                        '-t', str(seconds), '-c:a', codec, *args, str(output)], check=True, timeout=20)
+        return output.read_bytes()
+
+    def test_mobile_containers_and_mp4_with_metadata_after_audio(self):
+        with temporary_test_directory() as folder:
+            root = Path(folder)
+            mp4 = self.encode(root / 'aac.m4a', 18, 'aac', '-b:a', '128k')
+            self.assertLess(mp4.index(b'mdat'), mp4.index(b'moov'))
+            for mime, data in (
+                ('audio/mp4', mp4),
+                ('audio/mp4', self.encode(root / 'fragmented.mp4', .4, 'aac', '-movflags', 'frag_keyframe+empty_moov')),
+                ('audio/webm', self.encode(root / 'opus.webm', .4, 'libopus')),
+                ('audio/ogg', self.encode(root / 'opus.ogg', .4, 'libopus')),
+            ):
+                with self.subTest(mime=mime):
+                    self.assertGreater(self.decode(data, mime), .35)
+            self.assertGreater(self.decode(mp4), 17.9)
+
+    def test_encoder_tail_is_capped_and_actual_overlength_is_identified(self):
+        with temporary_test_directory() as folder:
+            root = Path(folder)
+            self.assertEqual(self.decode(self.encode(root / 'edge.m4a', 120.4, 'aac')), 120)
+            too_long = self.encode(root / 'over.m4a', 122.2, 'aac')
+            with self.assertRaises(DomainError) as over:
+                self.decode(too_long)
+            self.assertEqual(over.exception.code, 'voice_recording_too_long')
+            with self.assertRaises(DomainError) as broken:
+                self.decode(b'malformed data')
+            self.assertEqual(broken.exception.code, 'invalid_recording')
 
 
 def audio_fixture(data=None):
