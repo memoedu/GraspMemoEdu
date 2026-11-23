@@ -622,6 +622,10 @@ def prepare(index, scope, cache, output, *, fail_at=None, question_plan=None):
                          + (root / 'scripts/render_mathacademy.mjs').read_bytes()
                          + (root / 'web/math-syntax.js').read_bytes())
     renderer = Renderer(); reused = 0
+    from .mathacademy_formula_audit import ML_COURSES, audit_fields
+    courses, graphs = course_documents(index, scope)
+    selected_ml = ML_COURSES & {'ma-course-' + str(cid) for cid in scope['course_ids']}
+    audited_topics = {row['id'] for course in courses if course['id'] in selected_ml for row in course['topics']}
     topics_dir, raw_dir = output / 'topics', output / 'mathacademy-sources/topics'
     topics_dir.mkdir(exist_ok=True); raw_dir.mkdir(parents=True, exist_ok=True)
     reports, failures = [], []
@@ -645,6 +649,10 @@ def prepare(index, scope, cache, output, *, fail_at=None, question_plan=None):
                     failures.append({'topic_id': tid, 'error': str(error)})
                     print(f'conversion_failed {tid}: {str(error)[:400]}', flush=True)
                     continue
+            if topic['id'] in audited_topics and (defects := list(audit_fields(topic))):
+                failures.append({'topic_id': tid, 'error': 'Unrendered LaTeX', 'fields': defects})
+                print(f'formula_audit_failed {tid}: {len(defects)} fields', flush=True)
+                continue
             (topics_dir / (topic['id'] + '.json')).write_bytes(encoded(topic))
             (raw_dir / (topic['id'] + '.json')).write_bytes(raw)
             reports.append({'topic_id': topic['id'], **topic['availability'], 'source_gaps': topic['_source_gaps']})
@@ -657,7 +665,6 @@ def prepare(index, scope, cache, output, *, fail_at=None, question_plan=None):
     (output / 'conversion-failures.json').write_bytes(encoded(failures))
     if failures:
         raise RuntimeError(f'{len(failures)} conversion failures; batch was not activated. See conversion-failures.json')
-    courses, graphs = course_documents(index, scope)
     (output / 'catalog.json').write_bytes(encoded({'courses': courses}))
     (output / 'graphs').mkdir(exist_ok=True)
     graph_sources = output / 'mathacademy-sources/graphs'; graph_sources.mkdir(parents=True, exist_ok=True)
@@ -667,6 +674,8 @@ def prepare(index, scope, cache, output, *, fail_at=None, question_plan=None):
         (graph_sources / f'course-{cid}.json').write_bytes(encoded(index.graphs[cid]))
     report = {'scope': scope, 'topics': reports, 'reused_conversion': reused,
               'question_plan': question_plan,
+              'formula_audit': {'topics': sum(t['topic_id'] in audited_topics for t in reports),
+                                'failed_fields': 0},
               'readable': sum(t['readable'] for t in reports), 'trainable': sum(t['trainable'] for t in reports),
               'untrainable': sum(not t['trainable'] for t in reports), 'failed': 0}
     (output / 'report.json').write_bytes(encoded(report))

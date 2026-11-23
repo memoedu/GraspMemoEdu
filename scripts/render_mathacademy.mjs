@@ -5,7 +5,7 @@ import readline from 'node:readline';
 import {fileURLToPath} from 'node:url';
 import crypto from 'node:crypto';
 import {createRequire} from 'node:module';
-import {mathAt, mathSpans} from '../web/math-syntax.js';
+import {escapedAt, mathAt, mathSpans} from '../web/math-syntax.js';
 const req = dir => createRequire(path.join(dir, '_entry.cjs'));
 const br = req(process.env.CODEX_NODE_MODULES || path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules'));
 const mr = req(process.env.MATH_TOPIC_PDF_RUNTIME || 'D:/Caches/MathTopicPdf/node_modules');
@@ -36,8 +36,14 @@ function math(source, display) {
   catch(error) { throw Error(`Math conversion: ${error.message}; source=${source.slice(0,800)}`); }
   if (/merror|data-mjx-error/.test(html)) throw Error('Math rendering failed');
   const token = `MAFORMULA${formulas.length}END`;
-  formulas.push(`<span class="${display ? 'mathDisplay' : 'mathInline'}">${html}</span>`);
+  formulas.push(`<span class="${display ? 'mathDisplay' : 'mathInline'}" data-tex="${escape(source)}">${html}</span>`);
   return token;
+}
+const academyMath = /\[math\]([\s\S]*?)\[\/math\]/gi;
+function academySpan(text, match) {
+  return !escapedAt(text, match.index) && match[1].trim() ? {
+    from: match.index, to: match.index + match[0].length, raw: match[0], latex: match[1], display: false,
+  } : null;
 }
 function mathInHtml(html) {
   // Preserve code, pre-rendered SVG and HTML attributes. Only text between
@@ -45,7 +51,10 @@ function mathInHtml(html) {
   const markup = /<(pre|code|svg|mjx-container|script|style|textarea)\b[\s\S]*?<\/\1\s*>|<!--[\s\S]*?-->|<\/?[a-z][\w:-]*(?=[\s/>])(?:[^"'<>]|"[^"]*"|'[^']*')*>/gi;
   function renderText(text) {
     let result = '', cursor = 0;
-    for (const span of mathSpans(text)) {
+    const academy = [...text.matchAll(academyMath)].map(match => academySpan(text, match)).filter(Boolean);
+    const spans = [...mathSpans(text), ...academy].sort((a, b) => a.from - b.from);
+    for (const span of spans) {
+      if (span.from < cursor) continue;
       result += text.slice(cursor, span.from) + math(span.latex, span.display);
       cursor = span.to;
     }
@@ -62,8 +71,12 @@ const marked = new Marked({gfm:true, renderer:{html(token){return mathInHtml(tok
   {name:'maBlockMath',level:'block',
     tokenizer(s){const m=mathAt(s);if(m?.display)return {type:'maBlockMath',...m};},
     renderer:t=>math(t.latex,true)},
-  {name:'maInlineMath',level:'inline',start:s=>/\$|\\[([]|\\begin\{/.exec(s)?.index,
-    tokenizer(s){const m=mathAt(s);if(m)return {type:'maInlineMath',...m};},
+  {name:'maInlineMath',level:'inline',start:s=>/\$|\\[([]|\\begin\{|\[math\]/i.exec(s)?.index,
+    tokenizer(s) {
+      const academy = /^\[math\]([\s\S]*?)\[\/math\]/i.exec(s);
+      const m = academy ? academySpan(s, academy) : mathAt(s);
+      if (m) return {type:'maInlineMath', ...m};
+    },
     renderer:t=>math(t.latex,t.display)}
 ]});
 function safeHtml(html, prefix) {
@@ -71,7 +84,7 @@ function safeHtml(html, prefix) {
   const cleaned = sanitize(html, {parser:{lowerCaseTags:false,lowerCaseAttributeNames:false},
     allowedTags:[...sanitize.defaults.allowedTags,'aside','img','span','pre','code','br','mjx-container',...svgTags],
     allowedAttributes:{'*':['class','id'], a:['href','title'], img:['src','alt','width','height'],
-      span:['class','id','data-control','aria-label'], aside:['class','data-callout'],
+      span:['class','id','data-control','data-tex','aria-label'], aside:['class','data-callout'],
       table:['style'], td:['rowspan','colspan','align','style'], th:['rowspan','colspan','align','style'],
       ol:['start','type'], li:['value'], 'mjx-container':['class','jax','display'],
       ...Object.fromEntries(svgTags.map(t=>[t,['id','viewBox','width','height','x','y','x1','x2','y1','y2','d','points','r','rx','ry','cx','cy','fill','stroke','stroke-width','transform','href','xlink:href','xmlns','xmlns:xlink','preserveAspectRatio','role','aria-hidden','focusable','style','data-mml-node']]))},
@@ -93,7 +106,7 @@ function safeHtml(html, prefix) {
 }
 function render(source, sourceHtml='') {
   formulas = [];
-  source = String(source||'').replace(/\[math\]([\s\S]*?)\[\/math\]/g, (_s,t)=>`$${t}$`);
+  source = String(source || '');
   let html;
   if (sourceHtml?.trim() && /<(?:p|div|h[1-6]|table|ul|ol|blockquote|pre|svg|img|section|body|html|span)\b/i.test(sourceHtml)) {
     const body = sourceHtml.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i);
