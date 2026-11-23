@@ -162,7 +162,7 @@ function storedValue(math, value, config, extensions) {
 }
 
 function expressionPlan(math, value, config, {variable, answer, degrees = false, symbolic = false, freeSymbols = false,
-  extensions = false, names, bindings, memory = {}} = {}) {
+  extensions = false, names, bindings, memory = {}, expanding = []} = {}) {
   const subscriptDigits = '₀₁₂₃₄₅₆₇₈₉';
   const original = commonNotation(value).normalize('NFC').replace(/_\{([\p{L}\p{Nd}]+)\}/gu, '_$1');
   ensure(!original.includes('__gmeVar'), 'restricted');
@@ -213,8 +213,14 @@ function expressionPlan(math, value, config, {variable, answer, degrees = false,
       }
       if (!symbolic && permitsKey(config, 'memory_registers') && assignableVariable(name)
           && Object.hasOwn(memory ?? {}, name)) {
-        const value = storedValue(math, memory[name], config, extensions);
-        return () => value;
+        const entry = memory[name];
+        if (typeof entry?.expression === 'string') {
+          ensure(expanding.length < 4 && !expanding.includes(name) && entry.expression.length <= 256, 'limit');
+          return expressionPlan(math, entry.expression, config, {variable, answer, degrees, freeSymbols, extensions,
+            names, bindings, memory, expanding: [...expanding, name]}).evaluate;
+        }
+        const stored = storedValue(math, entry, config, extensions);
+        return () => stored;
       }
       if (freeSymbols && assignableVariable(name)) return () => undefined;
       if (names && assignableVariable(name)) {
@@ -435,6 +441,16 @@ function definiteIntegral(integrate, evaluate, lower, upper) {
   } finally {
     console.warn = previousWarn;
   }
+}
+
+export async function storedExpression(source, config, name, memory) {
+  checkKey(config, 'memory_registers');
+  ensure(typeof source === 'string' && source.length <= 256 && !source.includes('='), 'restricted');
+  const expression = source.trim();
+  ensure(expression && assignableVariable(name), 'restricted');
+  expressionPlan(await core(), expression, config, {freeSymbols: true, extensions: false,
+    memory: {...memory, [name]: {expression}}, expanding: [name]});
+  return {expression};
 }
 
 export async function calculate({config, module, operation, input = {}, degrees = false, answer, memory}) {

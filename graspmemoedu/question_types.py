@@ -10,6 +10,20 @@ import regex
 
 TYPES = {'text', 'true_false', 'fill_blank', 'matching', 'choice'}
 ID = re.compile(r'[A-Za-z][A-Za-z0-9_-]{0,39}\Z')
+WHITEBOARD_ANSWER = '\u241eGME-WHITEBOARD-1\n'
+
+
+def whiteboard_answer(value):
+    return isinstance(value, str) and value.startswith(WHITEBOARD_ANSWER)
+
+
+def parse_submission_answer(question, value):
+    if not whiteboard_answer(value):
+        return parse_answer(question, value)
+    text = value.removeprefix(WHITEBOARD_ANSWER)
+    if not text.strip() or len(text) > 12000 or (question.get('interaction') or {}).get('grading') == 'unavailable':
+        raise ValueError('Invalid whiteboard answer')
+    return text
 
 
 def is_reproduction(question):
@@ -313,6 +327,8 @@ def demo_answer(question):
 
 
 def display_answer(question, answer):
+    if whiteboard_answer(answer):
+        return answer.removeprefix(WHITEBOARD_ANSWER)
     if not answer or not question.get('interaction') or question['interaction']['type'] == 'text':
         return answer
     try:

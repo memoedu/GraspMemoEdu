@@ -1,4 +1,4 @@
-import { t, translateMessage, learningTitle } from './i18n.js?v=a9d56b88c5ca1fa2';
+import { t, translateMessage, learningTitle, getLanguage } from './i18n.js?v=a9d56b88c5ca1fa2';
 import {attachFormulaEditing} from './formula-input.js?v=a9d56b88c5ca1fa2';
 import {setQuestionTools} from './question-tools.js?v=a9d56b88c5ca1fa2';
 import {enableVoiceAnswer, voiceAnswerPending} from './voice-input.js?v=a9d56b88c5ca1fa2';
@@ -9,6 +9,7 @@ import {reportableContent} from './content-report.js?v=a9d56b88c5ca1fa2';
 import {createLearningCache} from './learning-cache.js?v=a9d56b88c5ca1fa2';
 import {enhanceTopicContent} from './topic-content.js?v=a9d56b88c5ca1fa2';
 import {practiceHint} from './beginner-hints.js?v=a9d56b88c5ca1fa2';
+import {questionWhiteboard} from './whiteboard-answer.js?v=a9d56b88c5ca1fa2';
 
 const node = (tag, cls = '', text) => {
   const item = document.createElement(tag); item.className = cls;
@@ -284,7 +285,15 @@ export function createReviewView(bridge) {
     } else if (state.status !== 'in_progress') nav.append(home());
     for (const item of nav.querySelectorAll('button')) if (busy) item.disabled = true;
     card.append(nav); main.append(card);
-    setQuestionTools(card, question);
+    const ticket = epoch, revision = state.revision;
+    const currentBoard = () => active(ticket) && current() && state.practice.id === questionId &&
+      state.revision === revision && !busy && !state.pending_submission_id && can('submit_answer');
+    setQuestionTools(card, question, questionWhiteboard({
+      key: JSON.stringify([bridge.getApiOrigin(), learner, topic, questionId]), question,
+      editable: editable && !state.practice.revealed && currentBoard(),
+      current: currentBoard, language: getLanguage(), request: bridge.request,
+      submit: answer => mutate('submit', {...payload(), answer, elapsed_ms: tick(true)}),
+    }));
     layout.append(renderHistory(), main); root.replaceChildren(layout);
     const input = root.querySelector('#reviewAnswerInput'), send = root.querySelector('#reviewSubmitButton');
     if (send) send.disabled = busy || !answerReady(input) || !can('submit_answer');

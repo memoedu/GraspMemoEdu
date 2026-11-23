@@ -48,6 +48,7 @@ from .context_library_api import register_context_library_routes, PUBLIC_PATHS a
 from .voice_input import VOICE_PATH, VOICE_BODY_LIMIT
 from .voice_stream import STREAM_PATH, STREAM_BODY_LIMIT
 from .answer_conversion import ANSWER_CONVERSION_PATH, register_answer_conversion
+from .whiteboard_ocr import WHITEBOARD_LIMIT, WHITEBOARD_PATH, register_whiteboard_ocr
 
 
 class JudgeAdmissionRequired(Exception):
@@ -465,7 +466,8 @@ def create_app(settings: Settings | None = None, service: LearningService | None
     # The subsequently registered boundary middleware wraps this body limiter.
     body_limits = {'/api/help-requests': 65536, '/api/help-images': 3 * 1024 * 1024,
                    '/api/training-audio/transcribe': 6 * 1024 * 1024, VOICE_PATH: VOICE_BODY_LIMIT,
-                   ANSWER_CONVERSION_PATH: STREAM_BODY_LIMIT, STREAM_PATH: STREAM_BODY_LIMIT}
+                   ANSWER_CONVERSION_PATH: STREAM_BODY_LIMIT, STREAM_PATH: STREAM_BODY_LIMIT,
+                   WHITEBOARD_PATH: WHITEBOARD_LIMIT}
     app.add_middleware(BodyLimitMiddleware, maximum=16384, path_limits=body_limits)
     app.state.service = service
     app.state.settings = settings
@@ -550,6 +552,7 @@ def create_app(settings: Settings | None = None, service: LearningService | None
         public_paths.update(ADMIN_PAUSE_PATHS)
         public_paths.update(CONTEXT_PATHS)
         public_paths.add(ANSWER_CONVERSION_PATH)
+        public_paths.add(WHITEBOARD_PATH)
         student_path = admin_student_route(path)
         task_answers_path = path.startswith('/api/tasks/') and path.endswith('/answers') and path.count('/') == 4
         review_feature = review_route_feature(path, request.method)
@@ -619,7 +622,7 @@ def create_app(settings: Settings | None = None, service: LearningService | None
         response.headers['Cache-Control'] = 'no-store'
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Referrer-Policy'] = 'no-referrer'
-        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:* http://localhost:*; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:* http://localhost:*; object-src 'none'; frame-src 'self' https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v1/; base-uri 'self'; frame-ancestors 'none'"
         if remote:
             response.headers['Access-Control-Allow-Origin'] = origin
             response.headers['Vary'] = 'Origin'
@@ -933,6 +936,7 @@ def create_app(settings: Settings | None = None, service: LearningService | None
 
     from .context_dictionary import lookup_word
     register_answer_conversion(app, access_store)
+    register_whiteboard_ocr(app, access_store)
     register_context_library_routes(app, catalog, access_store, subjects,
         activate_points=activate_reading_points,
         dictionary=lambda word: lookup_word(word, data_dir=settings.data_dir / 'context-dictionary'),

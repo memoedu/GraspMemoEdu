@@ -163,7 +163,7 @@ export function openCalculator(launch, config, [module, zh, en, operations], eng
   const {saved, history} = session;
   let answer = module === 'expression' ? session.expressionAnswer : null, transferring = false, edit = 0;
   let registerCandidate = answer ? session.expressionRegisterCandidate : null;
-  const memory = new Map();
+  const memory = session.memory;
   let refreshMemory = () => {}, cancelMemory = () => false, remember = () => {};
   const workspace = launch.closest('.questionWorkspace');
   inheritVoiceContext(dialog, workspace);

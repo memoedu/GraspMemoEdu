@@ -21,7 +21,7 @@ from .judging import instant_question, judge_answer, local_verdict
 from .practice import PracticePolicy, REVIEW_POLICY, apply_practice_result
 from .practice_queue import VERSION as PRACTICE_QUEUE_VERSION
 from .service import DomainError, encode
-from .question_types import public_interaction, parse_answer
+from .question_types import public_interaction, parse_submission_answer
 
 
 class ReviewBackend:
@@ -564,7 +564,7 @@ class ReviewBackend:
             try:
                 assessed_answer(question, state, payload)
                 if payload.get('self_rating') is None:
-                    parse_answer(question, answer)
+                    parse_submission_answer(question, answer)
             except (ValueError, TypeError, KeyError) as exc:
                 raise DomainError('invalid_answer', '请完成全部作答，且不要重复使用配对选项。', 422) from exc
             verdict = local_verdict(question, state, payload, con, require_judge)
@@ -605,7 +605,7 @@ class ReviewBackend:
         with closing(self.learning._connect()) as con:
             row = self._submission(con, submission_id)
             state = self._session(con, row['session'])
-            return verdict(state, submission_id) is not None or instant_question(self.question_for_session(state, row['question']))
+            return verdict(state, submission_id) is not None or instant_question(self.question_for_session(state, row['question']), row['answer'])
 
     def process_submission(self, submission_id):
         """Worker entry point, sharing the exact Lesson judging contract."""

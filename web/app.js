@@ -17,6 +17,7 @@ import {installAutocomplete} from './autocomplete.js?v=a9d56b88c5ca1fa2';
 import {expressionCompletions} from './calculator-policy.js?v=a9d56b88c5ca1fa2';
 import {installVoiceInput, refreshVoiceInput, voiceAnswerPending} from './voice-input.js?v=a9d56b88c5ca1fa2';
 import {installAnswerConversion, setAnswerCommandInputEnabled} from './answer-conversion.js?v=a9d56b88c5ca1fa2';
+import {questionWhiteboard} from './whiteboard-answer.js?v=a9d56b88c5ca1fa2';
 
 let topicTraining = null, topicTrainingKey = null;
 function stopTopicTraining() { topicTraining?.stop(); topicTraining = null; topicTrainingKey = null; }
@@ -253,7 +254,8 @@ function retireLegacyConnection() {
 async function request(path, options = {}) {
   const method = options.method || 'GET';
     const endpoint = path.split('?')[0];
-    const mutation = method !== 'GET' && !['presence', 'answer-conversion', 'voice-input/transcribe', 'voice-input/stream'].includes(endpoint);
+    const mutation = method !== 'GET' && !['presence', 'answer-conversion', 'voice-input/transcribe', 'voice-input/stream',
+      'whiteboard/recognize'].includes(endpoint);
     // Selecting a course only updates preferences. Keep the other workspace's
     // cached reads; learning writes and identity changes still invalidate all.
     const invalidateReads = () => endpoint === 'catalog/select'
@@ -986,6 +988,22 @@ async function sendSubmission(payload) {
   }
 }
 
+function lessonWhiteboard(step, actions) {
+  if (!step.question_id || !['example', 'practice'].includes(step.kind)) return;
+  const topic = state.topic_id, attempt = state.attempt_id, revision = state.revision;
+  const learner = learnerScope();
+  const current = () => state?.topic_id === topic && state?.attempt_id === attempt && state?.revision === revision &&
+    state?.active_step_id === step.id && selectedStep()?.id === step.id && learnerScope() === learner &&
+    !state.pending_submission_id && !actionBusy && can('submit_answer');
+  return questionWhiteboard({
+    key: JSON.stringify([apiBase, learner, topic, step.question_id]), question: step,
+    editable: step.phase === 'answer' && !step.revealed && actions.includes('submit') &&
+      step.id === state.active_step_id && can('submit_answer'),
+    current, request: topicRequest, language: getLanguage(),
+    submit: answer => sendSubmission(mutationPayload({answer, elapsed_ms: syncAnswerClock()})),
+  });
+}
+
 function handleSubmission(result, record = readJSON(recordKey())) {
   if (result.state) applyState(result.state, {deferRender: true});
   if (state?.status === "paused" || state?.status === "completed") { render(); return; }
@@ -1398,6 +1416,7 @@ function renderStep(step) {
   }
   const selfRated = ['example', 'practice'].includes(step.kind) && isCourseSelfRating(step.feedback?.reason);
   const {stem} = renderReaderStep(target, step, {title: readerStepTitle(step), counter, references: state.content_references,
+    whiteboard: lessonWhiteboard(step, actions),
     showSubmittedInteraction: !actions.includes('submit'),
     submittedValue: step.answer || (step.id === state.active_step_id ? draftValue(step) : ''),
     showAnswer: selfRated ? false : undefined,

@@ -1,4 +1,4 @@
-import {t, translateMessage} from './i18n.js?v=a9d56b88c5ca1fa2';
+import {t, translateMessage, getLanguage} from './i18n.js?v=a9d56b88c5ca1fa2';
 import {ideaSetupHash, ideaSetupLink} from './idea-setup.js?v=a9d56b88c5ca1fa2';
 import {answerReady, answerEmpty} from './question-input.js?v=a9d56b88c5ca1fa2';
 import {createLearningCache} from './learning-cache.js?v=a9d56b88c5ca1fa2';
@@ -17,6 +17,7 @@ const ratingKeys = ['', 'training.again', 'training.hard', 'training.good', 'tra
 import {answerEditor, readerFrame, readerStepTitle, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, renderReviewReader} from './learning-ui.js?v=a9d56b88c5ca1fa2';
 import {setQuestionTools} from './question-tools.js?v=a9d56b88c5ca1fa2';
 import {voiceAnswerPending} from './voice-input.js?v=a9d56b88c5ca1fa2';
+import {questionWhiteboard} from './whiteboard-answer.js?v=a9d56b88c5ca1fa2';
 
 export function createTrainingView(bridge) {
   const {root, request, href, formatDate, getAccess} = bridge;
@@ -396,8 +397,24 @@ export function createTrainingView(bridge) {
       reason: result.reason, details: [
         state.stopped && !result.stop_requested ? t('training.stopped') : result.practice_only && !state.stopped ? t('training.practice') : null,
         state.due_at ? t('training.nextDue', {time: formatDate(state.due_at)}) : null]} : null;
+    const currentBoard = () => alive(e, s) && current?.attempt_id === state.attempt_id && current.phase === 'answer' &&
+      current.multi_step?.current_step_id === state.multi_step?.current_step_id && current.can_submit && !current.submission_id;
+    const whiteboard = !state.hyperskill && !state.academy && questionWhiteboard({
+      key: JSON.stringify([location.origin, getAccess()?.learner_id, state.bank_id, state.question_id]), question: state.question,
+      editable: !state.revealed && !state.preview && currentBoard(),
+      current: currentBoard, language: getLanguage(), request,
+      submit: async answer => {
+        const payload = {request_id: crypto.randomUUID(), attempt_id: state.attempt_id, answer, elapsed_ms: flushClock(),
+          ...(state.multi_step ? {step_id: state.multi_step.current_step_id} : {})};
+        save('submission', answerKey(state), JSON.stringify(payload));
+        const next = await post('submit', payload);
+        if (!alive(e, s)) return;
+        settled(state, next); current = next; renderQuestion();
+      },
+    });
     const {stem} = renderReaderStep(main, {...state.question, answer: state.answer, answer_display: state.answer_display,
       explanation_html: state.explanation_html, multi_step: state.multi_step}, {titleId: 'trainingStepTitle', title: t('training.exercise', {number: index + 1}),
+      whiteboard,
       counter: t('reader.modulePosition', {current: index + 1, total: group.questions.length}), toolAnchor: embedded?.toolAnchor ?? main,
       showSubmittedInteraction: state.phase !== 'answer', submittedId: 'trainingSubmittedInteraction',
       showAnswer: Boolean(state.answer_display && state.phase === 'done'), feedback, feedbackClass: 'trainingVerdict',

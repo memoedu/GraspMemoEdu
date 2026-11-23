@@ -2,6 +2,7 @@ import {t} from './i18n.js?v=a9d56b88c5ca1fa2';
 import {answerEmpty} from './question-input.js?v=a9d56b88c5ca1fa2';
 import {prepareMathContent, renderPlainMath, setOptionContent} from './math-presentation.js?v=a9d56b88c5ca1fa2';
 import {answerAssessment} from './point-assessment.js?v=a9d56b88c5ca1fa2';
+import {fromWhiteboard, whiteboardText} from './whiteboard-answer.js?v=a9d56b88c5ca1fa2';
 
 const element = (tag, cls, text) => {
   const node = document.createElement(tag); node.className = cls;
@@ -58,6 +59,12 @@ export function prepareExplanationLayout(root) {
 }
 
 export function submittedAnswer(question, answer, display = answer) {
+  if (fromWhiteboard(answer)) {
+    const text = whiteboardText(answer);
+    const body = element('pre', '', text);
+    renderPlainMath(body, text);
+    return body;
+  }
   const spec = question.interaction || question.question?.interaction;
   let value; try { value = JSON.parse(answer); } catch { /* Keep literal free answers. */ }
   const selected = spec?.type === 'choice' ? new Set(spec.multiple ? value?.selected || [] : [value?.selected]) : new Set();

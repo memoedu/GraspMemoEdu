@@ -30,8 +30,7 @@ const toolGroups = [
   ['应用建模', 'Applied modeling', ['geography', 'finance', 'optimization']],
 ];
 
-export function calculatorToolGroups(config, english) {
-  const session = {saved: new Map(), history: [], degrees: false};
+export function calculatorToolGroups(config, english, session = {saved: new Map(), history: [], degrees: false, memory: new Map()}) {
   const available = new Map(calculatorWorksheets(config).map(worksheet => {
     const [id, zh, en] = worksheet;
     return [id, {id, label: english ? en : zh, icon: icons[id], open(launcher) {

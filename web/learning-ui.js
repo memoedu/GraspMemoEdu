@@ -11,6 +11,7 @@ import {answerAssessment, pointAssessment} from './point-assessment.js?v=a9d56b8
 import {setQuestionTools} from './question-tools.js?v=a9d56b88c5ca1fa2';
 import {enableVoiceAnswer} from './voice-input.js?v=a9d56b88c5ca1fa2';
 import {mountAnswerConversion} from './answer-conversion.js?v=a9d56b88c5ca1fa2';
+import {fromWhiteboard} from './whiteboard-answer.js?v=a9d56b88c5ca1fa2';
 
 const node = (tag, cls = '', text) => {
   const item = document.createElement(tag); item.className = cls;
@@ -169,8 +170,8 @@ export function renderReaderStep(target, step, {titleId = 'stepTitle', title = r
   showSubmittedInteraction = !step.actions?.includes('submit'), submittedValue = step.answer || '',
   showAnswer = step.answer !== null && step.answer !== undefined && step.answer !== '',
   feedback = step.feedback, feedbackClass = '', referenceSource = step,
-  showExplanation = !(step.revealed && step.actions?.includes('submit')), notice, editInteraction = null, toolAnchor = target} = {}) {
-  setQuestionTools(toolAnchor, step);
+  showExplanation = !(step.revealed && step.actions?.includes('submit')), notice, editInteraction = null, toolAnchor = target, whiteboard} = {}) {
+  setQuestionTools(toolAnchor, step, whiteboard);
   const heading = node('div', 'stepHeader'), titleNode = node('h2', 'stepTitle', title);
   titleNode.id = titleId; titleNode.tabIndex = -1; heading.append(titleNode);
   if (counter) heading.append(node('span', 'stepCounter', counter));
@@ -188,7 +189,7 @@ export function renderReaderStep(target, step, {titleId = 'stepTitle', title = r
   const showingStepAnswer = step.multi_step && !step.multi_step.finished && showExplanation && step.explanation_html;
   const assessment = answerAssessment(referenceSource);
   if (showingStepAnswer) staticStepBlanks(stem, step.interaction);
-  else if (showSubmittedInteraction && step.interaction && step.interaction.type !== 'text') {
+  else if (showSubmittedInteraction && step.interaction && step.interaction.type !== 'text' && !fromWhiteboard(submittedValue)) {
     const editable = Boolean(editInteraction);
     const {element, input} = questionInput(step.interaction, {id: submittedId, stem,
       value: editable ? editInteraction.value : submittedValue, disabled: !editable,
