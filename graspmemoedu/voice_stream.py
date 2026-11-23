@@ -282,7 +282,8 @@ class Take:
     def end_segment(self):
         if self.provider is not None:
             try:
-                self.provider.finish()
+                if self.offset or not self.independent:
+                    self.provider.finish()
             finally:
                 self.provider.close()
                 self.provider = None

@@ -299,6 +299,15 @@ class VoiceSessionTests(unittest.TestCase):
         self.assertEqual(self.call(self.packet('finish', 2, part=2)), {'offset': 2, 'text': '4+6'})
         self.assertEqual(self.reserve.call_count, 2)
 
+    def test_independent_empty_first_segment_does_not_finish_the_provider(self):
+        self.call(Cancel(op='cancel', take=self.start.take))
+        self.registry.formatter = format_voice
+        self.call(self.start.model_copy(update={'manual': True, 'independent': True}))
+        idle = self.providers[-1]
+        self.assertEqual(self.call(self.packet('cut', part=0)), {'offset': 0, 'text': ''})
+        self.assertTrue(idle.closed)
+        self.assertEqual(self.call(self.packet('finish', pcm=b'ab', part=1))['text'], '2+7')
+
     def test_cancel_is_idempotent_and_releases_slot(self):
         cancel = Cancel(op='cancel', take=self.start.take)
         self.call(cancel)
