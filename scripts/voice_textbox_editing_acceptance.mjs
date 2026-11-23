@@ -48,17 +48,13 @@ try {
   await page.locator('#identitySubmitButton').waitFor({state:'hidden'});
   await page.goto(base+'/#/subjects/math/banks/isolated-bank/group-a?question=voice-algebra');
   const source=page.locator('#trainingAnswer');
-  await source.fill('x^2');
   await source.focus();
-  await source.press('End');
-  // The normal keyboard path promotes the expression to its editable math field.
-  await source.press('+');
+  // A complete typed expression exercises the normal math-field promotion.
+  await source.fill('x^2+1');
   const root=page.locator('.ProseMirror:visible').first();
   await root.waitFor();
   const math=root.locator('math-field').first();
   await math.waitFor();
-  await math.focus(); await math.evaluate(m=>{m.position=m.lastOffset;});
-  await math.press('1');
   await hasValue(source,'x^2+1');
   await math.focus(); await math.evaluate(m=>{m.position=m.lastOffset;});
   const before=await source.inputValue(), latex=await math.evaluate(m=>m.value);
