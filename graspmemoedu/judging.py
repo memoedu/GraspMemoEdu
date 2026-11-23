@@ -7,7 +7,7 @@ def instant_question(question):
     return not is_reproduction(question)
 
 
-def local_verdict(question, target, payload, require_judge):
+def local_verdict(question, target, payload, con, require_judge):
     """Resolve a validated answer locally or request admission before enqueuing it."""
     if require_judge is None:
         return None
@@ -17,7 +17,7 @@ def local_verdict(question, target, payload, require_judge):
         return assessed
     if instant_question(question):
         return judge_answer(None, question, payload['answer'])
-    require_judge(1)
+    require_judge(con, 1)
     return None
 
 

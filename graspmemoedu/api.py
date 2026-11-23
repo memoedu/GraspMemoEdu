@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import asynccontextmanager
+from contextlib import ExitStack, asynccontextmanager, closing
 import hmac
 import json
 from pathlib import Path
 import secrets
 import sqlite3
 import threading
-from contextlib import closing
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request, Query
@@ -52,10 +51,6 @@ from .answer_conversion import ANSWER_CONVERSION_PATH, register_answer_conversio
 
 class JudgeAdmissionRequired(Exception):
     """A validated submission needs a paid judge before it can be saved."""
-
-    def __init__(self, count):
-        self.count = count
-
 
 class Action(BaseModel):
     model_config = ConfigDict(extra='forbid')
@@ -361,31 +356,32 @@ def create_app(settings: Settings | None = None, service: LearningService | None
                    for table in ('submissions', 'review_submissions', 'training_submissions', 'paper_submissions') if table in tables))
 
     def admit_submission(request, learner, access, submit):
-        def require_judge(count):
-            raise JudgeAdmissionRequired(count)
+        def require_judge(con, count):
+            raise JudgeAdmissionRequired
 
         try:
             return submit(require_judge)
         except JudgeAdmissionRequired:
             pass
-        # Keep queue admission and quota before the SQLite write transaction.
-        # Recheck after taking the lock so a concurrent replay is never charged.
+        # Only paid work needs this lock. Revalidate the pinned answer under
+        # it, and reserve exactly what this transaction will send to the judge.
         with admission_lock:
-            try:
-                return submit(require_judge)
-            except JudgeAdmissionRequired as required:
-                count = required.count
-            with closing(learner._connect()) as con:
-                if outstanding_count(con) >= public_limits.max_pending:
-                    raise PublicLimitError('judge_capacity', '当前判题队列已满，请稍后重试；本次未计入作答。', 2)
             key = 'submit:' + learner.learner_id
-            if request.state.public_transport:
-                public_limits.check(key, public_limits.submissions_per_minute)
-            with public_limits.daily.reserve(learner.learner_id, access['role'], count=count):
-                result = submit(lambda count: None)
-            if request.state.public_transport:
+            admitted = False
+            with ExitStack() as reservation:
+                def admit(con, count):
+                    nonlocal admitted
+                    if outstanding_count(con) >= public_limits.max_pending:
+                        raise PublicLimitError('judge_capacity', '当前判题队列已满，请稍后重试；本次未计入作答。', 2)
+                    if request.state.public_transport:
+                        public_limits.check(key, public_limits.submissions_per_minute)
+                    reservation.enter_context(public_limits.daily.reserve(learner.learner_id, access['role'], count=count))
+                    admitted = True
+
+                result = submit(admit)
+            if admitted and request.state.public_transport:
                 public_limits.record(key)
-            return result
+        return result
 
     def finish_pending(learner, submission_id, review=False):
         backend = learner.review_backend if review else learner

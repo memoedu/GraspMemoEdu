@@ -672,7 +672,7 @@ class LearningService:
                     parse_answer(question, answer)
             except (ValueError, TypeError, KeyError) as exc:
                 raise DomainError('invalid_answer', '请完成全部作答，且不要重复使用配对选项。', 422) from exc
-            verdict = local_verdict(question, step, payload, require_judge)
+            verdict = local_verdict(question, step, payload, con, require_judge)
             if old:
                 con.execute("UPDATE submissions SET status='pending',correct=NULL,reason=NULL,updated_at=? WHERE id=?", (now(), submission_id))
             else:

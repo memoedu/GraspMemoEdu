@@ -470,7 +470,7 @@ class PaperService:
                     count = self._judge_count(paper, json.loads(old['items']), json.loads(old['verdicts']),
                                               json.loads(old['request_data']))
                     if count:
-                        require_judge(count)
+                        require_judge(con, count)
                 con.execute("UPDATE paper_submissions SET status='pending',reason='' WHERE id=?", (old['id'],))
                 con.execute("UPDATE review_papers SET phase='grading' WHERE id=?", (paper['id'],))
                 return old['id']
@@ -511,7 +511,7 @@ class PaperService:
             if require_judge is not None:
                 count = self._judge_count(paper, indices, verdicts, request)
                 if count:
-                    require_judge(count)
+                    require_judge(con, count)
             con.execute('INSERT INTO paper_submissions VALUES (?,?,?,?,?,?,?,?,?)',
                         (data['request_id'], self.learner_id, paper['id'], fingerprint(data), 'pending', packed(indices), packed(verdicts), '',
                          packed(request)))

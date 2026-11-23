@@ -567,7 +567,7 @@ class ReviewBackend:
                     parse_answer(question, answer)
             except (ValueError, TypeError, KeyError) as exc:
                 raise DomainError('invalid_answer', '请完成全部作答，且不要重复使用配对选项。', 422) from exc
-            verdict = local_verdict(question, state, payload, require_judge)
+            verdict = local_verdict(question, state, payload, con, require_judge)
             stamp = self._now().isoformat()
             if old:
                 con.execute("UPDATE review_submissions SET status='pending',correct=NULL,reason=NULL,updated_at=?,run_token=NULL WHERE id=?", (stamp, submission_id))

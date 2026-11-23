@@ -139,7 +139,7 @@ class ReviewAPITests(unittest.TestCase):
         self.assertEqual(result['detail']['code'], 'judge_capacity')
         self.learner.process_submission('lesson-pending')
         self.backend.submit(state['session_id'], self.payload(state, answer='correct'))
-        data.update(request_id='new-lesson-attempt')
+        data.update(request_id='new-lesson-attempt', expected_revision=self.learner.state()['revision'])
         self.call('POST', '/api/submit', data, 429)
 
     def test_lesson_completion_enrolls_without_history_backfill(self):

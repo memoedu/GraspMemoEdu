@@ -188,9 +188,11 @@ def register_training_routes(app, training, access_store, subjects, service_for,
         def semantic_judge(question, answer):
             key = 'submit:' + backend.learner_id
             if request.state.public_transport:
-                limits.consume(key, limits.submissions_per_minute)
+                limits.check(key, limits.submissions_per_minute)
             with limits.daily.reserve(backend.learner_id, access['role']):
                 pass
+            if request.state.public_transport:
+                limits.record(key)
             return judge_answer(backend.judge, question, answer)
 
         HyperskillLocalTraining(backend, payload.attempt_id).submit_local(

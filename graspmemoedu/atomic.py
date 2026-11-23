@@ -357,7 +357,7 @@ class AtomicLearningService(LearningService):
                 raise DomainError('invalid_answer', '请填写完整且有效的答案。', 422) from exc
             if con.execute('SELECT 1 FROM actions WHERE learner=? AND topic=? AND id=?', (*self.key, request_id)).fetchone():
                 raise DomainError('idempotency_conflict', '请求标识已用于其他操作。')
-            verdict = local_verdict(question, active, payload, require_judge)
+            verdict = local_verdict(question, active, payload, con, require_judge)
             timestamp = self._time().isoformat()
             if old:
                 con.execute("UPDATE submissions SET status='pending',reason=NULL,updated_at=? WHERE id=?", (timestamp, request_id))

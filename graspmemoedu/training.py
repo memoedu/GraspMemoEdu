@@ -379,7 +379,7 @@ class TrainingService:
             if row['phase'] != 'answer' or row['submission_id'] and row['submission_id'] != data['request_id']:
                 raise DomainError('training_already_answered', '本次作答已提交；需要重做时请开始新一次训练。', 409)
             if require_judge is not None and not instant_question(question):
-                require_judge(1)
+                require_judge(con, 1)
             con.execute('''INSERT INTO training_submissions VALUES (?,?,?,?,?,?,'pending',NULL)
                 ON CONFLICT(id) DO UPDATE SET status='pending',reason=NULL''',
                 (data['request_id'], self.learner_id, row['id'], fp, answer, data.get('elapsed_ms')))
