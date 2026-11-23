@@ -246,9 +246,13 @@ try {
     await ordinary.locator('.profileForm button[type=submit]').click();
     await ordinary.waitForFunction(() => document.querySelector('.profileStatus')?.textContent.includes('已保存'));
     await ordinary.goto(lessonUrl);
-    await advance.click(); await answer();
+    await advance.click();
+    const input = ordinary.locator('#answerInput');
+    await input.fill('wrong');
+    await input.press('Control+Enter');
+    await advance.waitFor();
     assert.equal(await ordinary.locator('.beginnerHint:not(:empty)').count(), 0);
-    pass('Actual wrong answers display the committed one- and two-question queue additions, then disappear or stay suppressed');
+    pass('Wrong answers report the committed queue additions, the tips expire, and Ctrl+Enter still submits when beginner mode is off');
   }
   if (auth.beginner) {
     const site = publicBase || base + '/';
@@ -264,6 +268,54 @@ try {
       await page.locator(submit).click();
     }
     const lesson = site + '#/subjects/math/topic/synthetic-course';
+    const review = site + '#/subjects/math/review/synthetic-course/module-2?session=' + encodeURIComponent(auth.beginner_review);
+    const atomic = site + '#/subjects/english/topic/atoms';
+    const bank = site + '#/subjects/math/banks/isolated-bank/group-a?question=choice';
+    const paper = site + '#/subjects/math/reviews/' + encodeURIComponent(auth.beginner_paper);
+    const answerPages = [
+      [lesson, '#answerForm', '#answerHint .beginnerOnly'],
+      [review, '#reviewAnswerForm', '#reviewAnswerForm .beginnerOnly'],
+      [atomic, '#atomicAnswerForm', '.inputHint.beginnerOnly', '复刻：请填写准确答案'],
+      [bank, '#trainingAnswerForm', '#trainingAnswerHint .beginnerOnly'],
+      [paper, '#paperAnswerForm', '#paperAnswerHint .beginnerOnly'],
+    ];
+    const cdp = await page.context().newCDPSession(page);
+    async function expectDescription(visible) {
+      const {root} = await cdp.send('DOM.getDocument');
+      const {nodeId} = await cdp.send('DOM.querySelector', {nodeId: root.nodeId, selector: '#answerInput'});
+      const {nodes} = await cdp.send('Accessibility.getPartialAXTree', {nodeId, fetchRelatives: false});
+      assert.equal((nodes[0].description?.value || '').includes('只要描述清楚正确答案'), visible);
+    }
+    async function beginnerMode(enabled) {
+      await page.goto(site + '#/settings');
+      const toggle = page.getByRole('checkbox', {name: '入门模式', exact: true});
+      await toggle.setChecked(enabled);
+      await page.locator('.profileForm button[type=submit]').click();
+      await page.waitForFunction(enabled => document.documentElement.hasAttribute('data-beginner-mode') === enabled, enabled);
+      await page.waitForFunction(() => document.querySelector('.profileStatus')?.textContent.includes('已保存'));
+    }
+    for (const enabled of [true, false]) {
+      if (!enabled) await beginnerMode(false);
+      for (const [url, form, selector, text] of answerPages) {
+        await page.goto(url);
+        await page.locator(form).waitFor();
+        const guide = text ? page.locator(selector).filter({hasText: text}) : page.locator(selector);
+        await guide.waitFor({state: 'attached'});
+        assert.equal(await guide.isVisible(), enabled);
+        if (url === lesson) {
+          await expectDescription(enabled);
+          for (const width of [320, 375, 414, 768]) {
+            await page.setViewportSize({width, height: 844});
+            assert.equal(await guide.isVisible(), enabled);
+            assert.ok(await page.locator('#answerInput').isVisible());
+          }
+          await page.screenshot({path: path.join(out, enabled ? 'inline-tip-on.png' : 'inline-tip-off.png')});
+          await page.setViewportSize({width: 1440, height: 1000});
+        }
+      }
+    }
+    await beginnerMode(true);
+    pass('One saved preference toggles guidance on Lesson, Review, atomic cards, question banks and papers, including the accessible answer description');
     const afterAnswer = page.locator('#stepCard .continueRow .primaryButton:not(#submitButton)');
     await page.goto(lesson);
     for (let i = 0; i < 2; i++) {
@@ -297,23 +349,23 @@ try {
     pass(publicBase ? 'Published practice completion does not replay from history' :
       'Practice completion appears even when a refreshed snapshot reaches Chrome before the submit response, and does not replay from history');
 
-    await page.goto(site + '#/subjects/math/review/synthetic-course/module-2?session=' + encodeURIComponent(auth.beginner_review));
+    await page.goto(review);
     await answer('#reviewAnswerInput', '#reviewSubmitButton', 'correct');
     await expectHint('本轮复习已完成', 'success', '✓');
     pass('A completed paradigm review displays its own green confirmation');
 
-    await page.goto(site + '#/subjects/english/topic/atoms');
+    await page.goto(atomic);
     await answer('#atomicAnswer', '#atomicAnswerForm button[type=submit]', '错误');
     await expectHint('本题答错', 'incorrect', '×');
     pass('A wrong atomic-card answer displays a red cross even without a schedule change');
 
-    await page.goto(site + '#/subjects/math/banks/isolated-bank/group-a?question=choice');
+    await page.goto(bank);
     await page.locator('.choiceOption input[value="b"]').check();
     await page.locator('#trainingSubmit').click();
     await expectHint('本题已加入错题本', 'incorrect', '×');
     pass('A wrong question-bank answer explains the automatic error-notebook enrollment');
 
-    await page.goto(site + '#/subjects/math/reviews/' + encodeURIComponent(auth.beginner_paper));
+    await page.goto(paper);
     await answer('#paperAnswer', '#paperSubmit', '2');
     await expectHint('本份复习已完成', 'success', '✓');
     pass('A settled review paper displays a green completion hint');
