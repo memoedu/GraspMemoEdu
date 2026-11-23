@@ -1,10 +1,12 @@
 import json
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 from graspmemoedu.lesson_display import DIRECTORY, LessonDisplay, display_hash, display_key
-from graspmemoedu.lesson_display_install import MarkupSignature, repair_assets
+from graspmemoedu.lesson_display_install import MarkupSignature, repair_assets, verify_topic
 from graspmemoedu.mathacademy_formula_audit import audit_fields
 
 
@@ -40,6 +42,30 @@ class LessonDisplayTests(unittest.TestCase):
         protected = '<aside><img src="x"></aside><span data-control="q1"></span><code>code</code>'
         self.assertEqual(repair_assets(protected + '<p>formula</p>'), repair_assets(protected))
         self.assertNotEqual(repair_assets(protected.replace('q1', 'q2')), repair_assets(protected))
+
+    def test_tex_repair_can_carry_identical_archived_translation(self):
+        tid = 'ma-topic-89'
+        broken = r'<p>$\mathbf{x}=</p>'
+        repair = '<p><span data-tex="x=2"><mjx-container></mjx-container></span></p>'
+        key = display_key('html', broken)
+        archived = display_key('html', 'Old question-bank revision')
+        previous = {'schema': 1, 'topic_id': tid, 'version': 'same', 'values': {archived: '<p>旧的题型译文</p>'}}
+        candidate = {**previous, 'tex_repairs': {key: {
+            'before_sha256': display_hash(broken), 'markdown': '$x=2$', 'html': repair}}}
+        catalog = SimpleNamespace(topics={tid: {'id': tid, 'version': 'same', 'modules': [],
+            'introductions': [{'html': broken, 'title': 'Introduction'}]}})
+        with tempfile.TemporaryDirectory() as directory, patch(
+                'graspmemoedu.lesson_display_install.QuestionBank') as bank, patch(
+                'graspmemoedu.mathacademy_import.Renderer') as renderer:
+            bank.return_value.active_revision.return_value = None
+            renderer.return_value.render.return_value = {'field': repair}
+            path = Path(directory) / 'display.json'
+            path.write_text(json.dumps(candidate), encoding='utf-8')
+            verify_topic(path, tid, catalog, Path(directory), previous=previous)
+            candidate['values'] = {archived: '<p>未经验证的覆盖</p>'}
+            path.write_text(json.dumps(candidate), encoding='utf-8')
+            with self.assertRaisesRegex(ValueError, 'invalid source bindings'):
+                verify_topic(path, tid, catalog, Path(directory), previous=previous)
 
     def test_student_display_binds_to_exact_source_without_changing_controls(self):
         topic = {'id': 'ma-topic-89', 'version': 'original', 'source_adapter': 'mathacademy'}
