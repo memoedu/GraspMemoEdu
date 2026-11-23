@@ -23,6 +23,10 @@ assert.ok(['localhost','127.0.0.1'].includes(new URL(base).hostname));
   samples(1,2); event('cut'); samples(3); event('cut'); samples(4);
   event('pause'); samples(99); event('cut'); event('resume'); samples(5); event('finish');
   assert.deepEqual(output,[[1,2],'cut',[3],'cut',[4],'pause','cut','resume',[5],'finish']);
+  output.length = 0;
+  const fresh = new Processor();
+  fresh.process([[new Float32Array(960).fill(0.5)]]);
+  assert.deepEqual(output.map(frame => frame.length), [160,800]);
 }
 const require = createRequire(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
 const {chromium} = require('playwright');
