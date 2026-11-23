@@ -18,6 +18,24 @@ page.on('pageerror', error => errors.push(error.message));
 page.setDefaultTimeout(10000);
 
 try {
+  const cold = await browser.newContext();
+  try {
+    await cold.route('**/vendor/formula/editor.mjs*', async route => {
+      await new Promise(resolve => setTimeout(resolve, 200));
+      await route.continue();
+    });
+    const tab = await cold.newPage();
+    await tab.goto(base + '/#/subjects/math/banks/isolated-bank/group-a?question=essay');
+    const field = tab.locator('.answerForm [name=answer]');
+    await field.pressSequentially('\\frac{3}{7}');
+    const formula = tab.locator('.answerForm math-field');
+    await formula.waitFor();
+    await tab.keyboard.type('+2');
+    await tab.waitForFunction(() => document.querySelector('.answerForm [name=answer]').value === '\\frac{3}{7}+2');
+    assert.equal(await formula.evaluate(m => m === document.activeElement), true);
+    assert.match(await formula.evaluate(m => m.getValue('math-ml')), /<mo>\+<\/mo><mn>2<\/mn>/);
+  } finally { await cold.close(); }
+  console.log('PASS uninterrupted keyboard input through a cold formula editor mount');
   await page.goto(`${base}/#/subjects/math/banks/isolated-bank/group-a?question=essay`);
   const answer = page.locator('.answerForm textarea[name=answer]');
   const surface = page.locator('.answerForm .formulaInput .ProseMirror');
@@ -100,6 +118,7 @@ try {
     }, [await math.elementHandle(), digit]);
     const {x, y} = await point.jsonValue();
     await page.mouse.click(x, y);
+    await page.waitForFunction(field => document.activeElement === field, await math.elementHandle());
     await page.keyboard.press('Shift+ArrowLeft');
     await page.keyboard.type(replacement);
   }
