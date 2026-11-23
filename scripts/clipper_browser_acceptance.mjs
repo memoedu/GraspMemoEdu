@@ -150,6 +150,19 @@ try {
     await main.mouse.wheel(0, 400);
   }
   assert.ok(await dock.isVisible());
+  if (!inPage && engine === 'chrome') {
+    await dock.evaluate(element => Object.assign(element.style, {width: '465px', height: '385px'}));
+    await dock.getByRole('button', {name: '铺满标签页', exact: true}).click();
+    const expanded = await dock.boundingBox();
+    assert.ok(expanded.width >= desktopSize.width - 1 && expanded.height >= desktopSize.height - 1);
+    await dock.getByRole('button', {name: '还原', exact: true}).click();
+    assert.equal(Math.round((await dock.boundingBox()).width), 465);
+    await dock.getByRole('button', {name: '最小化', exact: true}).click();
+    assert.ok((await dock.boundingBox()).height < 120);
+    await dock.getByRole('button', {name: '恢复', exact: true}).click();
+    assert.equal(Math.round((await dock.boundingBox()).height), 385);
+    checks.push('dock fills and minimizes after resize and restores the chosen size');
+  }
   await dock.getByRole('button', {name: '最小化', exact: true}).click();
   assert.equal(await dock.locator('.clipperPanel').isVisible(), false);
   await dock.getByRole('button', {name: '恢复', exact: true}).click();
