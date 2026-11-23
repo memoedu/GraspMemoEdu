@@ -72,10 +72,18 @@ test('a selected outline root does not reintroduce ancestors or out-of-scope top
   assert.deepEqual(result.entries.map(entry => entry.topic_id), ['draft']);
 });
 
-test('courses without drafts retain their current task and hierarchy views', () => {
-  const data = {course: {id: 'course'}, tasks: [{id: 'one', type: 'Lesson'}], topics: [], pending_hierarchy: []};
+test('courses without drafts show reviews first and preserve the order within each task kind', () => {
+  const tasks = [
+    {id: 'lesson:one', type: 'Lesson', dependency_ready: true},
+    {id: 'review:first', type: 'Review', dependency_ready: false},
+    {id: 'lesson:two', type: 'Lesson', dependency_ready: false},
+    {id: 'review:second', type: 'Review', dependency_ready: false},
+  ];
+  const data = {course: {id: 'course'}, tasks, topics: [], pending_hierarchy: []};
+  const inputOrder = tasks.map(task => task.id);
   const result = courseDisplayEntries(data, []);
-  assert.equal(result.entries, data.tasks);
+  assert.deepEqual(result.entries.map(task => task.id), ['review:first', 'review:second', 'lesson:one', 'lesson:two']);
+  assert.deepEqual(data.tasks.map(task => task.id), inputOrder);
   assert.equal(result.hierarchy, data.pending_hierarchy);
   assert.deepEqual(result.drafts, []);
 });
