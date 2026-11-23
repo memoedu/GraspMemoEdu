@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 const [output, base = 'http://127.0.0.1:18894'] = process.argv.slice(2);
+assert.equal(new URL(base).hostname, '127.0.0.1', 'Use the isolated question-bank fixture');
 const require = createRequire(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
 const {chromium} = require('playwright');
 await mkdir(output, {recursive: true});
@@ -22,18 +23,34 @@ try {
   const surface = page.locator('.answerForm .formulaInput .ProseMirror');
   const menu = page.locator('.inputCompletions');
   const option = label => menu.getByRole('option', {name: label, exact: true});
-  const live = answer.locator('..').locator('.answerFormulaPreview:visible');
+  const math = surface.locator('math-field');
   async function typeAnswer(text) {
     await answer.fill('');
     await answer.pressSequentially(text);
   }
-  async function checkInk(source, stored, expected) {
-    await typeAnswer(source);
-    await live.locator('.katex-html').waitFor();
-    await page.waitForFunction(([selector, expression]) =>
-      document.querySelector(selector)?.textContent === expression,
-    ['.answerForm [name=answer] + .answerFormulaPreview annotation', expected]);
-    assert.equal(await answer.inputValue(), stored);
+  async function clearRich(root) {
+    if (await root.evaluate(el => el.contains(document.activeElement) && document.activeElement.localName === 'math-field'))
+      await page.keyboard.press('Escape');
+    await root.focus();
+    await page.keyboard.press('Control+a');
+    await page.keyboard.press('Backspace');
+    await root.locator('math-field').waitFor({state: 'detached'});
+    await page.waitForFunction(el => !el.textContent.trim() && document.activeElement === el, await root.elementHandle());
+  }
+  async function checkRendered(field, root, source, expectedTag, stored) {
+    if (await root.isVisible()) await clearRich(root);
+    else { await field.fill(''); await field.focus(); }
+    await page.keyboard.type(source);
+    const formula = root.locator('math-field');
+    await formula.waitFor();
+    await page.waitForFunction(({id, tag, stored}) => {
+      const input = document.querySelector(id);
+      return input.value === stored && input.parentElement.querySelector('math-field')?.getValue('math-ml').includes('<' + tag + '>');
+    }, {id: '.answerForm textarea[name=answer]', tag: expectedTag, stored});
+    assert.equal(await field.isVisible(), false);
+    assert.equal(await root.locator('.katex').count(), 0);
+    assert.equal(await page.locator('.answerFormulaPreview').count(), 0);
+    return formula;
   }
   for (const prefix of ['f', 'F']) {
     await typeAnswer(prefix);
@@ -56,30 +73,42 @@ try {
   await surface.locator('math-field').waitFor();
   assert.equal(await surface.locator('math-field').evaluate(math => math.value), 'x!');
   assert.equal(await answer.inputValue(), '\\(x!\\)');
-  await surface.press('Control+a');
-  await surface.press('Backspace');
+  await clearRich(surface);
   assert.equal(await answer.inputValue(), '');
   await page.reload();
   await answer.waitFor();
   await typeAnswer('f(');
-  assert.equal(await answer.inputValue(), 'f()');
-  assert.equal(await answer.evaluate(input => input.selectionEnd), 2);
-  await answer.pressSequentially('x)');
-  assert.equal(await answer.inputValue(), 'f(x)');
+  await math.waitFor();
+  await page.waitForFunction(() => document.activeElement.localName === 'math-field');
+  await page.keyboard.type('x)');
+  await page.waitForFunction(() => document.querySelector('.answerForm [name=answer]').value === 'f(x)');
   assert.equal(await menu.isVisible(), false);
-  await checkInk('sin(cos(x))', 'sin(cos(x))', '\\sin \\left(\\cos \\left(x\\right)\\right)');
-  await checkInk('a_{10}', 'a_{10}', 'a_{10}');
-  await checkInk('x^12', 'x^{12}', 'x^{12}');
-  await checkInk('\\frac{1}{2}', '\\frac{1}{2}', '\\frac{1}{2}');
-  await checkInk('3/7', '3/7', '\\frac{3}{7}');
-  await page.screenshot({path: path.join(output, 'direct-answer-preview.png')});
-  await answer.press('Tab');
-  await surface.locator('math-field').waitFor();
-  assert.equal(await surface.locator('math-field').evaluate(math => math.value), '\\frac{3}{7}');
-  assert.equal(await answer.inputValue(), '3/7');
-  console.log('PASS direct answer rendering, native pairs and scripts, truthful previews and saved spelling');
-  await surface.press('Control+a');
-  await surface.press('Backspace');
+  await checkRendered(answer, surface, 'sin(cos(x))', 'mrow', 'sin(cos(x))');
+  await checkRendered(answer, surface, 'a_{10}', 'msub', 'a_{10}');
+  await checkRendered(answer, surface, 'x^12', 'msup', 'x^{12}');
+  await checkRendered(answer, surface, '\\frac{1}{2}', 'mfrac', '\\frac{1}{2}');
+  await checkRendered(answer, surface, '3/7', 'mfrac', '3/7');
+  const fraction = math.locator('.ML__mfrac');
+  await fraction.waitFor();
+  // Place the caret on each rendered digit and replace it from the keyboard.
+  for (const [digit, replacement] of [['3', '5'], ['7', '9']]) {
+    const point = await page.waitForFunction(([field, digit]) => {
+      const glyph = [...field.shadowRoot.querySelectorAll('.ML__mfrac span')].find(el =>
+        !el.childElementCount && el.textContent === digit && el.getBoundingClientRect().width);
+      const rect = glyph?.getBoundingClientRect();
+      return rect?.height && {x: rect.x + rect.width * .85, y: rect.y + rect.height / 2};
+    }, [await math.elementHandle(), digit]);
+    const {x, y} = await point.jsonValue();
+    await page.mouse.click(x, y);
+    await page.keyboard.press('Shift+ArrowLeft');
+    await page.keyboard.type(replacement);
+  }
+  await page.waitForFunction(() => document.querySelector('.answerForm [name=answer]').value === '5/9');
+  assert.equal(await math.evaluate(e => e.getValue('math-ml')), '<mfrac><mn>5</mn><mn>9</mn></mfrac>');
+  assert.equal(await math.evaluate(e => e === document.activeElement), true);
+  await page.screenshot({path: path.join(output, 'inline-answer.png')});
+  console.log('PASS directly editing the rendered numerator and denominator in the single answer field');
+  await clearRich(surface);
   assert.equal(await answer.inputValue(), '');
   await page.reload();
   await answer.waitFor();
@@ -87,7 +116,6 @@ try {
   await option('f').locator('.katex').waitFor();
   await option('floor').locator('.katex').waitFor();
   await answer.press('Tab');
-  const math = surface.locator('math-field');
   await math.waitFor();
   assert.equal(await math.evaluate(element => element === document.activeElement), true);
   await page.keyboard.press('x');
@@ -110,6 +138,19 @@ try {
   await page.keyboard.press('Control+z');
   assert.match(await answer.inputValue(), /f.*x/);
   console.log('PASS first-letter preview, template cursor, clipboard, delete and undo');
+  await clearRich(surface);
+  const mixed = '已知 \\frac{\\text{distance}}{t}，求速度。';
+  await page.evaluate(text => navigator.clipboard.writeText(text), mixed);
+  await page.keyboard.press('Control+v');
+  await math.locator('.ML__mfrac').waitFor();
+  assert.equal(await answer.inputValue(), mixed);
+  assert.equal(await answer.isVisible(), false);
+  assert.equal(await surface.evaluate(el => el.innerText.includes('\\frac')), false);
+  assert.match(await surface.innerText(), /已知[\s\S]*求速度/);
+  await page.reload();
+  await surface.locator('math-field .ML__mfrac').waitFor();
+  assert.equal(await answer.inputValue(), mixed);
+  console.log('PASS paste and restored mixed-prose draft render directly in the answer');
 
   await page.goto(`${base}/#/settings`);
   await page.locator('#userMenuButton').click();
@@ -131,6 +172,11 @@ try {
   await page.screenshot({path: path.join(output, 'formula-replacement.png')});
   assert.deepEqual(errors, []);
   console.log('PASS typed LaTeX and range replacement through the shared dropdown');
+  await clearRich(composer);
+  await page.evaluate(() => navigator.clipboard.writeText('\\sqrt{y}'));
+  await page.keyboard.press('Control+v');
+  await composer.locator('math-field').waitFor();
+  assert.equal(await feedback.inputValue(), '\\(\\sqrt{y}\\)');
 
   await page.locator('dialog[open]').getByRole('button', {name: '取消', exact: true}).click();
   await page.setViewportSize({width: 390, height: 844});
@@ -163,6 +209,9 @@ try {
   await page.waitForFunction(() => /f.*x/.test(document.querySelector('#formula-help-fixture').value));
   await page.locator('.chatEditor').getByRole('button', {name: '预览'}).click();
   await page.locator('.chatEditor .chatPreview .katex').waitFor();
+  assert.equal(await page.locator('.chatEditor .formulaInput').isVisible(), false);
+  await page.locator('.chatEditor').getByRole('button', {name: '预览'}).click();
+  assert.equal(await page.locator('.chatEditor math-field').isVisible(), true);
   assert.deepEqual(errors, []);
   console.log('PASS help composer: CodeMirror completion, formula editing and existing Markdown preview');
 
@@ -175,36 +224,42 @@ try {
   await page.goto(bank + 'exact');
   const literal = page.locator('.answerForm textarea[name=answer]');
   await literal.fill('5000');
-  await literal.locator('..').locator('.katex-html').waitFor();
   assert.equal(await literal.inputValue(), '5000');
   assert.equal(await menu.isVisible(), false);
-  await literal.fill('');
-  await literal.pressSequentially('x^12');
-  assert.equal(await literal.inputValue(), 'x^12');
-  await literal.locator('..').locator('.katex .msupsub').waitFor();
-  await literal.fill('');
-  await literal.pressSequentially('a_i+1');
-  assert.equal(await literal.inputValue(), 'a_{i+1}');
-  const command = page.locator('.answerConversion textarea:visible');
+  const exactRoot = literal.locator('..').locator('.formulaInput .ProseMirror').first();
+  await checkRendered(literal, exactRoot, 'x^12', 'msup', 'x^12');
+  await checkRendered(literal, exactRoot, 'a_i+1', 'msub', 'a_{i+1}');
+  const command = page.locator('.answerConversion textarea');
   await command.pressSequentially('f');
   await option('f').waitFor();
   await command.press('Tab');
-  await command.pressSequentially('y)');
-  assert.equal(await command.inputValue(), 'f(y)');
-  await command.locator('..').locator('.katex-html').waitFor();
+  const commandMath = page.locator('.answerConversion math-field');
+  await commandMath.waitFor();
+  await page.keyboard.type('y)');
+  await page.waitForFunction(() => document.querySelector('.answerConversion textarea').value === 'f(y)');
+  assert.equal(await command.isVisible(), false);
   assert.equal(await literal.inputValue(), 'a_{i+1}');
+  const [response] = await Promise.all([
+    page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname.endsWith('/submit')),
+    page.locator('#trainingSubmit').click(),
+  ]);
+  assert.ok(response.ok(), String(response.status()));
+  assert.equal(response.request().postDataJSON().answer, 'a_{i+1}');
   await page.goto(bank + 'blank');
-  const blank = page.locator('.passageBlankText:visible').first();
+  const blank = page.locator('.passageBlankText').first();
   await blank.pressSequentially('2/3');
-  await blank.locator('..').locator('.katex .mfrac').waitFor();
-  assert.equal(await blank.inputValue(), '2/3');
+  const blankRoot = blank.locator('..').locator('.formulaInput .ProseMirror');
+  await blankRoot.locator('math-field .ML__mfrac').waitFor();
+  await page.waitForFunction(() => document.querySelector('.passageBlankText').value === '2/3');
   assert.deepEqual(JSON.parse(await page.locator('.answerForm [name=answer]').inputValue()), {a: '2/3'});
-  await blank.fill('example');
-  assert.equal(await blank.locator('..').locator('.answerFormulaPreview').isVisible(), false);
+  await clearRich(blankRoot);
+  await page.keyboard.type('example');
+  assert.equal(await blank.inputValue(), 'example');
+  assert.equal(await blankRoot.locator('math-field').count(), 0);
   for (const width of [320, 375, 414, 768]) {
     await page.setViewportSize({width, height: 844});
-    await blank.fill('');
-    await blank.pressSequentially('f');
+    await clearRich(blankRoot);
+    await page.keyboard.type('f');
     await option('floor').locator('.katex-html').waitFor();
     const bounds = await menu.boundingBox();
     assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width);
@@ -214,7 +269,7 @@ try {
   console.log('PASS exact, command and passage inputs, original payloads and responsive rendered suggestions');
 } catch (error) {
   await page.screenshot({path: path.join(output, 'failure.png')}).catch(() => {});
-  console.error(errors);
+  console.error(errors, await page.evaluate(() => ({focus: document.activeElement.localName, field: document.querySelector('.answerForm [name=answer]')?.value, math: [...document.querySelectorAll('math-field')].map(m => [m.value, m.getValue('math-ml'),m.position])})));
   throw error;
 } finally {
   await browser.close();
