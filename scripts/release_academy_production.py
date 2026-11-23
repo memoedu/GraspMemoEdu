@@ -56,13 +56,20 @@ def main():
             raise ValueError('Atomic replacement requires matching package and guarded release flags')
         if (package_manifest.get('preserve_atomic_progress') is True) != atomic_revision:
             raise ValueError('Atomic content revision requires matching package and guarded release flags')
+        if (package_manifest.get('reset_reading_progress') is True) != (atomic_reading and not atomic_replacement):
+            raise ValueError('Atomic reading migration requires matching package and guarded release flags')
+        if (package_manifest.get('adapter') == 'hyperskill' and package_manifest.get('topic_format_version') == 2
+                and not practice_revision) != bool(migration):
+            raise ValueError('Hyperskill migration requires matching package and guarded release flags')
+    content_only = not (release['files'] or database_transition or release.get('question_bank_id'))
     def digest(path): return hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
     for name, spec in release['files'].items():
         if not (app / name).resolve().is_relative_to(app) or not (stage / 'source' / name).resolve().is_relative_to(stage / 'source'):
             raise ValueError('Invalid release path')
         if digest(app / name) != spec['before'] or digest(stage / 'source' / name) != spec['after']:
             raise ValueError('Concurrent source change or release corruption: ' + name)
-    subprocess.run(['/usr/local/sbin/graspmemoedu-backup'], check=True)
+    if not content_only:
+        subprocess.run(['/usr/local/sbin/graspmemoedu-backup'], check=True)
     pointer = data / 'active-content.json'
     previous_pointer = pointer.read_bytes() if pointer.exists() else None
     # A failed content release must not leave newly published native banks behind.
@@ -94,11 +101,8 @@ def main():
                 if target.is_symlink():
                     raise ValueError('Reading bank must not be a symbolic link')
                 bank_before[target] = target.read_bytes() if target.exists() else None
-    timer = subprocess.run(['systemctl', 'is-active', '--quiet', 'graspmemoedu-healthcheck.timer']).returncode == 0
+    timer = not content_only and subprocess.run(['systemctl', 'is-active', '--quiet', 'graspmemoedu-healthcheck.timer']).returncode == 0
     variant_worker = (atomic_reading or atomic_revision) and subprocess.run(['systemctl', 'is-active', '--quiet', 'graspmemoedu-variants.service']).returncode == 0
-    if timer: subprocess.run(['systemctl', 'stop', 'graspmemoedu-healthcheck.timer'], check=True)
-    if variant_worker: subprocess.run(['systemctl', 'stop', 'graspmemoedu-variants.service'], check=True)
-    subprocess.run(['systemctl', 'stop', 'graspmemoedu'], check=True)
     def snapshot():
         with sqlite3.connect(f'file:{data / "learning.sqlite3"}?mode=ro', uri=True) as con:
             con.execute('BEGIN')
@@ -113,8 +117,14 @@ def main():
             return hashes, answers
     changed = []
     database_backup = stage / 'before-migration.sqlite3'
+    service_stopped = False
     try:
-        before_state = snapshot()
+        if timer: subprocess.run(['systemctl', 'stop', 'graspmemoedu-healthcheck.timer', 'graspmemoedu-healthcheck.service'], check=True)
+        if variant_worker: subprocess.run(['systemctl', 'stop', 'graspmemoedu-variants.service'], check=True)
+        if not content_only:
+            subprocess.run(['systemctl', 'stop', 'graspmemoedu'], check=True)
+            service_stopped = True
+        before_state = snapshot() if not content_only and not database_transition else None
         if database_transition:
             with sqlite3.connect(data / 'learning.sqlite3') as source, sqlite3.connect(database_backup) as destination:
                 source.backup(destination)
@@ -171,18 +181,31 @@ def main():
                 from graspmemoedu.atomic_reading_upgrade import verify_transition
             ids = {t['id'] for c in package_catalog['courses'] for t in c['topics']}
             transition = verify_transition(database_backup, data / 'learning.sqlite3', ids)
+        elif content_only:
+            if installed.get('learning_records_changed') is not False:
+                raise RuntimeError('Content-only installation reported a learning database change')
         else:
             after_hashes, after_answers = snapshot()
             before_hashes, before_answers = before_state
             if (before_hashes != after_hashes or (before_answers is None) != (after_answers is None)
                     or before_answers is not None and not before_answers <= after_answers):
                 raise RuntimeError('Content installation unexpectedly changed existing database rows')
-        subprocess.run(['systemctl', 'start', 'graspmemoedu'], check=True); wait_for_health()
+        content_changed = ((pointer.read_bytes() if pointer.exists() else None) != previous_pointer
+                           or any(digest(path) != (hashlib.sha256(raw).hexdigest() if raw is not None else None)
+                                  for path, raw in bank_before.items()))
+        if service_stopped or content_changed:
+            subprocess.run(['systemctl', 'restart', 'graspmemoedu'], check=True)
+        wait_for_health()
         receipt = {'target': 'production', 'health': 'passed', 'source_commit': release['commit'],
-                   'existing_database_rows_unchanged_at_install': not database_transition, **transition, **installed}
-        (data / 'content-activation-history' / (installed.get('generation', 'academy') + '.production.json')).write_text(json.dumps(receipt, indent=2))
+                   'existing_database_rows_unchanged_at_install': not database_transition,
+                   'full_site_backup': not content_only, **transition, **installed}
+        if not content_only or content_changed:
+            (data / 'content-activation-history' / (installed.get('generation', 'academy') + '.production.json')).write_text(json.dumps(receipt, indent=2))
         print(json.dumps(receipt), flush=True)
     except BaseException:
+        if content_only and (pointer.read_bytes() if pointer.exists() else None) == previous_pointer and all(
+                (target.read_bytes() if target.exists() else None) == previous for target, previous in bank_before.items()):
+            raise
         subprocess.run(['systemctl', 'stop', 'graspmemoedu'], check=True)
         for name in reversed(changed):
             backup = stage / 'rollback' / name
@@ -199,11 +222,16 @@ def main():
         if database_transition and database_backup.exists():
             with sqlite3.connect(database_backup) as source, sqlite3.connect(data / 'learning.sqlite3') as destination:
                 source.backup(destination)
-        subprocess.run(['systemctl', 'start', 'graspmemoedu'], check=True); wait_for_health()
+        subprocess.run(['systemctl', 'restart', 'graspmemoedu'], check=True); wait_for_health()
         raise
     finally:
         if variant_worker: subprocess.run(['systemctl', 'start', 'graspmemoedu-variants.service'], check=True)
         if timer: subprocess.run(['systemctl', 'start', 'graspmemoedu-healthcheck.timer'], check=True)
 
 
-if __name__ == '__main__': main()
+if __name__ == '__main__':
+    import fcntl
+
+    with open('/run/lock/graspmemoedu-content-release.lock', 'a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        main()

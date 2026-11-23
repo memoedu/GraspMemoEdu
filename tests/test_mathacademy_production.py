@@ -38,7 +38,8 @@ class ProductionActivationTests(unittest.TestCase):
     def generation(self):
         return json.loads(self.pointer.read_text(encoding='utf-8'))['generation']
 
-    def execute(self, *, monitor_during_install=False, fail_new_health=False, monitor_during_rollback=False):
+    def execute(self, *, monitor_during_install=False, fail_new_health=False, monitor_during_rollback=False,
+                unchanged=False):
         def mapped_path(value):
             return {'/tmp': self.root, '/var/lib/graspmemoedu': self.data}.get(str(value), Path(value))
 
@@ -46,11 +47,14 @@ class ProductionActivationTests(unittest.TestCase):
             self.state.update(active=True, generation=self.generation())
 
         def command(args, **kwargs):
+            self.assertNotIn('/usr/local/sbin/graspmemoedu-backup', args)
             if args[0] == 'runuser':
+                self.assertTrue(self.state['active'])
                 if monitor_during_install:
                     start()  # An independent monitor loads the previous pointer.
-                self.activate(self.new)
-                return SimpleNamespace(returncode=0, stdout=json.dumps({'generation': self.new}))
+                if not unchanged:
+                    self.activate(self.new)
+                return SimpleNamespace(returncode=0, stdout=json.dumps({'generation': self.generation()}))
             if args[:2] == ['systemctl', 'is-active']:
                 return SimpleNamespace(returncode=3)
             if args[:1] == ['systemctl'] and args[-1] == 'graspmemoedu':
@@ -60,6 +64,7 @@ class ProductionActivationTests(unittest.TestCase):
                     if monitor_during_rollback and self.state['stops'] > 1:
                         start()  # Before the previous pointer is restored.
                 elif args[1] == 'restart' or (args[1] == 'start' and not self.state['active']):
+                    self.assertFalse(unchanged)
                     start()
             return SimpleNamespace(returncode=0)
 
@@ -99,6 +104,11 @@ class ProductionActivationTests(unittest.TestCase):
         self.assertTrue(self.state['active'])
         self.assertEqual(self.state['generation'], self.old)
         self.assertFalse((self.data / 'content-activation-history' / (self.new + '.production.json')).exists())
+
+    def test_repeat_checks_health_without_backup_or_restart(self):
+        self.execute(unchanged=True)
+        self.assertEqual(self.generation(), self.old)
+        self.assertEqual(self.state['stops'], 0)
 
 
 if __name__ == '__main__':
