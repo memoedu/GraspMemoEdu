@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {calculate} from '../web/calculator-engine.js';
 import {expandScientificNotation} from '../web/calculator-panel.js';
-import {calculatorWorksheets, expressionCompletions, permitsModule, tools} from '../web/calculator-policy.js';
+import {calculatorWorksheets, expressionCompletions, expressionExtensions, permitsModule, scientificCategories, tools} from '../web/calculator-policy.js';
 import {formulaTemplates, matchesCompletion, nativeFormulaSample} from '../web/formula-catalog.js';
 import previews from '../web/vendor/formula/previews.mjs';
 
@@ -66,7 +66,7 @@ test('letter registers work at every tier and take precedence over expression as
   await assert.rejects(evaluate('A', basic, {memory: {A: complex}}), {code: 'restricted'});
 });
 
-test('toolbar lists available worksheets without duplicating scientific constants', () => {
+test('standalone and integrated tools cover every authorized operation', () => {
   const ids = config => calculatorWorksheets(config).map(([id]) => id);
   assert.deepEqual(ids(undefined), []);
   assert.deepEqual(ids({level: 'none'}), []);
@@ -74,8 +74,35 @@ test('toolbar lists available worksheets without duplicating scientific constant
   assert.deepEqual(ids({level: 'scientific', enable_modules: ['graph']}), ['expression', 'graph']);
   assert.deepEqual(ids({level: 'scientific', disable_keys: ['evaluate']}), []);
   assert.deepEqual(ids({level: 'advanced', enable_modules: ['modular'], disable_modules: ['matrix'],
-    disable_keys: ['describe', 'linear_regression']}), ['expression', 'graph', 'integral', 'probability', 'modular']);
-  assert.equal(ids(cas).includes('symbolic'), true);
+    disable_keys: ['describe', 'linear_regression']}), ['expression', 'graph']);
+  const standalone = calculatorWorksheets(cas);
+  assert.deepEqual(standalone.map(([id]) => id), ['expression', 'graph', 'statistics', 'symbolic', 'machine_learning']);
+  assert.deepEqual(standalone.find(([id]) => id === 'symbolic')[3].map(([key]) => key), ['antiderivative', 'solve', 'differentiate']);
+  assert.deepEqual(standalone.find(([id]) => id === 'machine_learning')[3].map(([key]) => key), ['classification', 'pca']);
+  const integrated = [...standalone, ...scientificCategories(cas)].flatMap(([, , , specs]) => specs?.map(([key]) => key) || []);
+  assert.deepEqual([...integrated, 'simplify', 'modular_power'].sort(), tools.flatMap(([, , , specs]) => specs.map(([key]) => key)).sort());
+  assert.deepEqual(ids({...cas, disable_keys: ['evaluate']}), modules);
+});
+
+test('every inline function uses the same calculation as its worksheet', async () => {
+  for (const [operation, [module, fields]] of expressionExtensions) {
+    const direct = await evaluate(operation + '(' + fields.map(([, example]) => example).join(', ') + ')', cas);
+    const descriptors = tools.find(([id]) => id === module)[3].find(([id]) => id === operation)[3];
+    const form = await run(module, operation, Object.fromEntries(descriptors.map(([field, , , example]) => [field, example])));
+    if (form.entries) approx(direct.numeric, form.entries[0][1]);
+    else assert.equal(direct.text, form.text, operation);
+  }
+  approx((await evaluate('2*sigmoid(-1)+cross_entropy(log_softmax([1000,1001,1002]),3)', cas)).numeric,
+    2 / (1 + Math.E) + 0.40760596444438);
+  const array = (await evaluate('softmax([1,2,3])', cas)).array;
+  approx((await evaluate('cosine_similarity(Ans, A)', cas, {answer: array, memory: {A: array}})).numeric, 1);
+  const restricted = {...cas, disable_keys: ['sigmoid', 'matrix_inverse']};
+  await assert.rejects(evaluate('sigmoid(0)', restricted), {code: 'restricted'});
+  await assert.rejects(evaluate('matrix_inverse([[1,0],[0,1]])', restricted), {code: 'restricted'});
+  await assert.rejects(evaluate('relu(2)', {...cas, disable_modules: ['machine_learning']}), {code: 'restricted'});
+  assert.ok(expressionCompletions(cas, {extensions: true}).some(({value}) => value === 'sigmoid('));
+  assert.ok(expressionCompletions(restricted, {extensions: true}).every(({value}) => value !== 'sigmoid('));
+  assert.equal((await run('symbolic', 'simplify', {expression: '2*x+3*x+y-y'})).text, '5*x');
 });
 
 test('scientific and higher calculators discover variables and evaluate with numeric bindings', async () => {

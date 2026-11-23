@@ -46,6 +46,14 @@ const assign = dialog.getByRole('button', {name: '赋值', exact: true});
 const variable = name => dialog.getByRole('textbox', {name: `变量 ${name}`, exact: true});
 const copyResult = dialog.getByRole('button', {name: '复制结果', exact: true});
 const recall = dialog.getByRole('button', {name: '调用储值', exact: true});
+const more = dialog.locator('.calculatorMore');
+const categories = more.getByRole('combobox', {name: '类别'});
+const extensionForm = more.locator('.calculatorExtensionForm form');
+const calculateExtension = () => extensionForm.getByRole('button', {name: '计算结果'}).click();
+async function category(id) {
+  if (!await categories.isVisible()) await more.locator(':scope > summary').click();
+  await categories.selectOption(id);
+}
 async function store(letter, result) {
   await copyResult.click();
   assert.equal(await page.evaluate(() => window.copiedCalculatorText), result);
@@ -301,20 +309,24 @@ try {
 
   await next.click();
   await dialog.waitFor({state: 'detached'});
-  assert.deepEqual(await toolIds(), ['expression', 'graph', 'integral', 'matrix', 'statistics', 'machine_learning', 'modular']);
+  assert.deepEqual(await toolIds(), ['expression', 'graph', 'statistics', 'machine_learning']);
   assert.deepEqual(await toolbar.locator('.questionToolGroup').evaluateAll(groups => groups.map(group =>
     [...group.querySelectorAll('[data-question-tool]')].map(tool => tool.dataset.questionTool))), [
-    ['expression', 'graph', 'integral'],
-    ['matrix', 'statistics', 'machine_learning'],
-    ['modular'],
+    ['expression', 'graph'],
+    ['statistics', 'machine_learning'],
   ]);
   assert.deepEqual(await sidebarOrientation('#stepCard'), {
     rightOfCard: true, leftHistory: true, direction: 'row', fits: true,
   });
   await page.screenshot({path: path.join(output, 'desktop-toolbar.png')});
   checks.push('Tools stay next to the card at 320–1440px, switch direction on resize, and organize related worksheets in groups.');
-  await select('matrix');
-  assert.equal(await field('a').count(), 1);
+  await open();
+  assert.equal(await categories.isVisible(), false);
+  await category('matrix');
+  assert.equal(await more.locator('[data-calculator-key="matrix_inverse"]').count(), 0);
+  await enter('determinant([[1,2],[3,4]])+4', '2');
+  await more.getByText('表单输入', {exact: true}).click();
+  await field('a').waitFor({state: 'attached'});
   assert.equal(await dialog.locator('option[value="matrix_inverse"]').evaluate(option => option.disabled), true);
   await dialog.getByRole('combobox', {name: '运算'}).selectOption('determinant');
   const matrix = dialog.getByRole('group', {name: '矩阵 A'});
@@ -327,28 +339,35 @@ try {
   await dialog.locator('.calculatorToolKeyboard [data-calculator-key="digit_3"]').click();
   assert.equal(await cell(1, 1).inputValue(), '3');
   await cell(1, 2).fill('1'); await cell(2, 1).fill('2'); await cell(2, 2).fill('4');
-  await calculate(); await text('10');
+  await calculateExtension(); await text('10');
   await matrix.getByRole('button', {name: '文本输入'}).click();
   assert.equal(await field('a').inputValue(), '[[3,1],[2,4]]');
-  await field('a').fill('[[1,2],[3,4]]'); await calculate(); await text('-2');
+  await field('a').fill('[[1,2],[3,4]]'); await calculateExtension(); await text('-2');
   await matrix.getByRole('button', {name: '结构化输入'}).click();
   assert.equal(await cell(2, 1).inputValue(), '3');
   await page.screenshot({path: path.join(output, 'desktop-matrix.png')});
   checks.push('Matrix cells accept keypad clicks and typing. Raw editing and grids round-trip, with the same engine.');
-  await select('modular');
-  await dialog.getByText('屏幕键盘', {exact: true}).click();
-  assert.equal(await dialog.locator('.calculatorToolKeyboard [data-calculator-key="power"]').isVisible(), true);
-  assert.equal(await dialog.locator('.calculatorToolKeyboard [data-calculator-key="sin"]').count(), 0);
-  await field('expression').fill('2^1000000000000000000000000000000000000000');
-  await field('modulus').fill('7');
-  await calculate(); await text('2');
-  await select('machine_learning');
-  await dialog.getByRole('combobox', {name: '运算'}).selectOption('softmax');
-  await dialog.getByRole('button', {name: '文本输入'}).click();
-  await field('x').fill('1000,1001,1002');
-  await calculate();
+  const mod = dialog.getByRole('button', {name: '精确模幂', exact: true});
+  await expressionInput.fill('2^1000000000000000000000000000000000000000');
+  await mod.click();
+  await dialog.getByRole('textbox', {name: '正整数模数'}).fill('7');
+  await dialog.getByRole('button', {name: '取模', exact: true}).click(); await text('2');
+  await mod.click();
+  await category('machine_learning');
+  await expressionInput.fill('');
+  await more.getByRole('button', {name: 'Softmax', exact: true}).click();
+  assert.equal(await expressionInput.inputValue(), 'softmax([1000,1001,1002])');
+  await expressionInput.press('Enter');
   await outputBox.getByText(/0\.665240/).waitFor();
-  checks.push('The per-question grant opens modular exponentiation and ML. Probability and inverse remain unavailable.');
+  await enter('2*sigmoid(0) + cosine_similarity(Ans, Ans)', '2');
+  await expressionInput.fill('cross_e');
+  await option('cross_entropy').waitFor();
+  await expressionInput.press('Escape');
+  await page.screenshot({path: path.join(output, 'desktop-ml-functions.png')});
+  await select('machine_learning');
+  assert.deepEqual(await dialog.getByRole('combobox', {name: '运算'}).locator('option').evaluateAll(options =>
+    options.map(option => option.value)), ['classification', 'pca']);
+  checks.push('Exact modular powers and composable ML functions share the expression. PCA and classification stay separate.');
 
   await select('expression');
   await expressionInput.fill('x+y+z');
@@ -402,7 +421,7 @@ try {
   await enter('F+1', '6');
   await page.setViewportSize({width: 375, height: 840});
   await launch.press('End');
-  assert.equal(await tool('modular').evaluate(button => button === document.activeElement), true);
+  assert.equal(await tool('machine_learning').evaluate(button => button === document.activeElement), true);
   assert.ok(await toolbar.locator('.questionToolGroups').evaluate(list => list.scrollTop > 0));
   await dialog.getByRole('button', {name: '关闭计算器'}).click();
   assert.equal(await launch.evaluate(element => element === document.activeElement), true);
@@ -424,16 +443,24 @@ try {
   await text('12');
   await store('C', '12');
   await enter('C+1', '13');
+  await expressionInput.fill('2*x+3*x+y-y');
+  await dialog.getByRole('button', {name: '化简', exact: true}).click();
+  await text('5*x');
+  assert.equal(await expressionInput.inputValue(), '2*x+3*x+y-y');
+  await copyResult.click();
+  assert.equal(await page.evaluate(() => window.copiedCalculatorText), '5*x');
+  assert.equal(await dialog.locator('[data-calculator-key="digit_7"]').isVisible(), true);
   await select('symbolic');
   await dialog.getByRole('combobox', {name: '运算'}).selectOption('antiderivative');
   await field('expression').fill('x^2');
   await field('variable').fill('x');
   await calculate(); await text('(1/3)*x^3 + C');
   checks.push('Question navigation revokes the previous dialog and reaches basic, disabled and CAS fixtures.');
-  await select('optimization');
+  await open();
+  await category('optimization');
   await dialog.getByRole('button', {name: '填入示例'}).click();
   await dialog.getByRole('textbox', {name: 'capacity 界值'}).fill('120');
-  await calculate(); await outputBox.getByText('60', {exact: true}).waitFor();
+  await calculateExtension(); await outputBox.getByText('60', {exact: true}).waitFor();
   await dialog.getByRole('button', {name: '文本输入'}).click();
   const model = JSON.parse(await field('model').inputValue());
   assert.equal(model.constraints.capacity.max, 120);
@@ -441,12 +468,12 @@ try {
   await field('model').fill(JSON.stringify(model));
   await dialog.getByRole('button', {name: '结构化输入'}).click();
   assert.equal(await dialog.getByRole('textbox', {name: 'capacity 界值'}).inputValue(), '80');
-  await calculate(); await outputBox.getByText('40', {exact: true}).waitFor();
-  await select('astronomy');
+  await calculateExtension(); await outputBox.getByText('40', {exact: true}).waitFor();
+  await category('astronomy');
   assert.equal(await field('date').getAttribute('type'), 'date');
   assert.equal(await dialog.locator('.calculatorToolKeyboard').count(), 0);
   await field('date').fill('2026-02-28');
-  await calculate(); await outputBox.getByText('月相角 (°)', {exact: true}).waitFor();
+  await calculateExtension(); await outputBox.getByText('月相角 (°)', {exact: true}).waitFor();
   checks.push('Optimization coefficients and constraints round-trip to JSON. The native date field accepts typed dates.');
   await dialog.getByRole('button', {name: '关闭计算器'}).click();
   await page.setViewportSize({width: 1440, height: 900});
