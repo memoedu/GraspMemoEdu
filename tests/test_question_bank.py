@@ -12,6 +12,7 @@ import uuid
 from graspmemoedu.question_bank import QuestionBank, digest, install_bank, validate_bank, validate_archive
 from graspmemoedu.question_types import validate_interaction, public_interaction, parse_answer, demo_answer, display_answer
 from graspmemoedu.judging import judge_answer
+from graspmemoedu.reference_answers import reference_fields
 from graspmemoedu.review import ReviewBackend
 from graspmemoedu.service import DomainError, LearningService
 from graspmemoedu.question_conversion import validate_candidates, source_text, build_variant, within_obvious_bounds
@@ -184,6 +185,40 @@ class BankPresentationTests(unittest.TestCase):
         learning.process_submission(result['submission_id'])
         self.assertTrue(learning.submission(result['submission_id'])['correct'])
         self.assertEqual(result['submission_id'], learning.submit(payload)['submission_id'])
+
+    def test_scoped_correction_pins_question_grading_and_answer_side_together(self):
+        question = self.course['modules'][0]['practices'][0]
+        ident = question['id']
+        old_revision = install_bank(self.bank, self.course, self.root)
+        revised = deepcopy(self.bank)
+        spec = {'version': 2, 'type': 'composite', 'grading': 'semantic',
+                'controls': [{'id': 'term', 'type': 'text', 'label': '括号内', 'answers': ['x+3']}],
+                'sections': [{'id': 's0', 'html': '<p>2(<span data-control="term"></span>)</p>',
+                              'control_ids': ['term'], 'complete': True}]}
+        revised['questions'][ident].update(question='补全括号内的式子。', html='<p>补全括号内的式子。</p>',
+                                           interaction=spec, constraints='只填写括号内的式子。',
+                                           reference_answer='{"term":["x+3"]}',
+                                           explanation_html='<p>括号内填 x+3。</p>')
+        partial = deepcopy(revised)
+        partial['questions'][ident].pop('constraints')
+        with self.assertRaises(ValueError):
+            validate_bank(partial, self.course)
+        revision = install_bank(revised, self.course, self.root)
+        bank = QuestionBank(self.course, self.root)
+        self.assertEqual(bank.active_revision(ident), revision)
+        self.assertEqual(bank.question(ident, old_revision)['reference_answer'], question['reference_answer'])
+        self.assertEqual(bank.question(ident)['explanation_html'], question['explanation_html'])
+        correction = bank.question(ident, revision)
+        self.assertEqual(correction['explanation_html'], '<p>括号内填 x+3。</p>')
+        self.assertEqual(reference_fields(correction), {})
+        self.assertEqual(reference_fields(correction, True)['reference_answer'], '括号内: x+3')
+        judge = Mock(return_value=(True, '等价'))
+        answer = '{"section":0,"values":{"term":"3+x"}}'
+        judge_answer(judge, correction, answer)
+        stem, key, response = judge.call_args.args
+        self.assertIn('只填写括号内的式子', stem)
+        self.assertEqual(json.loads(key), {'term': ['x+3']})
+        self.assertEqual(json.loads(response), {'term': '3+x'})
 
     def test_old_and_new_review_rounds_and_immutable_revisions(self):
         learning = LearningService(self.course, self.root, DeterministicJudge())
