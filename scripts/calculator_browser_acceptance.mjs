@@ -42,7 +42,7 @@ const field = item => dialog.locator(`[name="${item}"]`);
 const expressionInput = dialog.getByRole('textbox', {name: '表达式'});
 const completions = page.locator('.inputCompletions');
 const option = label => completions.getByRole('option', {name: label, exact: true});
-const assign = dialog.getByRole('button', {name: '赋值', exact: true});
+const assign = dialog.getByRole('button', {name: '变量值', exact: true});
 const variable = name => dialog.getByRole('textbox', {name: `变量 ${name}`, exact: true});
 const copyResult = dialog.getByRole('button', {name: '复制结果', exact: true});
 const recall = dialog.getByRole('button', {name: '调用储值', exact: true});
@@ -168,6 +168,16 @@ try {
   assert.equal(await page.getByText('Calculator: Graphing', {exact: true}).count(), 0);
   assert.equal(await dialog.locator('.calculatorNavigation').count(), 0);
   assert.equal(await dialog.locator('[data-calculator-key="sin"]').isDisabled(), true);
+  await expressionInput.fill('2+3*4-8/2');
+  const immediate = await dialog.getByRole('button', {name: '计算结果'}).evaluate(control => {
+    const start = performance.now();
+    control.click();
+    return {ms: performance.now() - start, result: document.querySelector('.calculatorResult').textContent};
+  });
+  assert.equal(immediate.result, '10');
+  assert.ok(immediate.ms < 50, `Cold arithmetic took ${immediate.ms} ms`);
+  assert.equal(workerStarts, 0);
+  assert.deepEqual(workerRequests, []);
   await dialog.getByRole('textbox', {name: '表达式'}).fill('sin(30)');
   await context.unroute(backend, rejectBackend);
   await calculate(); await text('计算中…');
@@ -228,6 +238,20 @@ try {
   await dialog.getByRole('button', {name: '存入 B', exact: true}).click();
   await enter('B', '10');
   await page.evaluate(() => { window.rejectCalculatorClipboard = false; });
+  await enter('θ=5', '5');
+  await expressionInput.fill('θ+3');
+  await dialog.getByRole('button', {name: '储存', exact: true}).click();
+  const storageName = dialog.getByRole('textbox', {name: '储存变量名'});
+  await storageName.fill('v^{2}');
+  await page.screenshot({path: path.join(output, 'named-storage.png')});
+  await storageName.press('Enter');
+  await text('8');
+  await enter('ρ₁=2', '2');
+  await enter('v²+ρ_1+θ', '15');
+  await dialog.getByRole('button', {name: '储存', exact: true}).click();
+  await storageName.fill('sₐ');
+  await dialog.getByRole('button', {name: '保存', exact: true}).click();
+  await enter('s_a+1', '16');
   await expressionInput.fill('A+x');
   await assign.click();
   await variable('x').fill('2');
@@ -269,7 +293,7 @@ try {
   checks.push('Prefix, Tab, arrows, caret replacement, Enter calculation, based log key, answer alias, and permission filtering.');
   await expressionInput.fill('x^2');
   await calculate();
-  await text('请点击「赋值」，并填写原式中每个变量的值。');
+  await text('请点击「变量值」，并填写原式中每个未储存变量的值。');
   await assign.click();
   await variable('x').waitFor();
   assert.equal(await dialog.locator('.calculatorAssignmentValue').count(), 1);
@@ -543,8 +567,9 @@ try {
   await completions.waitFor({state: 'hidden'});
   checks.push('Three independent settings persist on reload. Timezones and modal feedback use the same list.');
   assert.deepEqual(errors, []);
-  await writeFile(path.join(output, 'browser-result.json'), JSON.stringify({checks, openFrameMs, workerRequests, errors}, null, 2) + '\n');
-  console.log(JSON.stringify({checks, openFrameMs, pageErrors: errors.length}));
+  await writeFile(path.join(output, 'browser-result.json'), JSON.stringify({checks, openFrameMs, coldArithmeticMs: immediate.ms,
+    workerRequests, errors}, null, 2) + '\n');
+  console.log(JSON.stringify({checks, openFrameMs, coldArithmeticMs: immediate.ms, pageErrors: errors.length}));
 } catch (error) {
   await page.screenshot({path: path.join(output, 'failure.png')}).catch(() => {});
   throw error;
