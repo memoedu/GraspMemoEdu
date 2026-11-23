@@ -36,7 +36,8 @@ async function select(value) {
   await tool(value).click();
   await page.locator(`.questionCalculator[data-module="${value}"]`).waitFor();
 }
-const toolIds = () => toolbar.getByRole('button').evaluateAll(buttons => buttons.map(button => button.dataset.questionTool));
+const toolIds = () => toolbar.locator('[data-question-tool]:not([data-question-tool=whiteboard])')
+  .evaluateAll(buttons => buttons.map(button => button.dataset.questionTool));
 const calculate = () => dialog.getByRole('button', {name: '计算结果'}).click();
 const field = item => dialog.locator(`[name="${item}"]`);
 const expressionInput = dialog.getByRole('textbox', {name: '表达式'});
@@ -334,7 +335,7 @@ try {
   await next.click();
   await dialog.waitFor({state: 'detached'});
   assert.deepEqual(await toolIds(), ['expression', 'graph', 'statistics', 'machine_learning']);
-  assert.deepEqual(await toolbar.locator('.questionToolGroup').evaluateAll(groups => groups.map(group =>
+  assert.deepEqual(await toolbar.locator('.questionToolGroup:not(:has([data-question-tool=whiteboard]))').evaluateAll(groups => groups.map(group =>
     [...group.querySelectorAll('[data-question-tool]')].map(tool => tool.dataset.questionTool))), [
     ['expression', 'graph'],
     ['statistics', 'machine_learning'],
@@ -458,7 +459,7 @@ try {
   await enter('D/2', '21');
   await dialog.getByRole('button', {name: '关闭计算器'}).click();
   await next.click();
-  assert.equal(await toolbar.count(), 0);
+  assert.deepEqual(await toolIds(), []);
   await next.click(); await open();
   await expressionInput.fill('2x');
   await assign.click();

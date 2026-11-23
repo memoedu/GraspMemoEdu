@@ -13,7 +13,7 @@ from fsrs import Card
 from .atomic_content import GAP_SECONDS, MODE, policy_for, point_chunks, chunk_presentation, card_chunks, learning_presentation
 from .fsrs_engine import FSRSEngine, utc_time
 from .judging import instant_question, judge_answer, local_verdict
-from .question_types import public_interaction, parse_answer, display_answer
+from .question_types import public_interaction, parse_submission_answer, display_answer
 from .service import DomainError, LearningService, encode
 from .review_cards import eligible_presentations, register_point, reserved_points, point_id as global_point_id
 
@@ -352,7 +352,7 @@ class AtomicLearningService(LearningService):
             try:
                 assessed_answer(question, active, payload, allow_stop=True)
                 if payload.get('self_rating') is None:
-                    parse_answer(question, answer)
+                    parse_submission_answer(question, answer)
             except (ValueError, TypeError) as exc:
                 raise DomainError('invalid_answer', '请填写完整且有效的答案。', 422) from exc
             if con.execute('SELECT 1 FROM actions WHERE learner=? AND topic=? AND id=?', (*self.key, request_id)).fetchone():
@@ -421,11 +421,11 @@ class AtomicLearningService(LearningService):
     def instant_submission(self, submission_id):
         from .self_assessment import verdict
         with closing(self._connect()) as con:
-            row = con.execute('SELECT question FROM submissions WHERE id=? AND learner=? AND topic=?',
+            row = con.execute('SELECT question,answer FROM submissions WHERE id=? AND learner=? AND topic=?',
                               (submission_id, *self.key)).fetchone()
             if not row:
                 return False
-            return (instant_question(self.questions[row['question']])
+            return (instant_question(self.questions[row['question']], row['answer'])
                     or verdict(self._load(con).get('active') or {}, submission_id) is not None)
 
     def process_submission(self, submission_id):

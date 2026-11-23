@@ -14,7 +14,7 @@ from .judging import instant_question, judge_answer, local_verdict
 from .practice import (LESSON_POLICY, LEGACY_LESSON_POLICY, SEQUENTIAL_LESSON_POLICY,
                        PracticePolicy, apply_practice_result)
 from .practice_queue import PersistentPracticeQueue
-from .question_types import validate_interaction, public_interaction, parse_answer, display_answer
+from .question_types import validate_interaction, public_interaction, parse_submission_answer, display_answer
 from .question_bank import QuestionBank
 from .idea_presentation import present_question
 
@@ -669,7 +669,7 @@ class LearningService:
             try:
                 assessed_answer(question, step, payload)
                 if payload.get('self_rating') is None:
-                    parse_answer(question, answer)
+                    parse_submission_answer(question, answer)
             except (ValueError, TypeError, KeyError) as exc:
                 raise DomainError('invalid_answer', '请完成全部作答，且不要重复使用配对选项。', 422) from exc
             verdict = local_verdict(question, step, payload, con, require_judge)
@@ -722,12 +722,12 @@ class LearningService:
     def instant_submission(self, submission_id):
         from .self_assessment import verdict
         with closing(self._connect()) as con:
-            row = con.execute('SELECT step FROM submissions WHERE id=? AND learner=? AND topic=?',
+            row = con.execute('SELECT step,answer FROM submissions WHERE id=? AND learner=? AND topic=?',
                               (submission_id, *self.key)).fetchone()
             if not row:
                 return False
             step = self._step(self._load(con), row['step'])
-            return verdict(step, submission_id) is not None or instant_question(self.question_for_step(step))
+            return verdict(step, submission_id) is not None or instant_question(self.question_for_step(step), row['answer'])
 
     def process_submission(self, submission_id):
         with self._transaction() as con:
