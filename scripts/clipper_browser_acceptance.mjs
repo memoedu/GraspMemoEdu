@@ -152,9 +152,10 @@ try {
   assert.ok(await dock.isVisible());
   if (!inPage && engine === 'chrome') {
     await dock.evaluate(element => Object.assign(element.style, {width: '465px', height: '385px'}));
+    const available = await main.evaluate(() => ({width: document.body.getBoundingClientRect().width, height: innerHeight}));
     await dock.getByRole('button', {name: '铺满标签页', exact: true}).click();
     const expanded = await dock.boundingBox();
-    assert.ok(expanded.width >= desktopSize.width - 1 && expanded.height >= desktopSize.height - 1);
+    assert.ok(expanded.width >= available.width - 1 && expanded.height >= available.height - 1);
     await dock.getByRole('button', {name: '还原', exact: true}).click();
     assert.equal(Math.round((await dock.boundingBox()).width), 465);
     await dock.getByRole('button', {name: '最小化', exact: true}).click();
