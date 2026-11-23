@@ -51,6 +51,7 @@ body.clipperWindow { margin: 0; padding: 0; min-width: 0; overflow: hidden; }
   width: 100%;
   height: 100dvh;
   min-width: 0;
+  padding: 0;
   overflow: hidden;
   background: var(--clipper-surface);
 }
@@ -60,12 +61,23 @@ body.clipperWindow { margin: 0; padding: 0; min-width: 0; overflow: hidden; }
   inset: 56px 12px auto auto;
   max-width: calc(100vw - 24px);
   max-height: calc(100dvh - 70px);
+  margin: 0;
   width: min(790px, calc(100vw - 24px));
   height: 660px;
   border: 1px solid var(--clipper-line);
   border-radius: 10px;
   box-shadow: 0 16px 42px #142c2526;
   resize: both;
+}
+.clipperDock::backdrop { background: transparent; pointer-events: none; }
+.clipperDock.clipperCollapsed { width: max-content; height: auto; resize: none; }
+.clipperDock.clipperExpanded {
+  inset: 0 !important;
+  width: 100%;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  resize: none;
 }
 .clipperWorkspace:fullscreen { max-width: none; max-height: none; width: 100%; height: 100%; }
 .clipperWindowBar {

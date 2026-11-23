@@ -9,8 +9,7 @@ const require = createRequire(path.join(os.homedir(), '.cache/codex-runtimes/cod
 const {chromium} = require('playwright');
 const [first, second] = JSON.parse(await readFile(path.join(fixture, 'browser-fixtures.json'), 'utf8'));
 await mkdir(output, {recursive: true});
-const headed = process.env.KNOWLEDGECLIPPER_ISOLATED_UI_TEST === '1';
-const browser = await chromium.launch({headless: !headed, channel: 'chrome'});
+const browser = await chromium.launch({headless: true, channel: 'chrome'});
 const errors = [], checks = [];
 const context = await browser.newContext({viewport: {width: 1280, height: 900}, locale: 'zh-CN'});
 await context.addInitScript(() => {
@@ -102,20 +101,22 @@ try {
     assert.ok(await popup.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'horizontal overflow at ' + width);
   }
   await popup.screenshot({path: path.join(output, 'clipper-excerpt.png')});
-  if (headed) {
-    console.log('Checking the native Chrome topmost window');
-    await popup.getByRole('button', {name: '置顶', exact: true}).click({timeout: 8000});
-    await popup.waitForFunction(() => Boolean(window.documentPictureInPicture.window?.document.querySelector('.clipperPanel')),
-      undefined, {timeout: 10000});
-    await main.locator('#lessonTitle').click();
-    assert.equal(await popup.evaluate(() => window.documentPictureInPicture.window.closed), false);
-    await popup.evaluate(() => {
-      const pinned = window.documentPictureInPicture.window.document;
-      [...pinned.querySelectorAll('button')].find(button => button.textContent === '普通窗口').click();
-    });
-    await popup.getByText('已存入个人自由学习。', {exact: true}).waitFor();
-    checks.push('Chrome native pin survives parent focus and unpin preserves the workspace');
-  }
+  await popup.getByRole('button', {name: '在当前页置顶', exact: true}).click({timeout: 8000}).catch(error => {
+    if (!popup.isClosed()) throw error;
+  });
+  const dock = main.locator('.clipperDock:popover-open');
+  await dock.waitFor();
+  await main.mouse.click(24, 250);
+  await main.mouse.wheel(0, 400);
+  assert.ok(await dock.isVisible());
+  await dock.getByRole('button', {name: '最小化', exact: true}).click();
+  assert.equal(await dock.locator('.clipperPanel').isVisible(), false);
+  await dock.getByRole('button', {name: '恢复', exact: true}).click();
+  const reopened = main.waitForEvent('popup');
+  await dock.getByRole('button', {name: '普通窗口', exact: true}).click();
+  popup = await reopened;
+  await popup.getByText('已存入个人自由学习。', {exact: true}).waitFor();
+  checks.push('topmost dock survives page interaction and preserves content on minimize and popout');
 
   await open('卡', inlineSelector);
   await popup.getByRole('button', {name: '选区加入正面'}).click();

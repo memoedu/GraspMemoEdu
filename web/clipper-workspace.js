@@ -1,5 +1,5 @@
-import {clipText as tx} from './clipper.js?v=bdc2650e64c982b1';
-import {renderPlainMath} from './math-presentation.js?v=bdc2650e64c982b1';
+import {clipText as tx} from './clipper.js?v=bd33ab0f81c0cf93';
+import {renderPlainMath} from './math-presentation.js?v=bd33ab0f81c0cf93';
 
 const title = () => tx('零碎知识简藏', 'Knowledge Clipper');
 const toolName = {
@@ -47,15 +47,15 @@ function popupWindow() {
 }
 
 export function createClipperWorkspace({request}) {
-  let surface, host, controls, panels, current, types, pinnedOwner;
+  let surface, host, controls, panels, current, types;
+  let collapsed = false, expanded = false;
   const sessions = [];
   const speak = window.speechSynthesis;
 
   function close() {
     const old = surface;
-    const owner = pinnedOwner;
     surface = null;
-    pinnedOwner = null;
+    collapsed = expanded = false;
     speak?.cancel();
     for (const session of sessions) session.closed = true;
     sessions.length = 0;
@@ -64,10 +64,9 @@ export function createClipperWorkspace({request}) {
     host?.remove();
     host = controls = panels = null;
     old?.close();
-    if (owner && owner !== old) owner.close();
   }
 
-  function attach(win, keepPrevious = false) {
+  function attach(win) {
     if (win === window) win = null;
     const previous = surface;
     surface = win;
@@ -80,9 +79,12 @@ export function createClipperWorkspace({request}) {
       panels = create(doc, 'div', '', 'clipperPanels');
       host.append(controls, panels);
     }
-    if (!win && !previous && !host.isConnected) {
+    if (host.matches(':popover-open')) host.hidePopover();
+    host.removeAttribute('popover');
+    if (!win && !host.hasAttribute('data-drag-enabled')) {
+      host.dataset.dragEnabled = '';
       controls.addEventListener('pointerdown', event => {
-        if (surface || event.button || event.target.closest('button')) return;
+        if (surface || expanded || event.button || event.target.closest('button')) return;
         const rect = host.getBoundingClientRect(), startX = event.clientX, startY = event.clientY;
         controls.setPointerCapture(event.pointerId);
         function move(next) {
@@ -95,16 +97,14 @@ export function createClipperWorkspace({request}) {
     }
     doc.body.append(host);
     host.classList.toggle('clipperDock', !win);
-    win?.addEventListener('pagehide', () => {
-      if (surface !== win) return;
-      if (pinnedOwner && !pinnedOwner.closed) {
-        const owner = pinnedOwner;
-        pinnedOwner = null;
-        attach(owner);
-      } else close();
-    }, {once: true});
+    collapsed = expanded = false;
+    if (!win && typeof host.showPopover === 'function') {
+      host.setAttribute('popover', 'manual');
+      host.showPopover();
+    }
+    win?.addEventListener('pagehide', () => { if (surface === win) close(); }, {once: true});
     renderBar();
-    if (previous && previous !== win && !keepPrevious) previous.close();
+    if (previous && previous !== win) previous.close();
   }
 
   function renderBar() {
@@ -112,28 +112,23 @@ export function createClipperWorkspace({request}) {
     const actions = create(doc, 'div', '', 'clipperButtons');
     const status = create(doc, 'span', '', 'clipperStatus');
     status.setAttribute('role', 'status');
-    const pinned = surface && surface === (pinnedOwner || window).documentPictureInPicture?.window;
-    if (pinned) actions.append(button(doc, tx('普通窗口', 'Regular window'), () => {
-      const win = pinnedOwner || popupWindow();
-      if (win) {
-        pinnedOwner = null;
-        attach(win);
-        win.focus();
-      }
-      else status.textContent = tx('浏览器拦截了新窗口。', 'Your browser blocked the new window.');
-    }, 'textButton'));
-    else {
-      const owner = surface || window;
-      if (owner.documentPictureInPicture) actions.append(button(doc, tx('置顶', 'Keep on top'), async () => {
-        try {
-          const win = await owner.documentPictureInPicture.requestWindow({width: 790, height: 660});
-          if (!host) { win.close(); return; }
-          pinnedOwner = surface;
-          attach(win, true);
-        } catch {
-          status.textContent = tx('此窗口无法置顶。', 'This window could not be pinned.');
-        }
+    if (!surface) {
+      actions.append(button(doc, tx('普通窗口', 'Regular window'), () => {
+        const win = popupWindow();
+        if (win) { attach(win); win.focus(); }
+        else status.textContent = tx('浏览器拦截了新窗口。', 'Your browser blocked the new window.');
       }, 'textButton'));
+      actions.append(button(doc, collapsed ? tx('恢复', 'Restore') : tx('最小化', 'Minimize'), () => {
+        collapsed = !collapsed;
+        if (collapsed) expanded = false;
+        renderBar();
+      }, 'textButton'));
+      if (!collapsed) actions.append(button(doc, expanded ? tx('还原', 'Restore size') : tx('铺满标签页', 'Fill tab'), () => {
+        expanded = !expanded;
+        renderBar();
+      }, 'textButton'));
+    } else {
+      actions.append(button(doc, tx('在当前页置顶', 'Keep on top of this tab'), () => attach(null), 'textButton'));
       actions.append(button(doc, tx('全屏', 'Full screen'), async () => {
         try {
           if (doc.fullscreenElement) await doc.exitFullscreen();
@@ -144,6 +139,9 @@ export function createClipperWorkspace({request}) {
       }, 'textButton'));
     }
     actions.append(button(doc, tx('关闭', 'Close'), close, 'textButton'));
+    host.classList.toggle('clipperCollapsed', collapsed);
+    host.classList.toggle('clipperExpanded', expanded);
+    panels.hidden = collapsed;
     const heading = create(doc, 'strong', title());
     controls.replaceChildren(heading, actions, status);
   }
@@ -172,6 +170,7 @@ export function createClipperWorkspace({request}) {
       if (!surface) attach(opened);
       else opened.close();
     }
+    if (collapsed) { collapsed = false; renderBar(); }
     if (sessions.length >= 24) {
       show(current);
       controls.querySelector('[role="status"]').textContent = tx(
