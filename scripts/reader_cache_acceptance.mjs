@@ -50,6 +50,7 @@ try {
   const choice = page.getByRole('button', {name: '未掌握，先学习', exact: true});
   if (await choice.isVisible()) await choice.click();
   await page.locator('#stepCard .stepNavigation .primaryButton').click();
+  await page.getByRole('button', {name: '展示答案', exact: true}).waitFor();
   await page.waitForFunction(() => document.querySelectorAll('#historyPanel .historyItem').length >= 2);
   let delay = true;
   await page.route('**/api/**', async route => {
@@ -60,16 +61,16 @@ try {
   report.timings.topic = await page.evaluate(async () => {
     const times = [];
     const history = document.querySelector('#historyPanel');
-    const firstGroup = history.firstElementChild;
     for (let i = 0; i < 30; i++) {
       const buttons = [...history.querySelectorAll('.historyItem')];
       const target = buttons[i % 2];
+      const firstGroup = history.firstElementChild;
       const start = performance.now();
       target.click();
+      if (history.firstElementChild !== firstGroup) throw Error('Topic navigation rebuilt the history sidebar');
       await new Promise(requestAnimationFrame);
       times.push(performance.now() - start);
     }
-    if (history.firstElementChild !== firstGroup) throw Error('Topic navigation rebuilt the history sidebar');
     return times;
   });
   assert.equal(requests.slice(before).filter(r => r.path === '/api/select').length, 0);
