@@ -2,7 +2,7 @@
 
 本表从当前界面词库自动生成。修改以词库为准，随后重新生成并检查本表。术语约定见 [界面语言规范](ui-language.md)。
 
-共 1067 条界面文案映射（包括不同位置重复使用的文案）。花括号表示运行时填入的名称、数量或时间，不是页面上的固定文字。
+共 1069 条界面文案映射（包括不同位置重复使用的文案）。花括号表示运行时填入的名称、数量或时间，不是页面上的固定文字。
 
 不包括作者课程正文、题目、答案、解析或用户输入。首页的学科双语副标题按约定保留。
 
@@ -330,9 +330,11 @@
 | Other | 其他 |
 | Choose another topic | 重新选择主题 |
 | Hide content with unmet prerequisites | 隐藏暂未解锁的内容 |
+| Hide Topics unavailable for learning | 隐藏暂不可学习的主题 |
 | Expand all | 一键展开 |
 | Collapse all | 一键收起 |
 | Locked content is hidden. Uncheck the option to show it. | 暂未解锁的内容已隐藏，可取消勾选查看。 |
+| Topics unavailable for learning are hidden. Uncheck the option to show them. | 暂不可学习的主题已隐藏，可取消勾选查看。 |
 | Today’s online activity | 今日在线情况 |
 | {date} · Beijing time | {date} · 北京时间 |
 | Today online: {minutes} min {seconds} sec | 今日在线时长：{minutes} 分 {seconds} 秒 |
@@ -494,7 +496,7 @@
 | Show the answer command box | 显示文字答题框 |
 | Type a command below a question to fill in your answer. Calculator and voice input also work with the box turned off. | 在题目下方输入文字并转换为答案。关闭后仍可用计算器或录音填写。 |
 | Show instructions, keyboard shortcuts and tips about how learning works. | 显示学习页面中的操作说明、快捷键和机制提示。 |
-| Reviews stay first. Groups include every unfinished Topic, including paused and prerequisite-blocked lessons. | 复习任务保留在前列；层级中显示所有未完成的 Topic，包括暂停和前置受阻的内容。 |
+| Reviews stay first, with Topics grouped by course chapter. | 复习任务排在前列，主题按课程章节分组。 |
 | Administrator | 管理员 |
 | Advanced learner | 高阶学习者 |
 | Standard learner | 普通学习者 |
