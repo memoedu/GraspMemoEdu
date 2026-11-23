@@ -3,12 +3,12 @@ import {readFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {createRequire} from 'node:module';
 import {homedir} from 'node:os';
+import {launchAcceptanceChrome} from './launch_acceptance_chrome.mjs';
 
 const [assetRoot, site] = process.argv.slice(2);
 const editor = 'https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v1/';
 const requireRuntime = createRequire(join(homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
-const {chromium} = requireRuntime('playwright');
-const chrome = await chromium.launch({channel: 'chrome', headless: true});
+const chrome = await launchAcceptanceChrome(requireRuntime);
 try {
   const browser = await chrome.newContext({viewport: {width: 1440, height: 880}, locale: 'zh-CN'});
   await browser.addInitScript(() => {
