@@ -143,12 +143,19 @@ try {
   await launcher.click();
   await panel.getByRole('button', {name: '归档目录'}).waitFor();
   assert.ok(await undo.isEnabled(), 'reopening the same live board preserves undo history');
+  await frame.getByRole('button', {name: '画笔', exact: true}).click();
+  await canvas.scrollIntoViewIfNeeded();
+  const lassoTarget = await canvas.boundingBox();
+  await page.mouse.move(lassoTarget.x + 100, lassoTarget.y + 48);
+  await page.mouse.down();
+  await page.mouse.move(lassoTarget.x + 150, lassoTarget.y + 76, {steps: 8});
+  await page.mouse.up();
   await frame.getByRole('button', {name: '套索', exact: true}).click();
   await canvas.scrollIntoViewIfNeeded();
   const selection = await canvas.boundingBox();
-  await page.mouse.move(selection.x + 21, selection.y + 30);
+  await page.mouse.move(selection.x + 85, selection.y + 30);
   await page.mouse.down();
-  for (const [x, y] of [[175, 30], [175, 110], [21, 110], [21, 30]]) {
+  for (const [x, y] of [[170, 30], [170, 110], [85, 110], [85, 30]]) {
     await page.mouse.move(selection.x + x, selection.y + y, {steps: 8});
   }
   await page.mouse.up();
