@@ -43,6 +43,9 @@ class MathDictationTests(unittest.TestCase):
             self.assertEqual(quick_math('二乘三等于七', profile, VoiceContext()), '2*3=7')
         integral = quick_math('积分，t的立方加五乘t，微分t', 'answer', VoiceContext())
         self.assertEqual(integral, r'\(\int t^3+5\cdot t\,dt\)')
+        for phrase in ('积分。t的立方，加五乘，t。微分t', '积分t的立方加五，乘t，微分，t'):
+            self.assertEqual(quick_math(phrase, 'answer', VoiceContext()), integral)
+        self.assertIsNone(quick_math('积分，t的立方加五，整体乘t，微分t', 'answer', VoiceContext()))
         self.assertIsNone(quick_math('把积分的结果算出来', 'answer', VoiceContext()))
         named = VoiceContext(stem='两次测量分别记为 a 和 b，更新后的读数用 b 表示。', symbols=['a', 'b'])
         self.assertEqual(quick_math('更新后的读数等于五。', 'answer', named), 'b=5')

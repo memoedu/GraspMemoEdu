@@ -151,7 +151,8 @@ def quick_math(transcript, profile, context):
                     return left + OPERATORS[relation[3]] + right
                 return prefix + r'\(' + (left or r'\text{' + relation[2] + '}') + OPERATORS[relation[3]] + right + r'\)'
         if compact.startswith('积分'):
-            integral = re.fullmatch(r'积分[,，、]?(.+?)[,，、]?(?:微分|\*?[dD])([A-Za-z])', compact)
+            pause = r'[,，、。;；:：]*'
+            integral = re.fullmatch('积分' + pause + r'(.+?)' + pause + r'(?:微分|\*?[dD])' + pause + r'([A-Za-z])', compact)
             if integral:
                 body = expression(integral[1], context)
                 if body:
@@ -161,11 +162,16 @@ def quick_math(transcript, profile, context):
 
 
 def expression(compact, context):
+    # ASR sentences and commas can split a legitimate operator from its operands.
+    # Remove pauses only at explicit operators. An ordinary list or stated grouping keeps its meaning.
+    operators = r'(?:加上?|减去?|乘以?|除以?|等于|[+\-*/=])'
+    compact = re.sub(r'[,，、。;；]+(?=' + operators + ')', '', compact)
+    compact = re.sub('(' + operators + r')[,，、。;；]+', r'\1', compact)
     # A near-homophone of a spoken operator may occur between two explicit operands.
     # Restrict correction to this mathematical position; never apply it to prose.
     def between(match):
         spoken = lazy_pinyin(match[0])[0]
-        return '乘' if re.fullmatch(r'(?:ch|sh)eng', spoken) else match[0]
+        return '乘' if re.fullmatch(r'(?:ch|sh)eng?', spoken) else match[0]
     compact = re.sub(r'(?<=[0-9零一二两三四五六七八九A-Za-z])[\u4e00-\u9fff](?=[a-zA-Z])', between, compact)
     # A decorated variable, spoken letter name or an explicit case request needs context-aware refinement.
     if re.search(r'[A-Za-z]{2,}', compact) or any(len(s) > 1 and s[0].lower() in compact.lower() for s in context.symbols):
