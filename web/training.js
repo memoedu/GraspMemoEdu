@@ -1,23 +1,23 @@
-import {t, translateMessage, getLanguage} from './i18n.js?v=be5d6132b9f4ba92';
-import {ideaSetupHash, ideaSetupLink} from './idea-setup.js?v=be5d6132b9f4ba92';
-import {answerReady, answerEmpty} from './question-input.js?v=be5d6132b9f4ba92';
-import {createLearningCache} from './learning-cache.js?v=be5d6132b9f4ba92';
-import {catalogView, catalogPath, workspaceLayout} from './catalog-workspace.js?v=be5d6132b9f4ba92';
-import {helpableContent} from './content-report.js?v=be5d6132b9f4ba92';
-import {ratingChoices, selfAssessmentChoices} from './self-assessment.js?v=be5d6132b9f4ba92';
-import {pointAssessment} from './point-assessment.js?v=be5d6132b9f4ba92';
-import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=be5d6132b9f4ba92';
-import {learningHint} from './beginner-hints.js?v=be5d6132b9f4ba92';
+import {t, translateMessage, getLanguage} from './i18n.js?v=9c1301e55d096053';
+import {ideaSetupHash, ideaSetupLink} from './idea-setup.js?v=9c1301e55d096053';
+import {answerReady, answerEmpty} from './question-input.js?v=9c1301e55d096053';
+import {createLearningCache} from './learning-cache.js?v=9c1301e55d096053';
+import {catalogView, catalogPath, workspaceLayout} from './catalog-workspace.js?v=9c1301e55d096053';
+import {helpableContent} from './content-report.js?v=9c1301e55d096053';
+import {ratingChoices, selfAssessmentChoices} from './self-assessment.js?v=9c1301e55d096053';
+import {pointAssessment} from './point-assessment.js?v=9c1301e55d096053';
+import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=9c1301e55d096053';
+import {learningHint} from './beginner-hints.js?v=9c1301e55d096053';
 
 const node = (tag, cls = '', text) => { const n = document.createElement(tag); n.className = cls; if (text !== undefined) n.textContent = text; return n; };
 const button = (text, cls, action) => { const n = node('button', cls, text); n.type = 'button'; n.addEventListener('click', action); return n; };
 const encode = encodeURIComponent;
 const query = fields => new URLSearchParams(fields).toString();
 const ratingKeys = ['', 'training.again', 'training.hard', 'training.good', 'training.easy', 'training.retire'];
-import {answerEditor, readerFrame, readerStepTitle, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, renderReviewReader} from './learning-ui.js?v=be5d6132b9f4ba92';
-import {setQuestionTools} from './question-tools.js?v=be5d6132b9f4ba92';
-import {voiceAnswerPending} from './voice-input.js?v=be5d6132b9f4ba92';
-import {questionWhiteboard} from './whiteboard-answer.js?v=be5d6132b9f4ba92';
+import {answerEditor, readerFrame, readerStepTitle, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, renderReviewReader} from './learning-ui.js?v=9c1301e55d096053';
+import {setQuestionTools} from './question-tools.js?v=9c1301e55d096053';
+import {voiceAnswerPending} from './voice-input.js?v=9c1301e55d096053';
+import {questionWhiteboard} from './whiteboard-answer.js?v=9c1301e55d096053';
 
 export function createTrainingView(bridge) {
   const {root, request, href, formatDate, getAccess, topicBody} = bridge;

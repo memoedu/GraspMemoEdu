@@ -6,6 +6,7 @@ import hmac
 import json
 import os
 from pathlib import Path
+import re
 import secrets
 import sqlite3
 import threading
@@ -156,6 +157,15 @@ class ServiceCache(dict):
 
 def create_app(settings: Settings | None = None, service: LearningService | None = None, *, atomic_clock=None):
     settings = settings or Settings.load()
+    web_directory = Path(__file__).resolve().parent.parent / 'web'
+    whiteboard_script = ''
+    try:
+        with (web_directory / 'whiteboard-editor.js').open(encoding='utf-8') as editor:
+            integrity = re.fullmatch(r'// Editor script integrity: (sha256-[A-Za-z0-9+/]{43}=)\n', editor.readline())
+        if integrity:
+            whiteboard_script = f" '{integrity[1]}'"
+    except FileNotFoundError:
+        pass
     catalog = Catalog.load(settings, service.course if service else None)
     training = TrainingCatalog(settings.data_dir)
     subjects = Subjects(settings, catalog, training=training)
@@ -667,7 +677,7 @@ def create_app(settings: Settings | None = None, service: LearningService | None
                 response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Referrer-Policy'] = 'no-referrer'
-        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:* http://localhost:*; object-src 'none'; frame-src 'self' https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v1/ https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v2/ https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v3/ https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v4/; base-uri 'self'; frame-ancestors 'none'"
+        response.headers['Content-Security-Policy'] = f"default-src 'self'; script-src 'self'{whiteboard_script}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:* http://localhost:*; object-src 'none'; frame-src 'self' https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v1/ https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v2/ https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v3/ https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v4/; base-uri 'self'; frame-ancestors 'none'"
         if path.startswith('/topic-editor/'):
             response.headers['Content-Security-Policy'] = (
                 "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; "
@@ -1030,5 +1040,5 @@ def create_app(settings: Settings | None = None, service: LearningService | None
                                           for filename in ('index.html', 'source.zip')))
     if app.state.topic_editor_enabled:
         app.mount('/topic-editor', StaticFiles(directory=editor_root, html=True), name='topic-editor')
-    app.mount('/', StaticFiles(directory=Path(__file__).resolve().parent.parent / 'web', html=True), name='web')
+    app.mount('/', StaticFiles(directory=web_directory, html=True), name='web')
     return app

@@ -1,8 +1,8 @@
-import {t, translateMessage} from './i18n.js?v=be5d6132b9f4ba92';
-import {subjectHref, subjectLabel} from './subjects.js?v=be5d6132b9f4ba92';
-import {catalogPath, workspaceLayout} from './catalog-workspace.js?v=be5d6132b9f4ba92';
-import {renderReviewSections} from './review-directory.js?v=be5d6132b9f4ba92';
-import {createReviewTaskStarter} from './review-papers.js?v=be5d6132b9f4ba92';
+import {t, translateMessage} from './i18n.js?v=9c1301e55d096053';
+import {subjectHref, subjectLabel} from './subjects.js?v=9c1301e55d096053';
+import {catalogPath, workspaceLayout} from './catalog-workspace.js?v=9c1301e55d096053';
+import {renderReviewSections} from './review-directory.js?v=9c1301e55d096053';
+import {createReviewTaskStarter} from './review-papers.js?v=9c1301e55d096053';
 
 const encode = encodeURIComponent;
 
@@ -237,7 +237,7 @@ export function createFreeStudyView({root, request, scopedRequest, savedCourseRo
       const clips = node('section', 'clipperLibrary');
       header.after(clips);
       try {
-        const {mountClipperLibrary} = await import('./clipper-library.js?v=be5d6132b9f4ba92');
+        const {mountClipperLibrary} = await import('./clipper-library.js?v=9c1301e55d096053');
         if (isCurrent() && clips.isConnected) mountClipperLibrary({root: clips, request, node, control, link, isCurrent});
       } catch (error) {
         if (isCurrent() && clips.isConnected) clips.append(node('p', 'fieldError', error.message));

@@ -1,9 +1,9 @@
-import {calculate, calculateSelectedFormula, storedExpression} from './calculator-engine.js?v=be5d6132b9f4ba92';
-import {assignableVariable, normalizeVariableName, permitsKey} from './calculator-policy.js?v=be5d6132b9f4ba92';
-import {chooseWhiteboardFolder, whiteboardFolder, saveWhiteboard, restoreWhiteboard} from './whiteboard-archive.js?v=be5d6132b9f4ba92';
-import {refreshVoiceInput, voiceFieldPending} from './voice-input.js?v=be5d6132b9f4ba92';
+import {calculate, calculateSelectedFormula, storedExpression} from './calculator-engine.js?v=9c1301e55d096053';
+import {assignableVariable, normalizeVariableName, permitsKey} from './calculator-policy.js?v=9c1301e55d096053';
+import {chooseWhiteboardFolder, whiteboardFolder, saveWhiteboard, restoreWhiteboard} from './whiteboard-archive.js?v=9c1301e55d096053';
+import {refreshVoiceInput, voiceFieldPending} from './voice-input.js?v=9c1301e55d096053';
+import {whiteboardDocument} from './whiteboard-editor.js?v=9c1301e55d096053';
 
-const editorUrl = 'https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v4/whiteboard.html';
 const boards = new WeakMap();
 const work = new Map();
 let preparedBoard;
@@ -50,7 +50,8 @@ function bridge(frame, onSelection) {
   void ready.catch(() => {});
   const timeout = setTimeout(() => rejectReady(Error('load')), 12000);
   frame.addEventListener('load', () => {
-    frame.contentWindow.postMessage({type: 'annotation-whiteboard:v1'}, new URL(editorUrl).origin, [channel.port2]);
+    // This frame is an opaque-origin sandbox containing only the bundled editor.
+    frame.contentWindow.postMessage({type: 'annotation-whiteboard:v1'}, '*', [channel.port2]);
   }, {once: true});
   channel.port1.onmessage = ({data}) => {
     if (data?.ready === 1) { clearTimeout(timeout); resolveReady(); }
@@ -104,10 +105,10 @@ export function openWhiteboard(workspace, launcher, question, options, session, 
   const frame = node('iframe');
   frame.inert = true;
   frame.title = local('批注画布', 'Annotation canvas');
-  frame.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+  frame.setAttribute('sandbox', 'allow-scripts');
   frame.referrerPolicy = 'no-referrer';
   const port = bridge(frame, selectionChanged);
-  frame.src = editorUrl + (english ? '?lang=en' : '');
+  frame.srcdoc = english ? whiteboardDocument.replace('lang="zh-CN"', 'lang="en"') : whiteboardDocument;
   const divider = node('div', 'whiteboardDivider');
   divider.tabIndex = 0;
   divider.setAttribute('role', 'separator');
