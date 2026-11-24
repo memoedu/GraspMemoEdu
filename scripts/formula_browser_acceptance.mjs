@@ -3,13 +3,13 @@ import {mkdir} from 'node:fs/promises';
 import {createRequire} from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
+import {launchAcceptanceChrome} from './launch_acceptance_chrome.mjs';
 
 const [output, base = 'http://127.0.0.1:18894'] = process.argv.slice(2);
 assert.equal(new URL(base).hostname, '127.0.0.1', 'Use the isolated question-bank fixture');
 const require = createRequire(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
-const {chromium} = require('playwright');
 await mkdir(output, {recursive: true});
-const browser = await chromium.launch({headless: true, channel: 'chrome'});
+const browser = await launchAcceptanceChrome(require);
 const context = await browser.newContext({locale: 'zh-CN', viewport: {width: 1280, height: 900},
   permissions: ['clipboard-read', 'clipboard-write']});
 const page = await context.newPage();
