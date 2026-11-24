@@ -18,6 +18,11 @@ test('offline navigation has a scoped retry and no stale learning data', async (
   assert.equal(response.status,503);
   assert.equal(response.headers.get('Cache-Control'),'no-store');
   assert.match(await response.text(),/href="https:\/\/example.test\/GraspMemoEdu-Pages\/"/);
+  events.fetch({
+    request:{method:'GET',mode:'navigate',url:'https://example.test/GraspMemoEdu-Pages/pwa-free-study/install.html'},
+    respondWith:p=>{result=p;},
+  });
+  assert.match(await (await result).text(), /href="https:\/\/example.test\/GraspMemoEdu-Pages\/pwa-free-study\/"/);
 });
 test('API reads, mutations, foreign scopes and subresources pass untouched', () => {
   const events = worker(()=>{throw new Error('must not intercept');});

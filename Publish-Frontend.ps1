@@ -36,6 +36,11 @@ $expected += @('point-assessment.js','context-library.js','context-library.css',
 $expected += @('microphone-recorder.js','voice-input.js','voice-stream.js','voice-pcm.js','voice-context.js','answer-conversion.js')
 $expected += @('autocomplete.js','autocomplete.css')
 $expected += @('download.html','install.css','pwa.css','pwa.js','sw.js','manifest.webmanifest','icon-180.png','icon-192.png','icon-512.png','icon-maskable-512.png')
+$pwaDirectories = @('pwa-free-study', 'pwa-math-courses')
+$expected += 'pwa-location.js'
+foreach ($directory in $pwaDirectories) {
+    $expected += @("$directory/index.html", "$directory/install.html", "$directory/manifest.webmanifest")
+}
 $vendor = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'scripts/topic-presentation-assets.json') -Raw | ConvertFrom-Json -AsHashtable
 foreach ($name in $vendor.files.Keys) {
     if ($name -notmatch '^vendor/(mermaid/[A-Za-z0-9_.-]+\.js|document-backlinks\.mjs)$') { throw 'Invalid vendor asset path.' }
@@ -125,7 +130,8 @@ $commit = Invoke-Api GET ('repos/' + $Repository + '/git/commits/' + $parent)
 $priorTree = Invoke-Api GET ('repos/' + $Repository + '/git/trees/' + $commit.tree.sha + '?recursive=1')
 $publicationDocs = @('README.md','AGENTS.md','CONTRIBUTING.md')
 $allowedPrior = if ($created) { @('README.md') } else { $expected + $publicationDocs }
-if ($priorTree.truncated -or @($priorTree.tree | Where-Object { ($_.type -eq 'blob' -and $_.path -notin $allowedPrior) -or ($_.type -eq 'tree' -and $_.path -notin @('vendor','vendor/mermaid','vendor/chat','vendor/chat/fonts','vendor/book-font','vendor/calculator','vendor/formula','vendor/formula/fonts')) -or $_.type -notin @('blob','tree') }).Count) {
+$allowedDirectories = @('vendor','vendor/mermaid','vendor/chat','vendor/chat/fonts','vendor/book-font','vendor/calculator','vendor/formula','vendor/formula/fonts') + $pwaDirectories
+if ($priorTree.truncated -or @($priorTree.tree | Where-Object { ($_.type -eq 'blob' -and $_.path -notin $allowedPrior) -or ($_.type -eq 'tree' -and $_.path -notin $allowedDirectories) -or $_.type -notin @('blob','tree') }).Count) {
     throw 'Existing repository contains files outside the frontend allowlist. Publication stopped.'
 }
 $priorBlobs = @{}
