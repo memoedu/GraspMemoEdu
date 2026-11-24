@@ -4,8 +4,11 @@ from typing import Annotated, Literal
 from uuid import UUID
 import hashlib
 import json
+import os
+from pathlib import Path
 
 from fastapi import Request
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .access import credential_digest
@@ -29,8 +32,11 @@ BINDING = BASE + '/binding'
 OPEN_TICKET = BASE + '/open-ticket'
 GROUPS = BASE + '/groups'
 GROUP_MEMBER = BASE + '/group-member'
+GROUP_COURSES = BASE + '/group-courses'
+INSTALLER = BASE + '/installer/windows'
 DEVICE_PATHS = {PAIR_DEVICE, DEVICE_BINDING, DEVICE_RESOLVE, DEVICE_BODY, DEVICE_OPEN, DEVICE_HYPERSKILL}
-PUBLIC_PATHS = DEVICE_PATHS | {PAIR_TICKET, DEVICE_STATE, BODY, BINDING, OPEN_TICKET, GROUPS, GROUP_MEMBER}
+PUBLIC_PATHS = DEVICE_PATHS | {PAIR_TICKET, DEVICE_STATE, BODY, BINDING, OPEN_TICKET, GROUPS, GROUP_MEMBER,
+                             GROUP_COURSES, INSTALLER}
 BODY_LIMITS = {path: 2 * 1024 * 1024 + 4096 for path in (BODY, DEVICE_BODY)}
 BODY_LIMITS[GROUPS] = 256 * 1024
 
@@ -169,10 +175,25 @@ def register_topic_sync_routes(app, access_store, catalog, subjects, snapshots, 
                            expected_baseline_revision=str(payload.expected_baseline_revision)
                            if payload.expected_baseline_revision else None)
 
+    @app.get(INSTALLER)
+    def download_installer(request: Request):
+        browser_access(request)
+        filename = os.environ.get('GRASPMEMOEDU_NAVIGATOR_INSTALLER')
+        if not filename or not Path(filename).is_file():
+            raise DomainError('topic_sync_installer_unavailable', '配套工具安装包暂未上线。', 503)
+        return FileResponse(filename, media_type='application/zip',
+                            filename='GraspMemoEdu-RemNote-Windows-x64.zip',
+                            headers={'Cache-Control': 'private, no-store'})
+
     @app.get(GROUPS)
     def course_groups(request: Request):
         access, _, _ = browser_access(request)
         return {'groups': groups.list(access)}
+
+    @app.get(GROUP_COURSES)
+    def group_courses(request: Request, course_id: TopicId | None = None):
+        access, _, _ = browser_access(request)
+        return groups.course_choices(access, course_id)
 
     @app.post(GROUPS)
     def save_course_group(payload: Group, request: Request):

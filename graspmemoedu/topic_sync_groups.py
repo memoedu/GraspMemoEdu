@@ -74,6 +74,20 @@ class TopicSyncGroups:
             return [self._public(row, (learner for learner in self._members(con, row['group_id'])
                                        if includes(con, learner, owner))) for row in groups]
 
+    def course_choices(self, access, course_id):
+        owner = self._admin(access)
+        visible = {topic['id'] for topic in access['topics']}
+        if course_id is None:
+            return {'courses': [{'id': key, 'title': course['title']} for key, course in self.catalog.courses.items()
+                                if any(topic['id'] in visible for topic in course['topics'])]}
+        course = self.catalog.course(course_id)
+        allowed = visible.intersection(topic['id'] for topic in course['topics'])
+        if not allowed:
+            raise DomainError('topic_forbidden', '当前账号无权查看这门课程。', 403)
+        with closing(self.access_store._connect()) as con:
+            versions = con.execute('SELECT topic_id, revision FROM topic_sync_heads WHERE learner_id=?', (owner,))
+            return {'baselines': {row['topic_id']: row['revision'] for row in versions if row['topic_id'] in allowed}}
+
     def membership(self, access, learner_id, course_id):
         owner = self._admin(access)
         self.catalog.course(course_id)

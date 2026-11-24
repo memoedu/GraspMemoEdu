@@ -38,7 +38,7 @@ class PublicExportTests(unittest.TestCase):
             pwa_files.update({'microphone-recorder.js', 'voice-input.js', 'voice-stream.js', 'voice-pcm.js', 'voice-context.js', 'answer-conversion.js'})
             pwa_files.update({'autocomplete.js', 'autocomplete.css'})
             pwa_files.add('free-study.js')
-            pwa_files.update({'topic-sync-navigation.js', 'topic-body-editor.js', 'remnote-install.html'})
+            pwa_files.update({'topic-sync-navigation.js', 'topic-sync-groups.js', 'topic-body-editor.js', 'remnote-install.html'})
             pwa_files.update({'clipper.js', 'clipper-workspace.js', 'clipper-library.js', 'clipper-selection.js',
                               'clipper-host.js', 'clipper-settings.js', 'clipper.css'})
             clipper = json.loads((Path(__file__).resolve().parents[1] / 'scripts/clipper-assets.json').read_bytes())

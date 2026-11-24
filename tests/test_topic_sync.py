@@ -1,5 +1,7 @@
 from contextlib import closing
+from pathlib import Path
 import secrets
+import tempfile
 import unittest
 from unittest.mock import patch
 from uuid import uuid4
@@ -136,6 +138,25 @@ class TopicSyncTests(unittest.TestCase):
                                   course_id='math').json()['membership']['group_id'], first['group_id'])
         self.assertEqual(self.assign('math', second['group_id'], self.other_headers, expected=first['group_id']).status_code, 200)
         self.assertEqual(self.get('groups', self.headers).status_code, 403)
+
+    def test_admin_can_pin_own_current_course_version_from_the_group_editor(self):
+        version = self.write('Admin course version', self.admin_headers)
+        courses = self.get('group-courses', self.admin_headers).json()['courses']
+        self.assertIn('math', {course['id'] for course in courses})
+        self.assertEqual(self.get('group-courses', self.admin_headers, course_id='math').json(),
+                         {'baselines': {self.topic: version}})
+        self.assertEqual(self.get('group-courses', self.headers).status_code, 403)
+
+    def test_learner_installer_requires_a_permitted_signed_in_account(self):
+        with tempfile.TemporaryDirectory() as directory:
+            archive = Path(directory) / 'reader.zip'
+            archive.write_bytes(b'PK synthetic package')
+            with patch.dict('os.environ', {'GRASPMEMOEDU_NAVIGATOR_INSTALLER': str(archive)}):
+                response = self.get('installer/windows', self.headers)
+                self.assertEqual(response.content, archive.read_bytes())
+                self.assertIn('no-store', response.headers['cache-control'])
+                self.app.state.topic_sync.set_excluded(self.student, True)
+                self.assertEqual(self.get('installer/windows', self.headers).status_code, 403)
 
     def test_original_binding_cannot_be_taken_over_by_another_login(self):
         first = self.pair(self.headers)
