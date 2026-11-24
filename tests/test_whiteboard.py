@@ -1,14 +1,17 @@
 import base64
 from io import BytesIO
+from types import SimpleNamespace
 from unittest import TestCase
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 from PIL import Image
 
 from graspmemoedu.judging import instant_question, judge_answer, local_verdict
 from graspmemoedu.question_types import WHITEBOARD_ANSWER, display_answer, parse_submission_answer
 from graspmemoedu.service import DomainError
-from graspmemoedu.whiteboard_ocr import checked_png
+from graspmemoedu.whiteboard_ocr import WHITEBOARD_PATH, checked_png, register_whiteboard_ocr
 
 
 def image_bytes(fmt, dimensions=(120, 80)):
@@ -61,3 +64,22 @@ class WhiteboardTests(TestCase):
         for invalid in ('@', image_bytes('JPEG'), image_bytes('PNG', (2600, 2000))):
             with self.assertRaises(DomainError):
                 checked_png(invalid)
+
+    def test_recognize_accepts_current_and_cached_chinese_ui_languages(self):
+        app = FastAPI()
+        app.state.public_limits = SimpleNamespace(consume=Mock(), submissions_per_minute=12, daily=None)
+        access = Mock()
+        access.resolve.return_value = {'features': ['submit_answer'], 'learner_id': 'fixture', 'role': 'guest'}
+        register_whiteboard_ocr(app, access)
+        image = image_bytes('PNG')
+        with TestClient(app) as client, patch('graspmemoedu.whiteboard_ocr.recognize_whiteboard') as recognize:
+            recognize.return_value = {'status': 'insufficient', 'feedback': 'Missing work'}
+            for sent, expected in [('zh', 'zh'), ('zh-CN', 'zh'), ('en', 'en')]:
+                with self.subTest(language=sent):
+                    reply = client.post(WHITEBOARD_PATH, json={'image': image, 'language': sent})
+                    self.assertEqual(reply.status_code, 200)
+                    self.assertEqual(reply.json()['status'], 'insufficient')
+                    self.assertEqual(recognize.call_args.args[0].language, expected)
+            reply = client.post(WHITEBOARD_PATH, json={'image': image, 'language': 'unknown'})
+            self.assertEqual(reply.status_code, 422)
+            self.assertEqual(recognize.call_count, 3)
