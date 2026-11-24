@@ -2,6 +2,8 @@
 
 from typing import Annotated, Literal
 from uuid import UUID
+import hashlib
+import json
 
 from fastapi import Request
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -9,6 +11,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from .access import credential_digest
 from .topic_sync import TopicSyncStore
 from .topic_sync_groups import TopicSyncGroups
+from .topic_sync_outline import official_outline
+from .service import DomainError
 
 
 BASE = '/api/topic-sync'
@@ -88,6 +92,7 @@ class Write(Payload):
     revision: UUID
     expected_revision: UUID | None
     expected_baseline_revision: UUID | None = None
+    expected_official_version: Annotated[str, Field(pattern=r'^[0-9a-f]{64}$')] | None = None
     document: Outline
 
 
@@ -141,9 +146,25 @@ def register_topic_sync_routes(app, access_store, catalog, subjects, snapshots, 
         access_store.authorize(access, topic_id)
         return subject_id
 
+    def course_body(topic_id):
+        document = official_outline(catalog.topic(topic_id), access_store.data_dir)
+        digest = hashlib.sha256(json.dumps(document, ensure_ascii=False, separators=(',', ':'),
+                                            sort_keys=True).encode()).hexdigest()
+        return document, digest
+
+    def read_body(access, topic_id):
+        state = store.read(access, topic_id)
+        state['official_version'] = None
+        if state['document'] is None:
+            state['document'], state['official_version'] = course_body(topic_id)
+        return state
+
     def write_body(access, payload):
+        if payload.expected_official_version and not payload.expected_revision and not payload.expected_baseline_revision:
+            if payload.expected_official_version != course_body(payload.topic_id)[1]:
+                raise DomainError('topic_sync_baseline_changed', '课程底本已更新，请重新打开正文。', 409)
         return store.write(access, payload.topic_id, str(payload.revision),
-                               str(payload.expected_revision) if payload.expected_revision else None,
+                           str(payload.expected_revision) if payload.expected_revision else None,
                            payload.document.model_dump(mode='json'),
                            expected_baseline_revision=str(payload.expected_baseline_revision)
                            if payload.expected_baseline_revision else None)
@@ -187,6 +208,7 @@ def register_topic_sync_routes(app, access_store, catalog, subjects, snapshots, 
     def device_state(request: Request, device_id: UUID | None = None):
         _, device, identity = browser_access(request, device_id)
         return {'status': 'paired' if device else 'unpaired',
+                'editor': app.state.topic_editor_enabled,
                 'reauthorize': bool(device and device['identity_digest'] != credential_digest('identity', identity))}
 
     @app.post(DEVICE_BINDING)
@@ -231,7 +253,7 @@ def register_topic_sync_routes(app, access_store, catalog, subjects, snapshots, 
     def website_body(request: Request, topic_id: TopicId, device_id: UUID | None = None):
         access, _, _ = browser_access(request, device_id)
         topic_for(access, topic_id)
-        return store.read(access, topic_id)
+        return read_body(access, topic_id)
 
     @app.post(BODY)
     def save_website_body(payload: Write, request: Request, device_id: UUID | None = None):
@@ -245,7 +267,7 @@ def register_topic_sync_routes(app, access_store, catalog, subjects, snapshots, 
         access, device = device_access(request)
         topic_for(access, topic_id)
         store.binding(device, topic_id)
-        return store.read(access, topic_id)
+        return read_body(access, topic_id)
 
     @app.post(DEVICE_BODY)
     def save_companion_body(payload: Write, request: Request):

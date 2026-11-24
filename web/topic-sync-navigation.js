@@ -1,4 +1,5 @@
-import {getLanguage} from './i18n.js?v=42d1c011b328cda5';
+import {getLanguage} from './i18n.js?v=82d2d87a118b2c66';
+import {installBodyEditor} from './topic-body-editor.js?v=82d2d87a118b2c66';
 
 const channel = 'graspmemoedu-remnote-v1';
 const tr = (zh, en) => getLanguage() === 'en' ? en : zh;
@@ -45,7 +46,7 @@ export function topicBindingPath(deviceId, topicId) {
   return 'topic-sync/binding?' + new URLSearchParams({device_id: deviceId, topic_id: topicId});
 }
 
-export function installTopicNavigation({target, request, current}) {
+export function installTopicNavigation({target, request, current, apiOrigin}) {
   const area = document.createElement('section');
   area.className = 'lessonToolbar';
   area.hidden = true;
@@ -55,8 +56,14 @@ export function installTopicNavigation({target, request, current}) {
   const status = document.createElement('p');
   status.className = 'pauseHint';
   status.setAttribute('role', 'status');
-  area.append(button, status);
+  const edit = document.createElement('button');
+  edit.type = 'button'; edit.className = 'textButton'; edit.hidden = true;
+  const panel = document.createElement('section');
+  panel.hidden = true;
+  const editor = installBodyEditor({button: edit, panel, status, request, current, companion, apiOrigin});
+  area.append(edit, button, status);
   target.after(area);
+  area.after(panel);
   let key, generation = 0;
 
   async function refresh() {
@@ -66,14 +73,23 @@ export function installTopicNavigation({target, request, current}) {
     key = next;
     const requestGeneration = ++generation;
     area.hidden = true;
+    editor.reset();
     button.disabled = false;
     status.textContent = '';
     if (!scope) return;
     try {
-      await request('topic-sync/device-state', {fresh: true});
+      const state = await request('topic-sync/device-state', {fresh: true});
       if (generation === requestGeneration) {
         button.textContent = tr('在本地 RemNote 中打开', 'Open in local RemNote');
         area.hidden = false;
+        if (state.editor) {
+          try { await editor.open(scope); }
+          catch (error) {
+            if (generation !== requestGeneration) return;
+            status.textContent = error.message;
+            button.disabled = error.code === 'topic_sync_account_mismatch';
+          }
+        }
       }
     } catch {
       // Existing installations may run without the Topic sync service.

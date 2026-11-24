@@ -12,7 +12,26 @@ const {SiteNavigation} = await import(pathToFileURL(path.join(navigatorCheckout,
 const {invitations, topic_id: topic} = JSON.parse(await readFile(path.join(fixture, 'topic-sync-browser.json'), 'utf8'));
 const require = createRequire(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
 const browser = await launchAcceptanceChrome(require);
-const kb = 'acceptance-' + randomUUID(), rem = 'acceptance-document';
+const liveNative = process.argv.includes('--live-remnote');
+const {withRemNoteBody} = await import(pathToFileURL(path.join(navigatorCheckout, 'src/remnote-body.mjs')));
+const {BodySync, checkpoints} = await import(pathToFileURL(path.join(navigatorCheckout, 'src/body-sync.mjs')));
+const nativeIds = {};
+let kb = 'acceptance-' + randomUUID(), rem = 'acceptance-document';
+if (liveNative) await withRemNoteBody(async call => {
+  const state = await call('remnote_status');
+  assert(state.connected && state.acceptWriteOperations);
+  kb = state.knowledgeBaseId;
+  const create = async (name, fields) => {
+    const result = await call('remnote_create_note', fields);
+    assert.equal(result.remIds.length, 1);
+    nativeIds[name] = result.remIds[0];
+    await writeFile(path.join(fixture, 'native-document.json'), JSON.stringify(nativeIds, null, 2));
+    return nativeIds[name];
+  };
+  rem = await create('document', {title: 'GraspMemoEdu 正文同步隔离验收 ' + randomUUID().slice(0, 8), asDocument: true});
+  const parent = await create('parent', {title: '本机大纲', parentId: rem});
+  await create('child', {title: 'INTRODUCTION_ONLY 本机初稿', parentId: parent});
+});
 let device;
 const opened = [], browserErrors = [];
 const navigator = new SiteNavigation({
@@ -74,6 +93,50 @@ try {
     throw error;
   }
   await navigator.request('device-binding', {device, body: {topic_id: topic, kb_id: kb, rem_id: rem}});
+  const sync = new BodySync(navigator, checkpoints(path.join(fixture, 'checkpoints')));
+  if (liveNative) {
+    await sync.sync({kbId: kb, remId: rem});
+    await page.reload();
+  }
+  const edit = page.getByRole('button', {name: '开启编辑', exact: true});
+  let editorTested = false;
+  if (process.argv.includes('--editor')) {
+    await edit.click();
+    const frame = page.frameLocator('iframe.topicBodyFrame');
+    const content = frame.locator('.block-content').filter({hasText: 'INTRODUCTION_ONLY'}).first();
+    await content.click({position: {x: 8, y: 8}});
+    const field = frame.locator('textarea:visible').first();
+    await field.fill('Changed in TINE $x^2$');
+    await field.blur();
+    await page.getByText('正文已保存。', {exact: true}).waitFor();
+    const changed = await navigator.request('device-body?topic_id=' + topic, {device});
+    const nested = changed.document.blocks.find(row => row.text === 'Changed in TINE $x^2$');
+    assert(nested?.parent_id);
+    if (liveNative) {
+      assert.equal(nested.id, nativeIds.child);
+      await sync.sync({kbId: kb, remId: rem});
+      await withRemNoteBody(async call => {
+        const result = await call('personalwebsite_richtext', {remId: nativeIds.child});
+        assert.equal(result.parentRemId, nativeIds.parent);
+        assert(result.content.some(run => run.type === 'math' && run.tex === 'x^2'));
+        await call('personalwebsite_richtext', {remId: nativeIds.child, expectedContent: result.content,
+          expectedParentRemId: nativeIds.parent, content: [{text: 'Updated from the companion '}, {type: 'math', tex: 'x^3', display: false}]});
+      });
+      await sync.sync({kbId: kb, remId: rem});
+    }
+    await page.getByRole('button', {name: '关闭编辑', exact: true}).click();
+    await edit.waitFor();
+    assert.equal(await frame.locator('textarea:visible').count(), 0);
+    if (!liveNative) {
+      const fromLocal = structuredClone(changed.document);
+      fromLocal.blocks.find(row => row.id === nested.id).text = 'Updated from the companion $x^3$';
+      await navigator.request('device-body', {device, body: {topic_id: topic, revision: randomUUID(),
+        expected_revision: changed.revision, document: fromLocal}});
+    }
+    await page.reload();
+    await frame.getByText(/Updated from the companion/).first().waitFor();
+    editorTested = true;
+  }
   await open.click();
   await page.getByText('已在 RemNote 中打开。', {exact: true}).waitFor();
   assert.deepEqual(opened, [{kbId: kb, remId: rem}]);
@@ -84,7 +147,7 @@ try {
 
   await login(invitations[1]);
   await page.goto(route);
-  await open.click();
+  if (!editorTested) await open.click();
   await page.getByText('当前账号与本机绑定不一致。请切换到原绑定的网站账号。', {exact: true}).waitFor();
   assert.equal(await open.isDisabled(), true);
   await page.goto(origin + '/' + reverse);
@@ -94,7 +157,8 @@ try {
   assert.deepEqual(browserErrors, []);
   await writeFile(path.join(fixture, 'browser-acceptance.json'), JSON.stringify({
     paired: true, openedWebToDocument: true, openedDocumentToTopic: true, mismatchBlockedBothWays: true,
-    companion: 'real local site client', remnote: 'synthetic SDK',
+    companion: 'real local site client', nativeNavigation: 'synthetic SDK', nativeBody: liveNative,
+    tineEditorAndBody: editorTested, github: 'isolated in-memory ciphertext store',
   }, null, 2));
   console.log('PASS real website and companion HTTP pairing, navigation and account mismatch');
 } finally {

@@ -1,4 +1,4 @@
-import {getLanguage} from './i18n.js?v=42d1c011b328cda5';
+import {getLanguage} from './i18n.js?v=82d2d87a118b2c66';
 
 // The distribution contains the same Workflow assembly and chat editor shipped to WebView2.
 const base=new URL('./vendor/knowledge-clipper/',import.meta.url);
@@ -33,10 +33,10 @@ function installFrameFormulaSelection(doc) {
   doc.documentElement.setAttribute('data-site-formula-selection', '');
   const style = doc.createElement('link');
   style.rel = 'stylesheet';
-  style.href = new URL('./formula-input.css?v=42d1c011b328cda5', import.meta.url).href;
+  style.href = new URL('./formula-input.css?v=82d2d87a118b2c66', import.meta.url).href;
   const module = doc.createElement('script');
   module.type = 'module';
-  module.src = new URL('./formula-selection.js?v=42d1c011b328cda5', import.meta.url).href;
+  module.src = new URL('./formula-selection.js?v=82d2d87a118b2c66', import.meta.url).href;
   doc.head.append(style, module);
 }
 async function collect(source){

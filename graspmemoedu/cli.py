@@ -332,6 +332,9 @@ def main():
     rotate.add_argument('--learner', required=True)
     rotate.add_argument('--output', type=Path, required=True)
     sub.add_parser('account-list', help='查看账号及当前 Topic/功能权限，不显示邀请码')
+    sync_access = sub.add_parser('account-topic-sync', help='允许或停用指定账号的 Topic 与 RemNote 同步')
+    sync_access.add_argument('--learner', required=True)
+    sync_access.add_argument('mode', choices=('allow', 'exclude'))
     admin_names = sub.add_parser('account-sync-admin-names', help='从标准输入的私密摘要清单同步管理员备注名；不修改学员昵称')
     admin_names.add_argument('--dry-run', action='store_true')
     usage_report = sub.add_parser('judge-usage-report', help='只读查询每日判题用量，包含零用量账号和游客，不显示邀请码')
@@ -479,6 +482,10 @@ def main():
             output(make_help_store(settings).assign_admins(args.learner, [] if args.default_admin else args.admin))
         elif args.command == 'help-assignments':
             output(make_help_store(settings).assignments())
+        elif args.command == 'account-topic-sync':
+            from .topic_sync import TopicSyncStore
+            TopicSyncStore(make_access_store(settings), None).set_excluded(args.learner, args.mode == 'exclude')
+            output({'learner_id': args.learner, 'topic_sync_enabled': args.mode == 'allow'})
         elif args.command == 'account-permissions':
             if args.topics is None and args.features is None and not args.default_topics and not args.default_features and args.is_advanced_learner is None and args.is_student is None:
                 raise DomainError('permissions_required', '请指定权限列表、恢复默认权限或学习者资格。', 422)

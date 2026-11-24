@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import ExitStack, asynccontextmanager, closing
 import hmac
 import json
+import os
 from pathlib import Path
 import secrets
 import sqlite3
@@ -667,6 +668,11 @@ def create_app(settings: Settings | None = None, service: LearningService | None
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Referrer-Policy'] = 'no-referrer'
         response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:* http://localhost:*; object-src 'none'; frame-src 'self' https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v1/ https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v2/ https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v3/; base-uri 'self'; frame-ancestors 'none'"
+        if path.startswith('/topic-editor/'):
+            response.headers['Content-Security-Policy'] = (
+                "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; "
+                "font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self'; "
+                "frame-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self' https://memoedu.github.io")
         if path in ('/vendor/knowledge-clipper/index.html', '/vendor/knowledge-clipper/chat/index.html'):
             # The learning page hosts these two packaged editors on its own origin.
             response.headers['Content-Security-Policy'] = (
@@ -1019,5 +1025,10 @@ def create_app(settings: Settings | None = None, service: LearningService | None
         activate_points=activate_reading_points,
         dictionary=lambda word: lookup_word(word, data_dir=settings.data_dir / 'context-dictionary'),
         connect_for=lambda access, request: reading_service(access, request)._connect)
+    editor_root = os.environ.get('GRASPMEMOEDU_TINE_ROOT')
+    app.state.topic_editor_enabled = bool(editor_root and all((Path(editor_root) / filename).is_file()
+                                          for filename in ('index.html', 'source.zip')))
+    if app.state.topic_editor_enabled:
+        app.mount('/topic-editor', StaticFiles(directory=editor_root, html=True), name='topic-editor')
     app.mount('/', StaticFiles(directory=Path(__file__).resolve().parent.parent / 'web', html=True), name='web')
     return app

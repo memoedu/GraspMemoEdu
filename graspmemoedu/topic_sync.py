@@ -60,6 +60,7 @@ class TopicSyncStore:
                     kb_id TEXT NOT NULL,
                     secret_digest TEXT NOT NULL,
                     identity_digest TEXT NOT NULL);
+                CREATE INDEX IF NOT EXISTS topic_sync_kb_owner ON topic_sync_devices(kb_id, learner_id);
                 CREATE TABLE IF NOT EXISTS topic_sync_open_tickets (
                     ticket_digest TEXT PRIMARY KEY,
                     device_id TEXT NOT NULL REFERENCES topic_sync_devices(device_id),
@@ -131,6 +132,7 @@ class TopicSyncStore:
                 raise DomainError('topic_sync_ticket_expired', '配对请求已过期或用过，请返回网站重新配对。', 403)
             access = self.access_store.resolve_digest(request['identity_digest'])
             learner_id = self.authorize_account(access, con)
+            self._require_kb_owner(con, kb_id, learner_id)
             current = self._find_device(con, device_id)
             if current:
                 if not hmac.compare_digest(current['secret_digest'], secret_digest):
@@ -151,6 +153,12 @@ class TopicSyncStore:
     def _find_device(con, device_id):
         return con.execute('SELECT * FROM topic_sync_devices WHERE device_id=?', (device_id,)).fetchone()
 
+    @staticmethod
+    def _require_kb_owner(con, kb_id, learner_id):
+        if con.execute('SELECT 1 FROM topic_sync_devices WHERE kb_id=? AND learner_id<>? LIMIT 1',
+                       (kb_id, learner_id)).fetchone():
+            raise account_mismatch()
+
     def browser_device(self, access, device_id):
         with closing(self.access_store._connect()) as con:
             learner_id = self.authorize_account(access, con)
@@ -159,6 +167,7 @@ class TopicSyncStore:
                 raise _device_missing()
             if device['learner_id'] != learner_id:
                 raise account_mismatch()
+            self._require_kb_owner(con, device['kb_id'], learner_id)
         return device
 
     def authenticate_device(self, authorization):
@@ -168,9 +177,10 @@ class TopicSyncStore:
             raise _device_missing()
         with closing(self.access_store._connect()) as con:
             device = self._find_device(con, device_id)
-        if not device or not hmac.compare_digest(device['secret_digest'],
-                                                  credential_digest('topic-sync-device', device_secret)):
-            raise _device_missing()
+            if not device or not hmac.compare_digest(device['secret_digest'],
+                                                      credential_digest('topic-sync-device', device_secret)):
+                raise _device_missing()
+            self._require_kb_owner(con, device['kb_id'], device['learner_id'])
         access = self.access_store.resolve_digest(device['identity_digest'])
         if self.authorize_account(access) != device['learner_id']:
             raise account_mismatch()

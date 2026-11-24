@@ -164,6 +164,15 @@ class TopicSyncTests(unittest.TestCase):
                          'document')
         self.assertEqual(self.bind('duplicate').status_code, 409)
 
+    def test_reinstalled_companion_cannot_pair_the_original_knowledge_base_with_a_new_account(self):
+        self.assertEqual(self.pair(self.headers).status_code, 200)
+        self.device = str(uuid4())
+        self.secret = secrets.token_urlsafe(32)
+        rejected = self.pair(self.normal_headers)
+        self.assertEqual(rejected.status_code, 403)
+        self.assertEqual(rejected.json()['detail']['code'], 'topic_sync_account_mismatch')
+        self.assertEqual(self.pair(self.normal_headers, kb='separate-kb').status_code, 200)
+
     def test_hyperskill_catalogue_only_returns_topics_available_to_the_paired_account(self):
         self.assertEqual(self.pair(self.headers).status_code, 200)
         expected = {'topics': {'321': self.topic}}
@@ -209,7 +218,12 @@ class TopicSyncTests(unittest.TestCase):
         response = self.post('body', self.headers, change, device_id=self.device)
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(self.get('device-body', self.authorization, topic_id=self.topic).json()['revision'], first)
-        self.assertEqual(self.get('body', self.normal_headers, topic_id=self.topic).json()['document'], None)
+        official = self.get('body', self.normal_headers, topic_id=self.topic).json()
+        self.assertIsNone(official['revision'])
+        self.assertEqual(official['document']['title'], self.course['title'])
+        self.assertIn('INTRODUCTION_ONLY', str(official['document']['blocks']))
+        self.assertNotIn('REFERENCE_ONLY', str(official))
+        self.assertEqual(len(official['official_version']), 64)
         self.assertEqual(self.post('body', self.headers, change).json(), response.json())
         self.assertEqual(self.post('device-body', self.authorization, {**change, 'revision': second}).status_code, 409)
         changed = {**body, 'title': 'Edited on companion'}
