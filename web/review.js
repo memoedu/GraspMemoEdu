@@ -1,15 +1,15 @@
-import { t, translateMessage, learningTitle, getLanguage } from './i18n.js?v=e511ec4b3ec0f2d7';
-import {attachFormulaEditing} from './formula-input.js?v=e511ec4b3ec0f2d7';
-import {setQuestionTools} from './question-tools.js?v=e511ec4b3ec0f2d7';
-import {enableVoiceAnswer, voiceAnswerPending} from './voice-input.js?v=e511ec4b3ec0f2d7';
-import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=e511ec4b3ec0f2d7';
-import {mountAnswerConversion} from './answer-conversion.js?v=e511ec4b3ec0f2d7';
-import {isCourseSelfRating, selfAssessment, referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=e511ec4b3ec0f2d7';
-import {reportableContent} from './content-report.js?v=e511ec4b3ec0f2d7';
-import {createLearningCache} from './learning-cache.js?v=e511ec4b3ec0f2d7';
-import {enhanceTopicContent} from './topic-content.js?v=e511ec4b3ec0f2d7';
-import {practiceHint} from './beginner-hints.js?v=e511ec4b3ec0f2d7';
-import {questionWhiteboard} from './whiteboard-answer.js?v=e511ec4b3ec0f2d7';
+import { t, translateMessage, learningTitle, getLanguage } from './i18n.js?v=23dea509222127b3';
+import {attachFormulaEditing} from './formula-input.js?v=23dea509222127b3';
+import {setQuestionTools} from './question-tools.js?v=23dea509222127b3';
+import {enableVoiceAnswer, voiceAnswerPending} from './voice-input.js?v=23dea509222127b3';
+import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=23dea509222127b3';
+import {mountAnswerConversion} from './answer-conversion.js?v=23dea509222127b3';
+import {isCourseSelfRating, selfAssessment, referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=23dea509222127b3';
+import {reportableContent} from './content-report.js?v=23dea509222127b3';
+import {createLearningCache} from './learning-cache.js?v=23dea509222127b3';
+import {enhanceTopicContent} from './topic-content.js?v=23dea509222127b3';
+import {practiceHint} from './beginner-hints.js?v=23dea509222127b3';
+import {questionWhiteboard} from './whiteboard-answer.js?v=23dea509222127b3';
 
 const node = (tag, cls = '', text) => {
   const item = document.createElement(tag); item.className = cls;
@@ -268,7 +268,7 @@ export function createReviewView(bridge) {
         : structured ? 'question.completeHint' : '只要描述清楚正确答案的形式即可，表达方式不限，夹杂口语也没关系。Ctrl + Enter 提交。')));
       card.append(form);
       const controls = selfAssessment(question, input, {disabled: busy || !can('submit_answer'),
-        binaryCorrectRating: 4,
+        courseQuestion: true,
         reveal: () => mutate('reveal', payload()),
         rate: rating => mutate('submit', {...payload(), answer: `自主评分：${rating}`, self_rating: rating, elapsed_ms: tick(true)}),
         explanation: question.revealed ? reportableContent(content(question.explanation_html, state.content_references), reportContext,

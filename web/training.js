@@ -1,23 +1,23 @@
-import {t, translateMessage, getLanguage} from './i18n.js?v=e511ec4b3ec0f2d7';
-import {ideaSetupHash, ideaSetupLink} from './idea-setup.js?v=e511ec4b3ec0f2d7';
-import {answerReady, answerEmpty} from './question-input.js?v=e511ec4b3ec0f2d7';
-import {createLearningCache} from './learning-cache.js?v=e511ec4b3ec0f2d7';
-import {catalogView, catalogPath, workspaceLayout} from './catalog-workspace.js?v=e511ec4b3ec0f2d7';
-import {helpableContent} from './content-report.js?v=e511ec4b3ec0f2d7';
-import {ratingChoices} from './self-assessment.js?v=e511ec4b3ec0f2d7';
-import {pointAssessment} from './point-assessment.js?v=e511ec4b3ec0f2d7';
-import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=e511ec4b3ec0f2d7';
-import {learningHint} from './beginner-hints.js?v=e511ec4b3ec0f2d7';
+import {t, translateMessage, getLanguage} from './i18n.js?v=23dea509222127b3';
+import {ideaSetupHash, ideaSetupLink} from './idea-setup.js?v=23dea509222127b3';
+import {answerReady, answerEmpty} from './question-input.js?v=23dea509222127b3';
+import {createLearningCache} from './learning-cache.js?v=23dea509222127b3';
+import {catalogView, catalogPath, workspaceLayout} from './catalog-workspace.js?v=23dea509222127b3';
+import {helpableContent} from './content-report.js?v=23dea509222127b3';
+import {ratingChoices, selfAssessmentChoices} from './self-assessment.js?v=23dea509222127b3';
+import {pointAssessment} from './point-assessment.js?v=23dea509222127b3';
+import {hyperskillQuestion,localHyperskill} from './hyperskill.js?v=23dea509222127b3';
+import {learningHint} from './beginner-hints.js?v=23dea509222127b3';
 
 const node = (tag, cls = '', text) => { const n = document.createElement(tag); n.className = cls; if (text !== undefined) n.textContent = text; return n; };
 const button = (text, cls, action) => { const n = node('button', cls, text); n.type = 'button'; n.addEventListener('click', action); return n; };
 const encode = encodeURIComponent;
 const query = fields => new URLSearchParams(fields).toString();
 const ratingKeys = ['', 'training.again', 'training.hard', 'training.good', 'training.easy', 'training.retire'];
-import {answerEditor, readerFrame, readerStepTitle, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, renderReviewReader} from './learning-ui.js?v=e511ec4b3ec0f2d7';
-import {setQuestionTools} from './question-tools.js?v=e511ec4b3ec0f2d7';
-import {voiceAnswerPending} from './voice-input.js?v=e511ec4b3ec0f2d7';
-import {questionWhiteboard} from './whiteboard-answer.js?v=e511ec4b3ec0f2d7';
+import {answerEditor, readerFrame, readerStepTitle, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, renderReviewReader} from './learning-ui.js?v=23dea509222127b3';
+import {setQuestionTools} from './question-tools.js?v=23dea509222127b3';
+import {voiceAnswerPending} from './voice-input.js?v=23dea509222127b3';
+import {questionWhiteboard} from './whiteboard-answer.js?v=23dea509222127b3';
 
 export function createTrainingView(bridge) {
   const {root, request, href, formatDate, getAccess} = bridge;
@@ -544,7 +544,7 @@ export function createTrainingView(bridge) {
       }
     }
     if (!state.academy && !state.hyperskill && (state.phase === 'shown' || state.phase === 'done' && (state.result.self_rating || state.result.stop_requested))) {
-      const ratings = ratingChoices({labels: ratingKeys.slice(1), binaryCorrectRating: state.multi_step ? 5 : undefined,
+      const ratings = selfAssessmentChoices(state, {canStop: true,
         selected: state.result?.stop_requested ? 5 : state.result?.self_rating,
         disabled: state.phase === 'done' || !state.can_self_rate || !state.can_submit,
         onRate: async rating => {
