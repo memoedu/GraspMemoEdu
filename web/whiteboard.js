@@ -1,7 +1,7 @@
-import {calculate, calculateSelectedFormula, storedExpression} from './calculator-engine.js?v=f528844848c87ac9';
-import {assignableVariable, normalizeVariableName, permitsKey} from './calculator-policy.js?v=f528844848c87ac9';
-import {chooseWhiteboardFolder, whiteboardFolder, saveWhiteboard, restoreWhiteboard} from './whiteboard-archive.js?v=f528844848c87ac9';
-import {refreshVoiceInput, voiceFieldPending} from './voice-input.js?v=f528844848c87ac9';
+import {calculate, calculateSelectedFormula, storedExpression} from './calculator-engine.js?v=1ec05c2c213ea544';
+import {assignableVariable, normalizeVariableName, permitsKey} from './calculator-policy.js?v=1ec05c2c213ea544';
+import {chooseWhiteboardFolder, whiteboardFolder, saveWhiteboard, restoreWhiteboard} from './whiteboard-archive.js?v=1ec05c2c213ea544';
+import {refreshVoiceInput, voiceFieldPending} from './voice-input.js?v=1ec05c2c213ea544';
 
 const editorUrl = 'https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v3/whiteboard.html';
 const boards = new WeakMap();

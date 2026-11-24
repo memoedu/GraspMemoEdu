@@ -14,7 +14,7 @@ const route = '#/subjects/math/topic/synthetic-course';
 const original = '#clip-fragment [data-math-source]';
 const compact = text => text.replace(/\s+/g, '');
 
-async function dragMath(page, selector) {
+async function dragMath(page, selector, reverse = false) {
   const formula = page.locator(selector);
   await formula.scrollIntoViewIfNeeded();
   const [start, end] = await formula.evaluate(node => {
@@ -25,9 +25,9 @@ async function dragMath(page, selector) {
       return {left: r.left, right: r.right, y: r.y + r.height / 2};
     });
   });
-  await page.mouse.move(start.left + .5, start.y);
+  await page.mouse.move(reverse ? end.right - .5 : start.left + .5, reverse ? end.y : start.y);
   await page.mouse.down();
-  await page.mouse.move(end.right - .5, end.y, {steps: 16});
+  await page.mouse.move(reverse ? start.left + .5 : end.right - .5, reverse ? start.y : end.y, {steps: 16});
   await page.mouse.up();
   assert.equal(compact(await page.evaluate(() => getSelection().toString())), 'a+b');
 }
@@ -57,7 +57,22 @@ try {
   const archive = page.locator('#clip-archived [data-tex]');
   await archive.locator('mjx-container[jax="HTML"] .katex-html').waitFor();
   await dragMath(page, '#clip-archived [data-tex]');
-  checks.push('Stored TeX and unsourced historical SVG render as native selectable HTML');
+  checks.push('Stored TeX and unsourced MathJax 3 SVG render as native selectable HTML');
+
+  for (const [selector, display] of [['#clip-v2-inline .mjpage', false], ['#clip-v2-display .mjpage', true]]) {
+    const math = page.locator(selector);
+    await math.locator('.katex-html .mfrac').waitFor();
+    assert.equal(await math.locator('.katex-display').count(), Number(display));
+    if (display) {
+      assert.equal(await math.locator('.katex-html [style*="border-color: lightgray"]').count(), 1);
+      assert.match(await math.locator('.katex-html').innerText(), /#1/);
+    }
+    await dragMath(page, selector, display);
+    await page.keyboard.press('Control+c');
+    assert.equal(compact(await page.evaluate(() => navigator.clipboard.readText())), 'a+b');
+  }
+  assert.equal(await page.locator('#clip-non-formula path').count(), 1);
+  checks.push('Inline and display MathJax 2 archives support native partial copy in both directions');
 
   await page.locator('#userMenuButton').click();
   await page.locator('#identityButton').click();
@@ -74,11 +89,17 @@ try {
   const shared = page.frameLocator('.clipperPanel:not([hidden]) .clipperFeatureFrame');
   await shared.locator('#content > *').first().waitFor({state: 'attached', timeout: 75000});
   const frame = await (await page.locator('.clipperPanel:not([hidden]) .clipperFeatureFrame').elementHandle()).contentFrame();
-  const saved = await frame.waitForFunction(async () => {
-    const view = JSON.parse(await DotNet.invokeMethodAsync('KnowledgeClipper.Browser', 'View'));
-    return view.shared.receipt && view.shared.text;
-  }, undefined, {timeout: 45000});
-  assert.equal(compact(await saved.jsonValue()), 'a+b');
+  let saved;
+  const deadline = Date.now() + 45000;
+  while (!saved && Date.now() < deadline) {
+    saved = await frame.evaluate(async () => {
+      const view = JSON.parse(await DotNet.invokeMethodAsync('KnowledgeClipper.Browser', 'View'));
+      return view.shared.receipt && view.shared.text;
+    });
+    if (!saved) await new Promise(resolve => setTimeout(resolve, 200));
+  }
+  assert.equal(typeof saved, 'string', 'Expected a saved text excerpt');
+  assert.equal(compact(saved), 'a+b');
   checks.push('Enabling the clipper preserves the same browser Range and saves only its fragment');
 
   for (const entry of ['pwa-free-study/', 'pwa-math-courses/']) {
