@@ -7,7 +7,7 @@ import {launchAcceptanceChrome} from './launch_acceptance_chrome.mjs';
 
 const [assetRoot, site, voiceFile, invitationFile] = process.argv.slice(2);
 assert.equal(Boolean(voiceFile), Boolean(invitationFile), 'Provide both the microphone WAV and the fixture invitation file');
-const editor = 'https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v2/';
+const editor = 'https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v3/';
 const requireRuntime = createRequire(join(homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
 const chrome = await launchAcceptanceChrome(requireRuntime, voiceFile ? [
   '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', `--use-file-for-fake-audio-capture=${voiceFile}`,
@@ -41,7 +41,7 @@ try {
     const contentType = path.endsWith('.js') ? 'text/javascript' : path.endsWith('.css') ? 'text/css' : 'text/html';
     await route.fulfill({status: 200, contentType, body: await readFile(join(assetRoot, path))});
   });
-  let calls = 0;
+  let calls = 0, selectionCalls = 0;
   let receiveFirstOcr, releaseFirstOcr;
   const firstOcrStarted = new Promise(resolve => { receiveFirstOcr = resolve; });
   const firstOcrRelease = new Promise(resolve => { releaseFirstOcr = resolve; });
@@ -49,6 +49,12 @@ try {
     const payload = route.request().postDataJSON();
     assert.match(payload.image, /^iVBORw0KGgo/);
     assert.equal(payload.language, 'zh');
+    if (payload.purpose === 'expression') {
+      assert.equal(payload.question, undefined, 'formula OCR must send only the selection');
+      const crop = Buffer.from(payload.image, 'base64');
+      assert.ok(crop.readUInt32BE(16) < 1280 && crop.readUInt32BE(20) < 1024);
+      return route.fulfill({json: {status: 'ready', answer: ++selectionCalls === 1 ? '3+7' : '2+3=5'}});
+    }
     assert.ok(payload.question.length > 5);
     assert.doesNotMatch(payload.question, /REFERENCE_ONLY/);
     calls++;
@@ -181,19 +187,47 @@ try {
   await frame.getByRole('button', {name: '画笔', exact: true}).click();
   await canvas.scrollIntoViewIfNeeded();
   const lassoTarget = await canvas.boundingBox();
-  await page.mouse.move(lassoTarget.x + 100, lassoTarget.y + 48);
+  await page.mouse.move(lassoTarget.x + 100, lassoTarget.y + 188);
   await page.mouse.down();
-  await page.mouse.move(lassoTarget.x + 150, lassoTarget.y + 76, {steps: 8});
+  await page.mouse.move(lassoTarget.x + 150, lassoTarget.y + 216, {steps: 8});
   await page.mouse.up();
   await frame.getByRole('button', {name: '套索', exact: true}).click();
   await canvas.scrollIntoViewIfNeeded();
   const selection = await canvas.boundingBox();
-  await page.mouse.move(selection.x + 85, selection.y + 30);
+  await page.mouse.move(selection.x + 85, selection.y + 172);
   await page.mouse.down();
-  for (const [x, y] of [[170, 30], [170, 110], [85, 110], [85, 30]]) {
+  for (const [x, y] of [[170, 172], [170, 238], [85, 238], [85, 172]]) {
     await page.mouse.move(selection.x + x, selection.y + y, {steps: 8});
   }
   await page.mouse.up();
+  const identifySelection = panel.getByRole('button', {name: '识别圈选公式'});
+  await identifySelection.waitFor();
+  await canvas.scrollIntoViewIfNeeded();
+  const beforeScale = await canvas.boundingBox();
+  await page.mouse.move(beforeScale.x + 158, beforeScale.y + 224);
+  await page.mouse.down();
+  await page.mouse.move(beforeScale.x + 197, beforeScale.y + 252, {steps: 8});
+  await page.mouse.up();
+  await identifySelection.waitFor();
+  await panel.getByRole('button', {name: '计算', exact: true}).click();
+  try { await panel.getByText('3+7 = 10', {exact: true}).waitFor({timeout: 5000}); }
+  catch (error) {
+    throw Error(JSON.stringify({selectionCalls, text: await panel.innerText(), errors, diagnostics}), {cause: error});
+  }
+  const selectedFormula = panel.getByRole('textbox', {name: '圈选公式识别结果'});
+  await identifySelection.click();
+  await page.waitForFunction(() => document.querySelector('.whiteboardSelection input')?.value === '2+3=5');
+  await selectedFormula.evaluate(input => input.setSelectionRange(0, 3));
+  const selectedVariable = panel.getByRole('textbox', {name: '变量名'});
+  await selectedVariable.evaluate(input => input.dispatchEvent(new CustomEvent('whiteboard-dictation', {detail: '用 B 换元'})));
+  await selectedVariable.press('Enter');
+  await panel.getByText('B = 5', {exact: true}).waitFor();
+  await panel.getByText('已换元，可在画布撤销。', {exact: true}).waitFor();
+  await undo.click();
+  await frame.getByRole('button', {name: '形状', exact: true}).hover();
+  await frame.getByRole('button', {name: '箭头', exact: true}).waitFor();
+  await frame.getByRole('button', {name: '形状', exact: true}).press('Escape');
+  await canvas.press('Control+a');
   await frame.getByRole('button', {name: '删除所选', exact: true}).click();
   await undo.click();
 
@@ -203,7 +237,7 @@ try {
   await expression.evaluate(input => input.setSelectionRange(0, 3));
   await name.fill('A');
   await panel.getByRole('button', {name: '储存／换元'}).click();
-  await panel.getByText('A = 5', {exact: true}).waitFor();
+  await panel.getByText('B = 5 · A = 5', {exact: true}).waitFor();
   await frame.getByRole('button', {name: '清屏'}).click();
   await expression.fill('A+2');
   await panel.getByRole('button', {name: '计算', exact: true}).click();
@@ -250,7 +284,7 @@ try {
     }
   });
   assert.ok(saved.imageSize > 1000);
-  assert.deepEqual(saved.registers, [['A', {value: 5, text: '5'}]]);
+  assert.deepEqual(saved.registers, [['B', {value: 5, text: '5'}], ['A', {value: 5, text: '5'}]]);
   assert.ok(saved.texts.includes('A+2 = 7'));
   assert.ok(saved.texts.includes('2x + 3 = 7'));
   await send.click();
@@ -258,7 +292,7 @@ try {
   assert.equal(calls, 3);
   await panel.getByRole('button', {name: '收起'}).click();
   await launcher.click();
-  await panel.getByText('A = 5', {exact: true}).waitFor();
+  await panel.getByText('B = 5 · A = 5', {exact: true}).waitFor();
   for (const width of [320, 375, 414, 768]) {
     await page.setViewportSize({width, height: 850});
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1);
@@ -305,7 +339,8 @@ try {
     voiceFile ? 'Chrome capture, transcription insertion and pending submit guard' : 'voice insertion event',
     'archive and reopen', 'directory cancellation and denied permission', 'live undo after reopen',
     'lasso deletion and undo', 'OCR freeze and recovery', 'insufficient without submission', 'shared judge', 'small viewports',
-    'editable scene recovered after its PNG went missing', 'editor retries after load failure']}));
+    'editable scene recovered after its PNG went missing', 'editor retries after load failure',
+    'selection calculation', 'dictated variable and undoable substitution', 'hover shapes', 'select all']}));
 } finally {
   await chrome.close();
 }
