@@ -386,6 +386,10 @@ test('Scoped installations restore independently and fall back after a scope dep
   await relaunchedMath.locator('.freeStudyLayout').waitFor();
   const fallbackMath = await fixture(t, {...pwa, entry: math, hash: ''});
   assert.equal(new URL(fallbackMath.url()).hash, courseHome);
+  // Android can resume an existing window when its launcher icon is tapped.
+  await relaunchedMath.bringToFront();
+  await relaunchedMath.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+  await relaunchedMath.waitForURL(url => url.hash === courseHome);
   const stillFree = await fixture(t, {...pwa, entry: free, hash: ''});
   assert.equal(new URL(stillFree.url()).hash, freeRoute);
 

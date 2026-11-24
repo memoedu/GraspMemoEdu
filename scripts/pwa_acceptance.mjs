@@ -108,6 +108,7 @@ try {
     const install = new URL('install.html', home).href;
     assert.equal((await page.goto(install)).status(), 200);
     await page.getByRole('heading', {name: title, exact: true}).waitFor();
+    await page.getByText('应用只恢复其范围内的页面', {exact: false}).waitFor();
     assert.equal(await page.evaluate(async () => (await navigator.serviceWorker.ready).scope), base);
     const variant = await cdp.send('Page.getAppManifest');
     assert.deepEqual(variant.errors, []);
