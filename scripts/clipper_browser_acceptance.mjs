@@ -91,7 +91,7 @@ try{
     await page.keyboard.press('Alt+Shift+s');await chooser.waitFor();await page.keyboard.press('Alt+Shift+c');
     await page.waitForFunction(()=>document.activeElement?.matches('.clipperActions button:first-child'));
     checks.push('native drag and keyboard selection');
-  }else{await sample.locator('[data-tex]').first().tap();await chooser.waitFor();checks.push('tap selection');}
+  }else{await select('formula');checks.push('browser formula selection at touch viewport');}
   await select('mixed');const excerpt=await operation('摘');
   const captured=await view(excerpt,s=>s.shared.receipt);
   assert.match(captured.shared.text,/比较 \\\(a\^2\+b\^2\\\)/);

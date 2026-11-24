@@ -92,7 +92,7 @@ foreach ($name in $formula.files.Keys) {
     $actual = (Get-FileHash -LiteralPath (Join-Path $PSScriptRoot ('web/' + $name)) -Algorithm SHA256).Hash.ToLowerInvariant()
     if ($actual -ne $formula.files[$name]) { throw ('Formula source differs from pinned build: ' + $name) }
 }
-$expected += @('formula-input.js','formula-catalog.js','formula-selection.js','formula-input.css') + @($formula.files.Keys)
+$expected += @('formula-input.js','formula-catalog.js','formula-input.css') + @($formula.files.Keys)
 $relativeFiles = @($files | ForEach-Object { [IO.Path]::GetRelativePath($ExportDirectory, $_.FullName).Replace('\','/') })
 if (@(Compare-Object ($expected | Sort-Object) ($relativeFiles | Sort-Object)).Count -ne 0) { throw 'Unexpected files in static publication directory.' }
 foreach ($name in $expected | Where-Object { $_ -notin @('.nojekyll', 'deployment.json', $clipperManifest) }) {

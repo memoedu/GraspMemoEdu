@@ -73,7 +73,7 @@ try {
   assert.equal(['learn', 'submit_answer', 'review_history'].every(feature => initial.access.features.includes(feature)), true);
   report.access = { role: initial.access.role, features: initial.access.features };
   assert.equal(await page.locator('#historyButton').getAttribute('aria-expanded'), 'true');
-  assert.equal(await page.locator('mjx-container svg').count() > 0, true);
+  await page.locator('.katex-html, mjx-container[jax="HTML"] > math').first().waitFor();
   assert.equal(await page.locator('[data-mml-node="merror"]').count(), 0);
   report.checks.push('Guest enters automatically through the public HTTPS API without setup or local network permission');
   await screenshot('01-connected');

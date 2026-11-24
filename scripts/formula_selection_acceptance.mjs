@@ -9,137 +9,98 @@ const [output, fixture, base = 'http://127.0.0.1:18891'] = process.argv.slice(2)
 const require = createRequire(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
 const [invite] = JSON.parse(await readFile(path.join(fixture, 'browser-fixtures.json'), 'utf8'));
 const browser = await launchAcceptanceChrome(require);
-const checks = [];
-const expected = String.raw`a+b+c+\frac{x+1}{y-2}`;
-const errors = [];
+const checks = [], errors = [];
+const route = '#/subjects/math/topic/synthetic-course';
+const original = '#clip-fragment [data-math-source]';
+const compact = text => text.replace(/\s+/g, '');
+
+async function dragMath(page, selector) {
+  const formula = page.locator(selector);
+  await formula.scrollIntoViewIfNeeded();
+  const [start, end] = await formula.evaluate(node => {
+    const tokens = [...node.querySelectorAll('.katex-html .mord')];
+    return ['a', 'b'].map(letter => {
+      const token = tokens.find(item => item.textContent === letter && !item.childElementCount);
+      const r = token.getBoundingClientRect();
+      return {left: r.left, right: r.right, y: r.y + r.height / 2};
+    });
+  });
+  await page.mouse.move(start.left + .5, start.y);
+  await page.mouse.down();
+  await page.mouse.move(end.right - .5, end.y, {steps: 16});
+  await page.mouse.up();
+  assert.equal(compact(await page.evaluate(() => getSelection().toString())), 'a+b');
+}
 
 try {
   await mkdir(output, {recursive: true});
-  for (const mobile of [false, true]) {
-    const context = await browser.newContext({locale: 'zh-CN',
-      viewport: mobile ? {width: 390, height: 844} : {width: 1100, height: 860},
-      hasTouch: mobile, isMobile: mobile,
+  const context = await browser.newContext({viewport: {width: 1100, height: 860}, locale: 'zh-CN'});
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'], {origin: base});
+  const page = await context.newPage();
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto(base + '/' + route);
+  await page.locator(original + ' .katex-html').waitFor();
+  await page.evaluate(() => document.fonts.ready);
+  const legacy = page.locator('p:has-text("Legacy SVG") mjx-container[jax="HTML"]');
+  await legacy.locator('.katex-html .mfrac').waitFor();
+  assert.match(await legacy.locator('.katex-html').innerText(), /1/);
+  const native = page.locator('p:has-text("Native MathML") math');
+  assert.equal(await native.locator('mi').textContent(), 'm');
+  assert.equal(await page.locator('.formulaSelectionTools, .formulaSelectionPanel, .formulaSelectionTrigger').count(), 0);
+  assert.equal(await page.locator('[data-question-tool="clipper"]').isVisible(), false);
+
+  await dragMath(page, original);
+  await page.keyboard.press('Control+c');
+  assert.equal(compact(await page.evaluate(() => navigator.clipboard.readText())), 'a+b');
+  checks.push('Guest drags across visible formula characters and copies only the selected fragment');
+
+  const archive = page.locator('#clip-archived [data-tex]');
+  await archive.locator('mjx-container[jax="HTML"] .katex-html').waitFor();
+  await dragMath(page, '#clip-archived [data-tex]');
+  checks.push('Stored TeX and unsourced historical SVG render as native selectable HTML');
+
+  await page.locator('#userMenuButton').click();
+  await page.locator('#identityButton').click();
+  const login = page.locator('#identityDialog');
+  await login.locator('input').fill(invite);
+  await login.locator('form').evaluate(form => form.requestSubmit());
+  await login.waitFor({state: 'hidden'});
+  const clipper = page.locator('[data-question-tool="clipper"]');
+  if (await clipper.getAttribute('aria-pressed') !== 'true') await clipper.click();
+  await page.locator(original + ' .katex-html').waitFor();
+  await dragMath(page, original);
+  const options = page.locator('.clipperActions');
+  await options.getByRole('button', {name: '摘', exact: true}).click();
+  const shared = page.frameLocator('.clipperPanel:not([hidden]) .clipperFeatureFrame');
+  await shared.locator('#content > *').first().waitFor({state: 'attached', timeout: 75000});
+  const frame = await (await page.locator('.clipperPanel:not([hidden]) .clipperFeatureFrame').elementHandle()).contentFrame();
+  const saved = await frame.waitForFunction(async () => {
+    const view = JSON.parse(await DotNet.invokeMethodAsync('KnowledgeClipper.Browser', 'View'));
+    return view.shared.receipt && view.shared.text;
+  }, undefined, {timeout: 45000});
+  assert.equal(compact(await saved.jsonValue()), 'a+b');
+  checks.push('Enabling the clipper preserves the same browser Range and saves only its fragment');
+
+  for (const entry of ['pwa-free-study/', 'pwa-math-courses/']) {
+    await page.goto(base + '/' + entry + route);
+    await page.evaluate(() => {
+      const paragraph = document.createElement('p');
+      const formula = document.createElement('span');
+      formula.dataset.tex = 'a+b+c';
+      const math = document.createElement('mjx-container');
+      math.setAttribute('jax', 'SVG');
+      formula.append(math);
+      paragraph.id = 'pwa-late-formula';
+      paragraph.append(formula);
+      document.body.append(paragraph);
     });
-    try {
-      await context.grantPermissions(['clipboard-read', 'clipboard-write'], {origin: base});
-      const page = await context.newPage();
-      page.setDefaultTimeout(12000);
-      page.on('pageerror', error => errors.push(error.message));
-      const trigger = page.getByRole('button', {name: '选取公式片段', exact: true});
-      const panel = page.locator('.formulaSelectionPanel');
-      const formula = page.locator('#clip-fragment [data-math-source]');
-      const editor = panel.locator('math-field');
-      const copy = panel.getByRole('button', {name: '复制 LaTeX', exact: true});
-      const clipboard = () => page.evaluate(() => navigator.clipboard.readText());
-      await page.goto(base + '/#/subjects/math/topic/synthetic-course');
-      await formula.waitFor();
-      await page.evaluate(() => document.fonts.ready);
-      await formula.scrollIntoViewIfNeeded();
-      const hit = await formula.evaluate(node => [...node.getClientRects()]
-        .filter(rect => rect.width && rect.height && rect.bottom > 0 && rect.top < innerHeight)
-        .sort((a, b) => b.width - a.width)[0].toJSON());
-      if (mobile) await page.touchscreen.tap(hit.x + hit.width / 2, hit.y + hit.height / 2);
-      else await page.mouse.move(hit.x + hit.width / 2, hit.y + hit.height / 2);
-      await trigger.click();
-      await editor.waitFor();
-      assert.equal(await editor.evaluate(node => node.readOnly), true);
-      await copy.click();
-      await panel.getByRole('status').getByText('已复制').waitFor();
-      assert.equal(await clipboard(), expected);
-      checks.push(mobile ? 'Mobile tap opens a selectable formula and copies full LaTeX' :
-        'Whole-formula LaTeX copy works before login');
-
-      if (mobile) {
-        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-        await page.screenshot({path: path.join(output, 'mobile-formula-selection.png')});
-        continue;
-      }
-
-      async function dragB() {
-        await page.evaluate(() => document.fonts.ready);
-        assert.equal(await editor.evaluate(node => node.value), expected);
-        await page.waitForFunction(() => [...(document.querySelector('.formulaSelectionPanel math-field')?.shadowRoot
-          ?.querySelectorAll('span') || [])].some(child => !child.children.length &&
-          child.textContent === 'b' && child.getClientRects().length));
-        const rect = await editor.evaluate(node => {
-          const glyph = [...node.shadowRoot.querySelectorAll('span')]
-            .find(child => !child.children.length && child.textContent === 'b' && child.getClientRects().length);
-          const {left, right, top, height} = glyph.getBoundingClientRect();
-          return {left, right, y: top + height / 2};
-        });
-        await page.mouse.move(rect.left + 1, rect.y);
-        await page.mouse.down();
-        await page.mouse.move(rect.right - 1, rect.y, {steps: 10});
-        await page.mouse.up();
-        assert.equal(await editor.evaluate(node => node.getValue(node.selection, 'latex')), 'b');
-      }
-
-      await dragB();
-      await page.keyboard.press('Control+c');
-      await page.waitForFunction(async () => await navigator.clipboard.readText() === 'b');
-      await page.keyboard.press('Escape');
-      await panel.waitFor({state: 'hidden'});
-      await trigger.focus();
-      await page.keyboard.press('Enter');
-      await editor.waitFor();
-      await page.keyboard.press('Shift+ArrowRight');
-      await page.keyboard.press('Shift+ArrowRight');
-      await copy.click();
-      await page.waitForFunction(async () => await navigator.clipboard.readText() === 'a+');
-      checks.push('Mouse drag and Shift+arrow copy only the selected MathLive subexpression');
-
-      await page.keyboard.press('Escape');
-      for (const [selector, pattern] of [
-        ['p:has-text("Legacy SVG") mjx-container', /\\frac\{1\}\{2\}/],
-        ['p:has-text("Native MathML") math', /\{m\}\^\{3\}/],
-      ]) {
-        await page.locator(selector).dblclick();
-        await editor.waitFor();
-        await copy.click();
-        await panel.getByRole('status').getByText('已复制').waitFor();
-        assert.match(await clipboard(), pattern);
-        await page.keyboard.press('Escape');
-      }
-      checks.push('Legacy SVG and native MathML use the same formula selector');
-
-      await page.locator('#userMenuButton').click();
-      await page.locator('#identityButton').click();
-      const login = page.locator('#identityDialog');
-      await login.locator('input').fill(invite);
-      await login.locator('form').evaluate(form => form.requestSubmit());
-      await login.waitFor({state: 'hidden'});
-      const clipper = page.locator('[data-question-tool="clipper"]');
-      if (await clipper.getAttribute('aria-pressed') !== 'true') await clipper.click();
-      await page.waitForResponse(response => response.url().endsWith('/api/clipper/settings'), {timeout: 7000}).catch(() => {});
-      await formula.scrollIntoViewIfNeeded();
-      const original = await formula.boundingBox();
-      await page.mouse.dblclick(original.x + original.width / 2, original.y + original.height / 2);
-      await editor.waitFor();
-      await dragB();
-      await panel.getByRole('button', {name: '摘录', exact: true}).click();
-      const frameHandle = await page.locator('.clipperPanel:not([hidden]) .clipperFeatureFrame').elementHandle();
-      const frame = await frameHandle.contentFrame();
-      await frame.locator('#content > *').first().waitFor({state: 'attached', timeout: 75000});
-      const source = await frame.waitForFunction(async () => {
-        const view = JSON.parse(await DotNet.invokeMethodAsync('KnowledgeClipper.Browser', 'View'));
-        return view.shared.receipt && view.shared.text;
-      }, undefined, {timeout: 45000});
-      assert.equal(await source.jsonValue(), String.raw`\(b\)`);
-      const article = frame.locator('article').first();
-      await frame.locator('.formulaSelectionTools').waitFor({state: 'attached'});
-      await article.locator('.katex').first().hover();
-      await frame.getByRole('button', {name: '选取公式片段', exact: true}).click();
-      await frame.locator('.formulaSelectionPanel math-field').waitFor();
-      await frame.getByRole('button', {name: '关闭', exact: true}).click();
-      await page.locator('.clipperDock').getByRole('button', {name: '关闭', exact: true}).click();
-      checks.push('Shared clipper saves only the selected formula fragment and reuses the selector inside its frame');
-    } finally {
-      await context.close();
-    }
+    await page.locator('#pwa-late-formula .katex-html').waitFor();
   }
+  checks.push('Both PWA entrypoints normalize dynamically mounted formulas without a trigger');
+
   assert.deepEqual(errors, []);
   await writeFile(path.join(output, 'formula-selection.json'), JSON.stringify({checks, errors}, null, 2));
-  console.log(`PASS ${checks.length} formula selection checks`);
+  console.log('PASS ' + checks.length + ' native formula selection checks');
 } finally {
   await browser.close();
 }

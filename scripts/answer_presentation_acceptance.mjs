@@ -1,4 +1,4 @@
-/** Disposable Chrome acceptance for answer fields, SVG math and expanded review trees. */
+/** Disposable Chrome acceptance for answer fields, selectable math and expanded review trees. */
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
@@ -30,19 +30,13 @@ async function shot(name) {
   const file = path.join(output, name + '.png'); await page.screenshot({path: file, fullPage: true}); report.screenshots.push(file);
 }
 async function math(selector) {
-  const scope = page.locator(selector); await scope.locator('mjx-container svg').first().waitFor();
-  const metrics = await scope.evaluate(root => ({
-    formulas: [...root.querySelectorAll('mjx-container svg')].map(svg => ({
-      width: svg.getBoundingClientRect().width, height: svg.getBoundingClientRect().height,
-      missing: [...svg.querySelectorAll('use')].filter(use => {
-        const href = use.getAttribute('href') || use.getAttribute('xlink:href');
-        return href?.startsWith('#') && !svg.querySelector('[id="' + href.slice(1) + '"]');
-      }).length,
-    })),
-    raw: root.textContent.includes('$'),
+  const formulas = page.locator(selector).locator('.katex-html, mjx-container[jax="HTML"] > math');
+  await formulas.first().waitFor();
+  const metrics = await formulas.evaluateAll(nodes => nodes.map(node => {
+    const {width, height} = node.getBoundingClientRect();
+    return {width, height, text: node.textContent.trim(), selectable: getComputedStyle(node).userSelect === 'text'};
   }));
-  assert.equal(metrics.raw, false); assert.ok(metrics.formulas.length);
-  assert.ok(metrics.formulas.every(f => f.width > 0 && f.height > 0 && !f.missing), JSON.stringify(metrics));
+  assert.ok(metrics.every(f => f.width > 0 && f.height > 0 && f.text && f.selectable), JSON.stringify(metrics));
 }
 const bank = q => '/subjects/math/banks/tree-bank-a/section?review=1&question=' + q;
 try {
@@ -50,7 +44,7 @@ try {
   await page.locator('#userMenuButton').hover(); await page.locator('#identityButton').click();
   await page.locator('#invitationCode').fill(identities.advanced); await page.locator('#identitySubmitButton').click();
   await page.locator('#identityDialog').waitFor({state: 'hidden'});
-  await go('/subjects/math/reviews'); await page.getByRole('heading', {name: '我的错题本', exact: true}).waitFor();
+  await go('/subjects/math/reviews'); await page.getByRole('heading', {name: '原子卡片', exact: true}).waitFor();
   assert.ok(await page.locator('details.courseUnitGroup').count());
   assert.equal(await page.locator('details.courseUnitGroup:not([open])').count(), 0);
   await shot('review-expanded');
@@ -62,7 +56,7 @@ try {
   const paper = await api('review-papers/open?subject_id=math', {candidate_id: candidate.id, request_id: crypto.randomUUID()});
   await go('/subjects/math/reviews/' + paper.id); await page.locator('.showAnswer').click();
   await math('.selfAssessment .referenceAnswerBody'); await math('.selfAssessment .courseContent:not(.referenceAnswerBody)');
-  await shot('paper-blank-math'); pass('Review Show Answer renders existing fill-blank reference and explanation as SVG math');
+  await shot('paper-blank-math'); pass('Review Show Answer renders selectable reference and explanation math');
   await page.locator('.selfAssessment [data-rating="3"]').click(); await page.getByText('本次复习已完成', {exact: true}).waitFor();
   await go(bank('semantic')); await page.locator('#trainingSubmit').click();
   await math('.trainingExplanation'); assert.equal(await page.locator('.referenceAnswer').count(), 0);
