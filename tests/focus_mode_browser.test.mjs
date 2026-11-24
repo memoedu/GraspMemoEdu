@@ -77,7 +77,7 @@ async function fixture(t, {hierarchy = false, bank = false, width = 1440, contex
     const responses = {subjects: {subjects: [{id: 'math', available: true, title: '数学'}]},
       'free-study': {subjects: []},
       profile: {timezone: 'Asia/Shanghai'}, catalog: {courses: [course], selected_course_id: course.id}};
-    window.focusFixture = {reads: [], showReview: false, followingDone: false};
+    window.focusFixture = {reads: [], showReview: false, followingDone: false, dashboardUnavailable: false};
     const info = window.focusFixture;
     const element = id => document.getElementById(id);
     const portal = initPortal({
@@ -88,9 +88,12 @@ async function fixture(t, {hierarchy = false, bank = false, width = 1440, contex
         const [endpoint, query] = name.split('?');
         const params = new URLSearchParams(query);
         info.reads.push({endpoint, root: params.get('root_id'), fresh: options?.fresh === true});
-        if (endpoint === 'dashboard') return {course, course_hierarchy_enabled: hierarchy,
-          tasks: [...lessons.filter(item => !(info.followingDone && item.id === 'following')), ...(info.showReview ? [due] : [])],
-          units: outline.slice(1), pending_hierarchy: outline.slice(1), history: []};
+        if (endpoint === 'dashboard') {
+          if (info.dashboardUnavailable) throw new Error('Dashboard unavailable');
+          return {course, course_hierarchy_enabled: hierarchy,
+            tasks: [...lessons.filter(item => !(info.followingDone && item.id === 'following')), ...(info.showReview ? [due] : [])],
+            units: outline.slice(1), pending_hierarchy: outline.slice(1), history: []};
+        }
         if (endpoint === 'state') {
           if (unavailable) throw Object.assign(new Error('Unavailable fixture'), {status: unavailable});
           return {};
@@ -111,6 +114,7 @@ async function fixture(t, {hierarchy = false, bank = false, width = 1440, contex
         const content = document.createElement('p'); content.className = 'courseContent';
         content.textContent = 'Learning content of ' + id;
         const finish = document.createElement('a'); finish.href = '#/subjects/math/courses/fixture?root=chapter';
+        finish.className = 'primaryButton';
         finish.textContent = 'Return to course';
         element('stepCard').replaceChildren(content);
         if (help) {
@@ -121,7 +125,9 @@ async function fixture(t, {hierarchy = false, bank = false, width = 1440, contex
           element('stepCard').prepend(heading);
         }
         if (long) for (let i = 0; i < 55; i++) element('stepCard').append(content.cloneNode(true));
-        element('stepCard').append(portal.completionAction(finish));
+        const footer = document.createElement('div'); footer.className = 'stepNavigation';
+        footer.append(portal.completionAction(finish));
+        element('stepCard').append(footer);
         if (tools) setQuestionTools(element('stepCard'), {calculate: {level: 'scientific'}}, {key: id, editable: true});
       },
     });
@@ -143,11 +149,15 @@ for (const hierarchy of [false, true]) {
     await lesson.locator('.portalStart').click();
     await focus.waitFor();
     assert.equal(await page.locator('.topRibbon').isVisible(), true);
-    assert.equal(await next.isVisible(), false);
+    await next.waitFor();
+    assert.match(await next.getAttribute('href'), /\/topic\/following\?course=fixture&root=chapter$/);
+    assert.equal(await page.getByRole('link', {name: 'Return to course'}).isVisible(), true);
+    const evidence = process.env.GRASPMEMOEDU_FOCUS_SCREENSHOTS;
+    if (evidence && !hierarchy) await page.screenshot({path: path.join(evidence, 'course-normal-desktop.png')});
     const normal = await page.locator('.pageShell').boundingBox();
     await page.evaluate(() => { window.focusFixture.showReview = true; });
     await focus.click();
-    await next.waitFor();
+    await next.and(page.locator('[href$="session=due-session&course=fixture&root=chapter&focus=1"]')).waitFor();
     await page.waitForFunction(() => document.fullscreenElement === document.documentElement);
     const focused = await page.locator('.pageShell').boundingBox();
     if (hierarchy) assert.ok(focused.width > normal.width);
@@ -159,7 +169,7 @@ for (const hierarchy of [false, true]) {
     await page.evaluate(() => { window.focusFixture.showReview = false; });
     await focus.click();
     await page.waitForFunction(() => !document.fullscreenElement);
-    assert.equal(await next.isVisible(), false);
+    await next.and(page.locator('[href$="/topic/following?course=fixture&root=chapter"]')).waitFor();
     assert.equal(await page.locator('.topRibbon').isVisible(), true);
     await focus.click();
     await next.waitFor();
@@ -172,10 +182,42 @@ for (const hierarchy of [false, true]) {
     assert.match(await next.getAttribute('href'), /\/topic\/current\?/);
     assert.ok(await page.evaluate(() => window.focusFixture.reads.some(req =>
       req.endpoint === 'dashboard' && req.root === 'chapter' && req.fresh)));
-    const evidence = process.env.GRASPMEMOEDU_FOCUS_SCREENSHOTS;
     if (evidence) await page.screenshot({path: path.join(evidence, hierarchy ? 'course-mobile.png' : 'course-desktop.png')});
   });
 }
+
+test('A normal completion retries a failed lookup and opens the next Topic without entering focus', async t => {
+  const page = await fixture(t, {width: 320});
+  await page.evaluate(() => { window.focusFixture.dashboardUnavailable = true; });
+  const card = page.locator('.incompleteTasks [data-task-id="current"]');
+  await card.locator('.taskToggle').click();
+  await card.locator('.portalStart').click();
+  const retry = page.getByRole('button', {name: '重试查找下一个 Topic'});
+  const finish = page.getByRole('link', {name: 'Return to course'});
+  const next = page.getByRole('link', {name: '下一个 Topic'});
+  await retry.waitFor();
+  assert.equal(await finish.isVisible(), true);
+  assert.equal(await next.isVisible(), false);
+  await page.evaluate(() => { window.focusFixture.dashboardUnavailable = false; });
+  await retry.click();
+  await next.waitFor();
+  for (const width of [320, 375, 414, 768]) {
+    await page.setViewportSize({width, height: 900});
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${width}px`);
+    assert.ok((await next.boundingBox()).height >= 44);
+  }
+  const evidence = process.env.GRASPMEMOEDU_FOCUS_SCREENSHOTS;
+  if (evidence) {
+    await page.setViewportSize({width: 320, height: 900});
+    await page.screenshot({path: path.join(evidence, 'course-normal-mobile.png')});
+  }
+  await next.focus();
+  await page.keyboard.press('Enter');
+  await page.getByText('Learning content of following', {exact: true}).waitFor();
+  assert.match(new URL(page.url()).hash, /\/topic\/following\?course=fixture&root=chapter$/);
+  assert.equal(await page.locator('#focusToggle').getAttribute('aria-pressed'), 'false');
+  assert.equal(await page.evaluate(() => document.fullscreenElement), null);
+});
 
 test('Focus Mode keeps the bank root and advances through read-only groups without reopening them', async t => {
   const page = await fixture(t, {bank: true, width: 390});
@@ -195,6 +237,24 @@ test('Focus Mode keeps the bank root and advances through read-only groups witho
   await page.getByRole('link', {name: '返回题库', exact: true}).waitFor();
   assert.equal(await next.isVisible(), false);
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+});
+
+test('Normal reading continues through bank groups and preserves the return action at the end', async t => {
+  const page = await fixture(t, {bank: true, width: 375});
+  const card = page.locator('.incompleteTasks [data-task-id="read"]');
+  await card.locator('.taskToggle').click();
+  await card.locator('.portalStart').click();
+  const next = page.getByRole('link', {name: '下一个 Topic'});
+  await next.waitFor();
+  assert.match(await next.getAttribute('href'), /\/banks\/fixture\/next\?root=chapter$/);
+  await next.click();
+  await page.waitForURL(/\/banks\/fixture\/next\?root=chapter/);
+  await next.waitFor();
+  assert.match(await next.getAttribute('href'), /\/banks\/fixture\/final\?root=chapter$/);
+  await next.click();
+  await page.waitForURL(/\/banks\/fixture\/final\?root=chapter/);
+  await page.getByRole('link', {name: '返回题库', exact: true}).waitFor();
+  assert.equal(await next.isVisible(), false);
 });
 
 const readerHash = '#/subjects/math/topic/current?course=fixture&root=chapter';
