@@ -63,9 +63,14 @@ def main():
         second['interaction'] = {'version': 1, 'type': 'fill_blank', 'grading': 'exact',
                                  'blanks': [{'id': f'b{n}', 'answers': [str(n)]} for n in range(1, 6)]}
     (root / 'topic.json').write_text(json.dumps(topic), encoding='utf-8')
+    topics = [{'id': topic['id'], 'path': 'topic.json'}]
+    if args.conversion:
+        reading = {**topic, 'id': 'calculator-reading-fixture',
+                   'availability': {**topic['availability'], 'trainable': False}}
+        (root / 'reading.json').write_text(json.dumps(reading), encoding='utf-8')
+        topics.append({'id': reading['id'], 'path': 'reading.json'})
     (root / 'catalog.json').write_text(json.dumps({'courses': [
-        {'id': 'calculator-course', 'title': 'Calculator course', 'topics': [
-            {'id': topic['id'], 'path': 'topic.json'}]}]}), encoding='utf-8')
+        {'id': 'calculator-course', 'title': 'Calculator course', 'topics': topics}]}), encoding='utf-8')
     bank = training_bank()
     group = bank['groups'][1]
     if args.voice:

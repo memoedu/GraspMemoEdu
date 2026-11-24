@@ -9,6 +9,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from graspmemoedu.clipper import ClipperStore
+from graspmemoedu.clipper_gateway import openai_over_ssh
 from graspmemoedu.service import DomainError
 from tests import test_admin_students as fixtures
 
@@ -45,6 +46,42 @@ class ClipperTests(unittest.TestCase):
                     self.assertEqual(args[0], sentence)
                     self.assertEqual(options, {'voice': expected, 'style': '', 'api_key': 'site-test-only',
                                                'cache': False, 'speed': 1.1, 'volume': 0.8})
+
+    def test_openai_tunnel_only_applies_to_the_site_credential(self):
+        site_env = {'GRASPMEMOEDU_CLIPPER_SPEECH_BASE_URL': 'https://api.openai.com/v1',
+                    'GRASPMEMOEDU_CLIPPER_SPEECH_MODEL': 'gpt-realtime-2.1-mini',
+                    'GRASPMEMOEDU_CLIPPER_SPEECH_API_KEY': 'site-fixture',
+                    'GRASPMEMOEDU_CLIPPER_OPENAI_SSH_PORT': '18773'}
+        request = {'operation': 'speech', 'input': {'text': '若 x 平方等于 0.25，另一结论成立。', 'voice': 'openai-cedar'}}
+        def write_audio(text, output, **options):
+            output.write_bytes(b'ID3 test')
+
+        with patch.dict(os.environ, site_env), patch('mimo_tts.openai_audio.synthesize', side_effect=write_audio) as provider:
+            self.assertEqual(self.post('workflow', request).status_code, 200)
+            options = provider.call_args.kwargs
+            self.assertEqual(options['voice'], 'cedar')
+            self.assertEqual(options['api_key'], 'site-fixture')
+            self.assertIs(options['connect'].func, openai_over_ssh)
+            self.assertEqual(options['connect'].args, (18773,))
+            config = {'base_url': 'https://api.openai.com/v1', 'model': 'gpt-realtime-2.1-mini', 'api_key': 'own-fixture'}
+            with patch('graspmemoedu.clipper_settings.AccountPreferences.resolve', return_value=config):
+                self.assertEqual(self.post('workflow', request).status_code, 200)
+            self.assertEqual(provider.call_args.kwargs['api_key'], 'own-fixture')
+            self.assertNotIn('connect', provider.call_args.kwargs)
+            with patch.dict(os.environ, {'GRASPMEMOEDU_CLIPPER_OPENAI_SSH_PORT': '65536'}):
+                self.assertEqual(self.post('workflow', request).status_code, 503)
+
+    def test_openai_tunnel_preserves_host_certificate_check(self):
+        url = 'wss://api.openai.com/v1/realtime?model=gpt-realtime-2.1-mini'
+        with patch('socket.create_connection') as connect, patch('ssl.create_default_context') as tls, \
+             patch('websocket.create_connection') as websocket:
+            self.assertIs(openai_over_ssh(18773, url, timeout=60), websocket.return_value)
+            connect.assert_called_once_with(('127.0.0.1', 18773), timeout=10)
+            tls.return_value.wrap_socket.assert_called_once_with(connect.return_value.__enter__.return_value,
+                                                                  server_hostname='api.openai.com')
+            websocket.assert_called_once_with(url, socket=tls.return_value.wrap_socket.return_value, timeout=60)
+            with self.assertRaises(ValueError):
+                openai_over_ssh(18773, 'wss://example.invalid/v1/realtime', timeout=60)
 
     def item(self, **kwargs):
         return {'id': str(uuid4()), 'kind': 'card', 'type_id': 'fast-answer', 'front': r'Why \(x^2\)?',

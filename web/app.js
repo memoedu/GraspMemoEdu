@@ -1,26 +1,26 @@
-import { t, getLanguage, translateMessage, applyStaticTranslations, learningTitle } from "./i18n.js?v=82d2d87a118b2c66";
-import {answerReady} from './question-input.js?v=82d2d87a118b2c66';
-import {reportableContent, visibleContentTopics} from './content-report.js?v=82d2d87a118b2c66';
-import {startPresence} from './presence.js?v=82d2d87a118b2c66';
-import {createLearningCache} from './learning-cache.js?v=82d2d87a118b2c66';
-import {createReadCache, createContentCache, createValidationCache, readLifetime, contentPath, contentKey} from './response-cache.js?v=82d2d87a118b2c66';
+import { t, getLanguage, translateMessage, applyStaticTranslations, learningTitle } from "./i18n.js?v=2bf75fdd9f3fd9bb";
+import {answerReady} from './question-input.js?v=2bf75fdd9f3fd9bb';
+import {reportableContent, visibleContentTopics} from './content-report.js?v=2bf75fdd9f3fd9bb';
+import {startPresence} from './presence.js?v=2bf75fdd9f3fd9bb';
+import {createLearningCache} from './learning-cache.js?v=2bf75fdd9f3fd9bb';
+import {createReadCache, createContentCache, createValidationCache, readLifetime, contentPath, contentKey} from './response-cache.js?v=2bf75fdd9f3fd9bb';
 
-import {answerEditor, readerContent, readerStepTitle as sharedReaderStepTitle, readerHistorySteps, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, readerDrawerState, topicProgress, topicHistory} from './learning-ui.js?v=82d2d87a118b2c66';
-import {isCourseSelfRating, selfAssessment, showAnswerButton} from './self-assessment.js?v=82d2d87a118b2c66';
-import {mountTopicBacklinks, focusContentNode} from './topic-content.js?v=82d2d87a118b2c66';
-import {renderSourceReader} from './learning-ui.js?v=82d2d87a118b2c66';
-import {lessonTaskLabel, readingSectionHeading} from './learning-ui.js?v=82d2d87a118b2c66';
-import {createTrainingView} from './training.js?v=82d2d87a118b2c66';
-import {clearLearningHint, learningHint, practiceHint} from './beginner-hints.js?v=82d2d87a118b2c66';
-import {installToolbars, setQuestionTools} from './question-tools.js?v=82d2d87a118b2c66';
-import {installClipper} from './clipper.js?v=82d2d87a118b2c66';
-import {installFormulaSelection} from './formula-selection.js?v=82d2d87a118b2c66';
-import {installTopicNavigation} from './topic-sync-navigation.js?v=82d2d87a118b2c66';
-import {installAutocomplete} from './autocomplete.js?v=82d2d87a118b2c66';
-import {expressionCompletions} from './calculator-policy.js?v=82d2d87a118b2c66';
-import {installVoiceInput, refreshVoiceInput, voiceAnswerPending} from './voice-input.js?v=82d2d87a118b2c66';
-import {installAnswerConversion, setAnswerCommandInputEnabled} from './answer-conversion.js?v=82d2d87a118b2c66';
-import {questionWhiteboard} from './whiteboard-answer.js?v=82d2d87a118b2c66';
+import {answerEditor, readerContent, readerStepTitle as sharedReaderStepTitle, readerHistorySteps, renderReaderStep, readerHistoryGroup, readerProgress, readerNavigation, readerDrawerState, topicProgress, topicHistory} from './learning-ui.js?v=2bf75fdd9f3fd9bb';
+import {isCourseSelfRating, selfAssessment, showAnswerButton} from './self-assessment.js?v=2bf75fdd9f3fd9bb';
+import {mountTopicBacklinks, focusContentNode} from './topic-content.js?v=2bf75fdd9f3fd9bb';
+import {renderSourceReader} from './learning-ui.js?v=2bf75fdd9f3fd9bb';
+import {lessonTaskLabel, readingSectionHeading} from './learning-ui.js?v=2bf75fdd9f3fd9bb';
+import {createTrainingView} from './training.js?v=2bf75fdd9f3fd9bb';
+import {clearLearningHint, learningHint, practiceHint} from './beginner-hints.js?v=2bf75fdd9f3fd9bb';
+import {installToolbars, setQuestionTools} from './question-tools.js?v=2bf75fdd9f3fd9bb';
+import {installClipper} from './clipper.js?v=2bf75fdd9f3fd9bb';
+import {installTopicNavigation} from './topic-sync-navigation.js?v=2bf75fdd9f3fd9bb';
+import {installSelectableMath} from './math-presentation.js?v=2bf75fdd9f3fd9bb';
+import {installAutocomplete} from './autocomplete.js?v=2bf75fdd9f3fd9bb';
+import {expressionCompletions} from './calculator-policy.js?v=2bf75fdd9f3fd9bb';
+import {installVoiceInput, refreshVoiceInput, voiceAnswerPending} from './voice-input.js?v=2bf75fdd9f3fd9bb';
+import {installAnswerConversion, setAnswerCommandInputEnabled} from './answer-conversion.js?v=2bf75fdd9f3fd9bb';
+import {questionWhiteboard} from './whiteboard-answer.js?v=2bf75fdd9f3fd9bb';
 
 let topicTraining = null, topicTrainingKey = null;
 function stopTopicTraining() { topicTraining?.stop(); topicTraining = null; topicTrainingKey = null; }
@@ -287,7 +287,8 @@ async function request(path, options = {}) {
     } finally { if (mutation) invalidateReads(); }
 }
 
-async function requestNetwork(path, { method = "GET", body, bootstrap = false, timeout = REQUEST_TIMEOUT, reauthenticated = false, skipIdentity = false, suppressIdentity = false, identityOverride, identityOperation = false, deploymentRetried = false, keepalive = false, contentRetried = false, stateRetried = false } = {}) {
+async function requestNetwork(path, { method = "GET", body, bootstrap = false, timeout = REQUEST_TIMEOUT, signal, reauthenticated = false, skipIdentity = false, suppressIdentity = false, identityOverride, identityOperation = false, deploymentRetried = false, keepalive = false, contentRetried = false, stateRetried = false } = {}) {
+  signal?.throwIfAborted();
   const identityEpoch = identityGeneration;
   if (!deploymentReady) await ensureDeployment();
   if (!bootstrap && !skipIdentity) await ensureIdentity();
@@ -322,7 +323,7 @@ async function requestNetwork(path, { method = "GET", body, bootstrap = false, t
       keepalive,
       headers,
       body: body === undefined ? undefined : JSON.stringify(body),
-      signal: controller.signal,
+      signal: signal ? AbortSignal.any([signal, controller.signal]) : controller.signal,
       credentials: local ? "same-origin" : "omit",
       cache: "no-store",
       redirect: "error",
@@ -337,7 +338,7 @@ async function requestNetwork(path, { method = "GET", body, bootstrap = false, t
       if (local && !bootstrap && !reauthenticated && response.status === 401 && ["authentication_required", "invalid_session"].includes(detail?.code)) {
         sessionToken = null;
         await ensureSession();
-        return request(path, { method, body, timeout, skipIdentity, suppressIdentity, identityOverride, identityOperation, reauthenticated: true });
+        return request(path, { method, body, timeout, signal, skipIdentity, suppressIdentity, identityOverride, identityOperation, reauthenticated: true });
       }
       const message = ["authentication_required", "invalid_session"].includes(detail?.code) ? t("服务暂不可用，请稍后重试。") : typeof detail === "string" ? detail : detail?.message || t("操作未完成，请刷新学习进度后重试。");
       throw new ApiError(message, response.status, detail?.code || "request_error");
@@ -348,12 +349,13 @@ async function requestNetwork(path, { method = "GET", body, bootstrap = false, t
     } catch (error) {
       if (!['content_cache_miss', 'state_cache_miss', 'access_cache_miss'].includes(error.message)
           || stateRetried || method !== 'GET') throw error;
-      return requestNetwork(path, {method, body, timeout, skipIdentity, suppressIdentity, identityOverride,
+      return requestNetwork(path, {method, body, timeout, signal, skipIdentity, suppressIdentity, identityOverride,
         identityOperation, contentRetried: true, stateRetried: true});
     }
     if (!bootstrap && !skipIdentity) identityRecoveryAllowed = true;
     return result;
   } catch (error) {
+    signal?.throwIfAborted();
     const failure = error instanceof ApiError ? error : error.name === "AbortError"
       ? new ApiError(t("等待服务响应超时。已保存的进度不会丢失，请重试。"), 0, "timeout")
       : new ApiError(t("服务暂不可用，请稍后重试。"), 0, "network_error");
@@ -362,7 +364,7 @@ async function requestNetwork(path, { method = "GET", body, bootstrap = false, t
       // A failed write may already have reached the backend. Only reads can be
       // replayed here; existing submission reconciliation handles uncertain writes.
       if (method === "GET" && identityEpoch === identityGeneration) {
-        return request(path, { method, body, bootstrap, timeout, reauthenticated, skipIdentity, suppressIdentity, identityOverride, identityOperation, deploymentRetried: true });
+        return request(path, { method, body, bootstrap, timeout, signal, reauthenticated, skipIdentity, suppressIdentity, identityOverride, identityOperation, deploymentRetried: true });
       }
     }
     throw failure;
@@ -1027,19 +1029,26 @@ async function sendSubmission(payload) {
   }
 }
 
+function topicBodyTools() {
+  const topic = state.topic_id, learner = learnerScope(), generation = connectionGeneration;
+  return {key: JSON.stringify(['topic-body', scope(), learner, topic]), request: topicRequest,
+    current: () => connectionGeneration === generation && state?.topic_id === topic && learnerScope() === learner};
+}
+
 function lessonWhiteboard(step, actions) {
   if (!step.question_id || !['example', 'practice'].includes(step.kind)) return;
   const topic = state.topic_id, attempt = state.attempt_id, revision = state.revision;
   const learner = learnerScope();
-  const current = () => state?.topic_id === topic && state?.attempt_id === attempt && state?.revision === revision &&
-    state?.active_step_id === step.id && selectedStep()?.id === step.id && learnerScope() === learner &&
-    !state.pending_submission_id && !actionBusy && can('submit_answer');
+  const viewing = () => state?.topic_id === topic && state?.attempt_id === attempt && state?.revision === revision &&
+    selectedStep()?.id === step.id && learnerScope() === learner;
   const canSubmit = step.phase === 'answer' && !step.revealed && actions.includes('submit') &&
-    step.id === state.active_step_id && can('submit_answer');
+    step.id === state.active_step_id && !state.pending_submission_id && can('submit_answer');
   return questionWhiteboard({
     key: JSON.stringify([apiBase, learner, topic, step.question_id]), question: step,
-    editable: canSubmit || actions.includes('mastered') || actions.includes('unmastered'), canSubmit,
-    current, request: topicRequest, language: getLanguage(),
+    editable: true, canSubmit,
+    current: canSubmit ? () => viewing() && state.active_step_id === step.id && !state.pending_submission_id &&
+      !actionBusy && can('submit_answer') : viewing,
+    request: topicRequest, language: getLanguage(),
     submit: answer => sendSubmission(mutationPayload({answer, elapsed_ms: syncAnswerClock()})),
   });
 }
@@ -1386,6 +1395,7 @@ function renderStep(step) {
       renderSourceReader($('stepCard'), state, index, show, {
         value: storageRead(sessionStorage, draftKey, ''),
         save: value => storageWrite(sessionStorage, draftKey, value),
+        topicBody: topicBodyTools(),
       });
     };
     show(Number(storageRead(sessionStorage, key, '0')) || 0);
@@ -1401,13 +1411,13 @@ function renderStep(step) {
     const bankKey = JSON.stringify([state.course_version, reference.version, step.id, access?.learner_id, access?.features]);
     if (topicTrainingKey !== bankKey) {
       stopTopicTraining(); target.replaceChildren(); target.dataset.stepId = step.id;
-      setQuestionTools(target);
+      setQuestionTools(target, undefined, undefined, topicBodyTools());
       const heading = readingSectionHeading(step.section); if (heading) target.append(heading);
       const host = el('div', 'topicBankQuestion'); target.append(host);
       topicTrainingKey = bankKey;
       topicTraining = createTrainingView({root: host, request: (path, options) => request(path +
         (path.includes('?') ? '&' : '?') + new URLSearchParams({subject_id: topicSubjectId}), options),
-        getAccess: () => access, href: path => '#/subjects/' + topicSubjectId + path,
+        getAccess: () => access, topicBody: topicBodyTools(), href: path => '#/subjects/' + topicSubjectId + path,
         formatDate: value => new Date(value).toLocaleString(), progressChanged: () => portal?.progressChanged()});
       void topicTraining.mount(reference, host, () => refreshState({force: true}), target);
     }
@@ -1437,7 +1447,7 @@ function renderStep(step) {
     return;
   }
   if (step.kind === "completion") {
-    setQuestionTools(target);
+    setQuestionTools(target, step, undefined, topicBodyTools());
     renderCompletion(target);
     renderStepNavigation(target, step, []);
     mountTopicBacklinks(target, state.content_references);
@@ -1456,7 +1466,7 @@ function renderStep(step) {
   }
   const selfRated = ['example', 'practice'].includes(step.kind) && isCourseSelfRating(step.feedback?.reason);
   const {stem} = renderReaderStep(target, step, {title: readerStepTitle(step), counter, references: state.content_references,
-    whiteboard: lessonWhiteboard(step, actions),
+    whiteboard: lessonWhiteboard(step, actions), topicBody: topicBodyTools(),
     showSubmittedInteraction: !actions.includes('submit'),
     submittedValue: step.answer || (step.id === state.active_step_id ? draftValue(step) : ''),
     showAnswer: selfRated ? false : undefined,
@@ -1826,13 +1836,11 @@ topicNavigation = installTopicNavigation({
   current: () => topicId && state?.topic_id === topicId && !identityProblem && access?.role === 'account'
     ? {topicId, learnerId: access.learner_id, identityGeneration, connectionGeneration} : null,
 });
-installFormulaSelection({canExcerpt: clipper.canExcerptFormula, excerpt: clipper.excerptFormula});
+installSelectableMath();
 installToolbars($('pageTools'), installVoiceInput({canUse: () => !identityProblem && access?.role === 'account',
-  getIdentity: () => `${identityGeneration}:${connectionGeneration}`, getAccountScope: () => identityGeneration, request}), clipper.toggle, {
-  request, getScope: () => !identityProblem && access && JSON.stringify([scope(), access.learner_id]),
-});
+  getIdentity: () => `${identityGeneration}:${connectionGeneration}`, getAccountScope: () => identityGeneration, request}), clipper.toggle);
 installAnswerConversion(request);
-const { initPortal } = await import("./portal.js?v=82d2d87a118b2c66");
+const { initPortal } = await import("./portal.js?v=2bf75fdd9f3fd9bb");
 startPresence({getAccess: () => identityProblem ? null : access, request, getTopics: visibleContentTopics});
 portal = initPortal({
   fetchGuideAsset: async (url, subjectId) => {

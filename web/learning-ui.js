@@ -1,17 +1,17 @@
-import {t, learningTitle} from './i18n.js?v=82d2d87a118b2c66';
-import {attachFormulaEditing} from './formula-input.js?v=82d2d87a118b2c66';
-import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=82d2d87a118b2c66';
-import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=82d2d87a118b2c66';
-import {enhanceTopicContent} from './topic-content.js?v=82d2d87a118b2c66';
-import {prepareMathContent} from './math-presentation.js?v=82d2d87a118b2c66';
-import {sourceAttributions} from './memory-chunk.js?v=82d2d87a118b2c66';
-import {mountPassageBlanks} from './composite-input.js?v=82d2d87a118b2c66';
-import {placeContentActions} from './content-report.js?v=82d2d87a118b2c66';
-import {answerAssessment, pointAssessment} from './point-assessment.js?v=82d2d87a118b2c66';
-import {setQuestionTools} from './question-tools.js?v=82d2d87a118b2c66';
-import {enableVoiceAnswer} from './voice-input.js?v=82d2d87a118b2c66';
-import {mountAnswerConversion} from './answer-conversion.js?v=82d2d87a118b2c66';
-import {fromWhiteboard} from './whiteboard-answer.js?v=82d2d87a118b2c66';
+import {t, learningTitle} from './i18n.js?v=2bf75fdd9f3fd9bb';
+import {attachFormulaEditing} from './formula-input.js?v=2bf75fdd9f3fd9bb';
+import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=2bf75fdd9f3fd9bb';
+import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=2bf75fdd9f3fd9bb';
+import {enhanceTopicContent} from './topic-content.js?v=2bf75fdd9f3fd9bb';
+import {prepareMathContent} from './math-presentation.js?v=2bf75fdd9f3fd9bb';
+import {sourceAttributions} from './memory-chunk.js?v=2bf75fdd9f3fd9bb';
+import {mountPassageBlanks} from './composite-input.js?v=2bf75fdd9f3fd9bb';
+import {placeContentActions} from './content-report.js?v=2bf75fdd9f3fd9bb';
+import {answerAssessment, pointAssessment} from './point-assessment.js?v=2bf75fdd9f3fd9bb';
+import {setQuestionTools} from './question-tools.js?v=2bf75fdd9f3fd9bb';
+import {enableVoiceAnswer} from './voice-input.js?v=2bf75fdd9f3fd9bb';
+import {mountAnswerConversion} from './answer-conversion.js?v=2bf75fdd9f3fd9bb';
+import {fromWhiteboard} from './whiteboard-answer.js?v=2bf75fdd9f3fd9bb';
 
 const node = (tag, cls = '', text) => {
   const item = document.createElement(tag); item.className = cls;
@@ -142,7 +142,7 @@ export function renderSourceReader(target, state, index = 0, onNavigate = () => 
   if (block) {
     const article = node('section', 'sourceReadingBlock');
     renderReaderStep(article, block, {titleId: 'sourceReadingTitle', submittedId: 'sourceInput', showAnswer: false,
-      editInteraction: block.preview_answer ? draft : null, toolAnchor: target});
+      editInteraction: block.preview_answer ? draft : null, toolAnchor: target, topicBody: draft.topicBody});
     target.append(article);
     const nav = node('nav', 'stepNavigation'); nav.setAttribute('aria-label', '阅读内容');
     nav.append(action('上一页', 'secondaryButton', () => onNavigate(index - 1), index === 0),
@@ -151,7 +151,7 @@ export function renderSourceReader(target, state, index = 0, onNavigate = () => 
     for (const control of nav.querySelectorAll('button')) control.dataset.navAvailable = String(!control.disabled);
     target.append(nav);
   } else {
-    setQuestionTools(target);
+    setQuestionTools(target, undefined, undefined, draft.topicBody);
     target.append(node('p', '', '原材料尚无正文。'));
   }
   if (state.references?.length) {
@@ -170,8 +170,8 @@ export function renderReaderStep(target, step, {titleId = 'stepTitle', title = r
   showSubmittedInteraction = !step.actions?.includes('submit'), submittedValue = step.answer || '',
   showAnswer = step.answer !== null && step.answer !== undefined && step.answer !== '',
   feedback = step.feedback, feedbackClass = '', referenceSource = step,
-  showExplanation = !(step.revealed && step.actions?.includes('submit')), notice, editInteraction = null, toolAnchor = target, whiteboard} = {}) {
-  setQuestionTools(toolAnchor, step, whiteboard);
+  showExplanation = !(step.revealed && step.actions?.includes('submit')), notice, editInteraction = null, toolAnchor = target, whiteboard, topicBody} = {}) {
+  setQuestionTools(toolAnchor, step, whiteboard, topicBody);
   const heading = node('div', 'stepHeader'), titleNode = node('h2', 'stepTitle', title);
   titleNode.id = titleId; titleNode.tabIndex = -1; heading.append(titleNode);
   if (counter) heading.append(node('span', 'stepCounter', counter));

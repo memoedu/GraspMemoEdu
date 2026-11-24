@@ -4,9 +4,12 @@ import io
 import json
 import os
 import re
+import socket
+import ssl
 import subprocess
 import sys
 from contextlib import closing
+from functools import partial
 from http.client import HTTPSConnection, HTTPException
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -149,6 +152,24 @@ def model_call(config, allowed, source, timeout):
             'content': body.decode('utf-8')}
 
 
+def openai_over_ssh(port, url, *, timeout, **options):
+    import websocket
+
+    endpoint = urlsplit(url)
+    if endpoint.scheme != 'wss' or endpoint.netloc != 'api.openai.com':
+        raise ValueError('The SSH forward is reserved for OpenAI Realtime')
+    try:
+        with socket.create_connection(('127.0.0.1', port), timeout=min(timeout, 10)) as raw:
+            tls = ssl.create_default_context().wrap_socket(raw, server_hostname=endpoint.hostname)
+        try:
+            return websocket.create_connection(url, socket=tls, timeout=timeout, **options)
+        except BaseException:
+            tls.close()
+            raise
+    except (OSError, websocket.WebSocketException):
+        raise DomainError('clip_speech_unavailable', '暂时无法连接站点的朗读服务，可稍后重试。', 502) from None
+
+
 def speech_call(config, source, timeout):
     text, voice = source['text'], source['voice']
     if not isinstance(text, str) or not text.strip() or len(text) > 18000 or not isinstance(voice, str) or len(voice) > 160:
@@ -160,9 +181,14 @@ def speech_call(config, source, timeout):
     endpoint = config['base_url'].rstrip('/')
     from mimo_tts import client, openai_audio
     synthesize = None
+    transport = {}
     if endpoint == 'https://api.openai.com/v1' and config['model'] == openai_audio.MODEL:
         synthesize = openai_audio.synthesize
         voice = voice.removeprefix('openai-')
+        if config.get('site_service') and (port := os.environ.get('GRASPMEMOEDU_CLIPPER_OPENAI_SSH_PORT')):
+            if not port.isascii() or not port.isdecimal() or len(port) > 5 or not 1024 <= int(port) <= 65535:
+                raise DomainError('clip_service_unconfigured', '站点朗读转发端口配置无效。', 503)
+            transport['connect'] = partial(openai_over_ssh, int(port))
     elif endpoint == client.BASE_URL and config['model'] == client.MODELS['preset']:
         synthesize = client.synthesize
         voice = voice.removeprefix('mimo-')
@@ -173,7 +199,7 @@ def speech_call(config, source, timeout):
             with TemporaryDirectory() as folder:
                 recording = Path(folder) / 'speech.mp3'
                 synthesize(text, recording, voice=voice, style=str(source.get('style', ''))[:3000],
-                           api_key=config['api_key'], cache=False, speed=speed, volume=volume)
+                           api_key=config['api_key'], cache=False, speed=speed, volume=volume, **transport)
                 if recording.stat().st_size > 12 * 1024 * 1024:
                     raise ValueError
                 return {'mime': 'audio/mpeg', 'data': base64.b64encode(recording.read_bytes()).decode()}

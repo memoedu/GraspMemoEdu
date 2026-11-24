@@ -1,4 +1,4 @@
-import {getLanguage} from './i18n.js?v=82d2d87a118b2c66';
+import {getLanguage} from './i18n.js?v=2bf75fdd9f3fd9bb';
 
 // The distribution contains the same Workflow assembly and chat editor shipped to WebView2.
 const base=new URL('./vendor/knowledge-clipper/',import.meta.url);
@@ -27,17 +27,6 @@ export async function replayRecording(owner){
   const db=await archive(owner);
   try{const key=await db.get('meta','lastRecording');if(key)await play(owner,key);}
   finally{db.close();}
-}
-function installFrameFormulaSelection(doc) {
-  if (!doc?.head || doc.documentElement.hasAttribute('data-site-formula-selection')) return;
-  doc.documentElement.setAttribute('data-site-formula-selection', '');
-  const style = doc.createElement('link');
-  style.rel = 'stylesheet';
-  style.href = new URL('./formula-input.css?v=82d2d87a118b2c66', import.meta.url).href;
-  const module = doc.createElement('script');
-  module.type = 'module';
-  module.src = new URL('./formula-selection.js?v=82d2d87a118b2c66', import.meta.url).href;
-  doc.head.append(style, module);
 }
 async function collect(source){
   const {encoded}=await import(new URL('storage.js',base));
@@ -86,7 +75,6 @@ export async function mountFloating(session,{request,identity,preferences,langua
   };
   frame.addEventListener('load',()=>{
     if(!live())return;
-    installFrameFormulaSelection(frame.contentDocument);
     channel?.close();const pair=new MessageChannel();const port=pair.port1;channel=port;
     port.onmessage=async({data})=>{
       if(!live()||!data||typeof data.id!=='number')return;
