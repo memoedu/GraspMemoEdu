@@ -2,6 +2,7 @@
 import argparse
 import json
 from pathlib import Path
+import re
 import sys
 import os
 from unittest.mock import patch
@@ -13,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from graspmemoedu.api import create_app
 from graspmemoedu.clipper import register_clipper_routes
 from graspmemoedu.config import Settings
+from graspmemoedu.guide import GuideReader
 from graspmemoedu.service import LearningService
 from tests.fixtures import DeterministicJudge, synthetic_course
 
@@ -57,6 +59,9 @@ def main():
     args = parser.parse_args()
     args.root.mkdir(parents=True, exist_ok=False)
     course = synthetic_course()
+    compiled = GuideReader(Path())._compile(r'$a+b+c+\frac{x+1}{y-2}$')['html']
+    outlined = re.search(r'<mjx-container\b[\s\S]+?</mjx-container>', compiled)[0]
+    outlined = re.sub(r'\sdata-c="[^"]+"', '', outlined)
     course['modules'][0]['example']['html'] = (
         '<p id="clip-fixture">Capture the sequence <span data-tex="x^2">x²</span> on this line.</p>'
         '<p id="clip-formulas">Inline \\(\\frac{a}{b}\\) and display $$y^3=z$$.</p>'
@@ -72,6 +77,11 @@ def main():
         '<span class="mjpage"><svg><title>a</title><path d="M2 2H16"/></svg></span>'
         '<mjx-container jax="SVG"><svg><path d="M2 2H16"/></svg>'
         '<annotation encoding="application/x-tex">+b</annotation></mjx-container></span>.</p>'
+        f'<div id="clip-outline-only">{outlined}</div>'
+        '<p id="clip-unknown-outline"><mjx-container jax="SVG"><svg width="20" height="16">'
+        '<g data-mml-node="math"><g data-mml-node="msub"><g data-mml-node="mi">'
+        '<path data-c="78" d="M2 2H16"/></g><g data-mml-node="mn"><path d="M2 10H7"/></g>'
+        '</g></g></svg></mjx-container></p>'
         '<svg id="clip-non-formula" role="img"><title>Ordinary figure</title><path d="M2 2H16"/></svg>'
         '<p id="clip-sentence">前一句。若 <span data-tex="x&gt;0">x&gt;0</span>，结论成立。若 '
         '<span data-tex="x^2=0.25">x²=0.25</span>，另一结论成立。后一段。</p>'

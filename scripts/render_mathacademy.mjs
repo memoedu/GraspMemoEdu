@@ -87,7 +87,7 @@ function safeHtml(html, prefix) {
       span:['class','id','data-control','data-tex','aria-label'], aside:['class','data-callout'],
       table:['style'], td:['rowspan','colspan','align','style'], th:['rowspan','colspan','align','style'],
       ol:['start','type'], li:['value'], 'mjx-container':['class','jax','display'],
-      ...Object.fromEntries(svgTags.map(t=>[t,['id','viewBox','width','height','x','y','x1','x2','y1','y2','d','points','r','rx','ry','cx','cy','fill','stroke','stroke-width','transform','href','xlink:href','xmlns','xmlns:xlink','preserveAspectRatio','role','aria-hidden','focusable','style','data-mml-node']]))},
+      ...Object.fromEntries(svgTags.map(t=>[t,['id','viewBox','width','height','x','y','x1','x2','y1','y2','d','points','r','rx','ry','cx','cy','fill','stroke','stroke-width','transform','href','xlink:href','xmlns','xmlns:xlink','preserveAspectRatio','role','aria-hidden','focusable','style','data-mml-node','data-c']]))},
     allowedStyles:{svg:{'vertical-align':[/^-?[\d.]+(?:ex|em|px)$/],overflow:[/^visible$/]},
       g:{fill:[/^(?:currentColor|none|#[\da-fA-F]+)$/],stroke:[/^(?:currentColor|none|#[\da-fA-F]+)$/]},
       '*':{'text-align':[/^(?:left|center|right)$/],'vertical-align':[/^(?:top|middle|bottom)$/],

@@ -16,18 +16,28 @@ const compact = text => text.replace(/\s+/g, '');
 
 async function dragMath(page, selector, reverse = false) {
   const formula = page.locator(selector);
-  await formula.scrollIntoViewIfNeeded();
+  await formula.evaluate(node => node.scrollIntoView({block: 'center', inline: 'nearest', behavior: 'instant'}));
+  await page.evaluate(() => getSelection().removeAllRanges());
   const [start, end] = await formula.evaluate(node => {
     const tokens = [...node.querySelectorAll('.katex-html .mord')];
-    return ['a', 'b'].map(letter => {
-      const token = tokens.find(item => item.textContent === letter && !item.childElementCount);
-      const r = token.getBoundingClientRect();
-      return {left: r.left, right: r.right, y: r.y + r.height / 2};
+    return ['a', 'b'].map((letter, offset) => {
+      const text = tokens.find(item => item.textContent === letter && !item.childElementCount).firstChild;
+      const range = document.createRange();
+      range.selectNodeContents(text);
+      const box = range.getBoundingClientRect();
+      for (const fraction of [.22, .12, .35, 0, -.10]) {
+        const x = Math.round(box.left + box.width * (offset ? 1 - fraction : fraction));
+        const y = Math.round(box.top + box.height / 2);
+        const hit = document.caretRangeFromPoint(x, y);
+        if (hit?.startContainer === text && hit.startOffset === offset) return {x, y};
+      }
+      throw new Error('Browser cannot place a caret at the selected glyph boundary');
     });
   });
-  await page.mouse.move(reverse ? end.right - .5 : start.left + .5, reverse ? end.y : start.y);
+  const [from, to] = reverse ? [end, start] : [start, end];
+  await page.mouse.move(from.x, from.y);
   await page.mouse.down();
-  await page.mouse.move(reverse ? start.left + .5 : end.right - .5, reverse ? start.y : end.y, {steps: 16});
+  await page.mouse.move(to.x, to.y, {steps: 16});
   await page.mouse.up();
   assert.equal(compact(await page.evaluate(() => getSelection().toString())), 'a+b');
 }
@@ -77,6 +87,15 @@ try {
   await sharedSource.nth(1).waitFor();
   assert.deepEqual((await sharedSource.allTextContents()).map(compact), ['a', '+b']);
   checks.push('Separate formulas keep their own source when sharing a wrapper');
+
+  const outline = page.locator('#clip-outline-only mjx-container[jax=HTML]');
+  await outline.locator('.katex-html .mfrac').waitFor();
+  assert.match(compact(await outline.locator('.katex-html').innerText()), /^a\+b\+c\+/);
+  await dragMath(page, '#clip-outline-only');
+  await page.keyboard.press('Control+c');
+  assert.equal(compact(await page.evaluate(() => navigator.clipboard.readText())), 'a+b');
+  assert.equal(await page.locator('#clip-unknown-outline mjx-container[jax=SVG] path').count(), 2);
+  checks.push('Known path-only math preserves glyphs and supports partial copy; unknown glyphs keep their SVG');
 
   await page.locator('#userMenuButton').click();
   await page.locator('#identityButton').click();

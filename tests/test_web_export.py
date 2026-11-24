@@ -53,6 +53,9 @@ class PublicExportTests(unittest.TestCase):
             for name, digest in json.loads(formula_assets.read_text(encoding='utf-8'))['files'].items():
                 with self.subTest(asset=name):
                     self.assertEqual(hashlib.sha256((output / name).read_bytes()).hexdigest(), digest)
+            for name in ('vendor/mathjax-svg-glyphs/index.mjs', 'vendor/mathjax-svg-glyphs/LICENSE'):
+                self.assertEqual((output / name).read_bytes(),
+                                 (Path(__file__).resolve().parents[1] / 'web' / name).read_bytes())
             pwa_files.update({'question-tools.js', 'math-syntax.js', 'calculator.js', 'calculator-panel.js', 'calculator-inputs.js', 'calculator-policy.js',
                               'calculator-engine.js', 'calculator-worker.js', 'calculator.css', 'whiteboard.js',
                               'whiteboard.css', 'whiteboard-archive.js', 'whiteboard-answer.js',

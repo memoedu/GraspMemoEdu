@@ -68,3 +68,6 @@ HTML 注释中的旧图保持隐藏，不计为可见缺图。补图时原 TeX �
 带离线 SVG 的 Topic 阅读响应可达数 MB。部署模板在本应用的 API location 启用 JSON gzip，压缩传输但保持响应内容及权限检查不变；已有多站点服务器只增量应用该 location 的压缩配置，不覆盖其他站点。正文读取使用 60 秒上限；没有进度变更的只读原文不做训练页的周期轮询，初次打开和刷新仍读取服务器。机器学习批次上线时服务内存上限设为 1536 MiB，具体容量仍按主机实际余量核验。
 
 `tests/test_mathacademy_import.py` 使用独立完整合成题验证训练边界；`scripts/mathacademy_interaction_fixture.py` 与 `mathacademy_interaction_acceptance.mjs` 验证 10 段 23 控件、刷新与篇末完成。真实来源另行执行整批转换、共享身份、附件与备份恢复验收，不能用合成样本冒充真实资料完整。
+## 公式显示兼容
+
+导入时保留可用的 LaTeX 和 MathJax 字符标记。既有 SVG 公式只有字形路径时，网站用 MathJax 3.2.2 的随附字形表识别字符，再通过共用 KaTeX 渲染。识别不完整时保留原 SVG。字形表可用 `node scripts/build_mathjax_svg_glyphs.mjs --check` 验证。
