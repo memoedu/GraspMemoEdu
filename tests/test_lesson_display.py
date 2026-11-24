@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 from graspmemoedu.lesson_display import DIRECTORY, LessonDisplay, display_hash, display_key
 from graspmemoedu.lesson_display_install import MarkupSignature, repair_assets, validate_legacy_repairs, verify_topic
-from graspmemoedu.mathacademy_formula_audit import audit_fields
+from graspmemoedu.mathacademy_formula_audit import audit_fields, validate_enrichment_rendering
 
 
 class LessonDisplayTests(unittest.TestCase):
@@ -138,3 +138,15 @@ class LessonDisplayTests(unittest.TestCase):
         self.assertEqual(signature, MarkupSignature(normalized).signature())
         self.assertNotEqual(signature, MarkupSignature(normalized.replace('<text> </text>', '<text></text>')).signature())
         self.assertNotEqual(signature, MarkupSignature(normalized.replace('x\n  y', 'x\ny')).signature())
+
+    def test_rejects_uncompiled_ma_diagrams_in_source_and_localization(self):
+        code = '<pre><code class="language-mermaid">A --&gt; B</code></pre>'
+        text = '<pre><code class="language-text">A --&gt; B</code></pre>'
+        topic = {'id': 'ma-topic-1', 'introductions': [{'title': 'Example', 'html': text}], 'modules': []}
+        key = display_key('html', text)
+        validate_enrichment_rendering(topic, {'values': {}})
+        with self.assertRaisesRegex(ValueError, 'uncompiled_diagram'):
+            validate_enrichment_rendering(topic, {'values': {key: code.replace('mermaid', 'ma-drawing')}})
+        topic['introductions'][0]['html'] = code
+        with self.assertRaisesRegex(ValueError, 'uncompiled_diagram'):
+            validate_enrichment_rendering(topic, {'values': {}})
