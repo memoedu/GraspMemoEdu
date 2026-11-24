@@ -22,7 +22,8 @@ if (!/^https:\/\//.test(target)) {
     try {
       const content = await fs.readFile(file);
       const types = {'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.webmanifest':'application/manifest+json','.json':'application/json'};
-      response.writeHead(200, {'Content-Type':types[path.extname(file)] || 'application/octet-stream','Cache-Control':'no-store'}).end(content);
+      const cache = /\.(?:m?js|css|svg)$/.test(file) && url.searchParams.has('v') ? 'public, max-age=0' : 'no-store';
+      response.writeHead(200, {'Content-Type':types[path.extname(file)] || 'application/octet-stream','Cache-Control':cache}).end(content);
     } catch {response.writeHead(404).end();}
   });
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
@@ -37,6 +38,17 @@ const context = process.env.CHROME_EXECUTABLE
   ? await chromium.launchPersistentContext(profile,{headless:true,executablePath:process.env.CHROME_EXECUTABLE,...contextOptions})
   : await launchAcceptanceChrome(require, [], {profile, ...contextOptions});
 const report = {base,checks:[],errors:[],badResponses:[],learningWrites:[],os_installation_tested:false,api_mocked:false};
+const workerReads = [];
+context.on('request', request => { if (request.serviceWorker()) workerReads.push(new URL(request.url()).pathname); });
+const awaitCached = (page, selector) => page.waitForFunction(async selector => {
+  const asset = document.querySelector(selector);
+  if (!asset) return false;
+  const url = asset.href || asset.src;
+  for (const key of await caches.keys()) {
+    if (key.startsWith('graspmemoedu-static:') && await (await caches.open(key)).match(url)) return true;
+  }
+  return false;
+}, selector);
 const pass = label=>{report.checks.push(label);console.log('PASS '+label);};
 try {
   const page = await context.newPage();
@@ -86,8 +98,6 @@ try {
   assert.equal(await page.locator('#unsent-canary').inputValue(),'未提交答案');
   assert.equal(await page.evaluate(()=>window.updateCanary),'same-document');
   pass('Worker update keeps the document and unsent input intact');
-  assert.deepEqual(await page.evaluate(()=>caches.keys()),[]);
-  pass('No application cache or offline learning queue is created');
   await context.setOffline(true);
   const offline=await page.goto(new URL('download.html',base).href);
   assert.equal(offline.status(),503);
@@ -97,6 +107,8 @@ try {
   await context.setOffline(false);
   await page.goto(new URL('download.html',base).href);
   await page.getByRole('heading',{name:'把学习放到桌面。'}).waitFor();
+  await awaitCached(page, 'link[href*="install.css?v="]');
+  const installReads = workerReads.filter(name => name.endsWith('/install.css')).length;
   pass('Controlled offline navigation shows retry and recovers online');
   report.badResponses=report.badResponses.filter(r=>r.status!==503);
   const {appId: rootId} = await cdp.send('Page.getAppId');
@@ -130,11 +142,15 @@ try {
     report.scoped[app] = {appId, home, install};
   }
   pass('Chrome recognizes two scoped install pages with unique IDs and a shared worker');
+  assert.equal(workerReads.filter(name => name.endsWith('/install.css')).length, installReads);
+  pass('Scoped installers reuse the verified stylesheet with zero additional worker network reads');
   // Use the real API only on the deployed origin, where CORS allows it.
   if (!server) {
     await page.goto(base,{waitUntil:'networkidle'});
     await page.locator('.subjectCard').first().waitFor();
     report.subjects=await page.locator('.subjectCard').count();
+    await awaitCached(page, 'script[src*="app.js?v="]');
+    const appReads = workerReads.filter(name => name.endsWith('/app.js')).length;
     await page.locator('#userMenuButton').click();
     await page.locator('a[data-i18n="pwa.install"]').waitFor({state:'visible'});
     await page.locator('a[data-i18n="pwa.install"]').click();
@@ -156,6 +172,8 @@ try {
       assert.equal(await page.getByRole('link', {name: label, exact: true}).getAttribute('href'), install);
     }
     pass('Both scoped first launches and install links use their live learning routes');
+    assert.equal(workerReads.filter(name => name.endsWith('/app.js')).length, appReads);
+    pass('All three learning entries reuse app.js with zero additional worker network reads');
   }
   assert.deepEqual(report.errors,[]);
   assert.deepEqual(report.badResponses,[]);
