@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import patch
 from uuid import uuid4
 
+from graspmemoedu.catalog import Catalog
 from graspmemoedu.service import DomainError
 from graspmemoedu.topic_sync_storage import SealedSnapshots
 from tests import test_admin_students as fixtures
@@ -28,7 +29,16 @@ class TopicSyncTests(unittest.TestCase):
 
     def setUp(self):
         self.files = MemoryFiles()
-        with patch('graspmemoedu.api.configured_snapshots', return_value=SealedSnapshots(self.files, bytes(32))):
+        load = Catalog.load
+
+        def shared_catalog(settings, fallback=None):
+            original = load(settings, fallback)
+            second_course = {**original.course('math'), 'id': 'another-math-course'}
+            return Catalog([*original.courses.values(), second_course], original.topics,
+                           original.default_topic_id, original.topic_paths)
+
+        with (patch('graspmemoedu.api.configured_snapshots', return_value=SealedSnapshots(self.files, bytes(32))),
+              patch.object(Catalog, 'load', side_effect=shared_catalog)):
             fixtures.AdminStudentsTests.setUp(self)
         self.topic = self.course['id']
         self.device = str(uuid4())
@@ -54,6 +64,76 @@ class TopicSyncTests(unittest.TestCase):
         return self.post('device-binding', self.authorization, {'topic_id': self.topic, 'kb_id': 'kb',
                                                                 'rem_id': rem})
 
+    def write(self, title, headers, *, previous=None, baseline=None):
+        revision = str(uuid4())
+        response = self.post('body', headers, {'topic_id': self.topic, 'expected_revision': previous,
+                             'expected_baseline_revision': baseline, 'revision': revision,
+                             'document': {'title': title, 'blocks': []}})
+        self.assertEqual(response.status_code, 200, response.text)
+        return revision
+
+    def group(self, headers, course, baseline=None, *, editable=True, **previous):
+        payload = {'course_id': course, 'group_id': str(uuid4()), 'expected_revision': None,
+                   'revision': str(uuid4()), 'name': 'Group fixture', 'editable': editable,
+                   'baselines': {self.topic: baseline} if baseline else {}, **previous}
+        return self.post('groups', headers, payload)
+
+    def assign(self, course, group, headers=None, *, expected=None):
+        return self.post('group-member', headers or self.admin_headers, {
+            'learner_id': self.student, 'course_id': course, 'group_id': group, 'expected_group_id': expected})
+
+    def test_different_course_baselines_cannot_split_one_shared_topic(self):
+        first = self.write('First baseline', self.admin_headers)
+        second = self.write('Second baseline', self.admin_headers, previous=first)
+        math = self.group(self.admin_headers, 'math', first).json()
+        crossing = self.group(self.admin_headers, 'another-math-course', second).json()
+        self.assertEqual(self.assign('math', math['group_id']).status_code, 200)
+        rejected = self.assign('another-math-course', crossing['group_id'])
+        self.assertEqual(rejected.status_code, 409, rejected.text)
+        self.assertEqual(rejected.json()['detail']['code'], 'topic_sync_baseline_conflict')
+        self.assertIsNone(self.get('group-member', self.admin_headers, learner_id=self.student,
+                                   course_id='another-math-course').json()['membership'])
+        compatible = self.group(self.admin_headers, 'another-math-course', first, group_id=crossing['group_id'],
+                                expected_revision=crossing['revision']).json()
+        self.assertEqual(self.assign('another-math-course', compatible['group_id']).status_code, 200)
+        rejected = self.group(self.admin_headers, 'math', second, group_id=math['group_id'],
+                              expected_revision=math['revision'])
+        self.assertEqual(rejected.status_code, 409)
+        result = self.get('body', self.headers, topic_id=self.topic).json()
+        self.assertEqual(result['baseline_revision'], first)
+        self.assertEqual(result['document']['title'], 'First baseline')
+
+    def test_reassigning_a_group_preserves_personal_body_and_enforces_editing(self):
+        curated = self.write('Curated version', self.admin_headers)
+        first = self.group(self.admin_headers, 'math', curated).json()
+        self.assertEqual(self.assign('math', first['group_id']).status_code, 200)
+        personal = self.write('My changes', self.headers, baseline=curated)
+        other_course = self.group(self.admin_headers, 'another-math-course', curated, editable=False).json()
+        self.assertEqual(self.assign('another-math-course', other_course['group_id']).status_code, 200)
+        body = {'topic_id': self.topic, 'expected_revision': personal, 'revision': str(uuid4()),
+                'document': {'title': 'Should be blocked', 'blocks': []}}
+        result = self.post('body', self.headers, body)
+        self.assertEqual(result.json()['detail']['code'], 'topic_sync_edit_disabled')
+        self.assertEqual(self.assign('another-math-course', None, expected=other_course['group_id']).status_code, 200)
+        official = self.group(self.admin_headers, 'math').json()
+        self.assertEqual(self.assign('math', official['group_id'], expected=first['group_id']).status_code, 200)
+        result = self.get('body', self.headers, topic_id=self.topic).json()
+        self.assertEqual(result['revision'], personal)
+        self.assertIsNone(result['baseline_revision'])
+        self.assertEqual(result['document']['title'], 'My changes')
+
+    def test_another_admin_must_explicitly_coordinate_a_group_change(self):
+        self.app.state.help_requests.assign_admins(self.student, [self.admin, self.other])
+        first = self.group(self.admin_headers, 'math').json()
+        second = self.group(self.other_headers, 'math', editable=False).json()
+        self.assertEqual(self.assign('math', first['group_id']).status_code, 200)
+        rejected = self.assign('math', second['group_id'], self.other_headers)
+        self.assertEqual(rejected.json()['detail']['code'], 'topic_sync_group_conflict')
+        self.assertEqual(self.get('group-member', self.other_headers, learner_id=self.student,
+                                  course_id='math').json()['membership']['group_id'], first['group_id'])
+        self.assertEqual(self.assign('math', second['group_id'], self.other_headers, expected=first['group_id']).status_code, 200)
+        self.assertEqual(self.get('groups', self.headers).status_code, 403)
+
     def test_original_binding_cannot_be_taken_over_by_another_login(self):
         first = self.pair(self.headers)
         self.assertEqual(first.status_code, 200, first.text)
@@ -69,6 +149,31 @@ class TopicSyncTests(unittest.TestCase):
         self.assertEqual(self.get('device-resolve', self.authorization, kb_id='kb', rem_id='document').json()['topic_id'], self.topic)
         self.assertEqual(self.get('device-resolve', {**self.authorization, 'Origin': 'https://site.test'},
                                   kb_id='kb', rem_id='document').status_code, 403)
+
+    def test_same_knowledge_base_keeps_the_original_document_across_devices(self):
+        self.assertEqual(self.pair(self.headers).status_code, 200)
+        self.assertEqual(self.bind().status_code, 200)
+        other_device = str(uuid4())
+        self.device = other_device
+        self.authorization = {'Authorization': 'TopicSync ' + self.device + '.' + self.secret}
+        self.assertEqual(self.pair(self.headers).status_code, 200)
+        self.assertEqual(self.get('binding', self.headers, topic_id=self.topic, device_id=other_device).json()['rem_id'],
+                         'document')
+        self.assertEqual(self.bind('duplicate').status_code, 409)
+
+    def test_open_ticket_is_issued_only_to_current_owner_and_consumed_once(self):
+        self.assertEqual(self.pair(self.headers).status_code, 200)
+        self.assertEqual(self.bind().status_code, 200)
+        payload = {'device_id': self.device, 'topic_id': self.topic}
+        self.assertEqual(self.post('open-ticket', self.normal_headers, payload).json()['detail']['code'],
+                         'topic_sync_account_mismatch')
+        ticket = self.post('open-ticket', self.headers, payload).json()['ticket']
+        opened = self.post('device-open', self.authorization, {'ticket': ticket})
+        self.assertEqual(opened.json(), {'topic_id': self.topic, 'kb_id': 'kb', 'rem_id': 'document'})
+        self.assertEqual(self.post('device-open', self.authorization, {'ticket': ticket}).status_code, 403)
+        ticket = self.post('open-ticket', self.headers, payload).json()['ticket']
+        self.store.revoke_sessions(self.student)
+        self.assertEqual(self.post('device-open', self.authorization, {'ticket': ticket}).status_code, 401)
 
     def test_revoked_account_and_device_cannot_access_companion_or_web_data(self):
         self.assertEqual(self.pair(self.headers).status_code, 200)

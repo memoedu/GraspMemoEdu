@@ -1,32 +1,33 @@
-import { t, getLanguage, setLanguage, locale, translateMessage, learningTitle } from "./i18n.js?v=06a0f801bfc16166";
-import {attachFormulaEditing} from './formula-input.js?v=06a0f801bfc16166';
-import {prepareMathContent, renderPlainMath} from './math-presentation.js?v=06a0f801bfc16166';
-import { createReviewView } from "./review.js?v=06a0f801bfc16166";
-import { renderCourseGraph } from "./course-graph.js?v=06a0f801bfc16166";
-import {questionInput, choiceTypeField} from './question-input.js?v=06a0f801bfc16166';
-import {lessonTaskLabel, readingFields, readingSectionHeading} from './learning-ui.js?v=06a0f801bfc16166';
-import {enhanceTopicContent} from './topic-content.js?v=06a0f801bfc16166';
-import {reportableContent, placeContentActions, installContentReporting, installHelpRequests} from './content-report.js?v=06a0f801bfc16166';
-import {createCatalogPicker} from './catalog-picker.js?v=06a0f801bfc16166';
-import {catalogPath, courseWorkspaceId, createWorkspaceLocations, catalogView, workspaceLayout, courseDisplayEntries} from './catalog-workspace.js?v=06a0f801bfc16166';
-import {createAtomicView} from './atomic.js?v=06a0f801bfc16166';
-import {ideaFeedback, ideaFeedbackHash, ideaFeedbackId, ideaSetupSection, renderIdeaSetupSection} from './idea-setup.js?v=06a0f801bfc16166';
-import {sourceAttributions} from './memory-chunk.js?v=06a0f801bfc16166';
-import {createTrainingView} from './training.js?v=06a0f801bfc16166';
-import {createFocusMode, focusReaderRoute} from './focus-mode.js?v=06a0f801bfc16166';
-import { subjectHref, parsePlatformRoute, renderSubjectHome, renderSubjectEmpty, applySubjectTheme, subjectLabel, subjectLogo } from "./subjects.js?v=06a0f801bfc16166";
+import { t, getLanguage, setLanguage, locale, translateMessage, learningTitle } from "./i18n.js?v=42d1c011b328cda5";
+import {attachFormulaEditing} from './formula-input.js?v=42d1c011b328cda5';
+import {prepareMathContent, renderPlainMath} from './math-presentation.js?v=42d1c011b328cda5';
+import {remnoteTopicLink, topicBindingPath} from './topic-sync-navigation.js?v=42d1c011b328cda5';
+import { createReviewView } from "./review.js?v=42d1c011b328cda5";
+import { renderCourseGraph } from "./course-graph.js?v=42d1c011b328cda5";
+import {questionInput, choiceTypeField} from './question-input.js?v=42d1c011b328cda5';
+import {lessonTaskLabel, readingFields, readingSectionHeading} from './learning-ui.js?v=42d1c011b328cda5';
+import {enhanceTopicContent} from './topic-content.js?v=42d1c011b328cda5';
+import {reportableContent, placeContentActions, installContentReporting, installHelpRequests} from './content-report.js?v=42d1c011b328cda5';
+import {createCatalogPicker} from './catalog-picker.js?v=42d1c011b328cda5';
+import {catalogPath, courseWorkspaceId, createWorkspaceLocations, catalogView, workspaceLayout, courseDisplayEntries} from './catalog-workspace.js?v=42d1c011b328cda5';
+import {createAtomicView} from './atomic.js?v=42d1c011b328cda5';
+import {ideaFeedback, ideaFeedbackHash, ideaFeedbackId, ideaSetupSection, renderIdeaSetupSection} from './idea-setup.js?v=42d1c011b328cda5';
+import {sourceAttributions} from './memory-chunk.js?v=42d1c011b328cda5';
+import {createTrainingView} from './training.js?v=42d1c011b328cda5';
+import {createFocusMode, focusReaderRoute} from './focus-mode.js?v=42d1c011b328cda5';
+import { subjectHref, parsePlatformRoute, renderSubjectHome, renderSubjectEmpty, applySubjectTheme, subjectLabel, subjectLogo } from "./subjects.js?v=42d1c011b328cda5";
 
-import {createPaperView} from './review-papers.js?v=06a0f801bfc16166';
-import {createFreeStudyView} from './free-study.js?v=06a0f801bfc16166';
-import {createContextLibraryView} from './context-library.js?v=06a0f801bfc16166';
+import {createPaperView} from './review-papers.js?v=42d1c011b328cda5';
+import {createFreeStudyView} from './free-study.js?v=42d1c011b328cda5';
+import {createContextLibraryView} from './context-library.js?v=42d1c011b328cda5';
 
-import {renderTaskTree, enhanceMarkdownOutline, orderTopicSiblings} from './task-tree.js?v=06a0f801bfc16166';
-import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=06a0f801bfc16166';
-import {createHelpFeedback, feedbackDetails} from './help-feedback.js?v=06a0f801bfc16166';
-import {createStudentDashboard} from './student-dashboard.js?v=06a0f801bfc16166';
-import {autocompleteGroups, autocompleteEnabled, setAutocompleteEnabled, setInputCompletions} from './autocomplete.js?v=06a0f801bfc16166';
-import {whiteboardCasEnabled, setWhiteboardCasEnabled} from './whiteboard.js?v=06a0f801bfc16166';
-import {currentPwa, isStandalone, installEntry, routeInPwaScope, pwaLocationKey, restorableHash, observeScopeDeparture} from './pwa-location.js?v=06a0f801bfc16166';
+import {renderTaskTree, enhanceMarkdownOutline, orderTopicSiblings} from './task-tree.js?v=42d1c011b328cda5';
+import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=42d1c011b328cda5';
+import {createHelpFeedback, feedbackDetails} from './help-feedback.js?v=42d1c011b328cda5';
+import {createStudentDashboard} from './student-dashboard.js?v=42d1c011b328cda5';
+import {autocompleteGroups, autocompleteEnabled, setAutocompleteEnabled, setInputCompletions} from './autocomplete.js?v=42d1c011b328cda5';
+import {whiteboardCasEnabled, setWhiteboardCasEnabled} from './whiteboard.js?v=42d1c011b328cda5';
+import {currentPwa, isStandalone, installEntry, routeInPwaScope, pwaLocationKey, restorableHash, observeScopeDeparture} from './pwa-location.js?v=42d1c011b328cda5';
 
 const $ = (id) => document.getElementById(id);
 const node = (tag, className = "", text) => {
@@ -46,7 +47,7 @@ const roundButton = (text, action) => control(text, "portalStart", action);
 export function initPortal(bridge) {
   let chatModule, attachChatEditor, renderChatMarkdown;
   async function loadChat() {
-    const module = await (chatModule ||= import('./vendor/chat/chat.js?v=06a0f801bfc16166').catch(error => { chatModule = null; throw error; }));
+    const module = await (chatModule ||= import('./vendor/chat/chat.js?v=42d1c011b328cda5').catch(error => { chatModule = null; throw error; }));
     ({attachChatEditor, renderChatMarkdown} = module);
     module.configureChatImages(ident => bridge.request('help-images?image_id=' + encode(ident)));
   }
@@ -446,6 +447,22 @@ export function initPortal(bridge) {
       if (startupError) throw startupError;
       if (profile) await bridge.refreshAccess();
       if (ticket !== sequence) return;
+      const remnoteTarget = remnoteTopicLink(resumedHash);
+      if (remnoteTarget) {
+        try {
+          const {topic_id, subject_id} = await call(topicBindingPath(remnoteTarget.deviceId, remnoteTarget.topicId));
+          if (ticket !== sequence) return;
+          return navigate(subjectHref(subject_id, '/topic/' + encode(topic_id)), true);
+        } catch (error) {
+          if (ticket !== sequence) return;
+          const message = node('p', 'notice', error.message);
+          const action = node('button', 'textButton', getLanguage() === 'en' ? 'Switch account' : '切换账号');
+          action.type = 'button';
+          action.onclick = () => $('identityButton').click();
+          root.replaceChildren(message, action);
+          return;
+        }
+      }
       await basics(ticket, currentRoute.subjectId);
       if (ticket !== sequence) return;
       const { path, params, subjectId } = currentRoute;
@@ -509,7 +526,7 @@ export function initPortal(bridge) {
         document.title = pageTitle(t('students.personalTitle'));
         await renderStudents(ticket, bridge.getAccess()?.learner_id, true);
       } else if (path === "/settings/knowledge-clipper" && bridge.getAccess()?.role === "account") {
-        const {clipperSettings} = await import('./clipper-settings.js?v=06a0f801bfc16166');
+        const {clipperSettings} = await import('./clipper-settings.js?v=42d1c011b328cda5');
         document.title = pageTitle(getLanguage() === 'en' ? 'Knowledge Clipper' : '零碎知识简藏');
         const page = await clipperSettings({request:call,node,owner:bridge.getAccess()?.learner_id,current:()=>ticket===sequence});
         if (page && ticket===sequence) root.replaceChildren(page);

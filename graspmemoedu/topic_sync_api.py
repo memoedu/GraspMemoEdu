@@ -6,7 +6,9 @@ from uuid import UUID
 from fastapi import Request
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from .access import credential_digest
 from .topic_sync import TopicSyncStore
+from .topic_sync_groups import TopicSyncGroups
 
 
 BASE = '/api/topic-sync'
@@ -15,12 +17,17 @@ PAIR_DEVICE = BASE + '/pair-device'
 DEVICE_STATE = BASE + '/device-state'
 DEVICE_BINDING = BASE + '/device-binding'
 DEVICE_RESOLVE = BASE + '/device-resolve'
+DEVICE_OPEN = BASE + '/device-open'
 DEVICE_BODY = BASE + '/device-body'
 BODY = BASE + '/body'
 BINDING = BASE + '/binding'
-DEVICE_PATHS = {PAIR_DEVICE, DEVICE_BINDING, DEVICE_RESOLVE, DEVICE_BODY}
-PUBLIC_PATHS = DEVICE_PATHS | {PAIR_TICKET, DEVICE_STATE, BODY, BINDING}
+OPEN_TICKET = BASE + '/open-ticket'
+GROUPS = BASE + '/groups'
+GROUP_MEMBER = BASE + '/group-member'
+DEVICE_PATHS = {PAIR_DEVICE, DEVICE_BINDING, DEVICE_RESOLVE, DEVICE_BODY, DEVICE_OPEN}
+PUBLIC_PATHS = DEVICE_PATHS | {PAIR_TICKET, DEVICE_STATE, BODY, BINDING, OPEN_TICKET, GROUPS, GROUP_MEMBER}
 BODY_LIMITS = {path: 2 * 1024 * 1024 + 4096 for path in (BODY, DEVICE_BODY)}
+BODY_LIMITS[GROUPS] = 256 * 1024
 
 NativeId = Annotated[str, Field(pattern=r'^[A-Za-z0-9_-]{1,120}$')]
 TopicId = Annotated[str, Field(pattern=r'^[A-Za-z0-9_.-]{1,180}$')]
@@ -42,6 +49,15 @@ class Binding(Payload):
     topic_id: TopicId
     kb_id: NativeId
     rem_id: NativeId
+
+
+class OpenTicket(Payload):
+    topic_id: TopicId
+    device_id: UUID
+
+
+class OpenDocument(Payload):
+    ticket: PairSecret
 
 
 class Block(Payload):
@@ -70,14 +86,34 @@ class Write(Payload):
     topic_id: TopicId
     revision: UUID
     expected_revision: UUID | None
+    expected_baseline_revision: UUID | None = None
     document: Outline
 
 
+class Group(Payload):
+    group_id: UUID
+    expected_revision: UUID | None
+    revision: UUID
+    course_id: TopicId
+    name: str = Field(min_length=1, max_length=120, pattern=r'\S')
+    editable: bool
+    baselines: dict[TopicId, UUID] = Field(default_factory=dict, max_length=2500)
+
+
+class GroupMember(Payload):
+    learner_id: NativeId
+    course_id: TopicId
+    group_id: UUID | None
+    expected_group_id: UUID | None
+
+
 def register_topic_sync_routes(app, access_store, catalog, subjects, snapshots, limits):
-    store = TopicSyncStore(access_store, snapshots) if snapshots is not None else None
-    app.state.topic_sync = store
-    if store is None:
+    app.state.topic_sync = None
+    if snapshots is None:
         return
+    groups = TopicSyncGroups(access_store, catalog)
+    store = TopicSyncStore(access_store, snapshots, groups=groups)
+    app.state.topic_sync = store
 
     def browser_access(request, device_id=None):
         identity = request.headers.get('x-learning-identity')
@@ -100,7 +136,32 @@ def register_topic_sync_routes(app, access_store, catalog, subjects, snapshots, 
     def write_body(access, payload):
         return store.write(access, payload.topic_id, str(payload.revision),
                                str(payload.expected_revision) if payload.expected_revision else None,
-                               payload.document.model_dump(mode='json'))
+                           payload.document.model_dump(mode='json'),
+                           expected_baseline_revision=str(payload.expected_baseline_revision)
+                           if payload.expected_baseline_revision else None)
+
+    @app.get(GROUPS)
+    def course_groups(request: Request):
+        access, _, _ = browser_access(request)
+        return {'groups': groups.list(access)}
+
+    @app.post(GROUPS)
+    def save_course_group(payload: Group, request: Request):
+        access, _, _ = browser_access(request)
+        settings = payload.model_dump(mode='json', exclude={'baselines'})
+        settings['name'] = settings['name'].strip()
+        return groups.save_group(access, **settings, chosen={topic: str(revision)
+                                 for topic, revision in payload.baselines.items()})
+
+    @app.get(GROUP_MEMBER)
+    def course_group_member(request: Request, learner_id: NativeId, course_id: TopicId):
+        access, _, _ = browser_access(request)
+        return {'membership': groups.membership(access, learner_id, course_id)}
+
+    @app.post(GROUP_MEMBER)
+    def save_course_group_member(payload: GroupMember, request: Request):
+        access, _, _ = browser_access(request)
+        return groups.set_membership(access, **payload.model_dump(mode='json'))
 
     @app.post(PAIR_TICKET)
     def pair_ticket(request: Request):
@@ -116,8 +177,9 @@ def register_topic_sync_routes(app, access_store, catalog, subjects, snapshots, 
 
     @app.get(DEVICE_STATE)
     def device_state(request: Request, device_id: UUID | None = None):
-        _, device, _ = browser_access(request, device_id)
-        return {'status': 'paired' if device else 'unpaired'}
+        _, device, identity = browser_access(request, device_id)
+        return {'status': 'paired' if device else 'unpaired',
+                'reauthorize': bool(device and device['identity_digest'] != credential_digest('identity', identity))}
 
     @app.post(DEVICE_BINDING)
     def bind(payload: Binding, request: Request):
@@ -135,8 +197,20 @@ def register_topic_sync_routes(app, access_store, catalog, subjects, snapshots, 
     @app.get(BINDING)
     def resolve_topic(request: Request, topic_id: TopicId, device_id: UUID):
         access, device, _ = browser_access(request, device_id)
-        topic_for(access, topic_id)
-        return store.binding(device, topic_id)
+        subject_id = topic_for(access, topic_id)
+        return {**store.binding(device, topic_id), 'subject_id': subject_id}
+
+    @app.post(OPEN_TICKET)
+    def prepare_open(payload: OpenTicket, request: Request):
+        access, device, identity = browser_access(request, payload.device_id)
+        topic_for(access, payload.topic_id)
+        limits.consume(('topic-sync-open', access['learner_id']), 60)
+        return store.issue_open_ticket(access, device, payload.topic_id, identity)
+
+    @app.post(DEVICE_OPEN)
+    def open_document(payload: OpenDocument, request: Request):
+        _, device = device_access(request)
+        return store.consume_open_ticket(device, payload.ticket, topic_for)
 
     @app.get(BODY)
     def website_body(request: Request, topic_id: TopicId, device_id: UUID | None = None):
