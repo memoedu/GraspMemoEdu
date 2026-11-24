@@ -181,34 +181,40 @@ if ($ExpectedPublicationHead) {
     $draftTree = Invoke-Api GET ('repos/' + $Repository + '/git/trees/' + $draftCommit.tree.sha + '?recursive=1')
     foreach ($item in $draftTree.tree | Where-Object type -EQ 'blob') { $null = $knownBlobs.Add($item.sha) }
 }
+$exportBlobs = @{}
 $treeItems = @($files | ForEach-Object {
     $entry = @{path=[IO.Path]::GetRelativePath($ExportDirectory, $_.FullName).Replace('\','/');mode='100644';type='blob'}
-    if ($_.Extension -in @('.woff2','.woff','.ttf','.png','.wasm','.dat') -or ($entry.path.StartsWith($clipperRoot) -and $_.Length -gt 65536)) {
+    $binary = $_.Extension -in @('.woff2','.woff','.ttf','.png','.wasm','.dat') -or ($entry.path.StartsWith($clipperRoot) -and $_.Length -gt 65536)
+    if ($binary) {
         $bytes = [IO.File]::ReadAllBytes($_.FullName)
-        $digest = [Security.Cryptography.IncrementalHash]::CreateHash([Security.Cryptography.HashAlgorithmName]::SHA1)
-        try {
-            $digest.AppendData([Text.Encoding]::ASCII.GetBytes('blob ' + $bytes.Length + [char]0))
-            $digest.AppendData($bytes)
-            $blobHash = [Convert]::ToHexString($digest.GetHashAndReset()).ToLowerInvariant()
-        } finally { $digest.Dispose() }
-        if ($knownBlobs.Contains($blobHash)) { $entry.sha = $blobHash }
-        else {
-            # Blob writes are content-addressed. Reuse a verified object after
-            # an interrupted upload, before retrying the same immutable bytes.
-            for ($attempt = 1; $attempt -le 3; $attempt++) {
-                & gh api ('repos/' + $Repository + '/git/blobs/' + $blobHash) --silent 2>$null
-                if ($LASTEXITCODE -eq 0) { $entry.sha = $blobHash; break }
-                try {
-                    $blob = Invoke-Api POST ('repos/' + $Repository + '/git/blobs') @{content=[Convert]::ToBase64String($bytes);encoding='base64'}
-                    if ($blob.sha -ne $blobHash) { throw 'Uploaded binary differs from its Git blob hash.' }
-                    $entry.sha = $blob.sha; break
-                } catch {
-                    if ($attempt -eq 3) { throw }
-                    Start-Sleep -Seconds (2 * $attempt)
-                }
+    } else {
+        $content = [IO.File]::ReadAllText($_.FullName)
+        $bytes = [Text.Encoding]::UTF8.GetBytes($content)
+    }
+    $digest = [Security.Cryptography.IncrementalHash]::CreateHash([Security.Cryptography.HashAlgorithmName]::SHA1)
+    try {
+        $digest.AppendData([Text.Encoding]::ASCII.GetBytes('blob ' + $bytes.Length + [char]0))
+        $digest.AppendData($bytes)
+        $blobHash = [Convert]::ToHexString($digest.GetHashAndReset()).ToLowerInvariant()
+    } finally { $digest.Dispose() }
+    $exportBlobs[$entry.path] = $blobHash
+    if ($knownBlobs.Contains($blobHash)) {
+        $entry.sha = $blobHash
+    } elseif ($binary) {
+        # Reuse a verified object after an interrupted upload.
+        for ($attempt = 1; $attempt -le 3; $attempt++) {
+            & gh api ('repos/' + $Repository + '/git/blobs/' + $blobHash) --silent 2>$null
+            if ($LASTEXITCODE -eq 0) { $entry.sha = $blobHash; break }
+            try {
+                $blob = Invoke-Api POST ('repos/' + $Repository + '/git/blobs') @{content=[Convert]::ToBase64String($bytes);encoding='base64'}
+                if ($blob.sha -ne $blobHash) { throw 'Uploaded binary differs from its Git blob hash.' }
+                $entry.sha = $blob.sha; break
+            } catch {
+                if ($attempt -eq 3) { throw }
+                Start-Sleep -Seconds (2 * $attempt)
             }
         }
-    } else { $entry.content = [IO.File]::ReadAllText($_.FullName) }
+    } else { $entry.content = $content }
     $entry
 })
 foreach ($doc in $publicationDocs) {
@@ -221,6 +227,11 @@ $verifiedExpected = $expected + @($publicationDocs | Where-Object { $priorBlobs.
 if ($verifiedTree.truncated -or @($verifiedTree.tree | Where-Object { $_.type -notin @('blob','tree') }).Count -or
     @(Compare-Object ($verifiedExpected | Sort-Object) (($verifiedTree.tree | Where-Object type -EQ 'blob').path | Sort-Object)).Count) {
     throw 'Remote publication tree failed the exact frontend allowlist.'
+}
+foreach ($item in $verifiedTree.tree | Where-Object type -EQ 'blob') {
+    if ($exportBlobs.ContainsKey($item.path) -and $exportBlobs[$item.path] -cne $item.sha) {
+        throw ('Remote publication content differs: ' + $item.path)
+    }
 }
 if ($PublicationBranch) {
     if ($ExpectedPublicationHead) {
