@@ -641,9 +641,19 @@ def create_app(settings: Settings | None = None, service: LearningService | None
         response = await call_next(request)
         response = await compact_response(request, response)
         response.headers['Cache-Control'] = 'no-store'
+        if path.startswith('/vendor/knowledge-clipper/') and response.status_code in (200, 304):
+            response.headers['Cache-Control'] = 'public, max-age=0, must-revalidate'
+            if path.startswith('/vendor/knowledge-clipper/chat/assets/'):
+                response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Referrer-Policy'] = 'no-referrer'
         response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:* http://localhost:*; object-src 'none'; frame-src 'self' https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v1/ https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v2/ https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v3/; base-uri 'self'; frame-ancestors 'none'"
+        if path in ('/vendor/knowledge-clipper/index.html', '/vendor/knowledge-clipper/chat/index.html'):
+            # The learning page hosts these two packaged editors on its own origin.
+            response.headers['Content-Security-Policy'] = (
+                "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob:; "
+                "connect-src 'self'; object-src 'none'; frame-src 'self'; base-uri 'self'; frame-ancestors 'self'")
         if remote:
             response.headers['Access-Control-Allow-Origin'] = origin
             response.headers['Vary'] = 'Origin'

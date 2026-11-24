@@ -89,8 +89,9 @@ def main():
     # Vendor chunks carry content hashes in their names; version the stable
     # entrypoint URLs when the pinned dependency build changes as well.
     for p in sorted((WEB / 'vendor').rglob('*')):
-        if p.is_file():
+        if p.is_file() and not p.is_relative_to(WEB / 'vendor/knowledge-clipper'):
             digest.update(p.relative_to(WEB).as_posix().encode() + b'\0' + p.read_bytes() + b'\0')
+    digest.update((WEB.parent / 'scripts/clipper-assets.json').read_bytes().replace(b'\r\n', b'\n'))
     version = digest.hexdigest()[:16]
     changed = {p: URL.sub(lambda m: m[1] + '?v=' + version, text)
                for p, text in canonical.items()}

@@ -1,20 +1,29 @@
 # 零碎知识简藏
 
-登录后，在学习页工具栏点击「零碎知识简藏」开启或关闭。开关随本浏览器的账号保存。拖选站内内容后出现「卡／摘／问／读」。公式以整条选取，优先保留页面提供的 LaTeX。触屏可直接点选公式。Alt+Shift+S 选中当前公式或内容块，Alt+Shift+C 将焦点移到操作按钮。
+登录后，在学习页工具栏点「零碎知识简藏」开启，再点一次关闭。开关按当前浏览器和账号保留。选中正文后选择「读」「卡」「摘」或「问」。点一张图片还可以选「图」，继续收集正反面图片。按 Alt+Shift+S 选中指针所在的公式或内容块，Alt+Shift+C 将焦点移到操作菜单。
 
-- **卡**可编辑正反面和分类，也可发起多轮问答、选入回复或整合生成多张卡片草稿。确认保存后进入「课程之外自由学习」。
-- **摘**保存当前选区原文。打开「课程之外自由学习 → 摘录」可按日期查看，下载当日或全部的 RemNote Markdown 大纲。当天以账号时区为准，未设置时使用 Asia/Shanghai。
-- **问**用「快速答案」类型发起一次问答。回答可继续追问或加入卡片。
-- **读**提供词义与朗读。站内词典有匹配时显示词典义项，其他选区可请求语境释义。朗读使用设备提供的本地语音。
+操作页默认在当前标签页内置顶。拖动标题栏可移动，拖动边缘可调整大小。支持最小化、铺满标签页及切换到独立普通窗口。答题区域继续接受滚动与输入。
 
-桌面浏览器默认打开独立小窗，窗口尺寸、移动和最小化由浏览器与操作系统管理。「在当前页置顶」把操作界面移到原标签页的非模态浮窗，可拖动、缩放或最小化。「普通窗口」切回独立窗口。窄屏触控设备和阻止弹窗的浏览器直接使用同页浮窗。词义、回答和制卡生成在对应操作触发后运行。原始选区可预览，带入所在内容块由用户选择。
+## 选区、上下文与朗读
 
-「课程之外自由学习」按提问类型和日期展示个人卡片。到期卡片在同一页翻面、自评，由网站现有 FSRS 引擎计算间隔。保存、复习和摘录只属于当前账号。卡片、摘录、复习记录和模型用量保存在现有学习数据库，随站点备份。
+连续拖选英文时，会按选中位置补全词首和词尾，包括词内连字符和撇号。再次拖选会建立新选区。来源句子按实际位置提取，同一个词在页面中出现多次也能区分。行内公式以完整的 LaTeX 保存，代码保留缩进，选中的图片按原位置进入摘录。
 
-## 维护
+在「设置 → 零碎知识简藏」中可以关闭上下文或把范围从一句改为一段。默认带入一句。开启上下文后，如果公式出现在来源句或所选段落中，朗读会同时读出文字和公式。查义、理解卡和书写卡使用原文与本次选区的位置。公式的语音读法只用于合成录音。再次读到同一个词时，工具按来源、读音和实际录音文本判断能否复用。
 
-提问类型、通用提示和整合规则由 KnowledgeClipper 的 Git 版本提供。更新网站使用的版本时执行 `python scripts/sync_clipper_rules.py <KnowledgeClipper 源码目录> <提交或标签>`，用 `--check` 核对生成物，然后跑剪藏测试。网站负责素材选取、弹窗、账号保存和复习适配，桌面程序继续使用自己的宿主与模型接入。
+设置页集中管理浮点快捷操作、语言卡练习方式、词典、图片与 OCR、请求重试、朗读和快捷键。也可以调整当前账号的提示词和模式。选择自有服务时，在该页面绑定凭据。站点按账号加密保存，后续读取只显示绑定状态和服务信息。
 
-生成服务复用站内文本调用传输。可用 `GRASPMEMOEDU_CLIPPER_API_KEY`、`GRASPMEMOEDU_CLIPPER_BASE_URL` 和 `GRASPMEMOEDU_CLIPPER_MODEL` 同时指定独立配置。三项均未设置时使用站内现有的专用文本模型设置。服务端计量独立于判题，`GRASPMEMOEDU_CLIPPER_DAILY_ACCOUNT` 和 `GRASPMEMOEDU_CLIPPER_DAILY_GLOBAL` 的默认值 `0` 表示不限量。两项支持设置正整数限制，按 Asia/Shanghai 自然日计数。进入模型的请求会计量，词典查询和浏览器朗读各用自己的路径。
+## 保存与复习
 
-隔离验收先运行 `python -m unittest tests.test_clipper.ClipperTests tests.test_web_export`。浏览器验收用 `python scripts/clipper_browser_fixture.py <全新数据目录> --port <空闲端口>` 和 `node scripts/clipper_browser_acceptance.mjs <证据目录> <数据目录> <隔离网址>`，浏览器测试使用合成材料与确定性的模型响应。
+「卡」进入共享卡片编辑器。「问」用当前选区发起对话。「摘」可保存原文、手动制卡、挖空、合并或撤销合并。「读」可查义、听读、生成语言卡并复用历史录音。开启某项快捷保存后，点击对应操作即确认按设置保存结果。其余草稿、图片、对话和录音保存在当前浏览器的账号空间。
+
+保存后的卡片在「个人自由学习」按类型查看，并通过 FSRS 翻面复习和评分。可查看按日期整理的摘录，导出今天或全部摘录。纯文本摘录下载为 Markdown，含图片的摘录下载为包含 Markdown 和原图的 ZIP。公式、代码块及图片位置保留在导出内容中。
+
+## 运行与更新
+
+网站与桌面版运行同一份 KnowledgeClipper 工作流和卡片编辑器。网站提供页面选区、账号存储与网络服务。已发布的运行包和规则目录分别由 `scripts/clipper-assets.json` 的 SHA-256 校验。执行 `python -m graspmemoedu.clipper_bundle` 准备本地运行文件，`export-web` 会检验并复制指定版本。`GRASPMEMOEDU_CLIPPER_BUNDLE` 可指定同一发行包的本地路径。维护时用 `python scripts/sync_clipper_rules.py <KnowledgeClipper目录> <提交> --check` 对照上游源码核验规则。
+
+内容模型沿用站内专用文本服务，也可同时设置 `GRASPMEMOEDU_CLIPPER_API_KEY`、`GRASPMEMOEDU_CLIPPER_BASE_URL` 和 `GRASPMEMOEDU_CLIPPER_MODEL`。可为多模态内容配置 `GRASPMEMOEDU_CLIPPER_IMAGE_MODEL`。语音和 OCR 的站点服务使用同名变量的 `SPEECH_` 与 `OCR_` 前缀，如 `GRASPMEMOEDU_CLIPPER_SPEECH_MODEL`。腾讯云站点使用小米 MiMo 朗读。可选用小米 MiMo 的预设声线，如 `mimo-Mia` 或 `mimo-Dean`，其他声线名在该服务中使用默认 Mia。小米 MiMo 和 OpenAI Realtime 均沿用 MimoTTS 的合成实现，服务器须安装 FFmpeg。兼容的音频接口需返回 MP3。
+
+图片识别可直接复用桌面使用的 MinerU 程序。用 `GRASPMEMOEDU_CLIPPER_MINERU_RUNNER` 指向服务器上已安装的 `mineru_ocr.py`，并在运行服务中配置站点的 `MINERU_API_TOKEN`。识别沿用设置中的语言、表格、公式和等待时间，核验原始 ZIP 和 Markdown 后返回。账号自有视觉服务仍使用该账号绑定的接口。
+
+自有服务绑定需要服务器上的 `GRASPMEMOEDU_CLIPPER_VAULT_KEY`，值为 Base64 编码的 32 字节随机密钥。该密钥由站点运维保管并随私有密钥备份。独立配额 `GRASPMEMOEDU_CLIPPER_DAILY_ACCOUNT` 和 `GRASPMEMOEDU_CLIPPER_DAILY_GLOBAL` 默认均为 0，表示不限量。按 Asia/Shanghai 自然日计量。已保存的内容、媒体与复习记录进入现有学习数据库。

@@ -4,8 +4,6 @@ from datetime import datetime, timezone
 from functools import lru_cache
 import json
 import os
-from pathlib import Path
-import re
 import sqlite3
 from threading import BoundedSemaphore
 from typing import Annotated, Literal
@@ -19,6 +17,11 @@ from .fsrs_engine import FSRSEngine
 from .public_limits import DailyJudgeQuota
 from .service import DomainError
 from .voice_input import complete
+from .clipper_gateway import GATEWAY, REFERENCE, RULES, SETTINGS, register_gateway
+from .clipper_settings import AccountPreferences, account_types, catalog
+from . import clipper_media
+from .clipper_outline import excerpt_outline
+import base64
 
 
 ITEMS = '/api/clipper/items'
@@ -26,8 +29,9 @@ REVIEW = '/api/clipper/review'
 MODEL = '/api/clipper/model'
 EXPORT = '/api/clipper/excerpts'
 TYPES = '/api/clipper/types'
-PATHS = {ITEMS, REVIEW, MODEL, EXPORT, TYPES}
-BODY_LIMITS = {ITEMS: 450000, MODEL: 450000}
+MEDIA = '/api/clipper/media'
+PATHS = {ITEMS, REVIEW, MODEL, EXPORT, TYPES, SETTINGS, RULES, GATEWAY, MEDIA, REFERENCE}
+BODY_LIMITS = {ITEMS: 48 * 1024 * 1024, MODEL: 450000, SETTINGS: 512 * 1024, GATEWAY: 48 * 1024 * 1024}
 Text = Annotated[str, Field(max_length=18000)]
 
 
@@ -44,7 +48,7 @@ class Source(Payload):
 
 class Fields(Payload):
     type_id: str = Field(max_length=70)
-    front: Text = Field(min_length=1)
+    front: Text
     back: Text = ''
 
 
@@ -52,6 +56,7 @@ class Item(Fields):
     id: UUID
     kind: Literal['card', 'excerpt']
     source: Source
+    media: list[clipper_media.Attachment] = Field(default_factory=list, max_length=51)
 
 
 class Rating(Payload):
@@ -77,41 +82,22 @@ class ModelCall(Payload):
 
 @lru_cache
 def rules():
-    return json.loads(Path(__file__).with_name('clipper_rules.json').read_text(encoding='utf-8'))
+    files = catalog()['rules']
+    def read(name):
+        return files['chat/' + name].strip()
+    return {'system': read('system.md'), 'integrate': read('actions/integrate.md'),
+            'types': {row['id']: {'label': row['label'], 'prompt': read(row['promptFile'])}
+                      for row in json.loads(read('question-types.json'))['types']}}
 
 
 def local_day(when, tz):
     return when.astimezone(ZoneInfo(tz or 'Asia/Shanghai')).date().isoformat()
 
 
-def excerpt_outline(rows):
-    def literal(text):
-        # Quotes make the source literal rather than RemNote card syntax.
-        return re.sub(r'([\\\x60*_~<>{}\[\]])', r'\\\1', text)
-
-    def inline_math(text):
-        result, offset = [], 0
-        for part in re.finditer(r'\\\(([\s\S]*?)\\\)|\\\[([\s\S]*?)\\\]|\$\$([\s\S]*?)\$\$|(?<!\\)\$([^$\n]+)\$', text):
-            latex = next(group for group in part.groups() if group is not None)
-            result.extend((literal(text[offset:part.start()]), ' $' + latex.replace('\n', ' ').strip() + '$ '))
-            offset = part.end()
-        return ''.join([*result, literal(text[offset:])])
-
-    lines = ['- 零碎知识剪藏', '  - 摘录']
-    day = None
-    for row in rows:
-        if day != row['day']:
-            day = row['day']
-            lines.append('    - ' + day)
-        parts = [part.strip() for part in inline_math(row['front']).splitlines() if part.strip()]
-        lines.append('      - ' + parts[0])
-        lines.extend('        - ' + part for part in parts[1:])
-    return '\n'.join(lines) + '\n'
-
-
 class ClipperStore:
     def __init__(self, access_store, *, now=None):
         self.access = access_store
+        self.preferences = AccountPreferences(access_store)
         self.now = now or (lambda: datetime.now(timezone.utc))
         self.scheduler = FSRSEngine()
         self.global_limit = DailyJudgeQuota.configured_limit(
@@ -137,6 +123,7 @@ class ClipperStore:
                     day TEXT NOT NULL, learner_id TEXT NOT NULL, count INTEGER NOT NULL,
                     PRIMARY KEY(day, learner_id));
             """)
+            clipper_media.initialize(con)
 
     @staticmethod
     def public(row, compact=False):
@@ -147,17 +134,33 @@ class ClipperStore:
                                        'due_at', 'revision')},
                 'source': source}
 
+    def custom_types(self, learner):
+        with closing(self.access._connect()) as con:
+            row = con.execute('SELECT rules_json FROM clipper_preferences WHERE learner_id=?', (learner,)).fetchone()
+        return account_types(json.loads(row[0]) if row else {})
+
     def save(self, learner, item, tz):
         front, back = item.front.strip(), item.back.strip()
-        if not front or (item.kind == 'card' and (not back or item.type_id not in rules()['types'])):
+        known = clipper_media.study_types(rules()['types'])
+        custom_excerpts = set()
+        if item.type_id not in known:
+            custom, custom_excerpts = self.custom_types(learner)
+            known.update(custom)
+        try:
+            attachments = clipper_media.prepare(item.media)
+        except (ValueError, TypeError):
+            raise DomainError('invalid_clip_media', '附件格式或大小无效。', 422) from None
+        if ((not front and not any(a[0] == 'front' for a in attachments)) or item.type_id not in known or
+                item.kind == 'card' and not back and not any(a[0] == 'back' for a in attachments)):
             raise DomainError('invalid_clip', '请填写卡片正反面并选择类型。', 422)
-        if item.kind == 'excerpt' and (back or item.type_id != 'excerpt-manual'):
+        if item.kind == 'excerpt' and (back or any(a[0] == 'back' for a in attachments) or
+                                       item.type_id not in custom_excerpts and item.type_id not in ('excerpt-manual', 'image-excerpt') and not item.type_id.startswith('excerpt-')):
             raise DomainError('invalid_clip', '摘录只保存原文。', 422)
         now = self.now()
         snapshot = (item.kind, item.type_id, front, back, item.source.model_dump_json())
         with closing(self.access._connect()) as con:
             con.execute('BEGIN IMMEDIATE')
-            con.execute('''INSERT OR IGNORE INTO clipper_items(
+            created = con.execute('''INSERT OR IGNORE INTO clipper_items(
                 learner_id,id,kind,type_id,front,back,source,created_at,day,due_at)
                 VALUES(?,?,?,?,?,?,?,?,?,?)''',
                 (learner, str(item.id), *snapshot, now.isoformat(), local_day(now, tz),
@@ -166,6 +169,7 @@ class ClipperStore:
                               (learner, str(item.id))).fetchone()
             if tuple(row[key] for key in ('kind', 'type_id', 'front', 'back', 'source')) != snapshot:
                 raise DomainError('clip_save_conflict', '该条内容已保存，请重新打开草稿后再保存。', 409)
+            clipper_media.save(con, learner, str(item.id), attachments, bool(created.rowcount))
             con.commit()
         return self.public(row)
 
@@ -177,7 +181,9 @@ class ClipperStore:
         with closing(self.access._connect()) as con:
             rows = con.execute(f'SELECT * FROM clipper_items WHERE {where} ORDER BY {order} LIMIT ? OFFSET ?',
                                (*args, limit + 1, offset)).fetchall()
-        return {'items': [self.public(row, compact) for row in rows[:limit]],
+            attachments = clipper_media.manifests(con, learner, [row['id'] for row in rows[:limit]])
+            items = [{**self.public(row, compact), 'media': attachments.get(row['id'], [])} for row in rows[:limit]]
+        return {'items': items,
                 'next': offset + limit if len(rows) > limit else None}
 
     def review(self, learner, result):
@@ -229,9 +235,9 @@ class ClipperStore:
     def export(self, learner, period, tz):
         clause, args = (' AND day=?', (local_day(self.now(), tz),)) if period == 'today' else ('', ())
         with closing(self.access._connect()) as con:
-            rows = con.execute('''SELECT day, front FROM clipper_items WHERE learner_id=? AND kind='excerpt' '''
+            rows = con.execute('''SELECT id, day, front FROM clipper_items WHERE learner_id=? AND kind='excerpt' '''
                                + clause + ' ORDER BY day, created_at, id', (learner, *args)).fetchall()
-        return {'markdown': excerpt_outline(rows) if rows else '', 'count': len(rows)}
+            return clipper_media.export(con, learner, rows, excerpt_outline)
 
 
 def model_settings():
@@ -247,14 +253,26 @@ def model_settings():
 def register_clipper_routes(app, access_store, profile, dictionary, *, generate=complete):
     store = ClipperStore(access_store)
     slots = BoundedSemaphore(8)
+    register_gateway(app, store, slots, model_settings)
 
     def account(request):
         return request.state.clipper_access
 
     @app.get(TYPES)
     def clip_types(request: Request):
-        account(request)
-        return {'types': [{'id': key, 'label': row['label']} for key, row in rules()['types'].items()]}
+        custom, _ = store.custom_types(account(request)['learner_id'])
+        types = {**clipper_media.study_types(rules()['types']), **custom}
+        return {'types': [{'id': key, 'label': label} for key, label in types.items()]}
+
+    @app.get(MEDIA)
+    def clip_media(request: Request, item: UUID, digest: str = Query(pattern=r'^[a-f0-9]{64}$')):
+        owner = account(request)['learner_id']
+        with closing(store.access._connect()) as con:
+            row = con.execute('''SELECT b.mime,b.data FROM clipper_media b JOIN clipper_item_media m USING(learner_id,digest)
+                              WHERE b.learner_id=? AND m.item_id=? AND b.digest=?''', (owner,str(item),digest)).fetchone()
+        if row is None:
+            raise DomainError('clip_media_missing', '找不到这份附件。', 404)
+        return {'mime': row['mime'], 'data': base64.b64encode(row['data']).decode()}
 
     @app.get(ITEMS)
     def clip_items(request: Request, kind: Literal['card', 'excerpt'] = 'card',

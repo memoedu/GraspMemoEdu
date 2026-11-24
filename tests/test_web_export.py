@@ -38,7 +38,14 @@ class PublicExportTests(unittest.TestCase):
             pwa_files.update({'microphone-recorder.js', 'voice-input.js', 'voice-stream.js', 'voice-pcm.js', 'voice-context.js', 'answer-conversion.js'})
             pwa_files.update({'autocomplete.js', 'autocomplete.css'})
             pwa_files.add('free-study.js')
-            pwa_files.update({'clipper.js', 'clipper-workspace.js', 'clipper-library.js', 'clipper.css'})
+            pwa_files.update({'clipper.js', 'clipper-workspace.js', 'clipper-library.js', 'clipper-selection.js',
+                              'clipper-host.js', 'clipper-settings.js', 'clipper.css'})
+            clipper = json.loads((Path(__file__).resolve().parents[1] / 'scripts/clipper-assets.json').read_bytes())
+            runtime = output / 'vendor/knowledge-clipper'
+            self.assertEqual(json.loads((output / 'vendor/clipper-release.json').read_bytes()), clipper)
+            self.assertEqual({p.relative_to(runtime).as_posix() for p in runtime.rglob('*') if p.is_file()}, set(clipper['files']))
+            for name, expected in clipper['files'].items():
+                self.assertEqual(hashlib.sha256((runtime / name).read_bytes()).hexdigest(), expected, name)
             self.assertTrue((output / 'vendor/calculator/completion.mjs').is_file())
             pwa_files.update({'formula-input.js', 'formula-catalog.js', 'formula-input.css'})
             formula_assets = Path(__file__).resolve().parents[1] / 'scripts/formula-assets.json'
