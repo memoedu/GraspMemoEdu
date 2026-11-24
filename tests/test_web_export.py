@@ -47,7 +47,7 @@ class PublicExportTests(unittest.TestCase):
             for name, expected in clipper['files'].items():
                 self.assertEqual(hashlib.sha256((runtime / name).read_bytes()).hexdigest(), expected, name)
             self.assertTrue((output / 'vendor/calculator/completion.mjs').is_file())
-            pwa_files.update({'formula-input.js', 'formula-catalog.js', 'formula-selection.js', 'formula-input.css'})
+            pwa_files.update({'formula-input.js', 'formula-catalog.js', 'formula-input.css'})
             formula_assets = Path(__file__).resolve().parents[1] / 'scripts/formula-assets.json'
             for name, digest in json.loads(formula_assets.read_text(encoding='utf-8'))['files'].items():
                 with self.subTest(asset=name):

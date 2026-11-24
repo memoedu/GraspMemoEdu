@@ -93,11 +93,11 @@ try {
   await page.screenshot({path:path.join(output, 'example-feedback.png'), fullPage:true});
   await next();
   assert.equal(active(await state()).kind, 'introduction');
-  assert.ok(await page.locator('mjx-container svg').count() > 0, 'Introduction formulas render');
+  await page.locator('.katex-html, mjx-container[jax="HTML"] > math').first().waitFor();
   await page.screenshot({path:path.join(output, 'introduction-math.png'), fullPage:true});
   await next();
   assert.match(await page.locator('#stepCard').innerText(), /速度为 4 m\/s/);
-  assert.ok(await page.locator('mjx-container svg').count() > 0, 'Explanation formulas render');
+  await page.locator('.katex-html, mjx-container[jax="HTML"] > math').first().waitFor();
   await next();
   for (let i = 0; i < 2; i++) {
     const current = active(await state()); assert.equal(current.kind, 'practice');
