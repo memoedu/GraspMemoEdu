@@ -3,7 +3,7 @@ import test from 'node:test';
 import {calculate, calculateImmediate, calculateSelectedFormula} from '../web/calculator-engine.js';
 import {expandScientificNotation} from '../web/calculator-panel.js';
 import {calculatorWorksheets, expressionCompletions, expressionExtensions, permitsModule, scientificCategories, tools} from '../web/calculator-policy.js';
-import {formulaTemplates, matchesCompletion, nativeFormulaSample} from '../web/formula-catalog.js';
+import {formulaTemplates, matchesCompletion, nativeFormulaSample, nativeFunctionCompletions} from '../web/formula-catalog.js';
 import previews from '../web/vendor/formula/previews.mjs';
 
 test('selected OCR formulas reuse numeric, remainder and optional CAS calculation', async () => {
@@ -54,6 +54,122 @@ const run = (module, operation, input, config = cas, options = {}) =>
   calculate({config, module, operation, input, ...options});
 const evaluate = (expression, config = basic, options) => run('expression', 'evaluate', {expression}, config, options);
 const approx = (a, b, tolerance = 1e-10) => assert.ok(Math.abs(a - b) < tolerance, `${a} != ${b}`);
+
+test('compound arithmetic, comparisons and assignment compose with the existing expression syntax', async () => {
+  const arithmetic = [['+=', (a, b) => a + b], ['-=', (a, b) => a - b], ['*=', (a, b) => a * b],
+    ['/=', (a, b) => a / b], ['^=', (a, b) => a ** b]];
+  const relations = [['==', (a, b) => a === b], ['!=', (a, b) => a !== b], ['<', (a, b) => a < b],
+    ['<=', (a, b) => a <= b], ['>', (a, b) => a > b], ['>=', (a, b) => a >= b]];
+  const numbers = [-8, -2, -1, 0, 1, 2, 8];
+  for (const A of numbers) for (const B of numbers) {
+    const options = {memory: {A, B}};
+    for (const [op, calculate] of arithmetic) {
+      if (!Number.isFinite(calculate(A, B))) continue;
+      const result = await evaluate('A ' + op + ' B', basic, options);
+      assert.equal(result.register, 'A');
+      assert.equal(result.numeric, calculate(A, B));
+    }
+    for (const [op, compare] of relations) {
+      const expected = Number(compare(A, B));
+      assert.deepEqual(await evaluate('A ' + op + ' B', basic, options), {text: String(expected), numeric: expected});
+      assert.equal((await evaluate('C = （A ' + op + ' B） + 1', basic, options)).numeric, expected + 1);
+    }
+  }
+  const scientific = {level: 'scientific'};
+  for (const [expression, expected] of [
+    ['1+2<4==4', 1], ['1<2>3', 0], ['1<2<=3', 1], ['3>=2!=1', 1], ['2≤3', 1], ['2≥3', 0], ['2≠3', 1],
+    ['3! != 5', 1], ['2^3 == 4+4', 1], [String.raw`$\sinh（0）+\cosh\left(0\right)$`, 1],
+    [String.raw`\(log_{1+2}（27）\)`, 3], ['$2×（3+4）$', 14],
+  ]) assert.equal((await evaluate(expression, scientific)).text, String(expected), expression);
+  await assert.rejects(evaluate('A += 1', basic), {code: 'storage_required'});
+  await assert.rejects(evaluate('A /= 0', basic, {memory: {A: 1}}), {code: 'domain'});
+  await assert.rejects(evaluate('A += 1', {...basic, disable_keys: ['add']}, {memory: {A: 1}}), {code: 'restricted'});
+  await assert.rejects(evaluate('A -= 1', {...basic, disable_keys: ['memory_registers']}), {code: 'restricted'});
+  await assert.rejects(evaluate('1<2<=3', {...basic, disable_keys: ['smaller_eq']}), {code: 'restricted'});
+  await assert.rejects(evaluate('[1,2] == [1,2]', cas), {code: 'domain'});
+  for (const source of ['A+=B=2', 'A=(B+=1)', '(A=2)+1']) await assert.rejects(evaluate(source), {code: 'restricted'});
+  assert.deepEqual(await run('expression', 'assign_variables', {expression: 'X == Y'}, scientific), {variables: ['X', 'Y']});
+});
+
+test('function definitions infer ASCII order, bind explicit parameters and share register overwrite semantics', async () => {
+  const scientific = {level: 'scientific'};
+  const memory = {X: 7};
+  const execute = async (expression, defineFunction, options) => {
+    const result = await run('expression', 'evaluate', {expression, defineFunction}, scientific, {memory, ...options});
+    if (result.register) memory[result.register] = result.definition ?? result.numeric;
+    return result;
+  };
+  assert.equal((await execute('F = X + 1')).numeric, 8);
+  assert.deepEqual((await execute('F = X + 1', true)).definition, {expression: 'X + 1', parameters: ['X']});
+  assert.equal((await execute('F（3）')).numeric, 4);
+  assert.deepEqual((await execute('G = 10*Y + X', true)).definition.parameters, ['X', 'Y']);
+  assert.equal((await execute('G（3，4）')).numeric, 43);
+  assert.equal((await execute('G(Y, X) = 10*Y + X')).text, 'G(Y, X) = 10*Y + X');
+  assert.equal((await execute('G(3,4)')).numeric, 34);
+  assert.equal((await execute('H = a + 10*Z + 100*Z', true)).text, 'H(Z, a) = a + 10*Z + 100*Z');
+  assert.equal((await execute('H(2,3)')).numeric, 223);
+  assert.equal((await execute('F(F(3)) + F(5)')).numeric, 11);
+  assert.equal((await execute('J(X) = G(F(X), X) + X')).text, 'J(X) = G(F(X), X) + X');
+  assert.equal((await execute('J(3)')).numeric, 46);
+  assert.equal((await execute('J(X) = X + Ans + pi')).definition.parameters.length, 1);
+  approx((await execute('J(1)', false, {answer: 2})).numeric, 3 + Math.PI);
+  await execute('J(T) = X + T');
+  await execute('X = 10');
+  assert.equal((await execute('J(2)')).numeric, 12);
+  await execute('K() = 42');
+  assert.equal((await execute('K()')).numeric, 42);
+  await execute('ρ₁（β，α）＝10*β+α');
+  assert.equal((await execute('ρ_{1}(3,4)')).numeric, 34);
+  await execute('L(α_1) = α₁*2');
+  assert.equal((await execute('L(3)')).numeric, 6);
+  await execute('F = X + 1');
+  assert.equal((await execute('F')).numeric, 11);
+  await assert.rejects(execute('F(3)'), {code: 'function_arguments'});
+  await execute('F(X) = X > 0');
+  assert.equal((await execute('F(1)+F(-2)')).numeric, 1);
+  await assert.rejects(execute('F += 1'), {code: 'function_arguments'});
+  await assert.rejects(execute('F'), {code: 'function_arguments'});
+  assert.equal((await evaluate('G', scientific)).numeric, 6.67430e-11);
+});
+
+test('function validation enforces permissions, arity, depth and the existing expression limits', async () => {
+  const scientific = {level: 'scientific'};
+  const define = (expression, config = scientific, memory) =>
+    run('expression', 'evaluate', {expression, defineFunction: true}, config, {memory});
+  const F = (await define('F=X+1')).definition;
+  const memory = {F, H: (await define('H=F(X)', scientific, {F})).definition};
+  for (const [source, code] of [
+    ['X+1', 'function_definition'], ['F+=1', 'function_definition'], ['F(X,X)=X', 'function_definition'],
+    ['F(X,)=X', 'function_definition'], ['F(X)=X+Y', 'function_definition'], ['sin(X)=X', 'restricted'],
+    ['F(X)=Y=2', 'restricted'], ['F=H(X)', 'limit'], ['F(X)=(' + '('.repeat(40) + 'X' + ')'.repeat(41), 'limit'],
+    ['F=A+B+C+D+E+X+Y+Z+a+b+d+f+g', 'limit'],
+  ]) await assert.rejects(define(source, scientific, memory), {code});
+  for (const key of ['memory_registers', 'define_function', 'evaluate', 'add']) {
+    const config = {...scientific, disable_keys: [key]};
+    await assert.rejects(define('F=X+1', config), {code: 'restricted'});
+    await assert.rejects(evaluate('F(3)', config, {memory}), {code: 'restricted'});
+  }
+  await assert.rejects(define('F=X+1', basic), {code: 'restricted'});
+  for (const source of ['F()', 'F(1,2)']) await assert.rejects(evaluate(source, scientific, {memory}), {code: 'function_arguments'});
+  assert.deepEqual(await run('expression', 'assign_variables', {expression: 'F(Y) == Z'}, scientific, {memory}),
+    {variables: ['Y', 'Z']});
+  const repeated = Array(30).fill('X').join('+');
+  const branch = 'F(X)=' + repeated;
+  const heavy = (await define(branch)).definition;
+  await assert.rejects(evaluate(Array(13).fill('F(1)').join('+'), scientific, {memory: {F: heavy}}), {code: 'limit'});
+  assert.equal((await evaluate('A+1', scientific, {memory: {A: {expression: '2*3'}}})).numeric, 7);
+});
+
+test('answer and calculator completion share function templates and typed prefixes', () => {
+  const generic = formulaTemplates.find(item => item.label === 'f');
+  const empty = new Map();
+  assert.equal(nativeFunctionCompletions('f', empty)[0], generic);
+  assert.equal(nativeFunctionCompletions('F', empty)[0].value, 'F(');
+  assert.deepEqual(nativeFunctionCompletions('F', new Map([['F', {value: 1}]])), []);
+  const defined = nativeFunctionCompletions('Fu', new Map([['Func', {value: {parameters: ['X']}}]]));
+  assert.equal(defined[0].value, 'Func(');
+  assert.ok(matchesCompletion(defined[0], String.raw`\fu`));
+});
 
 test('letter registers work at every tier and take precedence over expression assignments', async () => {
   for (const level of ['basic', 'scientific', 'advanced', 'cas']) {

@@ -3,7 +3,8 @@ param(
     [string]$ExportDirectory = 'D:\Artifacts\GraspMemoEdu\pages-ready',
     [string]$EvidenceDirectory = 'D:\Artifacts\GraspMemoEdu\publication',
     [string]$ExpectedParent = '',
-    [string]$PublicationBranch = ''
+    [string]$PublicationBranch = '',
+    [string]$ExpectedPublicationHead = ''
 )
 $ErrorActionPreference = 'Stop'
 & python (Join-Path $PSScriptRoot 'scripts/version_web_assets.py')
@@ -11,6 +12,9 @@ if ($LASTEXITCODE -ne 0) { throw 'Static asset version check failed. Refresh ass
 if ($Repository -notmatch '^[A-Za-z0-9-]+/[A-Za-z0-9_.-]+$') { throw 'Invalid repository name.' }
 if ($PublicationBranch -and $PublicationBranch -notmatch '^(feat|fix|docs|codex)/[A-Za-z0-9][A-Za-z0-9-]*$') {
     throw 'Invalid publication branch.'
+}
+if ($ExpectedPublicationHead -and (-not $PublicationBranch -or $ExpectedPublicationHead -cnotmatch '^[a-f0-9]{40}$')) {
+    throw 'Updating a publication branch requires its exact previous head.'
 }
 $expected = @('.nojekyll','app.js','deployment.json','favicon.svg','index.html','portal.js','review.js','atomic.js','learning-cache.js','question-input.js','content-report.js','help-feedback.js','catalog-picker.js','portal.css','subjects.js','subjects.css','styles.css','i18n.js','reader-messages.js','portal-messages.js','static-messages.js','course-graph.js','course-graph.css')
 $files = @(Get-ChildItem -LiteralPath $ExportDirectory -File -Force -Recurse)
@@ -139,6 +143,12 @@ if (-not $info.permissions.push) { throw 'The current GitHub identity needs writ
 $reference = Invoke-Api GET ('repos/' + $Repository + '/git/ref/heads/' + $branch)
 $parent = $reference.object.sha
 if ($ExpectedParent -and $parent -ne $ExpectedParent) { throw 'The public frontend changed during acceptance. Reconcile the new deployment before publishing.' }
+$parents = @($parent)
+if ($ExpectedPublicationHead) {
+    $draft = Invoke-Api GET ('repos/' + $Repository + '/git/ref/heads/' + $PublicationBranch)
+    if ($draft.object.sha -ne $ExpectedPublicationHead) { throw 'The publication branch changed during acceptance.' }
+    $parents = @($ExpectedPublicationHead, $parent) | Select-Object -Unique
+}
 $commit = Invoke-Api GET ('repos/' + $Repository + '/git/commits/' + $parent)
 $priorTree = Invoke-Api GET ('repos/' + $Repository + '/git/trees/' + $commit.tree.sha + '?recursive=1')
 $publicationDocs = @('README.md','AGENTS.md','CONTRIBUTING.md')
@@ -193,7 +203,7 @@ foreach ($doc in $publicationDocs) {
     if ($priorBlobs.ContainsKey($doc)) { $treeItems += @{path=$doc;mode='100644';type='blob';sha=$priorBlobs[$doc]} }
 }
 $tree = Invoke-Api POST ('repos/' + $Repository + '/git/trees') @{tree=$treeItems}
-$published = Invoke-Api POST ('repos/' + $Repository + '/git/commits') @{message='Publish verified learning frontend';tree=$tree.sha;parents=@($parent)}
+$published = Invoke-Api POST ('repos/' + $Repository + '/git/commits') @{message='Publish verified learning frontend';tree=$tree.sha;parents=@($parents)}
 $verifiedTree = Invoke-Api GET ('repos/' + $Repository + '/git/trees/' + $published.tree.sha + '?recursive=1')
 $verifiedExpected = $expected + @($publicationDocs | Where-Object { $priorBlobs.ContainsKey($_) })
 if ($verifiedTree.truncated -or @($verifiedTree.tree | Where-Object { $_.type -notin @('blob','tree') }).Count -or
@@ -201,7 +211,11 @@ if ($verifiedTree.truncated -or @($verifiedTree.tree | Where-Object { $_.type -n
     throw 'Remote publication tree failed the exact frontend allowlist.'
 }
 if ($PublicationBranch) {
-    $null = Invoke-Api POST ('repos/' + $Repository + '/git/refs') @{ref="refs/heads/$PublicationBranch";sha=$published.sha}
+    if ($ExpectedPublicationHead) {
+        $null = Invoke-Api PATCH ('repos/' + $Repository + '/git/refs/heads/' + $PublicationBranch) @{sha=$published.sha;force=$false}
+    } else {
+        $null = Invoke-Api POST ('repos/' + $Repository + '/git/refs') @{ref="refs/heads/$PublicationBranch";sha=$published.sha}
+    }
     $receipt = @{repository=$Repository;branch=$PublicationBranch;commit=$published.sha;parent=$parent;status='ready_for_pull_request'}
     $receipt | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $EvidenceDirectory 'deployment.json') -Encoding utf8
     $receipt | ConvertTo-Json
