@@ -133,7 +133,11 @@ try {
   const bodyBoard = page.locator('.whiteboardPanel:visible');
   const bodyExpression = bodyBoard.locator('[data-whiteboard-expression]');
   const bodySubmit = bodyBoard.getByRole('button', {name: '提交', exact: true});
+  const prepared = page.locator('.whiteboardPanel[hidden] [data-whiteboard-expression]:enabled');
+  await prepared.waitFor({state: 'attached'});
+  const preparedFrame = await page.locator('.whiteboardPanel[hidden] iframe').elementHandle();
   await bodyTools.getByRole('button', {name: '白板', exact: true}).click();
+  assert.equal(await bodyBoard.locator('iframe').evaluate((frame, initial) => frame === initial, preparedFrame), true);
   await bodyExpression.and(bodyBoard.locator('input:enabled')).waitFor();
   assert.equal(await bodySubmit.isVisible(), true);
   assert.equal(await bodySubmit.isDisabled(), true);
@@ -450,7 +454,7 @@ try {
   console.log(JSON.stringify({passed: true, checks: ['Topic reading tools, no answer submission, absent on home and subject landing', 'pre-answer whiteboard uses a disabled submit button',
     'split', 'swap', 'undo-redo', 'scribble erase and atomic undo', 'register survives clearing',
     voiceFile ? 'Chrome capture, transcription insertion and pending submit guard' : 'voice insertion event',
-    'archive and reopen', 'directory cancellation and denied permission', 'live undo after reopen',
+    'prepared editor is reused on first open', 'archive and reopen', 'directory cancellation and denied permission', 'live undo after reopen',
     'lasso deletion and undo', 'OCR freeze and recovery', 'insufficient without submission', 'shared judge', 'small viewports',
     'editable scene recovered after its PNG went missing', 'editor retries after load failure',
     'selection calculation', 'changing selection cancels slow OCR', 'typed selection computes without OCR',
