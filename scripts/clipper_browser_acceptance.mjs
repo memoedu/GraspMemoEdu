@@ -72,6 +72,16 @@ async function close(){await panel.getByRole('button',{name:'关闭',exact:true}
 try{
   await enter();assert.equal(await toggle.isVisible(),false);await login(invitations[0]);
   await toggle.click();assert.equal(await toggle.getAttribute('aria-pressed'),'true');assert.equal(await panel.count(),0);
+  await page.evaluate(()=>{location.hash='#/';});
+  const homeTools=page.locator('#pageTools');
+  await homeTools.getByRole('button',{name:'科学计算器',exact:true}).click();
+  const calculator=page.locator('.questionCalculator');
+  await calculator.getByRole('textbox',{name:'表达式'}).fill('2+3');
+  await calculator.getByRole('button',{name:'计算结果',exact:true}).first().click();
+  await calculator.locator('.calculatorResult').getByText('5',{exact:true}).waitFor();
+  assert.equal(await panel.count(),0);
+  await enter();await toggle.waitFor();assert.equal(await toggle.getAttribute('aria-pressed'),'true');
+  checks.push('calculator input and navigation with the clipper enabled');
   const sample=page.locator('p').filter({hasText:'Capture the sequence'}).first();
   await sample.scrollIntoViewIfNeeded();
   if(!mobile){
