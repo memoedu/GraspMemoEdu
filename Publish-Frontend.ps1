@@ -152,7 +152,9 @@ if ($ExpectedPublicationHead) {
 $commit = Invoke-Api GET ('repos/' + $Repository + '/git/commits/' + $parent)
 $priorTree = Invoke-Api GET ('repos/' + $Repository + '/git/trees/' + $commit.tree.sha + '?recursive=1')
 $publicationDocs = @('README.md','AGENTS.md','CONTRIBUTING.md')
-$allowedPrior = if ($created) { @('README.md') } else { $expected + $publicationDocs }
+# The previous tree may still contain the removed formula popover script.
+# The generated tree remains constrained to the current export allowlist.
+$allowedPrior = if ($created) { @('README.md') } else { $expected + $publicationDocs + @('formula-selection.js') }
 $previousManifest = $priorTree.tree | Where-Object { $_.type -eq 'blob' -and $_.path -eq $clipperManifest }
 if ($previousManifest) {
     $blob = Invoke-Api GET ('repos/' + $Repository + '/git/blobs/' + $previousManifest.sha)
