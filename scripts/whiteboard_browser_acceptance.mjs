@@ -84,11 +84,14 @@ try {
       return route.fulfill({json: {text: '2x + 3 = 7'}});
     });
     await page.goto(site + '/#/settings');
+    await page.locator('#portalContent:not([inert]) h1').waitFor();
     await page.locator('#userMenuButton').click();
     await page.locator('#identityButton').click();
     await page.locator('#invitationCode').fill((await readFile(invitationFile, 'utf8')).trim());
     await page.locator('#identitySubmitButton').click();
-    await page.locator('#identitySubmitButton').waitFor({state: 'hidden'});
+    const loginError = page.locator('#identityError:visible');
+    await Promise.race([page.locator('#identitySubmitButton').waitFor({state: 'hidden'}), loginError.waitFor()]);
+    if (await loginError.isVisible()) throw Error(await loginError.textContent());
   }
   const homeSubmissions = [];
   await page.route(/\/api\/(?:[^?#]+\/)?(?:submit|submit-answer)(?:\?|$)/, route => {
