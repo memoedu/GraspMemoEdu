@@ -1,4 +1,4 @@
-import {escapedAt, mathSpans} from './math-syntax.js?v=9c1301e55d096053';
+import {escapedAt, mathSpans} from './math-syntax.js?v=e4f0b61b1957cdae';
 
 const namespace = 'http://www.w3.org/1998/Math/MathML';
 const greek = /[Α-Ωα-ω]/;
@@ -81,7 +81,7 @@ const glyphCodepoints = new WeakMap();
 let fragmentNumber = 0, renderer;
 
 function loadRenderer() {
-  renderer ||= import('./vendor/formula/editor.mjs?v=9c1301e55d096053').catch(error => { renderer = null; throw error; });
+  renderer ||= import('./vendor/formula/editor.mjs?v=e4f0b61b1957cdae').catch(error => { renderer = null; throw error; });
   return renderer;
 }
 
@@ -186,7 +186,7 @@ export function presentationMathSource(node) {
 
 function storedLatex(math) {
   const source = math.closest('[data-tex]');
-  const tex = source && source.querySelectorAll(archivedMath).length <= 1
+  const tex = source && source.querySelectorAll('mjx-container,.mjpage').length <= 1
     ? source.getAttribute('data-tex')
     : math.querySelector('annotation[encoding="application/x-tex"],:scope.mjpage > svg > title')?.textContent;
   const value = tex?.trim();
