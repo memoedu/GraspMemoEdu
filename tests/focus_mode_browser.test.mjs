@@ -393,6 +393,14 @@ test('Scoped installations restore independently and fall back after a scope dep
   const stillFree = await fixture(t, {...pwa, entry: free, hash: ''});
   assert.equal(new URL(stillFree.url()).hash, freeRoute);
 
+  const savedMath = await fixture(t, {...pwa, entry: math, hash: course});
+  await savedMath.locator('#dashboardTasks').waitFor();
+  await savedMath.close();
+  const explicitMath = await fixture(t, {...pwa, entry: math, hash: '#/free-study'});
+  await explicitMath.locator('.freeStudyLayout').waitFor();
+  const afterExplicitMath = await fixture(t, {...pwa, entry: math, hash: ''});
+  assert.equal(new URL(afterExplicitMath.url()).hash, courseHome);
+
   const rootPwa = await fixture(t, {...pwa, hash: course});
   await rootPwa.locator('#dashboardTasks').waitFor();
   await rootPwa.evaluate(() => {
