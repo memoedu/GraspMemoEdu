@@ -32,6 +32,10 @@ def main():
     # Enrichment checks that the selected Topics have no existing learner rows.
     # Quiesce writers for that check. Additions and graphics can install online.
     quiesce = manifest.get('kind') == 'mathacademy-practice-enrichment'
+    if quiesce:
+        subprocess.run(['runuser', '-u', 'graspmemoedu', '--', '/opt/graspmemoedu/venv/bin/python', '-m',
+                        'graspmemoedu.mathacademy_formula_audit', '--enrichment-package', str(stage / 'package')],
+                       cwd='/opt/graspmemoedu/app', check=True)
     timer = quiesce and subprocess.run(['systemctl', 'is-active', '--quiet', 'graspmemoedu-healthcheck.timer']).returncode == 0
     service_stopped = False
     try:

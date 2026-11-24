@@ -4,6 +4,7 @@ import io
 import json
 import os
 from pathlib import Path
+import subprocess
 from types import SimpleNamespace
 import tarfile
 import unittest
@@ -125,6 +126,28 @@ class ProductionActivationTests(unittest.TestCase):
         self.assertEqual(self.execute(ready_after=115), 115)
         self.assertEqual(self.state['generation'], self.new)
         self.assertTrue((self.data / 'content-activation-history' / (self.new + '.production.json')).exists())
+
+    def test_invalid_practice_rendering_stops_before_service_changes(self):
+        source = self.root / 'source'
+        (source / 'manifest.json').write_text('{"kind":"mathacademy-practice-enrichment"}', encoding='utf-8')
+        with tarfile.open(self.stage / 'package.tar.gz', 'w:gz') as archive:
+            archive.add(source, arcname='package')
+
+        def command(args, **kwargs):
+            if args[0] == 'chown':
+                return SimpleNamespace(returncode=0)
+            self.assertEqual(args[0], 'runuser')
+            self.assertIn('--enrichment-package', args)
+            raise subprocess.CalledProcessError(1, args)
+
+        with patch.object(release, 'Path', lambda value: self.root if str(value) == '/tmp' else
+                          self.data if str(value) == '/var/lib/graspmemoedu' else Path(value)), \
+             patch.object(release.sys, 'argv', ['installer', str(self.stage)]), \
+             patch.object(release, 'os', SimpleNamespace(geteuid=lambda: 0, replace=os.replace)), \
+             patch.object(release.subprocess, 'run', side_effect=command):
+            with self.assertRaises(subprocess.CalledProcessError):
+                release.main()
+        self.assertEqual(self.generation(), self.old)
 
 
 if __name__ == '__main__':
