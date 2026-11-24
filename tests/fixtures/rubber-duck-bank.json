@@ -1,0 +1,212 @@
+{
+  "id": "rubber-duck-qa",
+  "subject_id": "math",
+  "title": "小黄鸭讲解测试",
+  "groups": [
+    {
+      "id": "outline",
+      "title": "用自己的话讲数学",
+      "questions": [
+        {
+          "id": "statistics",
+          "title": "描述一组数据",
+          "question": "给初学者讲解如何描述一组数据，可以从任意分支开始。",
+          "explanation": "这些统计量从不同角度概括同一组数据。",
+          "answer_type": "rubber_duck",
+          "interaction": {
+            "version": 1,
+            "type": "rubber_duck",
+            "root": {
+              "id": "statistics",
+              "type": "heading",
+              "text": "描述一组数据",
+              "children": [
+                {
+                  "id": "mean",
+                  "type": "heading",
+                  "text": "平均数",
+                  "children": [
+                    {
+                      "id": "mean-rule",
+                      "type": "point",
+                      "text": "把所有数据相加，再除以数据的个数。",
+                      "children": [
+                        {
+                          "id": "mean-example",
+                          "type": "point",
+                          "text": "例如，二、四、六的平均数是四。",
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "median",
+                  "type": "heading",
+                  "text": "中位数",
+                  "children": [
+                    {
+                      "id": "median-rule",
+                      "type": "point",
+                      "text": "先将数据从小到大排列，个数为奇数时取中间一个。",
+                      "children": [
+                        {
+                          "id": "median-even",
+                          "type": "point",
+                          "text": "个数为偶数时，取中间两个数的平均数。",
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "mode",
+                  "type": "heading",
+                  "text": "众数",
+                  "children": [
+                    {
+                      "id": "mode-rule",
+                      "type": "point",
+                      "text": "一组数据中出现次数最多的数是众数，并列时可以有多个众数。",
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "id": "range",
+                  "type": "heading",
+                  "text": "极差",
+                  "children": [
+                    {
+                      "id": "range-rule",
+                      "type": "point",
+                      "text": "极差等于最大值减去最小值。",
+                      "children": []
+                    }
+                  ]
+                },
+                {
+                  "id": "outlier",
+                  "type": "heading",
+                  "text": "极端值的影响",
+                  "children": [
+                    {
+                      "id": "outlier-effect",
+                      "type": "point",
+                      "text": "极端值通常比起中位数更容易改变平均数。",
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "right-triangle",
+          "title": "勾股定理",
+          "question": "向同学讲清楚勾股定理及其逆定理。",
+          "explanation": "使用逆定理时，先确定三边能够构成三角形。",
+          "answer_type": "rubber_duck",
+          "interaction": {
+            "version": 1,
+            "type": "rubber_duck",
+            "root": {
+              "id": "triangle",
+              "type": "heading",
+              "text": "勾股定理",
+              "children": [
+                {
+                  "id": "relation",
+                  "type": "heading",
+                  "text": "成立条件与边长关系",
+                  "children": [
+                    {
+                      "id": "forward",
+                      "type": "point",
+                      "text": "直角三角形中，两条直角边的平方和等于斜边的平方。",
+                      "children": [
+                        {
+                          "id": "example",
+                          "type": "point",
+                          "text": "直角边为三和四时，斜边为五，因为三的平方加四的平方等于二十五。",
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "converse",
+                  "type": "heading",
+                  "text": "由边长判断",
+                  "children": [
+                    {
+                      "id": "reverse",
+                      "type": "point",
+                      "text": "三角形中，若两条较短边的平方和等于最长边的平方，则最长边所对的角是直角。",
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "linear",
+          "title": "一次函数",
+          "question": "用图像说明一次函数中斜率和截距的含义。",
+          "explanation": "斜率和纵截距分别描述直线的变化趋势与纵轴交点。",
+          "answer_type": "rubber_duck",
+          "interaction": {
+            "version": 1,
+            "type": "rubber_duck",
+            "root": {
+              "id": "linear",
+              "type": "heading",
+              "text": "一次函数的图像",
+              "children": [
+                {
+                  "id": "slope",
+                  "type": "heading",
+                  "text": "斜率",
+                  "children": [
+                    {
+                      "id": "rate",
+                      "type": "point",
+                      "text": "横坐标每增加一个单位，纵坐标的变化量就是斜率。",
+                      "children": [
+                        {
+                          "id": "sign",
+                          "type": "point",
+                          "text": "斜率为正时直线从左向右上升，斜率为负时从左向右下降。",
+                          "children": []
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "intercept",
+                  "type": "heading",
+                  "text": "纵截距",
+                  "children": [
+                    {
+                      "id": "axis",
+                      "type": "point",
+                      "text": "纵截距是横坐标为零时的函数值，也是直线与纵轴交点的纵坐标。",
+                      "children": []
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

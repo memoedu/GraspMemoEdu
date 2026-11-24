@@ -17,7 +17,7 @@ from .review_cards import register_point, require_unreserved
 from .reference_answers import reference_fields
 from .dependency_nodes import group_key
 from .linked_points import bypass_mastery
-from . import calculator, multi_step
+from . import calculator, multi_step, rubber_duck
 
 
 def packed(value):
@@ -66,6 +66,8 @@ class TrainingService:
                     attempt TEXT PRIMARY KEY, body TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS training_step_submissions (
                     submission TEXT PRIMARY KEY, step_index INTEGER NOT NULL);
+                CREATE TABLE IF NOT EXISTS training_outline (
+                    attempt TEXT PRIMARY KEY REFERENCES training_attempts(id) ON DELETE CASCADE, matched TEXT NOT NULL);
             ''')
 
     def _connect(self):
@@ -239,7 +241,10 @@ class TrainingService:
         """Enroll a seen question as due, without inventing an answer or FSRS card."""
         with self.transaction() as con:
             row = self._attempt(con, attempt_id)
-            if json.loads(row['snapshot']).get('point_ids'):
+            question = json.loads(row['snapshot'])
+            if rubber_duck.is_outline(question):
+                raise DomainError('outline_notebook', '大纲题通过讲解完成训练。', 409)
+            if question.get('point_ids'):
                 raise DomainError('linked_points_scheduled', '此题按关联记忆点安排复习。', 409)
             if self._stopped(con, row['bank'], row['question'], row['version']):
                 raise DomainError('training_reviews_stopped', '此题已停止后续推送。', 409)
@@ -275,6 +280,7 @@ class TrainingService:
                 question = present_book_question(question, media)
             submission = con.execute('SELECT status,reason,answer FROM training_submissions WHERE id=?',
                                      (row['submission_id'],)).fetchone()
+            outline = rubber_duck.project(question, rubber_duck.progress(con, attempt_id)) if rubber_duck.is_outline(question) else None
             result = json.loads(row['result']) if row['result'] else None
             memory = self._memory(con, row['bank'], row['question'], row['version'])
             stopped = self._stopped(con, row['bank'], row['question'], row['version'])
@@ -291,7 +297,7 @@ class TrainingService:
                 'mode': row['mode'], 'created_at': row['created_at'], 'completed_at': row['completed_at'],
                 'question': {'id': question['id'], 'title': question.get('title', question['id']),
                              **calculator.presentation(group, question, default_level='none'),
-                             'interaction': public_interaction(question)},
+                             'interaction': public_interaction(question, allow_outline=True)},
                 'explanation_html': question['explanation_html'] if revealed else None,
                 **reference_fields(question, revealed, answer=submission['answer'] if submission and result
                                    and result.get('self_rating') is None and not result.get('stop_requested') else None),
@@ -310,6 +316,8 @@ class TrainingService:
                 'awaiting_first_learning': bool(memory and memory['card_json'] is None and not stopped),
                 'due_at': (min((r['memory']['due_at'] for r in linked if r['memory'].get('due_at')), default=None)
                            if linked and not stopped else memory['due_at'] if memory and not stopped else None)}
+        if outline is not None:
+            value['outline'] = {**outline, 'feedback': submission['reason'] if submission and submission['status'] == 'judged' else None}
         if question.get('multi_step'):
             view = multi_step.public_state(question, progress, revealed=revealed)
             value['multi_step'] = view
@@ -343,6 +351,9 @@ class TrainingService:
             if row['phase'] != 'done':
                 require_unreserved(con, self.learner_id, 'training', row['bank'], row['version'], row['question'], now=utc_time(self.clock()).isoformat())
             question = json.loads(row['snapshot'])
+            outline = rubber_duck.is_outline(question)
+            if outline and self.access and self.access.get('role') != 'account':
+                raise DomainError('outline_account_required', '请登录后使用语音讲解。', 403)
             if question.get('point_ids') and row['phase'] != 'done':
                 self.require_group(row['bank'], row['group_id'], con=con)
                 from .linked_points import require_available
@@ -376,7 +387,10 @@ class TrainingService:
                 parse_submission_answer(question, answer)
             except (ValueError, TypeError, KeyError):
                 raise DomainError('invalid_answer', '请完整填写此题的答案。', 422)
-            if row['phase'] != 'answer' or row['submission_id'] and row['submission_id'] != data['request_id']:
+            previous = row['submission_id']
+            replacing = outline and previous and con.execute(
+                "SELECT 1 FROM training_submissions WHERE id=? AND status='judged'", (previous,)).fetchone()
+            if row['phase'] != 'answer' or previous and previous != data['request_id'] and not replacing:
                 raise DomainError('training_already_answered', '本次作答已提交；需要重做时请开始新一次训练。', 409)
             if require_judge is not None and not instant_question(question, answer):
                 require_judge(con, 1)
@@ -499,7 +513,13 @@ class TrainingService:
             step = con.execute('SELECT step_index FROM training_step_submissions WHERE submission=?', (submission_id,)).fetchone()
             progress = multi_step.progress_from(con, row['id']) if step else []
             judged_question = multi_step.step_question(question, step[0], progress) if step else question
-        correct, reason = judge_answer(self.judge, judged_question, submission['answer'])
+            outline = rubber_duck.is_outline(question)
+            matched = rubber_duck.progress(con, row['id']) if outline else None
+        if outline:
+            new_matches = rubber_duck.assess(question, submission['answer'], matched)
+            correct, reason = (None, rubber_duck.ERROR) if new_matches is None else (True, '')
+        else:
+            correct, reason = judge_answer(self.judge, judged_question, submission['answer'])
         try:
             with self.transaction() as con:
                 current = con.execute('SELECT status FROM training_submissions WHERE id=?', (submission_id,)).fetchone()
@@ -509,7 +529,21 @@ class TrainingService:
                 if correct is None:
                     con.execute("UPDATE training_submissions SET status='error',reason=? WHERE id=?", (reason, submission_id))
                 else:
-                    if step:
+                    if outline:
+                        before = rubber_duck.project(question, matched)['covered']
+                        matched.update(new_matches)
+                        rubber_duck.save(con, row['id'], matched)
+                        after = rubber_duck.project(question, matched)
+                        if after['covered'] == after['total']:
+                            reason = '已讲清全部要点。'
+                            self._complete(con, row, correct=True, reason=reason, elapsed_ms=submission['elapsed_ms'])
+                        elif after['covered'] > before:
+                            reason = '已展开这段讲清的要点。'
+                        elif new_matches:
+                            reason = '已记下这段讲解。讲清它所属的上一层后，大纲会展开。'
+                        else:
+                            reason = '这段还没有讲清新的要点，可以继续讲解。'
+                    elif step:
                         progress = multi_step.append_result(question, multi_step.progress_from(con, row['id']), step[0],
                             submission['answer'], correct, reason, submission['elapsed_ms'])
                         multi_step.save_progress(con, row['id'], progress)
@@ -705,7 +739,7 @@ class TrainingService:
                          'question_id': qid, 'version': bank['version'], 'phase': 'answer',
                          'question': {'id': qid, 'title': question.get('title', qid),
                                       **calculator.presentation(source, question, default_level='none'),
-                                      'interaction': public_interaction(question)},
+                                      'interaction': public_interaction(question, allow_outline=True)},
                          'answer': '', 'answer_display': '', 'explanation_html': None,
                          'can_self_rate': self_rating and is_reproduction(question)
                                           and not (question.get('academy') or question.get('hyperskill')),
@@ -718,6 +752,8 @@ class TrainingService:
                     value['question']['html'] = question['multi_step']['context_html']
                     value['question']['interaction'] = public_interaction(question['multi_step']['steps'][0])
                     value['can_self_rate'] = self_rating and is_reproduction(question['multi_step']['steps'][0])
+                if rubber_duck.is_outline(question):
+                    value['outline'] = {**rubber_duck.project(question), 'feedback': None}
             states[qid] = value
             if history:
                 histories[qid] = self.history(bank_id, qid)

@@ -36,6 +36,8 @@ class PublicExportTests(unittest.TestCase):
             pwa_files.update({'restore.html', 'migration-source.html', 'origin-transfer.js'})
             pwa_files.add('beginner-hints.js')
             pwa_files.update({'microphone-recorder.js', 'voice-input.js', 'voice-stream.js', 'voice-pcm.js', 'voice-context.js', 'answer-conversion.js'})
+            pwa_files.update({'rubber-duck.js', 'rubber-duck-test.html'})
+            self.assertNotIn('把所有数据相加', (output / 'rubber-duck-test.html').read_text(encoding='utf-8'))
             pwa_files.update({'autocomplete.js', 'autocomplete.css'})
             pwa_files.add('free-study.js')
             pwa_files.update({'topic-sync-navigation.js', 'topic-sync-groups.js', 'topic-body-editor.js', 'remnote-install.html'})

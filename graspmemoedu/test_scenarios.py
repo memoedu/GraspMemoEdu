@@ -124,6 +124,9 @@ def _clear_selected(con, plan):
                 if {'learner', 'topic'} <= columns:
                     con.execute('DELETE FROM ' + table + ' WHERE learner=? AND topic=?', (learner, topic))
         for bank in plan['banks']:
+            if 'training_outline' in tables:
+                con.execute('''DELETE FROM training_outline WHERE attempt IN
+                    (SELECT id FROM training_attempts WHERE learner=? AND bank=?)''', (learner, bank))
             if 'training_submissions' in tables:
                 con.execute('''DELETE FROM training_submissions WHERE learner=? AND attempt IN
                     (SELECT id FROM training_attempts WHERE learner=? AND bank=?)''', (learner, learner, bank))
