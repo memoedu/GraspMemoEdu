@@ -1,30 +1,30 @@
-import { t, getLanguage, setLanguage, locale, translateMessage, learningTitle } from "./i18n.js?v=865006a6b8d8de41";
-import {attachFormulaEditing} from './formula-input.js?v=865006a6b8d8de41';
-import {prepareMathContent, renderPlainMath} from './math-presentation.js?v=865006a6b8d8de41';
-import { createReviewView } from "./review.js?v=865006a6b8d8de41";
-import { renderCourseGraph } from "./course-graph.js?v=865006a6b8d8de41";
-import {questionInput, choiceTypeField} from './question-input.js?v=865006a6b8d8de41';
-import {lessonTaskLabel, readingFields, readingSectionHeading} from './learning-ui.js?v=865006a6b8d8de41';
-import {enhanceTopicContent} from './topic-content.js?v=865006a6b8d8de41';
-import {reportableContent, placeContentActions, installContentReporting, installHelpRequests} from './content-report.js?v=865006a6b8d8de41';
-import {createCatalogPicker} from './catalog-picker.js?v=865006a6b8d8de41';
-import {catalogPath, courseWorkspaceId, createWorkspaceLocations, catalogView, workspaceLayout, courseDisplayEntries} from './catalog-workspace.js?v=865006a6b8d8de41';
-import {createAtomicView} from './atomic.js?v=865006a6b8d8de41';
-import {ideaFeedback, ideaFeedbackHash, ideaFeedbackId, ideaSetupSection, renderIdeaSetupSection} from './idea-setup.js?v=865006a6b8d8de41';
-import {sourceAttributions} from './memory-chunk.js?v=865006a6b8d8de41';
-import {createTrainingView} from './training.js?v=865006a6b8d8de41';
-import {createFocusMode, focusReaderRoute} from './focus-mode.js?v=865006a6b8d8de41';
-import { subjectHref, parsePlatformRoute, renderSubjectHome, renderSubjectEmpty, applySubjectTheme, subjectLabel, subjectLogo } from "./subjects.js?v=865006a6b8d8de41";
+import { t, getLanguage, setLanguage, locale, translateMessage, learningTitle } from "./i18n.js?v=e511ec4b3ec0f2d7";
+import {attachFormulaEditing} from './formula-input.js?v=e511ec4b3ec0f2d7';
+import {prepareMathContent, renderPlainMath} from './math-presentation.js?v=e511ec4b3ec0f2d7';
+import { createReviewView } from "./review.js?v=e511ec4b3ec0f2d7";
+import { renderCourseGraph } from "./course-graph.js?v=e511ec4b3ec0f2d7";
+import {questionInput, choiceTypeField} from './question-input.js?v=e511ec4b3ec0f2d7';
+import {lessonTaskLabel, readingFields, readingSectionHeading} from './learning-ui.js?v=e511ec4b3ec0f2d7';
+import {enhanceTopicContent} from './topic-content.js?v=e511ec4b3ec0f2d7';
+import {reportableContent, placeContentActions, installContentReporting, installHelpRequests} from './content-report.js?v=e511ec4b3ec0f2d7';
+import {createCatalogPicker} from './catalog-picker.js?v=e511ec4b3ec0f2d7';
+import {catalogPath, courseWorkspaceId, createWorkspaceLocations, catalogView, workspaceLayout, courseDisplayEntries} from './catalog-workspace.js?v=e511ec4b3ec0f2d7';
+import {createAtomicView} from './atomic.js?v=e511ec4b3ec0f2d7';
+import {ideaFeedback, ideaFeedbackHash, ideaFeedbackId, ideaSetupSection, renderIdeaSetupSection} from './idea-setup.js?v=e511ec4b3ec0f2d7';
+import {sourceAttributions} from './memory-chunk.js?v=e511ec4b3ec0f2d7';
+import {createTrainingView} from './training.js?v=e511ec4b3ec0f2d7';
+import {createFocusMode, focusReaderRoute} from './focus-mode.js?v=e511ec4b3ec0f2d7';
+import { subjectHref, parsePlatformRoute, renderSubjectHome, renderSubjectEmpty, applySubjectTheme, subjectLabel, subjectLogo } from "./subjects.js?v=e511ec4b3ec0f2d7";
 
-import {createPaperView} from './review-papers.js?v=865006a6b8d8de41';
-import {createFreeStudyView} from './free-study.js?v=865006a6b8d8de41';
-import {createContextLibraryView} from './context-library.js?v=865006a6b8d8de41';
+import {createPaperView} from './review-papers.js?v=e511ec4b3ec0f2d7';
+import {createFreeStudyView} from './free-study.js?v=e511ec4b3ec0f2d7';
+import {createContextLibraryView} from './context-library.js?v=e511ec4b3ec0f2d7';
 
-import {renderTaskTree, enhanceMarkdownOutline, orderTopicSiblings} from './task-tree.js?v=865006a6b8d8de41';
-import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=865006a6b8d8de41';
-import {createHelpFeedback, feedbackDetails} from './help-feedback.js?v=865006a6b8d8de41';
-import {createStudentDashboard} from './student-dashboard.js?v=865006a6b8d8de41';
-import {autocompleteGroups, autocompleteEnabled, setAutocompleteEnabled, setInputCompletions} from './autocomplete.js?v=865006a6b8d8de41';
+import {renderTaskTree, enhanceMarkdownOutline, orderTopicSiblings} from './task-tree.js?v=e511ec4b3ec0f2d7';
+import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=e511ec4b3ec0f2d7';
+import {createHelpFeedback, feedbackDetails} from './help-feedback.js?v=e511ec4b3ec0f2d7';
+import {createStudentDashboard} from './student-dashboard.js?v=e511ec4b3ec0f2d7';
+import {autocompleteGroups, autocompleteEnabled, setAutocompleteEnabled, setInputCompletions} from './autocomplete.js?v=e511ec4b3ec0f2d7';
 
 const $ = (id) => document.getElementById(id);
 const node = (tag, className = "", text) => {
@@ -41,10 +41,20 @@ const taskLabelKeys = {Review: 'portal.reviewTask', Placement: 'portal.diagnosti
 const statusNames = { not_started: t("portal.not.started.3"), in_progress: t("portal.in.progress.4"), paused: t("portal.paused.5"), completed: t("portal.completed.6") };
 const roundButton = (text, action) => control(text, "portalStart", action);
 
+function resumableLearningHash(hash) {
+  if (!hash?.startsWith('#/')) return false;
+  const {subjectId, path, params} = parsePlatformRoute(hash);
+  if (!subjectId) return false;
+  if (/^\/(?:courses(?:\/[^/]+(?:\/progress)?)?|topic\/[^/]+(?:\/content)?|reading)$/.test(path)) return true;
+  if (/^\/banks(?:\/[^/]+){0,2}$/.test(path)) return params.get('review') !== '1';
+  // Opening a review without a session, or an atomic review link, can start work.
+  return /^\/review\/[^/]+\/[^/]+$/.test(path) && !path.endsWith('/atomic') && Boolean(params.get('session'));
+}
+
 export function initPortal(bridge) {
   let chatModule, attachChatEditor, renderChatMarkdown;
   async function loadChat() {
-    const module = await (chatModule ||= import('./vendor/chat/chat.js?v=865006a6b8d8de41').catch(error => { chatModule = null; throw error; }));
+    const module = await (chatModule ||= import('./vendor/chat/chat.js?v=e511ec4b3ec0f2d7').catch(error => { chatModule = null; throw error; }));
     ({attachChatEditor, renderChatMarkdown} = module);
     module.configureChatImages(ident => bridge.request('help-images?image_id=' + encode(ident)));
   }
@@ -75,6 +85,20 @@ export function initPortal(bridge) {
   }
   function clearWorkspaceLocations() { workspaceLocations.clear(); readBankGroups.clear(); currentHash = ''; }
   const routeKey = () => location.hash || "#/";
+  const installed = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  let renderedLearningLocation = null;
+  function learningLocationKey() {
+    const access = bridge.getAccess();
+    if (!installed || !access?.learner_id || bridge.getIdentityProblem()) return null;
+    return 'graspmemoedu:pwa-learning-location:' + JSON.stringify([bridge.getApiOrigin(), access.role, access.learner_id]);
+  }
+  function saveLearningLocation() {
+    if (!renderedLearningLocation || renderedLearningLocation.key !== learningLocationKey()) return;
+    const hash = location.hash;
+    // Reader controls can replace query parameters without dispatching hashchange.
+    if (hash.split('?')[0] !== renderedLearningLocation.path || !resumableLearningHash(hash)) return;
+    try { localStorage.setItem(renderedLearningLocation.key, hash); } catch {}
+  }
   const selectedDashboard = () => dashboards.get(selectedCourse);
   const timezone = () => profile?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
   const query = (fields) => new URLSearchParams(Object.entries(fields).filter(([, value]) => value !== null && value !== undefined && value !== "")).toString();
@@ -147,7 +171,7 @@ export function initPortal(bridge) {
   const clockTime = (value) => value && Number.isFinite(Date.parse(value)) ? new Intl.DateTimeFormat(locale(), { timeZone: timezone(), hour: "2-digit", minute: "2-digit" }).format(new Date(value)) : "—";
   const focusMode = createFocusMode({
     toolbar: $('focusToolbar'), toggle: $('focusToggle'), nextHref: nextLearningHref,
-    locationChanged: () => { currentHash = routeKey(); currentRoute = parseRoute(); },
+    locationChanged: () => { currentHash = routeKey(); currentRoute = parseRoute(); saveLearningLocation(); },
   });
   const review = createReviewView({
     ...bridge, request: call, root, homeHref: courseHomeHref, formatDate: value => apiDate(value, true), showFeedback,
@@ -366,7 +390,16 @@ export function initPortal(bridge) {
   }
   function releaseGuideAssets() { for (const url of guideObjectUrls) URL.revokeObjectURL(url); guideObjectUrls = []; }
   function stopPageWork() { pruneChatEditors(true); clearTimeout(refreshTimer); clearTimeout(pageTimer); releaseGuideAssets(); review.stop(); atomic.stop(); training.stop(); papers.stop(); freeStudy.stop(); contextLibrary.stop(); hidePopovers(); helpFeedRefresh = null; helpReadObserver?.disconnect(); helpReadObserver = null; }
-  async function route(event) {
+  async function route(event, resumeKey = null) {
+    renderedLearningLocation = null;
+    function forgetUnavailableLocation() {
+      // A different window might have saved a newer location while this one loaded.
+      try {
+        if (localStorage.getItem(resumeKey) === resumedHash) localStorage.removeItem(resumeKey);
+      } catch {}
+      return navigate('#/', true);
+    }
+    const resumedHash = location.hash;
     // A reader can replace the hash while selecting a question without firing
     // hashchange. Its actual departure URL is the authoritative location.
     const previousHash = currentHash && (event?.oldURL ? new URL(event.oldURL).hash : currentHash);
@@ -406,6 +439,7 @@ export function initPortal(bridge) {
       if (ticket !== sequence) return;
       const { path, params, subjectId } = currentRoute;
       const subject = subjects.find(item => item.id === subjectId);
+      if (resumeKey && (!subject || subjectRestricted(subject))) return forgetUnavailableLocation();
       if (subjectId && !subject) throw new Error(t("platform.unknownSubject"));
       updateSubjectContext(subject || null);
       if (subjectRestricted(subject)) { restrictedNotice(subject); return; }
@@ -488,11 +522,16 @@ export function initPortal(bridge) {
         else { root.hidden = true; await bridge.openTopic(topicId, subjectId, state); }
       } else if (/^\/review\/[^/]+\/[^/]+$/.test(path)) {
         if (path.split('/')[3] === 'atomic') await atomic.open(decodeURIComponent(path.split('/')[2]), 'review', null, params.get('card'));
-        else await review.open(decodeURIComponent(path.split("/")[2]), decodeURIComponent(path.split("/")[3]), params.get("session"));
+        else await review.open(decodeURIComponent(path.split("/")[2]), decodeURIComponent(path.split("/")[3]), params.get("session"), Boolean(resumeKey));
       } else root.replaceChildren(errorBox(t("portal.this.page.does.not.exist.24"), () => navigate("/"), t("portal.page.not.found.25")));
       if (ticket !== sequence) return;
       readerOpened = focusReaderRoute(currentRoute);
       currentHash = routeKey(); currentRoute = parseRoute();
+      const learningKey = learningLocationKey();
+      if (learningKey && resumableLearningHash(currentHash)) {
+        renderedLearningLocation = {key: learningKey, path: currentHash.split('?')[0]};
+        saveLearningLocation();
+      }
       rememberWorkspaceLocation(currentHash);
       updateSubjectContext(subject || null);
       const target = params.get("unitId") || params.get("topicId");
@@ -523,6 +562,7 @@ export function initPortal(bridge) {
     } catch (error) {
       if (ticket !== sequence) return;
       if (bridge.getIdentityProblem()) { root.hidden = true; root.replaceChildren(); return; }
+      if (resumeKey && ([403, 404, 410].includes(error.status) || error instanceof URIError)) return forgetUnavailableLocation();
       const restricted = subjects?.find(item => item.id === currentRoute.subjectId);
       if (subjectRestricted(restricted)) {
         restrictedNotice(restricted); return;
@@ -2011,10 +2051,30 @@ export function initPortal(bridge) {
         && bankRoute(parseRoute()) && !bankReview(parseRoute())) event.preventDefault();
   });
   setInterval(() => { void refreshHelpSummary(true); }, 30000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) void refreshHelpSummary(true); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) saveLearningLocation();
+    else void refreshHelpSummary(true);
+  });
+  window.addEventListener('pagehide', saveLearningLocation);
   history.scrollRestoration = "manual";
   return {
-    start: route,
+    async start() {
+      if (installed && !location.hash) {
+        const startup = sequence;
+        try {
+          await bridge.ensureIdentity();
+          if (startup !== sequence) return;
+          if (location.hash) return route();
+          const key = learningLocationKey();
+          const hash = key && localStorage.getItem(key);
+          if (resumableLearningHash(hash)) {
+            history.replaceState(history.state, '', hash);
+            return route(undefined, key);
+          }
+        } catch { /* The regular route handles identity, connection and storage failures. */ }
+      }
+      return route();
+    },
     async showAtomic(next) {
       bridge.leaveTopic();
       root.hidden = false;
@@ -2031,6 +2091,7 @@ export function initPortal(bridge) {
       identity = next; updateUser();
     },
     suspendIdentity() {
+      renderedLearningLocation = null;
       focusMode.start(null);
       clearWorkspaceLocations();
       replyDrafts.clear(); showHelpSummary(null); helpSummaryAt = 0;
