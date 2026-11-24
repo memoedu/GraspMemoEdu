@@ -38,13 +38,17 @@ REDMI K90 Max / Android 16、Edge 153.0.4234.49 已完成 USB 真机验收。Edg
 
 `scripts/version_web_assets.py --patch` 从 `web/index.html` 和 `web/download.html` 生成各应用的 `index.html` 和 `install.html`。修改共享模板后重新生成，直接修改生成稿会触发版本校验失败。全部入口使用 `pwa.js` 注册同一个网站根目录 `sw.js`，共用应用代码和静态资源。iOS 图标由 `apple-touch-icon` 提供，其他图标由 `scripts/build_pwa_icons.py` 生成。
 
-Service Worker 只处理本应用目录下的 GET 页面导航，优先直接联网，失败时返回无缓存的重连提示。API、静态资源、POST 和其他来源不被拦截；不建立 Cache Storage，不缓存身份与课程，不排队重放答案。更新后立即接管，但不刷新当前页面，保留正在编辑的输入。网页自身仍遵循原 HTTP 缓存策略；正常重新打开或刷新后读取服务器提供的页面。
+同一浏览器存储环境中的三个入口使用同一个 Service Worker 和同一份静态资源缓存。首次读取时，只有构建清单内、URL 版本一致且内容哈希匹配的公开脚本、样式和图标才会存入 Cache Storage。随后打开另一个入口时可直接复用，资源缺失或存储受限时自动联网读取。浏览器隔离了应用存储时，各自建立缓存。
+
+应用入口 HTML 和部署配置仍从网络读取，离线打开时显示重连提示。学习 API 保持云端鉴权，身份、权限、学习状态和作答均不写入 Service Worker 缓存，也不会排队重放答案。Topic 展示文本继续按原有机制复用，见[页面加载与内容缓存](performance.md)。
+
+Service Worker 注册使用固定地址，由浏览器在导航时检查更新。新版接管后清理本发布路径的旧静态缓存，当前页面和未提交的输入保留。
 
 新增或修改 Web 资源后按 README 更新整套版本号、导出并运行 `Publish-Frontend.ps1`。PNG 以 GitHub blob base64 上传，不能作为文本写入。公开文件清单必须显式包含新增的 PWA 文件，不能放宽为任意目录上传。
 
 ## 验收
 
-1. Python `tests/test_pwa.py` 检查子路径解析与真实图标尺寸；Node `tests/pwa-worker.test.cjs` 验证导航、断网、API 和写入边界。
+1. Python `tests/test_pwa.py` 检查子路径解析与真实图标尺寸。Node `tests/pwa-worker.test.cjs` 验证静态资源复用、版本校验、断网重连及 API 和写入边界。
 2. `node scripts/pwa_acceptance.mjs <静态导出目录> <证据目录>` 在独立 Chrome 配置目录中验证浏览器识别、五种宽度、断网恢复、更新保留输入以及安装提示状态。模拟安装事件只验证按钮逻辑，不代表完成系统安装。
 3. 上线后运行 `python scripts/verify_pwa_publication.py <静态导出目录> <公开网站URL> <回读JSON> --version <资源版本>`，核对每个公开文件的字节哈希。再对公开 URL 运行同一浏览器验收，验证真实 API 首页和用户菜单安装入口，不提交学习答案。
 4. 从真实手机桌面的不同应用图标启动，核对独立窗口、默认首页、关闭重开、范围内恢复、范围外回首页和另一应用的位置是否受影响。
