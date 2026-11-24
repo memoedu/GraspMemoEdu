@@ -67,6 +67,7 @@ try {
       {status: 'ready', answer: 'correct'}});
   });
   let releaseVoice, receivedVoice;
+  let onTopicBody = false;
   const voiceStarted = new Promise(resolve => { receivedVoice = resolve; });
   const voiceRelease = new Promise(resolve => { releaseVoice = resolve; });
   if (voiceFile) {
@@ -78,7 +79,7 @@ try {
       assert.equal(wav.toString('ascii', 0, 4), 'RIFF');
       assert.equal(wav.readUInt32LE(24), 16000);
       assert.ok(wav.length > 10000);
-      if (new URL(page.url()).hash === '#/') return route.fulfill({json: {text: '2+3'}});
+      if (onTopicBody) return route.fulfill({json: {text: '2+3'}});
       receivedVoice();
       await voiceRelease;
       return route.fulfill({json: {text: '2x + 3 = 7'}});
@@ -93,26 +94,33 @@ try {
     await Promise.race([page.locator('#identitySubmitButton').waitFor({state: 'hidden'}), loginError.waitFor()]);
     if (await loginError.isVisible()) throw Error(await loginError.textContent());
   }
-  const homeSubmissions = [];
+  const readingSubmissions = [];
   await page.route(/\/api\/(?:[^?#]+\/)?(?:submit|submit-answer)(?:\?|$)/, route => {
-    if (['#/', '#/subjects/math/courses'].includes(new URL(page.url()).hash)) {
-      homeSubmissions.push(new URL(route.request().url()).pathname);
+    if (onTopicBody) {
+      readingSubmissions.push(new URL(route.request().url()).pathname);
       return route.abort();
     }
     return route.continue();
   });
   await page.goto(site + '/#/');
-  const home = page.locator('#pageTools');
-  const homeBoard = home.locator('.whiteboardPanel');
-  const homeExpression = homeBoard.locator('[data-whiteboard-expression]');
-  const homeSubmit = homeBoard.getByRole('button', {name: '提交', exact: true});
-  await home.getByRole('button', {name: '白板', exact: true}).click();
-  await homeExpression.and(homeBoard.locator('input:enabled')).waitFor();
-  assert.equal(await homeSubmit.isVisible(), true);
-  assert.equal(await homeSubmit.isDisabled(), true);
-  assert.equal(await homeSubmit.evaluate(button => getComputedStyle(button).backgroundColor), 'rgb(224, 224, 224)');
-  async function homeDictation(field) {
-    await field.fill('');
+  await page.locator('#subjectHomeTitle').waitFor();
+  assert.equal(await page.locator('.calculatorLaunch').count(), 0);
+  await page.locator('.subjectCard[data-subject-id=math]').click();
+  await page.locator('.portalLogo[href="#/subjects/math/courses"]:visible').waitFor();
+  await page.locator('#portalContent:not([inert])').waitFor();
+  assert.equal(await page.locator('.calculatorLaunch').count(), 0);
+  await page.goto(site + '/#/subjects/math/topic/calculator-reading-fixture');
+  onTopicBody = true;
+  const bodyTools = page.getByRole('toolbar', {name: '正文工具'});
+  const bodyBoard = page.locator('.whiteboardPanel:visible');
+  const bodyExpression = bodyBoard.locator('[data-whiteboard-expression]');
+  const bodySubmit = bodyBoard.getByRole('button', {name: '提交', exact: true});
+  await bodyTools.getByRole('button', {name: '白板', exact: true}).click();
+  await bodyExpression.and(bodyBoard.locator('input:enabled')).waitFor();
+  assert.equal(await bodySubmit.isVisible(), true);
+  assert.equal(await bodySubmit.isDisabled(), true);
+  assert.equal(await bodySubmit.evaluate(button => getComputedStyle(button).backgroundColor), 'rgb(224, 224, 224)');
+  async function recordTwoSeconds(field) {
     await field.focus();
     await page.getByRole('button', {name: '录音输入', exact: true}).click();
     const finish = page.getByRole('button', {name: '结束录音', exact: true});
@@ -122,31 +130,35 @@ try {
       return Number(minutes) * 60 + Number(seconds) >= 2;
     });
     await finish.click();
+  }
+  async function dictateIntoBodyTool(field) {
+    await field.fill('');
+    await recordTwoSeconds(field);
     await page.waitForFunction(input => input.value === '2+3', await field.elementHandle());
     await page.getByText('已插入转写文字。', {exact: true}).waitFor();
   }
-  if (voiceFile) await homeDictation(homeExpression);
+  if (voiceFile) await dictateIntoBodyTool(bodyExpression);
   else {
-    await homeExpression.fill('2+3');
-    await homeBoard.getByRole('button', {name: '写入白板', exact: true}).click();
+    await bodyExpression.fill('2+3');
+    await bodyBoard.getByRole('button', {name: '写入白板', exact: true}).click();
   }
-  await homeBoard.frameLocator('iframe').getByRole('button', {name: '撤销', exact: true}).and(
-    homeBoard.frameLocator('iframe').locator('button:enabled')).waitFor();
-  await homeSubmit.evaluate(button => button.click());
-  await home.getByRole('button', {name: '科学计算器', exact: true}).click();
-  const homeCalculator = page.locator('.questionCalculator');
-  const calculatorExpression = homeCalculator.getByRole('textbox', {name: '表达式'});
-  if (voiceFile) await homeDictation(calculatorExpression);
+  await bodyBoard.frameLocator('iframe').getByRole('button', {name: '撤销', exact: true}).and(
+    bodyBoard.frameLocator('iframe').locator('button:enabled')).waitFor();
+  await bodySubmit.evaluate(button => button.click());
+  await bodyTools.getByRole('button', {name: '科学计算器', exact: true}).click();
+  const bodyCalculator = page.locator('.questionCalculator');
+  const calculatorExpression = bodyCalculator.getByRole('textbox', {name: '表达式'});
+  if (voiceFile) await dictateIntoBodyTool(calculatorExpression);
   else await calculatorExpression.fill('2+3');
-  await homeCalculator.getByRole('button', {name: '计算结果', exact: true}).first().click();
-  await homeCalculator.locator('.calculatorResult').getByText('5', {exact: true}).waitFor();
-  assert.equal(await homeCalculator.locator('.calculatorTransfer').isVisible(), false);
-  assert.deepEqual(homeSubmissions, []);
+  await bodyCalculator.getByRole('button', {name: '计算结果', exact: true}).first().click();
+  await bodyCalculator.locator('.calculatorResult').getByText('5', {exact: true}).waitFor();
+  assert.equal(await bodyCalculator.locator('.calculatorTransfer').isVisible(), false);
+  assert.deepEqual(readingSubmissions, []);
   assert.equal(calls, 0);
-  await page.evaluate(() => { location.hash = '#/subjects/math/courses'; });
-  await home.getByRole('button', {name: '科学计算器', exact: true}).waitFor();
-  await page.evaluate(() => { location.hash = '#/subjects/math/topic/calculator-fixture'; });
-  await homeBoard.waitFor({state: 'detached'});
+  await bodyCalculator.getByRole('button', {name: '关闭计算器'}).click();
+  await bodyBoard.getByRole('button', {name: '收起', exact: true}).click();
+  onTopicBody = false;
+  await page.goto(site + '/#/subjects/math/topic/calculator-fixture');
   const next = page.locator('#appLayout:not([hidden]) #stepCard').getByRole('button', {name: '下一页', exact: true}).last();
   const mastered = page.locator('#stepCard .choiceActions .primaryButton:enabled', {hasText: '已掌握'});
   const answerForm = page.locator('#stepCard #answerForm');
@@ -308,11 +320,7 @@ try {
   const send = panel.getByRole('button', {name: '提交', exact: true});
   if (voiceFile) {
     await expression.fill('');
-    await page.getByRole('button', {name: '录音输入', exact: true}).click();
-    const end = page.getByRole('button', {name: '结束录音', exact: true});
-    await end.waitFor();
-    await page.locator('.voiceDuration:visible').filter({hasText: '02 秒'}).waitFor();
-    await end.click();
+    await recordTwoSeconds(expression);
     await voiceStarted;
     await send.click();
     await panel.getByText('请先结束录音并等待转写完成。', {exact: true}).waitFor();
@@ -399,7 +407,7 @@ try {
   await retryCase.getByRole('button', {name: '归档目录', exact: true}).and(retryCase.locator('button:enabled')).waitFor();
   assert.equal(await retryCase.locator('.whiteboardStatus').textContent(), '');
   assert.deepEqual(errors, []);
-  console.log(JSON.stringify({passed: true, checks: ['home and subject tools, no answer submission', 'pre-answer whiteboard uses a disabled submit button',
+  console.log(JSON.stringify({passed: true, checks: ['Topic reading tools, no answer submission, absent on home and subject landing', 'pre-answer whiteboard uses a disabled submit button',
     'split', 'swap', 'undo-redo', 'scribble erase and atomic undo', 'register survives clearing',
     voiceFile ? 'Chrome capture, transcription insertion and pending submit guard' : 'voice insertion event',
     'archive and reopen', 'directory cancellation and denied permission', 'live undo after reopen',
