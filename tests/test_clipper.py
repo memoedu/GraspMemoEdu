@@ -4,6 +4,7 @@ import json
 import os
 import base64
 import unittest
+from unittest.mock import Mock
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -21,6 +22,29 @@ class ClipperTests(unittest.TestCase):
 
     def post(self, endpoint, payload, headers=None):
         return self.client.post('/api/clipper/' + endpoint, headers=headers or self.normal_headers, json=payload)
+
+    def test_scoped_mimo_speech_keeps_text_and_selects_provider_voice(self):
+        sentence = '若 x 的平方等于零点二五，另一结论成立。'
+        env = {'GRASPMEMOEDU_CLIPPER_SPEECH_BASE_URL': 'https://api.xiaomimimo.com/v1',
+               'GRASPMEMOEDU_CLIPPER_SPEECH_MODEL': 'mimo-v2.5-tts',
+               'GRASPMEMOEDU_CLIPPER_SPEECH_API_KEY': 'site-test-only'}
+        expected_audio = b'ID3 test MP3'
+
+        def write_audio(text, output, **options):
+            output.write_bytes(expected_audio)
+
+        synthesize = Mock(side_effect=write_audio)
+        with patch.dict(os.environ, env), patch('mimo_tts.client.synthesize', synthesize):
+            for requested, expected in [('zh-CN-XiaoxiaoNeural', 'Mia'), ('mimo-Dean', 'Dean')]:
+                with self.subTest(voice=requested):
+                    response = self.post('workflow', {'operation': 'speech',
+                        'input': {'text': sentence, 'voice': requested, 'ratePercent': 10, 'volumePercent': -20}})
+                    self.assertEqual(response.status_code, 200, response.text)
+                    self.assertEqual(base64.b64decode(response.json()['data']), expected_audio)
+                    args, options = synthesize.call_args
+                    self.assertEqual(args[0], sentence)
+                    self.assertEqual(options, {'voice': expected, 'style': '', 'api_key': 'site-test-only',
+                                               'cache': False, 'speed': 1.1, 'volume': 0.8})
 
     def item(self, **kwargs):
         return {'id': str(uuid4()), 'kind': 'card', 'type_id': 'fast-answer', 'front': r'Why \(x^2\)?',

@@ -157,21 +157,28 @@ def speech_call(config, source, timeout):
         raise DomainError('clip_audio_pitch', '当前语音服务不支持独立调节音高，请将音调设为 0。', 422)
     speed = max(.5, min(2, 1 + int(source.get('ratePercent', 0)) / 100))
     volume = max(0, min(3, 1 + int(source.get('volumePercent', 0)) / 100))
-    if config['base_url'].rstrip('/') == 'https://api.openai.com/v1':
-        from mimo_tts import openai_audio
-        from mimo_tts.client import MimoError
-        if config['model'] == openai_audio.MODEL:
-            try:
-                with TemporaryDirectory() as folder:
-                    recording = Path(folder) / 'speech.mp3'
-                    openai_audio.synthesize(text, recording, voice=voice.removeprefix('openai-'), style=str(source.get('style', ''))[:3000],
-                                            api_key=config['api_key'], cache=False, speed=speed,
-                                            volume=volume)
-                    if recording.stat().st_size > 12 * 1024 * 1024:
-                        raise ValueError
-                    return {'mime': 'audio/mpeg', 'data': base64.b64encode(recording.read_bytes()).decode()}
-            except MimoError:
-                raise DomainError('clip_audio_failed', '语音没有完整读出原文，可重新朗读。', 502) from None
+    endpoint = config['base_url'].rstrip('/')
+    from mimo_tts import client, openai_audio
+    synthesize = None
+    if endpoint == 'https://api.openai.com/v1' and config['model'] == openai_audio.MODEL:
+        synthesize = openai_audio.synthesize
+        voice = voice.removeprefix('openai-')
+    elif endpoint == client.BASE_URL and config['model'] == client.MODELS['preset']:
+        synthesize = client.synthesize
+        voice = voice.removeprefix('mimo-')
+        if voice not in client.VOICES:
+            voice = client.default_voice(text)
+    if synthesize:
+        try:
+            with TemporaryDirectory() as folder:
+                recording = Path(folder) / 'speech.mp3'
+                synthesize(text, recording, voice=voice, style=str(source.get('style', ''))[:3000],
+                           api_key=config['api_key'], cache=False, speed=speed, volume=volume)
+                if recording.stat().st_size > 12 * 1024 * 1024:
+                    raise ValueError
+                return {'mime': 'audio/mpeg', 'data': base64.b64encode(recording.read_bytes()).decode()}
+        except client.MimoError:
+            raise DomainError('clip_audio_failed', '语音服务没有生成可用录音，可重新朗读。', 502) from None
     data = {'model': config['model'], 'input': text, 'voice': voice, 'response_format': 'mp3', 'speed': speed}
     if source.get('style'):
         data['instructions'] = str(source['style'])[:3000]
