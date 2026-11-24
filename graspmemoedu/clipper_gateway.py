@@ -24,6 +24,7 @@ from PIL import Image
 
 from .clipper_settings import Preferences, catalog, provider_post
 from .judge import independent_settings
+from .openai_vision import configured_vision, openai_vision_post
 from .service import DomainError
 
 
@@ -93,7 +94,8 @@ def public_models(prefs, default_model):
         model = default_model()['model']
     except (ValueError, DomainError):
         model = ''
-    return model, os.environ.get('GRASPMEMOEDU_CLIPPER_IMAGE_MODEL', model)
+    image_model = os.environ.get('GRASPMEMOEDU_OPENAI_VISION_MODEL', '').strip()
+    return model, image_model or os.environ.get('GRASPMEMOEDU_CLIPPER_IMAGE_MODEL', model)
 
 
 def checked_png(data):
@@ -116,6 +118,7 @@ def model_call(config, allowed, source, timeout):
     if model not in allowed or not isinstance(payload.get('messages'), list) or not 1 <= len(payload['messages']) <= 600:
         raise DomainError('invalid_clip_model', '请选择当前账号可用的模型。', 422)
     messages = []
+    has_image = False
     for item in payload['messages']:
         role, content = item['role'], item['content']
         if role not in ('user', 'system', 'assistant'):
@@ -130,6 +133,7 @@ def model_call(config, allowed, source, timeout):
                     if not isinstance(url, str) or not url.startswith('data:image/png;base64,'):
                         raise ValueError
                     checked_png(url[22:])
+                    has_image = True
                     parts.append({'type': 'image_url', 'image_url': {'url': url}})
                 else:
                     raise ValueError
@@ -147,7 +151,18 @@ def model_call(config, allowed, source, timeout):
         params['thinking'] = payload['thinking']
     if type(payload.get('temperature')) in (int, float):
         params['temperature'] = min(2, max(0, payload['temperature']))
-    body, _ = provider_post(config, '/chat/completions', params, timeout, 4 * 1024 * 1024)
+    vision = configured_vision() if config.get('site_service') and has_image else None
+    if vision:
+        params['model'] = vision['model']
+        if 'max_tokens' in params:
+            params['max_completion_tokens'] = params.pop('max_tokens')
+        params.pop('thinking', None)
+        params.update(reasoning_effort='none', store=False, service_tier='default')
+        body = openai_vision_post(vision, '/v1/chat/completions', params, timeout, 4 * 1024 * 1024)
+    else:
+        if config.get('site_service') and model == os.environ.get('GRASPMEMOEDU_OPENAI_VISION_MODEL'):
+            params['model'] = config['model']
+        body, _ = provider_post(config, '/chat/completions', params, timeout, 4 * 1024 * 1024)
     return {'status': 200, 'mime': 'text/event-stream' if params['stream'] else 'application/json',
             'content': body.decode('utf-8')}
 

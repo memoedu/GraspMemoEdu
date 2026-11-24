@@ -12,3 +12,4 @@
 - 首次使用「归档目录」，在桌面 Chrome 选定本机目录并允许写入。提交时保存 PNG 和可重新打开的画布、变量。在同题重新打开白板会读取最后一次存档。目录授权中断时保留当前画布，重新授权后可提交。
 - 题目白板「提交」冻结画布并完成本机存档后上传本次图像做 OCR。识别到足够作答信息才交由当前学习、复习或题库的作答路由处理。难以辨认或缺少答项时，页面给出补充提示并允许继续编辑。
 - OCR 默认使用已配置的判题提供方，必须支持图像输入。需要独立图像模型时，可在服务的环境中配置 `GRASPMEMOEDU_WHITEBOARD_OCR_API_KEY`、`GRASPMEMOEDU_WHITEBOARD_OCR_BASE_URL` 和 `GRASPMEMOEDU_WHITEBOARD_OCR_MODEL`。图片不进入学习数据库，作答记录保存经 OCR 得到的文本。
+- 生产可通过 `deploy/98-openai-vision.conf` 启用独立的 OpenAI 视觉模型。它沿用网站已经部署的 OpenAI SSH 转发和 TLS 校验。未单独配置白板 OCR 时，白板提交优先使用此视觉模型。公式框选走 AnnotationCapture 网关，由该网关配置识别模型。
