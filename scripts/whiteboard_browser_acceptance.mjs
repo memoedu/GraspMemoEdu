@@ -7,7 +7,7 @@ import {launchAcceptanceChrome} from './launch_acceptance_chrome.mjs';
 
 const [assetRoot, site, voiceFile, invitationFile] = process.argv.slice(2);
 assert.equal(Boolean(voiceFile), Boolean(invitationFile), 'Provide both the microphone WAV and the fixture invitation file');
-const editor = 'https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v3/';
+const editor = 'https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v4/';
 const requireRuntime = createRequire(join(homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
 const chrome = await launchAcceptanceChrome(requireRuntime, voiceFile ? [
   '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', `--use-file-for-fake-audio-capture=${voiceFile}`,
@@ -228,7 +228,7 @@ try {
     await page.mouse.up();
   };
   await draw([[96, 48], [96, 86], [125, 86], [125, 48], [96, 48]]);
-  await draw([[144, 48], [144, 86], [176, 86], [176, 48], [144, 48]]);
+  await draw([[138, 48], [138, 86], [176, 86], [176, 48], [138, 48]]);
   const pixels = (x, y) => canvas.evaluate((element, [x, y]) => {
     const box = element.getBoundingClientRect();
     const [r, g] = element.getContext('2d').getImageData(
@@ -247,7 +247,7 @@ try {
   await draw([[117, 59], [135, 62], [117, 65], [135, 68], [117, 71], [135, 74]]);
   await waitForPixel(96, 70, false);
   await waitForPixel(120, 59, false);
-  assert.equal(await pixels(144, 70), true);
+  assert.equal(await pixels(138, 70), true);
   await frame.getByRole('button', {name: '撤销', exact: true}).click();
   await waitForPixel(96, 70, true);
   await frame.getByRole('button', {name: '重做', exact: true}).click();
