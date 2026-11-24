@@ -60,6 +60,7 @@ def main():
     course['modules'][0]['example']['html'] = (
         '<p id="clip-fixture">Capture the sequence <span data-tex="x^2">x²</span> on this line.</p>'
         '<p id="clip-formulas">Inline \\(\\frac{a}{b}\\) and display $$y^3=z$$.</p>'
+        '<p id="clip-fragment">Formula fragment \\(a+b+c+\\frac{x+1}{y-2}\\) in a sentence.</p>'
         '<p id="clip-sentence">前一句。若 <span data-tex="x&gt;0">x&gt;0</span>，结论成立。若 '
         '<span data-tex="x^2=0.25">x²=0.25</span>，另一结论成立。后一段。</p>'
         '<section id="clip-mixed"><p>比较 <span data-tex="a^2+b^2">a²+b²</span> 与下方代码。</p>'
