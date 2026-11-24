@@ -70,6 +70,19 @@ def audit_fields(item, path=()):
             yield {'path': '/'.join(path), 'defects': sorted(defects)}
 
 
+def validate_enrichment_rendering(topic, display):
+    from .lesson_display import display_key, lesson_fields
+
+    tid = topic['id']
+    keys = {display_key(kind, row[field]) for row, field, kind in lesson_fields(topic)}
+    if display.get('tex_repairs') or not isinstance(display.get('values'), dict) or not display['values'].keys() <= keys:
+        raise ValueError('Enrichment has legacy repairs or unbound display fields: ' + tid)
+    for name, source in (('Topic', topic), ('display', display)):
+        if defect := next(audit_fields(source), None):
+            labels = ', '.join(defect['defects'])
+            raise ValueError(f'Enrichment {name} formula error: {tid}/{defect["path"]} ({labels})')
+
+
 def main():
     import argparse
 

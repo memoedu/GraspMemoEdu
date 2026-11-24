@@ -52,3 +52,17 @@ for (const {html} of [renderSourceMarkdown(native), renderSourceHtml('<p>' + nat
   assert.doesNotMatch(html, /\[\/?math\]/i);
 }
 assert.match(renderSourceMarkdown('`[math]x[/math]`').html, /<code>\[math\]x\[\/math\]<\/code>/);
+
+const lineMath = String.raw`\mathbf{r}=\begin{bmatrix}7\\-3\end{bmatrix}`;
+const lineDelimited = 'Given\n$\n' + lineMath + '\n$\nreport the entries.';
+for (const source of [lineDelimited, lineDelimited.replaceAll('\n', '\r\n')]) {
+  assert.deepEqual([...mathSpans(source)].map(({latex, display}) => ({latex, display})),
+                   [{latex: lineMath, display: true}]);
+  for (const {html} of [renderSourceMarkdown(source), renderSourceHtml('<p>' + source + '</p>')]) {
+    assert.equal((html.match(/<mjx-container/g) || []).length, 1);
+    assert.ok(html.includes('class="mathDisplay" data-tex="' + lineMath + '"'));
+    assert.doesNotMatch(html.replace(/<[^>]+>/g, ''), /\$|\\mathbf/);
+  }
+}
+assert.equal([...mathSpans('A lone $\nvalue followed by $4')].length, 0);
+assert.match(renderSourceHtml('<pre>' + lineDelimited + '</pre>').html, /<pre>Given\n\$\n/);

@@ -68,6 +68,22 @@ class MathAcademyTests(unittest.TestCase):
         b['lesson']['steps'][0]['tutorial']['content'] = 'Changed teaching'
         self.assertNotEqual(source_fingerprint(a), source_fingerprint(b))
 
+    def test_indented_original_choice_image_uses_the_same_source_renderer(self):
+        capture = source(1)
+        png = ('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC'
+               '0lEQVR42mP8/x8AAwMCAO+jR8sAAAAASUVORK5CYII=')
+        raw = '    <img src="' + png + '" />'
+        capture['lesson']['steps'][2]['question'].update(format='MC', choice1=raw, choice2='`<img>`')
+        renderer = Renderer()
+        try:
+            topic = renderer.render(adapt(capture, Assets(self.cache, {})))
+        finally:
+            renderer.close()
+        option, code = topic['modules'][0]['practices'][0]['interaction']['options']
+        self.assertEqual(option['text'], raw)
+        self.assertIn('<img src="' + png + '"', option['html'])
+        self.assertIn('<code>&lt;img&gt;</code>', code['html'])
+
     def test_atomic_activation_idempotency_shared_identity_and_backup(self):
         self.prepared()
         with self.assertRaisesRegex(RuntimeError, 'pre-activation'):
@@ -147,6 +163,17 @@ class MathAcademyTests(unittest.TestCase):
             install(upgrade, self.data)
         self.assertEqual(pointer.read_bytes(), original_pointer)
         manifest['enrichment'][tid]['topic_sha256'] = file_hash(before)
+        display_rel = f'{DIRECTORY}/{tid}.json'
+        display_path = upgrade / display_rel
+        archived = {**paths[display_rel], 'values': {**paths[display_rel]['values'], 'stale': '<p>旧译文</p>'}}
+        display_path.write_bytes(encoded(archived))
+        manifest['files'][display_rel] = file_hash(display_path)
+        path.write_bytes(encoded(manifest))
+        with self.assertRaisesRegex(ValueError, 'unbound display fields'):
+            install(upgrade, self.data)
+        self.assertEqual(pointer.read_bytes(), original_pointer)
+        display_path.write_bytes(encoded(paths[display_rel]))
+        manifest['files'][display_rel] = file_hash(display_path)
         path.write_bytes(encoded(manifest))
         with self.assertRaisesRegex(RuntimeError, 'pre-activation'):
             install(upgrade, self.data, fail_at='activate')
