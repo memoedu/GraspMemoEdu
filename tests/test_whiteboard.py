@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw
 from graspmemoedu.judging import instant_question, judge_answer, local_verdict
 from graspmemoedu.question_types import WHITEBOARD_ANSWER, display_answer, parse_submission_answer
 from graspmemoedu.service import DomainError
-from graspmemoedu.whiteboard_ocr import WHITEBOARD_PATH, checked_png, recognize_selection, register_whiteboard_ocr
+from graspmemoedu.whiteboard_ocr import WHITEBOARD_PATH, WhiteboardPhoto, checked_png, recognize_selection, recognize_whiteboard, register_whiteboard_ocr
 
 
 def image_bytes(fmt, dimensions=(120, 80), *, strokes=()):
@@ -109,3 +109,26 @@ class WhiteboardTests(TestCase):
         sent = request.call_args.args[0]
         self.assertEqual(sent.full_url, 'http://127.0.0.1:18879/recognize')
         self.assertEqual(json.loads(sent.data), {'png': png, 'outputFormat': 'calculator'})
+
+    def test_site_openai_uses_responses_via_existing_tunnel(self):
+        image = image_bytes('PNG')
+        payload = WhiteboardPhoto(image=image, question='Solve x + 2 = 3.', language='en')
+        response = {
+            'status': 'completed',
+            'output': [{'type': 'message', 'content': [
+                {'type': 'output_text', 'text': '{"status":"ready","answer":"x = 2"}'}
+            ]}],
+        }
+        with patch.dict('os.environ', {
+            'GRASPMEMOEDU_OPENAI_VISION_MODEL': 'gpt-6-luna',
+            'GRASPMEMOEDU_CLIPPER_SPEECH_API_KEY': 'fixture',
+            'GRASPMEMOEDU_CLIPPER_OPENAI_SSH_PORT': '18773',
+        }, clear=True), patch('graspmemoedu.whiteboard_ocr.openai_vision_post', return_value=json.dumps(response).encode()) as post:
+            png = checked_png(image)
+            self.assertEqual(recognize_whiteboard(payload, png), {'status': 'ready', 'answer': 'x = 2'})
+        config, endpoint, body = post.call_args.args
+        self.assertEqual(config['ssh_port'], 18773)
+        self.assertEqual(endpoint, '/v1/responses')
+        self.assertFalse(body['store'])
+        self.assertEqual(body['reasoning'], {'effort': 'none'})
+        self.assertIn({'type': 'input_image', 'image_url': png}, body['input'][1]['content'])

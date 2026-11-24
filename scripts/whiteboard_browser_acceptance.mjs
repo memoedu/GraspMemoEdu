@@ -7,7 +7,7 @@ import {launchAcceptanceChrome} from './launch_acceptance_chrome.mjs';
 
 const [assetRoot, site, voiceFile, invitationFile] = process.argv.slice(2);
 assert.equal(Boolean(voiceFile), Boolean(invitationFile), 'Provide both the microphone WAV and the fixture invitation file');
-const editor = 'https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v3/';
+const editor = 'https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v4/';
 const requireRuntime = createRequire(join(homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
 const chrome = await launchAcceptanceChrome(requireRuntime, voiceFile ? [
   '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', `--use-file-for-fake-audio-capture=${voiceFile}`,
@@ -133,7 +133,11 @@ try {
   const bodyBoard = page.locator('.whiteboardPanel:visible');
   const bodyExpression = bodyBoard.locator('[data-whiteboard-expression]');
   const bodySubmit = bodyBoard.getByRole('button', {name: '提交', exact: true});
+  const prepared = page.locator('.whiteboardPanel[hidden] [data-whiteboard-expression]:enabled');
+  await prepared.waitFor({state: 'attached'});
+  const preparedFrame = await page.locator('.whiteboardPanel[hidden] iframe').elementHandle();
   await bodyTools.getByRole('button', {name: '白板', exact: true}).click();
+  assert.equal(await bodyBoard.locator('iframe').evaluate((frame, initial) => frame === initial, preparedFrame), true);
   await bodyExpression.and(bodyBoard.locator('input:enabled')).waitFor();
   assert.equal(await bodySubmit.isVisible(), true);
   assert.equal(await bodySubmit.isDisabled(), true);
@@ -228,7 +232,7 @@ try {
     await page.mouse.up();
   };
   await draw([[96, 48], [96, 86], [125, 86], [125, 48], [96, 48]]);
-  await draw([[144, 48], [144, 86], [176, 86], [176, 48], [144, 48]]);
+  await draw([[138, 48], [138, 86], [176, 86], [176, 48], [138, 48]]);
   const pixels = (x, y) => canvas.evaluate((element, [x, y]) => {
     const box = element.getBoundingClientRect();
     const [r, g] = element.getContext('2d').getImageData(
@@ -247,7 +251,7 @@ try {
   await draw([[117, 59], [135, 62], [117, 65], [135, 68], [117, 71], [135, 74]]);
   await waitForPixel(96, 70, false);
   await waitForPixel(120, 59, false);
-  assert.equal(await pixels(144, 70), true);
+  assert.equal(await pixels(138, 70), true);
   await frame.getByRole('button', {name: '撤销', exact: true}).click();
   await waitForPixel(96, 70, true);
   await frame.getByRole('button', {name: '重做', exact: true}).click();
@@ -450,7 +454,7 @@ try {
   console.log(JSON.stringify({passed: true, checks: ['Topic reading tools, no answer submission, absent on home and subject landing', 'pre-answer whiteboard uses a disabled submit button',
     'split', 'swap', 'undo-redo', 'scribble erase and atomic undo', 'register survives clearing',
     voiceFile ? 'Chrome capture, transcription insertion and pending submit guard' : 'voice insertion event',
-    'archive and reopen', 'directory cancellation and denied permission', 'live undo after reopen',
+    'prepared editor is reused on first open', 'archive and reopen', 'directory cancellation and denied permission', 'live undo after reopen',
     'lasso deletion and undo', 'OCR freeze and recovery', 'insufficient without submission', 'shared judge', 'small viewports',
     'editable scene recovered after its PNG went missing', 'editor retries after load failure',
     'selection calculation', 'changing selection cancels slow OCR', 'typed selection computes without OCR',

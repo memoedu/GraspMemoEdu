@@ -16,6 +16,7 @@ from PIL import Image
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .judge import independent_settings
+from .openai_vision import configured_vision, openai_vision_post
 from .service import DomainError
 
 WHITEBOARD_PATH = '/api/whiteboard/recognize'
@@ -31,7 +32,8 @@ identified, several final answers conflict, the solution is unfinished, or
 essential marks are unreadable, reply with status insufficient and identify
 what the student needs to clarify without giving an answer. A clear wrong
 answer is ready. Return only JSON: {"status":"ready","answer":"..."} or
-{"status":"insufficient","feedback":"..."}. Write feedback in the student's language.
+{"status":"insufficient","feedback":"..."}. Write feedback in the language
+specified by the language field: zh means Simplified Chinese and en means English.
 """
 
 
@@ -67,7 +69,7 @@ def ocr_settings():
     names = ('GRASPMEMOEDU_WHITEBOARD_OCR_API_KEY', 'GRASPMEMOEDU_WHITEBOARD_OCR_BASE_URL', 'GRASPMEMOEDU_WHITEBOARD_OCR_MODEL')
     values = [os.environ.get(name, '').strip() for name in names]
     if not any(values):
-        return independent_settings()
+        return configured_vision() or independent_settings()
     if not all(values):
         raise ValueError('Incomplete image provider settings')
     return dict(zip(('api_key', 'base_url', 'model'), values))
@@ -90,10 +92,16 @@ def recognize_whiteboard(payload, png):
         body = {'model': config['model'], 'messages': messages, 'max_tokens': 2800, 'temperature': 0}
         if url.hostname == 'api.deepseek.com':
             body['thinking'] = {'type': 'disabled'}
-    remote = Request(base + ('/responses' if openai else '/chat/completions'), data=json.dumps(body).encode(),
-                     headers={'Authorization': 'Bearer ' + config['api_key'], 'Content-Type': 'application/json'})
-    with urlopen(remote, timeout=25) as response:
-        data = json.loads(response.read(256 * 1024 + 1))
+    if 'ssh_port' in config:
+        body.update(reasoning={'effort': 'none'}, service_tier='default', text={'format': {'type': 'json_object'}})
+        data = json.loads(openai_vision_post(config, '/v1/responses', body, timeout=25, limit=256 * 1024))
+        if data.get('status') != 'completed':
+            raise ValueError('Incomplete OpenAI OCR result')
+    else:
+        remote = Request(base + ('/responses' if openai else '/chat/completions'), data=json.dumps(body).encode(),
+                         headers={'Authorization': 'Bearer ' + config['api_key'], 'Content-Type': 'application/json'})
+        with urlopen(remote, timeout=25) as response:
+            data = json.loads(response.read(256 * 1024 + 1))
     value = ''.join(part['text'] for output in data['output'] if output.get('type') == 'message'
                     for part in output.get('content', []) if part.get('type') == 'output_text') if openai else data['choices'][0]['message']['content']
     value = value.strip().removeprefix('```json').removesuffix('```').strip()
