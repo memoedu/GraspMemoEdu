@@ -1,5 +1,6 @@
 import base64
 from io import BytesIO
+import json
 from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import Mock, patch
@@ -11,7 +12,7 @@ from PIL import Image
 from graspmemoedu.judging import instant_question, judge_answer, local_verdict
 from graspmemoedu.question_types import WHITEBOARD_ANSWER, display_answer, parse_submission_answer
 from graspmemoedu.service import DomainError
-from graspmemoedu.whiteboard_ocr import WHITEBOARD_PATH, checked_png, register_whiteboard_ocr
+from graspmemoedu.whiteboard_ocr import WHITEBOARD_PATH, checked_png, recognize_selection, register_whiteboard_ocr
 
 
 def image_bytes(fmt, dimensions=(120, 80)):
@@ -83,3 +84,13 @@ class WhiteboardTests(TestCase):
             reply = client.post(WHITEBOARD_PATH, json={'image': image, 'language': 'unknown'})
             self.assertEqual(reply.status_code, 422)
             self.assertEqual(recognize.call_count, 3)
+
+    def test_selected_formula_uses_annotation_capture_gateway(self):
+        png = checked_png(image_bytes('PNG'))
+        with patch.dict('os.environ', {'GRASPMEMOEDU_WHITEBOARD_FORMULA_TOKEN': 'fixture'}), \
+                patch('graspmemoedu.whiteboard_ocr.urlopen', return_value=BytesIO(b'{"latex":"mod(17,5)"}')) as request:
+            result = recognize_selection(SimpleNamespace(language='zh'), png)
+        self.assertEqual(result, {'status': 'ready', 'answer': 'mod(17,5)'})
+        sent = request.call_args.args[0]
+        self.assertEqual(sent.full_url, 'http://127.0.0.1:18879/recognize')
+        self.assertEqual(json.loads(sent.data), {'png': png, 'outputFormat': 'calculator'})

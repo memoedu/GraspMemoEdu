@@ -6,6 +6,8 @@ from io import BytesIO
 import json
 import os
 from threading import BoundedSemaphore
+from typing import Literal
+from urllib.error import HTTPError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
@@ -38,6 +40,7 @@ class WhiteboardPhoto(BaseModel):
     image: str = Field(min_length=1, max_length=4_000_000)
     question: str = Field(default='', max_length=7000)
     language: str = Field(default='zh', pattern='^(zh|en)$')
+    purpose: Literal['answer', 'expression'] = 'answer'
 
     @field_validator('language', mode='before')
     @classmethod
@@ -99,6 +102,30 @@ def recognize_whiteboard(payload, png):
     raise ValueError('Invalid OCR result')
 
 
+def recognize_selection(payload, png):
+    token = os.environ.get('GRASPMEMOEDU_WHITEBOARD_FORMULA_TOKEN', '').strip()
+    if not token:
+        raise ValueError('The shared formula gateway is not configured')
+    remote = Request('http://127.0.0.1:18879/recognize',
+                     data=json.dumps({'png': png, 'outputFormat': 'calculator'}).encode(),
+                     headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'})
+    try:
+        with urlopen(remote, timeout=30) as response:
+            data = json.loads(response.read(16 * 1024 + 1))
+    except HTTPError as error:
+        if error.code == 400:
+            message = ('No clear formula was found. Select only the expression to use.' if payload.language == 'en'
+                       else '没有识别到清晰公式，请只圈选要使用的表达式。')
+            return {'status': 'insufficient', 'feedback': message}
+        if error.code == 429:
+            raise DomainError('whiteboard_ocr_busy', '白板识别正在处理其他请求，请稍后重试。', 429) from None
+        raise
+    value = data.get('latex')
+    if not isinstance(value, str) or not 0 < len(value.strip()) <= 1024:
+        raise ValueError('Invalid shared formula result')
+    return {'status': 'ready', 'answer': value.strip()}
+
+
 def register_whiteboard_ocr(app, access_store):
     slots = BoundedSemaphore(3)
 
@@ -117,6 +144,8 @@ def register_whiteboard_ocr(app, access_store):
                 with limits.daily.reserve(access['learner_id'], access['role']):
                     pass
             try:
+                if payload.purpose == 'expression':
+                    return recognize_selection(payload, png)
                 return recognize_whiteboard(payload, png)
             except (AttributeError, IndexError, KeyError, OSError, TypeError, ValueError):
                 raise DomainError('whiteboard_ocr_unavailable', '白板识别暂未完成。批注已存档，可以重试。', 502) from None
