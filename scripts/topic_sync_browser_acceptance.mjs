@@ -70,10 +70,10 @@ try {
   });
   const open = page.getByRole('button', {name: '在本地 RemNote 中打开', exact: true});
   const route = origin + '/#/subjects/math/topic/' + topic;
-  async function login(invite) {
-    await page.locator('#userMenuButton').click();
-    await page.locator('#identityButton').click();
-    const login = page.locator('#identityDialog');
+  async function login(invite, tab = page) {
+    await tab.locator('#userMenuButton').click();
+    await tab.locator('#identityButton').click();
+    const login = tab.locator('#identityDialog');
     await login.locator('input').fill(invite);
     await login.locator('form').evaluate(form => form.requestSubmit());
     await login.waitFor({state: 'hidden'});
@@ -89,7 +89,7 @@ try {
     await page.getByText(/此 (?:Topic|主题) 尚未绑定本地 RemNote Document。/).waitFor();
   } catch (error) {
     console.error('Topic sync requests', JSON.stringify(requests));
-    console.error('Topic sync status', await page.locator('#lessonContent .lessonToolbar [role="status"]').allTextContents());
+    console.error('Topic sync status', await page.locator('#topicSyncStatus').textContent());
     throw error;
   }
   await navigator.request('device-binding', {device, body: {topic_id: topic, kb_id: kb, rem_id: rem}});
@@ -101,7 +101,29 @@ try {
   const edit = page.getByRole('button', {name: '开启编辑', exact: true});
   let editorTested = false;
   if (process.argv.includes('--editor')) {
+    await edit.waitFor();
+    const toolbar = page.locator('#lessonContent [role="toolbar"]').filter({has: open});
+    assert.equal(await toolbar.count(), 1);
+    assert.equal(await toolbar.getByRole('button', {name: '开启编辑', exact: true}).count(), 1);
+    assert.equal(await toolbar.getByRole('button', {name: '零碎知识简藏', exact: true}).count(), 1);
+    await edit.focus();
+    await page.keyboard.press('ArrowRight');
+    assert.equal(await open.evaluate(button => button === document.activeElement), true);
+    await page.setViewportSize({width: 390, height: 844});
+    await edit.scrollIntoViewIfNeeded();
+    const first = await edit.boundingBox();
+    const second = await open.boundingBox();
+    assert(first && second && first.x >= 0 && second.x + second.width <= 390);
+    await page.setViewportSize({width: 1100, height: 860});
     await edit.click();
+    const finish = page.getByRole('button', {name: '关闭编辑', exact: true});
+    await finish.waitFor();
+    await page.evaluate(() => { location.hash = '#/subjects/math/courses'; });
+    await open.waitFor({state: 'hidden'});
+    await finish.waitFor({state: 'hidden'});
+    await page.getByRole('button', {name: '零碎知识简藏', exact: true}).waitFor();
+    await page.evaluate(id => { location.hash = '#/subjects/math/topic/' + id; }, topic);
+    await finish.waitFor();
     const frame = page.frameLocator('iframe.topicBodyFrame');
     const content = frame.locator('.block-content').filter({hasText: 'INTRODUCTION_ONLY'}).first();
     await content.click({position: {x: 8, y: 8}});
@@ -154,11 +176,36 @@ try {
   await page.getByText('当前账号与本机绑定不一致。请切换到原绑定的网站账号。', {exact: true}).waitFor();
   assert.equal(await open.isVisible(), false);
   assert.equal(opened.length, 1);
+  const clean = await browser.newContext({acceptDownloads: true});
+  try {
+    const withoutExtension = await clean.newPage();
+    await withoutExtension.goto(route);
+    await withoutExtension.locator('#lessonTitle').waitFor();
+    await login(invitations[0], withoutExtension);
+    await withoutExtension.goto(route);
+    await withoutExtension.getByRole('button', {name: '在本地 RemNote 中打开', exact: true}).click();
+    await withoutExtension.waitForURL(url => url.pathname.endsWith('/remnote-install.html'));
+    const returnLink = withoutExtension.getByRole('link', {name: '返回 GraspMemoEdu'});
+    assert.equal(new URL(await returnLink.getAttribute('href'), withoutExtension.url()).hash, new URL(route).hash);
+    if (process.argv.includes('--installer')) {
+      const download = withoutExtension.waitForEvent('download');
+      await withoutExtension.getByRole('button', {name: '下载 Windows 安装包'}).click();
+      const delivered = await download;
+      assert.equal(delivered.suggestedFilename(), 'GraspMemoEdu-RemNote-Windows-x64.zip');
+      assert.equal(await delivered.failure(), null);
+    }
+    await returnLink.click();
+    await withoutExtension.waitForURL(url => url.hash === new URL(route).hash);
+  } finally {
+    await clean.close();
+  }
   assert.deepEqual(browserErrors, []);
   await writeFile(path.join(fixture, 'browser-acceptance.json'), JSON.stringify({
     paired: true, openedWebToDocument: true, openedDocumentToTopic: true, mismatchBlockedBothWays: true,
     companion: 'real local site client', nativeNavigation: 'synthetic SDK', nativeBody: liveNative,
-    tineEditorAndBody: editorTested, github: 'isolated in-memory ciphertext store',
+    tineEditorAndBody: editorTested, topicControlsShareExistingToolbar: editorTested,
+    missingExtensionReturnsFromInstaller: true, installerDownload: process.argv.includes('--installer'),
+    github: 'isolated in-memory ciphertext store',
   }, null, 2));
   console.log('PASS real website and companion HTTP pairing, navigation and account mismatch');
 } finally {

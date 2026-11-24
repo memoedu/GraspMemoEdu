@@ -38,8 +38,10 @@ App 只需对专用仓库拥有 Contents 写权限。密钥按服务凭据备份
 
 ## 编辑正文
 
+进入 Topic 后，正文工具栏会显示「开启编辑」和「在本地 RemNote 中打开」。编辑开关按当前账号和 Topic 保存。离开 Topic 后，两项工具从工具栏移除，零碎知识简藏仍按其自己的开关工作。
+
 登录学员在 Topic 正文右上角开启编辑，再点一次关闭。TINE 使用课程或分组基线初始化大纲，首次保存后该账号读取自己的版本。两端写入同一版本索引。如果另一端抢先更新，保存会返回冲突，防止旧页面覆盖新正文。
 
 编辑器独立部署，使用上游 TINE v0.9.2 的 BlockList 和 LSdoc。网站向编辑器传递当前 Topic 大纲，通过独立消息端口收回修改。编辑器不接收登录凭据。构建使用 `scripts/build_topic_editor.py`，参数依次为固定上游源码压缩包、已经安装依赖并构建过 LSdoc 的上游目录、空的发布目录。部署该输出并设置 `GRASPMEMOEDU_TINE_ROOT`，与编辑器一起提供对应 AGPL 源码。环境示例见 [部署配置](../deploy/topic-sync.env.example)。
 
-Navigator 首次同步有正文的现有 Document 时，会在原绑定账号下建立个人版本。未编辑过的其他账号继续使用网站或组基线。已登记同步的 Document 在插件联机时轮询，也允许在窗格中手动同步。嵌套 Document 各有自己的 Topic。正文验收使用 `scripts/topic_sync_browser_acceptance.mjs`，私有仓储可用 `scripts/topic_sync_storage_canary.py` 写入合成内容并验证密文回读。
+RemNote 窗格只显示「打开 GraspMemoEdu」。首次打开已绑定的 Document 时，Navigator 记录原绑定账号下的同步起点。后续改动由后台处理，检测到已有不同的个人修订时保留两份。嵌套 Document 各有自己的 Topic。正文与工具栏验收使用 `scripts/topic_sync_browser_acceptance.mjs`，私有仓储可用 `scripts/topic_sync_storage_canary.py` 写入合成内容并验证密文回读。
