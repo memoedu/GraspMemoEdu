@@ -4,14 +4,14 @@ import path from 'node:path';
 import os from 'node:os';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
+import {launchAcceptanceChrome} from './launch_acceptance_chrome.mjs';
 const [base, fixture, release] = process.argv.slice(2);
 const paperOnly = process.argv.includes('--paper-only');
 assert.equal(new URL(base).hostname, '127.0.0.1');
 const require = createRequire(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
-const {chromium} = require('playwright');
 const output = path.join(fixture, 'show-answer-browser'); await fs.mkdir(output, {recursive: true});
 const report = {passed: false, checks: [], errors: [], real_judge: true, production_requests: 0};
-const browser = await chromium.launch({channel: 'chrome', headless: true});
+const browser = await launchAcceptanceChrome(require);
 const page = await browser.newPage({viewport: {width: 1280, height: 950}, locale: 'zh-CN'});
 page.setDefaultTimeout(30000);
 await page.route('**/*', async route => {
@@ -39,6 +39,12 @@ const shot = name => page.screenshot({path: path.join(output, name + '.png'), fu
 const go = id => page.goto(base + '#/subjects/math/banks/training-acceptance/group-a?question=' + id, {waitUntil: 'networkidle'});
 const current = (id, reader = 'training') => page.locator(`#${reader}stepCard .multiStepCurrent[data-step-id=step-${id}]`);
 const rating = (value, reader = 'training') => page.locator(`#${reader}stepCard .trainingRatings [data-rating="${value}"]`);
+async function assertOutcomeOrder(reader) {
+  const buttons = page.locator(`#${reader}stepCard .trainingRatings button`);
+  assert.deepEqual(await buttons.allTextContents(), ['做错', '做对']);
+  const [incorrect, correct] = await Promise.all([rating(1, reader).boundingBox(), rating(5, reader).boundingBox()]);
+  assert(incorrect && correct && incorrect.x < correct.x && incorrect.y === correct.y);
+}
 async function showTraining(step) {
   await current(step).waitFor();
   const response = page.waitForResponse(r => r.url().includes('/training/reveal') && r.request().method() === 'POST');
@@ -46,7 +52,7 @@ async function showTraining(step) {
   const result = await (await response).json(); await rating(5).waitFor();
   assert.equal(result.phase, 'shown'); assert.equal(result.multi_step.current_step_id, 'step-' + step);
   assert.equal(result.multi_step.finished, false); assert.equal(result.multi_step.steps.length, step);
-  assert.equal(await page.locator('#trainingstepCard .trainingRatings button').count(), 2);
+  await assertOutcomeOrder('training');
   assert.equal(await current(step).locator('.multiStepAnswer').count(), 1);
   assert.equal(await current(step).locator('input,textarea').count(), 0); return result;
 }
@@ -54,6 +60,7 @@ async function paperState(id) { return api('review-papers/state?paper_id=' + enc
 async function paperShow(step) {
   await current(step, 'paper').waitFor();
   await page.locator('#paperstepCard .showAnswer').click(); await rating(5, 'paper').waitFor();
+  await assertOutcomeOrder('paper');
   assert.equal(await page.locator('#paperstepCard .multiStepPart').count(), step);
 }
 async function openPaper(mode) {
