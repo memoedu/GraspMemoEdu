@@ -73,6 +73,10 @@ try {
   }
   assert.equal(await page.locator('#clip-non-formula path').count(), 1);
   checks.push('Inline and display MathJax 2 archives support native partial copy in both directions');
+  const sharedSource = page.locator('#clip-shared-math-source .katex-html');
+  await sharedSource.nth(1).waitFor();
+  assert.deepEqual((await sharedSource.allTextContents()).map(compact), ['a', '+b']);
+  checks.push('Separate formulas keep their own source when sharing a wrapper');
 
   await page.locator('#userMenuButton').click();
   await page.locator('#identityButton').click();
