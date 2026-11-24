@@ -1,17 +1,17 @@
-import {t, learningTitle} from './i18n.js?v=a021a7de9f0871f6';
-import {attachFormulaEditing} from './formula-input.js?v=a021a7de9f0871f6';
-import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=a021a7de9f0871f6';
-import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=a021a7de9f0871f6';
-import {enhanceTopicContent} from './topic-content.js?v=a021a7de9f0871f6';
-import {prepareMathContent} from './math-presentation.js?v=a021a7de9f0871f6';
-import {sourceAttributions} from './memory-chunk.js?v=a021a7de9f0871f6';
-import {mountPassageBlanks} from './composite-input.js?v=a021a7de9f0871f6';
-import {placeContentActions} from './content-report.js?v=a021a7de9f0871f6';
-import {answerAssessment, pointAssessment} from './point-assessment.js?v=a021a7de9f0871f6';
-import {setQuestionTools} from './question-tools.js?v=a021a7de9f0871f6';
-import {enableVoiceAnswer} from './voice-input.js?v=a021a7de9f0871f6';
-import {mountAnswerConversion} from './answer-conversion.js?v=a021a7de9f0871f6';
-import {fromWhiteboard} from './whiteboard-answer.js?v=a021a7de9f0871f6';
+import {t, learningTitle} from './i18n.js?v=8d0a7454541e3848';
+import {attachFormulaEditing} from './formula-input.js?v=8d0a7454541e3848';
+import {questionInput, answerReady, choiceTypeField} from './question-input.js?v=8d0a7454541e3848';
+import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=8d0a7454541e3848';
+import {enhanceTopicContent} from './topic-content.js?v=8d0a7454541e3848';
+import {prepareMathContent} from './math-presentation.js?v=8d0a7454541e3848';
+import {sourceAttributions} from './memory-chunk.js?v=8d0a7454541e3848';
+import {mountPassageBlanks} from './composite-input.js?v=8d0a7454541e3848';
+import {placeContentActions} from './content-report.js?v=8d0a7454541e3848';
+import {answerAssessment, pointAssessment} from './point-assessment.js?v=8d0a7454541e3848';
+import {setQuestionTools} from './question-tools.js?v=8d0a7454541e3848';
+import {enableVoiceAnswer} from './voice-input.js?v=8d0a7454541e3848';
+import {mountAnswerConversion} from './answer-conversion.js?v=8d0a7454541e3848';
+import {fromWhiteboard} from './whiteboard-answer.js?v=8d0a7454541e3848';
 
 const node = (tag, cls = '', text) => {
   const item = document.createElement(tag); item.className = cls;
