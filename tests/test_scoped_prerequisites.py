@@ -112,3 +112,51 @@ class ScopedPrerequisitesTests(unittest.TestCase):
             state['pause'] = {'reason': 'test'}
             self.first._save(con, state)
         self.assertFalse(self.policy.is_ready(self.access, 'second'))
+
+    def test_ma_cross_course_coverage_is_scoped_to_ml_and_stops_at_the_shared_id(self):
+        covered, upstream, first, second, ordinary, ml_overlap = (
+            'ma-topic-201', 'ma-topic-202', 'ma-topic-203', 'ma-topic-204',
+            'ma-topic-205', 'ma-topic-206')
+        topics = {}
+        for tid in (covered, upstream, first, second, ordinary, ml_overlap):
+            topics[tid] = synthetic_course(1)
+            topics[tid].update(id=tid, title=tid, source_adapter='mathacademy')
+        topics[covered]['availability'] = {'trainable': False}
+        ml = {'id': 'ma-course-140', 'title': 'Machine Learning II', 'topics': [
+            {'id': covered, 'prerequisites': [upstream]},
+            {'id': first, 'prerequisites': [covered]},
+            {'id': second, 'prerequisites': [first, covered, ml_overlap]},
+            {'id': ml_overlap, 'prerequisites': []},
+        ]}
+        external = {'id': 'ma-course-123', 'title': 'Applied Mathematics', 'topics': [
+            {'id': covered, 'prerequisites': [upstream]},
+            {'id': upstream, 'prerequisites': []},
+            {'id': ordinary, 'prerequisites': [covered]},
+        ]}
+        other_ml = {'id': 'ma-course-456', 'title': 'Machine Learning III', 'topics': [
+            {'id': ml_overlap, 'prerequisites': []},
+        ]}
+        catalog = Catalog([ml, external, other_ml], topics, first, {})
+        store = AccessStore(self.root, [{'id': tid, 'title': tid} for tid in topics])
+        access = store.resolve(store.create_guest()['identity_token'])
+        policy = DependencyPolicy(catalog, store)
+        source = policy.dependencies()
+        self.assertEqual(policy.ma_covered_topics, {covered})
+        self.assertEqual(source[first], [covered])
+        self.assertEqual(policy.required_parents(first), [])
+        self.assertEqual(policy.prerequisite_parents(second)(first), [])
+        self.assertEqual(policy.required_parents(second), [first, ml_overlap])
+        self.assertEqual(policy.required_parents(covered), [upstream])
+        self.assertTrue(policy.is_ready(access, first))
+        self.assertFalse(policy.is_ready(access, second))
+        self.assertFalse(policy.is_ready(access, ordinary))
+        for tid in (first, ml_overlap):
+            lesson = LearningService(topics[tid], self.root, DeterministicJudge(), learner_id=access['learner_id'])
+            with lesson._transaction() as con:
+                state = lesson._load(con)
+                state.update(status='completed', completed_at='2026-01-01T00:00:00+00:00')
+                lesson._save(con, state)
+        self.assertTrue(policy.is_ready(access, second))
+        with closing(store._connect()) as con:
+            self.assertEqual(con.execute('SELECT COUNT(*) FROM topics WHERE topic IN (?, ?)',
+                                         (covered, upstream)).fetchone()[0], 0)

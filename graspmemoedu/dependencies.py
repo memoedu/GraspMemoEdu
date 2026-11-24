@@ -2,11 +2,13 @@
 from contextlib import closing
 from datetime import datetime
 import json
+import re
 
 from .service import DomainError, now
 from .topic_runtime import is_introduction
 from .topic_structure import atomic_state, has_atomic
 from .dependency_nodes import group_key, group_parts
+from .mathacademy_formula_audit import ML_COURSES
 from .training_content import TrainingCatalog, permission_id
 
 
@@ -14,6 +16,14 @@ class DependencyPolicy:
     def __init__(self, catalog, access_store, subjects=None, training=None):
         self.catalog, self.access_store, self.subjects = catalog, access_store, subjects
         self.training = training or (TrainingCatalog(subjects.settings.data_dir) if subjects else None)
+        external_ma = {cid for cid, course in getattr(catalog, 'courses', {}).items()
+                       if re.fullmatch(r'ma-course-[0-9]+', cid) and cid not in ML_COURSES
+                       and not re.match(r'^Machine Learning\b', course.get('title', ''), re.I)}
+        self.ma_covered_topics = frozenset(
+            tid for tid, courses in getattr(catalog, 'topic_courses', {}).items()
+            if courses & ML_COURSES and courses & external_ma
+            and catalog.topics[tid].get('source_adapter') == 'mathacademy'
+        )
 
     def dependencies(self, course_id=None):
         if self.subjects is not None:
@@ -36,10 +46,22 @@ class DependencyPolicy:
         return (set(topic.get('prerequisite_scope_topic_ids',
                     [row['id'] for row in self.catalog.courses[scope]['topics']])) if scope else None)
 
-    def required_parents(self, topic_id, dependencies=None):
+    def prerequisite_parents(self, topic_id, dependencies=None):
+        """Return the parent lookup for the requested lesson's whole prerequisite chain."""
         dependencies = dependencies if dependencies is not None else self.dependencies()
         members = self.scope_members(topic_id)
-        return [parent for parent in dependencies.get(topic_id, []) if members is None or parent in members]
+        covered = (self.ma_covered_topics if self.ma_covered_topics and topic_id not in self.ma_covered_topics
+                   and self.catalog.topic_courses.get(topic_id, frozenset()) & ML_COURSES
+                   and self.catalog.topics[topic_id].get('source_adapter') == 'mathacademy' else ())
+
+        def parents(node):
+            return [parent for parent in dependencies.get(node, [])
+                    if parent not in covered and (members is None or parent in members)]
+
+        return parents
+
+    def required_parents(self, topic_id, dependencies=None):
+        return self.prerequisite_parents(topic_id, dependencies)(topic_id)
 
     @staticmethod
     def tables(con):
@@ -54,13 +76,9 @@ class DependencyPolicy:
         point_gate = self.group_point_status(con, access, topic_id, current_time)
         if access.get('is_admin'):
             return point_gate['missing_point_count']
-        dependencies = dependencies if dependencies is not None else self.dependencies()
-        # Scope belongs to the requested root. Filtering the cached graph would
-        # also grant this exception to ordinary downstream Topics.
-        members = self.scope_members(topic_id)
-        if members is not None:
-            dependencies = {node: [parent for parent in parents if parent in members]
-                            for node, parents in dependencies.items()}
+        # Apply the requested lesson's boundaries throughout traversal. The
+        # underlying source graph is shared with other lessons and courses.
+        parents = self.prerequisite_parents(topic_id, dependencies)
         allowed = {topic['id'] for topic in access['topics']}
         tables, checked, visiting = self.tables(con), {}, set()
         current = datetime.fromisoformat(current_time or now())
@@ -74,7 +92,7 @@ class DependencyPolicy:
                 visiting.add(node)
                 valid = (self.group_completed(con, access, node, current, tables)
                          and self.group_point_status(con, access, node, current.isoformat())['unlocked'])
-                valid = valid and all(healthy(parent) for parent in dependencies.get(node, []))
+                valid = valid and all(healthy(parent) for parent in parents(node))
                 visiting.remove(node)
                 checked[node] = bool(valid)
                 return bool(valid)
@@ -105,12 +123,12 @@ class DependencyPolicy:
             if valid and 'review_cards' in tables:
                 valid = not any(datetime.fromisoformat(card['due_at']) <= current for card in con.execute(
                     'SELECT due_at FROM review_cards WHERE learner=? AND topic=? AND version=?', (*key, version)))
-            valid = valid and all(healthy(parent) for parent in dependencies.get(node, []))
+            valid = valid and all(healthy(parent) for parent in parents(node))
             visiting.remove(node)
             checked[node] = bool(valid)
             return bool(valid)
 
-        return point_gate['missing_point_count'] + sum(not healthy(parent) for parent in set(dependencies.get(topic_id, [])))
+        return point_gate['missing_point_count'] + sum(not healthy(parent) for parent in set(parents(topic_id)))
 
     def group_point_status(self, con, access, node_id, current_time=None):
         from .linked_points import snapshot, eligibility, bypass_mastery
