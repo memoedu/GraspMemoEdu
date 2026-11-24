@@ -5,9 +5,9 @@ import {createRequire} from 'node:module';
 import {homedir} from 'node:os';
 import {launchAcceptanceChrome} from './launch_acceptance_chrome.mjs';
 
-const [assetRoot, site, voiceFile, invitationFile] = process.argv.slice(2);
+const [, site, voiceFile, invitationFile] = process.argv.slice(2);
 assert.equal(Boolean(voiceFile), Boolean(invitationFile), 'Provide both the microphone WAV and the fixture invitation file');
-const editor = 'https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v4/';
+const editor = 'https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/';
 const requireRuntime = createRequire(join(homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
 const chrome = await launchAcceptanceChrome(requireRuntime, voiceFile ? [
   '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', `--use-file-for-fake-audio-capture=${voiceFile}`,
@@ -15,6 +15,10 @@ const chrome = await launchAcceptanceChrome(requireRuntime, voiceFile ? [
 try {
   const browser = await chrome.newContext({viewport: {width: 1440, height: 880}, locale: 'zh-CN'});
   await browser.addInitScript(() => {
+    const srcdoc = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'srcdoc');
+    Object.defineProperty(HTMLIFrameElement.prototype, 'srcdoc', {...srcdoc, set(value) {
+      srcdoc.set.call(this, window.blockWhiteboardEditor ? '<!doctype html>' : value);
+    }});
     // The test writes real files using Chrome's isolated filesystem.
     // Only the native directory chooser and its permission prompt are simulated.
     if (globalThis.FileSystemHandle && navigator.storage) {
@@ -40,15 +44,10 @@ try {
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   const diagnostics = [];
-  let blockEditor = false;
   page.on('console', message => { if (message.type() === 'error') diagnostics.push(message.text()); });
   page.on('requestfailed', request => diagnostics.push(request.url() + ' ' + request.failure()?.errorText));
-  await page.route(editor + '**', async route => {
-    const path = new URL(route.request().url()).pathname.slice(new URL(editor).pathname.length);
-    if (blockEditor && path === 'whiteboard.html') return route.fulfill({status: 200, contentType: 'text/html', body: ''});
-    const contentType = path.endsWith('.js') ? 'text/javascript' : path.endsWith('.css') ? 'text/css' : 'text/html';
-    await route.fulfill({status: 200, contentType, body: await readFile(join(assetRoot, path))});
-  });
+  const externalEditorRequests = [];
+  page.on('request', request => { if (request.url().startsWith(editor)) externalEditorRequests.push(request.url()); });
   let calls = 0, selectionCalls = 0;
   let receiveFirstOcr, releaseFirstOcr;
   const firstOcrStarted = new Promise(resolve => { receiveFirstOcr = resolve; });
@@ -138,6 +137,7 @@ try {
   const preparedFrame = await page.locator('.whiteboardPanel[hidden] iframe').elementHandle();
   await bodyTools.getByRole('button', {name: '白板', exact: true}).click();
   assert.equal(await bodyBoard.locator('iframe').evaluate((frame, initial) => frame === initial, preparedFrame), true);
+  assert.equal(await bodyBoard.locator('iframe').getAttribute('sandbox'), 'allow-scripts');
   await bodyExpression.and(bodyBoard.locator('input:enabled')).waitFor();
   assert.equal(await bodySubmit.isVisible(), true);
   assert.equal(await bodySubmit.isDisabled(), true);
@@ -429,7 +429,7 @@ try {
       throw Error('Scene must survive a missing PNG');
     }
   });
-  blockEditor = true;
+  await page.evaluate(() => { window.blockWhiteboardEditor = true; });
   await page.evaluate(async () => {
     const toolsModule = document.querySelector('link[href*="/question-tools.js"]')?.href || '/question-tools.js';
     const {setQuestionTools} = await import(toolsModule);
@@ -446,11 +446,12 @@ try {
   await retryLauncher.click();
   await retryCase.getByText('白板载入失败，收起后重试。', {exact: true}).waitFor();
   await retryCase.getByRole('button', {name: '收起', exact: true}).click();
-  blockEditor = false;
+  await page.evaluate(() => { window.blockWhiteboardEditor = false; });
   await retryLauncher.click();
   await retryCase.getByRole('button', {name: '归档目录', exact: true}).and(retryCase.locator('button:enabled')).waitFor();
   assert.equal(await retryCase.locator('.whiteboardStatus').textContent(), '');
   assert.deepEqual(errors, []);
+  assert.deepEqual(externalEditorRequests, []);
   console.log(JSON.stringify({passed: true, checks: ['Topic reading tools, no answer submission, absent on home and subject landing', 'pre-answer whiteboard uses a disabled submit button',
     'split', 'swap', 'undo-redo', 'scribble erase and atomic undo', 'register survives clearing',
     voiceFile ? 'Chrome capture, transcription insertion and pending submit guard' : 'voice insertion event',
