@@ -78,6 +78,15 @@ try {
   assert.deepEqual((await sharedSource.allTextContents()).map(compact), ['a', '+b']);
   checks.push('Separate formulas keep their own source when sharing a wrapper');
 
+  const outline = page.locator('#clip-outline-only mjx-container[jax=HTML]');
+  await outline.locator('.katex-html .mfrac').waitFor();
+  assert.match(compact(await outline.locator('.katex-html').innerText()), /^a\+b\+c\+/);
+  await dragMath(page, '#clip-outline-only');
+  await page.keyboard.press('Control+c');
+  assert.equal(compact(await page.evaluate(() => navigator.clipboard.readText())), 'a+b');
+  assert.equal(await page.locator('#clip-unknown-outline mjx-container[jax=SVG] path').count(), 2);
+  checks.push('Known path-only math preserves glyphs and supports partial copy; unknown glyphs keep their SVG');
+
   await page.locator('#userMenuButton').click();
   await page.locator('#identityButton').click();
   const login = page.locator('#identityDialog');

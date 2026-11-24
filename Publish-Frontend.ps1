@@ -21,6 +21,7 @@ $files = @(Get-ChildItem -LiteralPath $ExportDirectory -File -Force -Recurse)
 $expected += @('training.js','training.css','training-messages.js','learning-ui.js')
 $expected += @('beginner-hints.js')
 $expected += @('math-presentation.js','math-syntax.js')
+$expected += @('vendor/mathjax-svg-glyphs/index.mjs','vendor/mathjax-svg-glyphs/LICENSE')
 $expected += @('review-papers.js','review-paper-messages.js')
 $expected += @('review-directory.js','task-tree.js','catalog-outline.js','content-timer.js','self-assessment.js')
 $expected += @('catalog-workspace.js','free-study.js')
@@ -166,7 +167,7 @@ if ($previousManifest) {
         $allowedPrior += $clipperRoot + $name
     }
 }
-$allowedDirectories = @('vendor','vendor/mermaid','vendor/chat','vendor/chat/fonts','vendor/book-font','vendor/calculator','vendor/formula','vendor/formula/fonts') + $pwaDirectories + $clipperDirs
+$allowedDirectories = @('vendor','vendor/mermaid','vendor/chat','vendor/chat/fonts','vendor/book-font','vendor/calculator','vendor/formula','vendor/formula/fonts','vendor/mathjax-svg-glyphs') + $pwaDirectories + $clipperDirs
 if ($priorTree.truncated -or @($priorTree.tree | Where-Object { ($_.type -eq 'blob' -and $_.path -notin $allowedPrior) -or ($_.type -eq 'tree' -and $_.path -notin $allowedDirectories) -or $_.type -notin @('blob','tree') }).Count) {
     throw 'Existing repository contains files outside the frontend allowlist. Publication stopped.'
 }
