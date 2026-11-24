@@ -3,12 +3,12 @@ import {mkdir, writeFile} from 'node:fs/promises';
 import {createRequire} from 'node:module';
 import os from 'node:os';
 import path from 'node:path';
+import {launchAcceptanceChrome} from './launch_acceptance_chrome.mjs';
 
 const [output, base = 'http://127.0.0.1:18885'] = process.argv.slice(2);
 const require = createRequire(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
-const {chromium} = require('playwright');
 await mkdir(output, {recursive: true});
-const browser = await chromium.launch({headless: true, channel: 'chrome'});
+const browser = await launchAcceptanceChrome(require);
 const context = await browser.newContext({viewport: {width: 1440, height: 900}, locale: 'zh-CN'});
 await context.addInitScript(() => {
   Object.defineProperty(navigator, 'clipboard', {value: {writeText: async value => {
@@ -46,6 +46,8 @@ const option = label => completions.getByRole('option', {name: label, exact: tru
 const assign = dialog.getByRole('button', {name: '变量值', exact: true});
 const variable = name => dialog.getByRole('textbox', {name: `变量 ${name}`, exact: true});
 const copyResult = dialog.getByRole('button', {name: '复制结果', exact: true});
+const storeResult = dialog.getByRole('button', {name: '储存', exact: true});
+const defineFunction = dialog.getByRole('button', {name: '定义函数', exact: true});
 const recall = dialog.getByRole('button', {name: '调用储值', exact: true});
 const more = dialog.locator('.calculatorMore');
 const categories = more.getByRole('combobox', {name: '类别'});
@@ -58,6 +60,8 @@ async function category(id) {
 async function store(letter, result) {
   await copyResult.click();
   assert.equal(await page.evaluate(() => window.copiedCalculatorText), result);
+  assert.equal(await dialog.locator('[data-calculator-key="digit_7"]').isVisible(), true);
+  await storeResult.click();
   assert.equal(await dialog.locator('[data-calculator-key="digit_7"]').isVisible(), false);
   await dialog.getByRole('button', {name: `存入 ${letter}`, exact: true}).click();
   assert.equal(await dialog.locator('[data-calculator-key="digit_7"]').isVisible(), true);
@@ -143,19 +147,13 @@ try {
   await dialog.getByRole('button', {name: '关闭计算器'}).click();
   assert.equal(await tool('graph').evaluate(button => button === document.activeElement), true);
   assert.equal(await tool('graph').getAttribute('aria-expanded'), 'false');
-  await launch.evaluate(button => {
-    button.addEventListener('click', event => {
-      requestAnimationFrame(() => {
-        const panel = document.querySelector('.questionCalculator[open]');
-        button.dataset.openInClickFrame = String(!!panel && panel.contains(document.activeElement));
-        requestAnimationFrame(now => { button.dataset.openFrameMs = String(now - event.timeStamp); });
-      });
-    }, {once: true});
+  const {openFrameMs, opened} = await launch.evaluate(button => {
+    const start = performance.now();
+    button.click();
+    const panel = document.querySelector('.questionCalculator[open]');
+    return {openFrameMs: performance.now() - start, opened: !!panel && panel.contains(document.activeElement)};
   });
-  await open();
-  await page.waitForFunction(() => document.querySelector('[data-question-tool="expression"]')?.dataset.openFrameMs);
-  assert.equal(await launch.getAttribute('data-open-in-click-frame'), 'true');
-  const openFrameMs = Number(await launch.getAttribute('data-open-frame-ms'));
+  assert.equal(opened, true);
   assert.ok(openFrameMs >= 0 && openFrameMs < 100, `Calculator took ${openFrameMs} ms to render`);
   assert.equal(workerStarts, 0);
   assert.deepEqual(workerRequests, []);
@@ -225,6 +223,10 @@ try {
   await notation.waitFor({state: 'hidden'});
   checks.push('FORMAT toggles large and small scalar results without recalculation or typography changes on desktop or mobile.');
   await store('A', '5');
+  await enter('A += 1', '6');
+  await enter('A -= 1', '5');
+  await enter('A == 5', '1');
+  await enter('A != 5', '0');
   await expressionInput.fill('');
   await recall.click();
   assert.equal(await dialog.getByRole('button', {name: '调用 B', exact: true}).isDisabled(), true);
@@ -235,18 +237,27 @@ try {
   await store('A', '10');
   await page.evaluate(() => { window.rejectCalculatorClipboard = true; });
   await copyResult.click();
-  await dialog.getByText('剪贴板不可用，仍可储值。', {exact: true}).waitFor();
+  await dialog.getByText('剪贴板不可用。', {exact: true}).waitFor({state: 'attached'});
+  await storeResult.click();
   await dialog.getByRole('button', {name: '存入 B', exact: true}).click();
   await enter('B', '10');
   await page.evaluate(() => { window.rejectCalculatorClipboard = false; });
   await enter('θ=5', '5');
   await expressionInput.fill('θ+3');
-  await dialog.getByRole('button', {name: '储存', exact: true}).click();
+  await storeResult.click();
   const storageName = dialog.getByRole('textbox', {name: '储存变量名'});
+  assert.equal(await storageName.evaluate(input => input === document.activeElement), true);
+  assert.equal(await dialog.locator('[data-calculator-key="digit_7"]').isVisible(), false);
+  await dialog.getByRole('button', {name: '存入 C', exact: true}).waitFor();
   await storageName.fill('v^{2}');
   await page.screenshot({path: path.join(output, 'named-storage.png')});
   await storageName.press('Enter');
   await text('8');
+  assert.equal(await dialog.locator('[data-calculator-key="digit_7"]').isVisible(), true);
+  await enter('3+3', '6');
+  await storeResult.click();
+  await dialog.getByRole('button', {name: '存入 C', exact: true}).click();
+  await enter('C', '6');
   await enter('ρ₁=2', '2');
   await enter('v²+ρ_1+θ', '15');
   await dialog.getByRole('button', {name: '储存', exact: true}).click();
@@ -263,11 +274,55 @@ try {
   assert.equal(await dialog.isVisible(), true);
   await dialog.getByRole('button', {name: '关闭计算器'}).click();
   await open();
-  assert.equal(await recall.isDisabled(), true);
-  await expressionInput.fill('A');
+  assert.equal(await recall.isDisabled(), false);
+  await enter('A', '10');
+  await expressionInput.fill('A+T');
   await assign.click();
-  await variable('A').waitFor();
-  checks.push('Store, overwrite, caret recall, clipboard copy, automatic binding, and fresh memory on reopen.');
+  await variable('T').waitFor();
+  assert.equal(await variable('A').count(), 0);
+  checks.push('Store, overwrite, caret recall, separate clipboard copy, and same-question memory on reopen.');
+  await more.locator(':scope > summary').click();
+  assert.equal(await categories.inputValue(), 'common');
+  assert.equal(await categories.locator('option:checked').textContent(), '一元函数');
+  await more.getByRole('button', {name: 'sinh', exact: true}).waitFor();
+  await categories.selectOption('multi');
+  await more.getByRole('button', {name: 'nCr', exact: true}).waitFor();
+  await categories.selectOption('common');
+  await more.locator(':scope > summary').click();
+  await expressionInput.fill('$\\sinh（0）+\\cosh（0）$');
+  await expressionInput.press('Enter');
+  await text('1');
+  await enter('X = 8', '8');
+  await enter('F = X + 1', '9');
+  await defineFunction.click();
+  assert.equal(await defineFunction.getAttribute('aria-pressed'), 'true');
+  await expressionInput.fill('X + 1');
+  await calculate();
+  await text('请输入函数定义，例如 F = X + 1 或 F(X, Y) = X + Y。');
+  assert.equal(await defineFunction.getAttribute('aria-pressed'), 'true');
+  await enter('F = X + 1', 'F(X) = X + 1');
+  assert.equal(await defineFunction.getAttribute('aria-pressed'), 'false');
+  await enter('Ans', '9');
+  await expressionInput.fill('F');
+  await option('F').waitFor();
+  await expressionInput.press('Tab');
+  assert.equal(await expressionInput.inputValue(), 'F(');
+  await expressionInput.pressSequentially('3)');
+  await expressionInput.press('Enter');
+  await text('4');
+  await defineFunction.click();
+  await enter('G = 10*Y + X', 'G(X, Y) = 10*Y + X');
+  await enter('G（3，4）', '43');
+  await enter('G(Y, X) = 10*Y + X', 'G(Y, X) = 10*Y + X');
+  await enter('G(3, 4)', '34');
+  await enter('F = X + 1', '9');
+  await enter('F(3)', '请检查函数名与括号中的参数个数。');
+  await enter('F', '9');
+  await expressionInput.fill('F(3)');
+  await expressionInput.evaluate(input => input.setSelectionRange(1, 1));
+  await expressionInput.evaluate(input => input.dispatchEvent(new Event('input', {bubbles: true})));
+  assert.equal(await option('F').count(), 0);
+  checks.push('Unary default, multivariable picker, symbolic definition mode, explicit parameters, native completion and overwrite.');
   await expressionInput.fill('f');
   await option('floor').waitFor();
   await expressionInput.press('Tab');
@@ -523,7 +578,7 @@ try {
   await page.getByRole('button', {name: '隔离习题 exact', exact: true}).click();
   await page.getByRole('heading', {name: '习题 2', exact: true}).waitFor();
   await dialog.waitFor({state: 'detached'});
-  assert.equal(await toolbar.count(), 0);
+  assert.deepEqual(await toolIds(), []);
   checks.push('Standalone question banks use the outer toolbar and revoke it on an unconfigured question.');
   await page.goto(`${base}/#/settings`);
   const settings = page.getByRole('group', {name: '自动补全'});
@@ -573,6 +628,11 @@ try {
   console.log(JSON.stringify({checks, openFrameMs, coldArithmeticMs: immediate.ms, pageErrors: errors.length}));
 } catch (error) {
   await page.screenshot({path: path.join(output, 'failure.png')}).catch(() => {});
+  console.error(await dialog.evaluate(panel => ({
+    expression: panel.querySelector('.calculatorExpression')?.value,
+    result: panel.querySelector('.calculatorResult')?.textContent,
+    focused: document.activeElement?.getAttribute('aria-label'),
+  })).catch(() => null));
   throw error;
 } finally {
   await browser.close();
