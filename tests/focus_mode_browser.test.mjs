@@ -21,7 +21,7 @@ after(async () => { await browser?.close(); });
 
 async function fixture(t, {hierarchy = false, bank = false, width = 1440, context, standalone = false,
   hash = '#/subjects/math/' + (bank ? 'banks/fixture?root=chapter' : 'courses/fixture?root=chapter'),
-  learnerId = 'fixture', unavailable = 0, tools = false, long = false, denyFullscreen = false} = {}) {
+  learnerId = 'fixture', unavailable = 0, tools = false, help = false, long = false, denyFullscreen = false} = {}) {
   const page = context ? await context.newPage() : await browser.newPage({serviceWorkers: 'block', viewport: {width, height: 900}});
   if (standalone) await page.addInitScript(() => {
     const nativeMatchMedia = window.matchMedia.bind(window);
@@ -42,20 +42,22 @@ async function fixture(t, {hierarchy = false, bank = false, width = 1440, contex
     await route.fulfill({path: fileURLToPath(new URL(name, web)),
       contentType: /\.m?js$/.test(name) ? 'text/javascript' : undefined});
   });
-  if (tools) await page.route('https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v1/whiteboard.html*',
+  if (tools) await page.route('https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/*/whiteboard.html*',
     route => route.fulfill({contentType: 'text/html', body: '<!doctype html><title>Isolated whiteboard layout fixture</title>'}));
   const url = new URL(base);
   url.hash = hash;
   await page.goto(url.href, {waitUntil: 'domcontentloaded'});
-  await page.evaluate(async ({hierarchy, learnerId, unavailable, tools, long}) => {
+  await page.evaluate(async ({hierarchy, learnerId, unavailable, tools, help, long}) => {
     const moduleHref = name => document.querySelector('link[rel="modulepreload"][href*="./' + name + '.js"]').href;
     const {initPortal} = await import(moduleHref('portal'));
     const {setQuestionTools} = await import(moduleHref('question-tools'));
+    const {reportableContent, placeContentActions} = await import(moduleHref('content-report'));
     const outline = [{id: 'chapter', title: 'Chapter', parent_id: null, topic_ids: []},
       {id: 'first', title: 'First', parent_id: 'chapter', topic_ids: ['current', 'locked', 'following']},
       {id: 'second', title: 'Second', parent_id: 'chapter', topic_ids: ['other']}];
     const course = {id: 'fixture', title: 'Fixture', root_id: 'chapter', outline};
     const access = {learner_id: learnerId, role: 'account', features: ['learn', 'review_history', 'course_hierarchy']};
+    if (help) access.features.push('request_help');
     let verified = false;
     const lessons = ['current', 'locked', 'following', 'other'].map(id => ({
       id, topic_id: id, title: id, type: 'Lesson', status: 'not_started', dependency_ready: id !== 'locked',
@@ -103,13 +105,20 @@ async function fixture(t, {hierarchy = false, bank = false, width = 1440, contex
         const finish = document.createElement('a'); finish.href = '#/subjects/math/courses/fixture?root=chapter';
         finish.textContent = 'Return to course';
         element('stepCard').replaceChildren(content);
+        if (help) {
+          const actions = document.createElement('div'); actions.className = 'questionActions';
+          const heading = document.createElement('div'); heading.className = 'stepHeader'; heading.append(actions);
+          reportableContent(content, {topic_id: id}, 'question:fixture', 'fixture');
+          placeContentActions(content, actions);
+          element('stepCard').prepend(heading);
+        }
         if (long) for (let i = 0; i < 55; i++) element('stepCard').append(content.cloneNode(true));
         element('stepCard').append(portal.completionAction(finish));
         if (tools) setQuestionTools(element('stepCard'), {calculate: {level: 'scientific'}}, {key: id, editable: true});
       },
     });
     await portal.start();
-  }, {hierarchy, learnerId, unavailable, tools, long});
+  }, {hierarchy, learnerId, unavailable, tools, help, long});
   return page;
 }
 
@@ -193,16 +202,19 @@ const geometry = page => page.evaluate(() => {
     overflows: document.documentElement.scrollWidth > innerWidth};
 });
 
-test('Short content centers in real fullscreen and moves only when a tool opens', async t => {
-  const page = await fixture(t, {hash: readerHash, tools: true});
+test('Idle tools and the feedback icon get a rightward offset without clipping either panel', async t => {
+  const page = await fixture(t, {hash: readerHash, tools: true, help: true});
   const evidence = process.env.GRASPMEMOEDU_FOCUS_SCREENSHOTS;
   const shot = name => evidence && page.screenshot({path: path.join(evidence, name + '.png')});
   await page.locator('#focusToggle').click();
   await waitForFullscreen(page);
   const center = await geometry(page);
-  assert.ok(!center.overflows && Math.abs(center.midX - center.centerX) < 2, JSON.stringify(center));
+  assert.ok(!center.overflows && center.midX - center.centerX > 40 && center.midX - center.centerX < 60, JSON.stringify(center));
   assert.ok(center.width <= 700, JSON.stringify(center));
   assert.ok(Math.abs(center.midY - center.centerY) < 12, JSON.stringify(center));
+  const help = await page.locator('.contentReportToggle').boundingBox();
+  const rail = await page.locator('.questionToolRail').boundingBox();
+  assert.ok(help && rail && help.x + help.width <= center.right && rail.x > center.right);
   await shot('desktop-tools-idle');
   await page.locator('[data-question-tool="expression"]').click();
   await page.locator('.questionCalculator[open]').waitFor();
@@ -222,6 +234,30 @@ test('Short content centers in real fullscreen and moves only when a tool opens'
   await page.evaluate(() => document.exitFullscreen());
   await page.locator('.topRibbon').waitFor();
   assert.ok(!new URL(page.url()).hash.includes('focus='));
+});
+
+test('A feedback icon alone offsets the idle question on desktop', async t => {
+  const page = await fixture(t, {hash: readerHash, help: true, width: 1024});
+  await page.locator('#focusToggle').click();
+  await waitForFullscreen(page);
+  const {midX, centerX, overflows} = await geometry(page);
+  assert.ok(!overflows && midX - centerX >= 30 && midX - centerX <= 40);
+  assert.equal(await page.locator('.contentReportToggle').isVisible(), true);
+});
+
+test('Escape closes fullscreen and Focus Mode while keeping the reader route', async t => {
+  const page = await fixture(t, {hash: readerHash, tools: true});
+  await page.locator('#focusToggle').click();
+  await waitForFullscreen(page);
+  await page.locator('[data-question-tool="expression"]').click();
+  await page.keyboard.press('Escape');
+  await page.locator('.questionCalculator[open]').waitFor({state: 'hidden'});
+  assert.equal(await page.evaluate(() => document.fullscreenElement === document.documentElement), true);
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.fullscreenElement, null, {timeout: 5000});
+  await page.locator('.topRibbon').waitFor();
+  assert.equal(new URL(page.url()).hash, readerHash);
+  assert.equal(await page.locator('#focusToggle').getAttribute('aria-pressed'), 'false');
 });
 
 test('A restored focus URL offers one-click fullscreen and a non-reader route relinquishes it', async t => {
