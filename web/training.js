@@ -20,7 +20,7 @@ import {voiceAnswerPending} from './voice-input.js?v=06a0f801bfc16166';
 import {questionWhiteboard} from './whiteboard-answer.js?v=06a0f801bfc16166';
 
 export function createTrainingView(bridge) {
-  const {root, request, href, formatDate, getAccess} = bridge;
+  const {root, request, href, formatDate, getAccess, topicBody} = bridge;
   function settled(previous, next) {
     const access = getAccess();
     if (previous.attempt_id !== next.attempt_id || previous.phase === 'done' || next.phase !== 'done') return;
@@ -365,7 +365,7 @@ export function createTrainingView(bridge) {
     flushClock(); clockKey = null; clearTimeout(timer); ++selection; current = null;
     selectedIntroduction = id; reader.closeOnMobile(); renderSidebar();
     const step = {...intro, kind: 'introduction'};
-    renderReaderStep(main, step, {titleId: 'trainingStepTitle', counter: t('阅读'), toolAnchor: embedded?.toolAnchor ?? main});
+    renderReaderStep(main, step, {titleId: 'trainingStepTitle', counter: t('阅读'), toolAnchor: embedded?.toolAnchor ?? main, topicBody});
     reader.refs.footerPosition.textContent = readerStepTitle(step); reader.refs.saveStatus.textContent = '';
     if (!embedded) history.replaceState(null, '', (bridge.readerHref || href)(
       groupPath(group.bank_id, group.id) + (selectedRoot ? '&' : '?') + 'introduction=' + encode(id)));
@@ -373,7 +373,7 @@ export function createTrainingView(bridge) {
   }
   async function select(questionId, fresh = false, attemptId = null) {
     flushClock(); clockKey = null; clearTimeout(timer);
-    setQuestionTools(embedded?.toolAnchor ?? main);
+    setQuestionTools(embedded?.toolAnchor ?? main, undefined, undefined, topicBody);
     reader.closeOnMobile();
     selectedIntroduction = null;
     const e = epoch, s = ++selection, q = group.questions.find(q => q.id === questionId);
@@ -413,13 +413,15 @@ export function createTrainingView(bridge) {
       reason: result.reason, details: [
         state.stopped && !result.stop_requested ? t('training.stopped') : result.practice_only && !state.stopped ? t('training.practice') : null,
         state.due_at ? t('training.nextDue', {time: formatDate(state.due_at)}) : null]} : null;
-    const currentBoard = () => alive(e, s) && current?.attempt_id === state.attempt_id && current.phase === 'answer' &&
-      current.multi_step?.current_step_id === state.multi_step?.current_step_id && current.can_submit && !current.submission_id;
+    const viewing = () => alive(e, s) && current?.attempt_id === state.attempt_id &&
+      current.multi_step?.current_step_id === state.multi_step?.current_step_id;
+    const currentBoard = () => viewing() && current.phase === 'answer' && current.can_submit && !current.submission_id;
+    const canSubmit = !state.revealed && !state.preview && currentBoard();
     const whiteboard = !state.hyperskill && !state.academy && questionWhiteboard({
       key: JSON.stringify([location.origin, getAccess()?.learner_id, state.bank_id, state.question_id]), question: state.question,
       activePart: state.multi_step?.steps?.[state.multi_step.current_index],
-      editable: !state.revealed && !state.preview && currentBoard(),
-      current: currentBoard, language: getLanguage(), request,
+      editable: Boolean(topicBody) || canSubmit, canSubmit,
+      current: canSubmit || !topicBody ? currentBoard : viewing, language: getLanguage(), request,
       submit: async answer => {
         const payload = {request_id: crypto.randomUUID(), attempt_id: state.attempt_id, answer, elapsed_ms: flushClock(),
           ...(state.multi_step ? {step_id: state.multi_step.current_step_id} : {})};
@@ -429,9 +431,9 @@ export function createTrainingView(bridge) {
         settled(state, next); current = next; renderQuestion();
       },
     });
-    const {stem} = renderReaderStep(main, {...state.question, answer: state.answer, answer_display: state.answer_display,
+    const {stem} = renderReaderStep(main, {...state.question, kind: 'question', answer: state.answer, answer_display: state.answer_display,
       explanation_html: state.explanation_html, multi_step: state.multi_step}, {titleId: 'trainingStepTitle', title: t('training.exercise', {number: index + 1}),
-      whiteboard,
+      whiteboard, topicBody,
       counter: t('reader.modulePosition', {current: index + 1, total: group.questions.length}), toolAnchor: embedded?.toolAnchor ?? main,
       showSubmittedInteraction: state.phase !== 'answer', submittedId: 'trainingSubmittedInteraction',
       showAnswer: Boolean(state.answer_display && state.phase === 'done'), feedback, feedbackClass: 'trainingVerdict',

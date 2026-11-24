@@ -1024,19 +1024,26 @@ async function sendSubmission(payload) {
   }
 }
 
+function topicBodyTools() {
+  const topic = state.topic_id, learner = learnerScope(), generation = connectionGeneration;
+  return {key: JSON.stringify(['topic-body', scope(), learner, topic]), request: topicRequest,
+    current: () => connectionGeneration === generation && state?.topic_id === topic && learnerScope() === learner};
+}
+
 function lessonWhiteboard(step, actions) {
   if (!step.question_id || !['example', 'practice'].includes(step.kind)) return;
   const topic = state.topic_id, attempt = state.attempt_id, revision = state.revision;
   const learner = learnerScope();
-  const current = () => state?.topic_id === topic && state?.attempt_id === attempt && state?.revision === revision &&
-    state?.active_step_id === step.id && selectedStep()?.id === step.id && learnerScope() === learner &&
-    !state.pending_submission_id && !actionBusy && can('submit_answer');
+  const viewing = () => state?.topic_id === topic && state?.attempt_id === attempt && state?.revision === revision &&
+    selectedStep()?.id === step.id && learnerScope() === learner;
   const canSubmit = step.phase === 'answer' && !step.revealed && actions.includes('submit') &&
-    step.id === state.active_step_id && can('submit_answer');
+    step.id === state.active_step_id && !state.pending_submission_id && can('submit_answer');
   return questionWhiteboard({
     key: JSON.stringify([apiBase, learner, topic, step.question_id]), question: step,
-    editable: canSubmit || actions.includes('mastered') || actions.includes('unmastered'), canSubmit,
-    current, request: topicRequest, language: getLanguage(),
+    editable: true, canSubmit,
+    current: canSubmit ? () => viewing() && state.active_step_id === step.id && !state.pending_submission_id &&
+      !actionBusy && can('submit_answer') : viewing,
+    request: topicRequest, language: getLanguage(),
     submit: answer => sendSubmission(mutationPayload({answer, elapsed_ms: syncAnswerClock()})),
   });
 }
@@ -1383,6 +1390,7 @@ function renderStep(step) {
       renderSourceReader($('stepCard'), state, index, show, {
         value: storageRead(sessionStorage, draftKey, ''),
         save: value => storageWrite(sessionStorage, draftKey, value),
+        topicBody: topicBodyTools(),
       });
     };
     show(Number(storageRead(sessionStorage, key, '0')) || 0);
@@ -1398,13 +1406,13 @@ function renderStep(step) {
     const bankKey = JSON.stringify([state.course_version, reference.version, step.id, access?.learner_id, access?.features]);
     if (topicTrainingKey !== bankKey) {
       stopTopicTraining(); target.replaceChildren(); target.dataset.stepId = step.id;
-      setQuestionTools(target);
+      setQuestionTools(target, undefined, undefined, topicBodyTools());
       const heading = readingSectionHeading(step.section); if (heading) target.append(heading);
       const host = el('div', 'topicBankQuestion'); target.append(host);
       topicTrainingKey = bankKey;
       topicTraining = createTrainingView({root: host, request: (path, options) => request(path +
         (path.includes('?') ? '&' : '?') + new URLSearchParams({subject_id: topicSubjectId}), options),
-        getAccess: () => access, href: path => '#/subjects/' + topicSubjectId + path,
+        getAccess: () => access, topicBody: topicBodyTools(), href: path => '#/subjects/' + topicSubjectId + path,
         formatDate: value => new Date(value).toLocaleString(), progressChanged: () => portal?.progressChanged()});
       void topicTraining.mount(reference, host, () => refreshState({force: true}), target);
     }
@@ -1434,7 +1442,7 @@ function renderStep(step) {
     return;
   }
   if (step.kind === "completion") {
-    setQuestionTools(target);
+    setQuestionTools(target, step, undefined, topicBodyTools());
     renderCompletion(target);
     renderStepNavigation(target, step, []);
     mountTopicBacklinks(target, state.content_references);
@@ -1453,7 +1461,7 @@ function renderStep(step) {
   }
   const selfRated = ['example', 'practice'].includes(step.kind) && isCourseSelfRating(step.feedback?.reason);
   const {stem} = renderReaderStep(target, step, {title: readerStepTitle(step), counter, references: state.content_references,
-    whiteboard: lessonWhiteboard(step, actions),
+    whiteboard: lessonWhiteboard(step, actions), topicBody: topicBodyTools(),
     showSubmittedInteraction: !actions.includes('submit'),
     submittedValue: step.answer || (step.id === state.active_step_id ? draftValue(step) : ''),
     showAnswer: selfRated ? false : undefined,
@@ -1818,9 +1826,7 @@ void ensureDeployment().catch(() => {});
 clipper = installClipper({request, identity: () => !identityProblem && access?.role === 'account' ? access.learner_id : null});
 installFormulaSelection({canExcerpt: clipper.canExcerptFormula, excerpt: clipper.excerptFormula});
 installToolbars($('pageTools'), installVoiceInput({canUse: () => !identityProblem && access?.role === 'account',
-  getIdentity: () => `${identityGeneration}:${connectionGeneration}`, getAccountScope: () => identityGeneration, request}), clipper.toggle, {
-  request, getScope: () => !identityProblem && access && JSON.stringify([scope(), access.learner_id]),
-});
+  getIdentity: () => `${identityGeneration}:${connectionGeneration}`, getAccountScope: () => identityGeneration, request}), clipper.toggle);
 installAnswerConversion(request);
 const { initPortal } = await import("./portal.js?v=06a0f801bfc16166");
 startPresence({getAccess: () => identityProblem ? null : access, request, getTopics: visibleContentTopics});

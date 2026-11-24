@@ -142,7 +142,7 @@ export function renderSourceReader(target, state, index = 0, onNavigate = () => 
   if (block) {
     const article = node('section', 'sourceReadingBlock');
     renderReaderStep(article, block, {titleId: 'sourceReadingTitle', submittedId: 'sourceInput', showAnswer: false,
-      editInteraction: block.preview_answer ? draft : null, toolAnchor: target});
+      editInteraction: block.preview_answer ? draft : null, toolAnchor: target, topicBody: draft.topicBody});
     target.append(article);
     const nav = node('nav', 'stepNavigation'); nav.setAttribute('aria-label', '阅读内容');
     nav.append(action('上一页', 'secondaryButton', () => onNavigate(index - 1), index === 0),
@@ -151,7 +151,7 @@ export function renderSourceReader(target, state, index = 0, onNavigate = () => 
     for (const control of nav.querySelectorAll('button')) control.dataset.navAvailable = String(!control.disabled);
     target.append(nav);
   } else {
-    setQuestionTools(target);
+    setQuestionTools(target, undefined, undefined, draft.topicBody);
     target.append(node('p', '', '原材料尚无正文。'));
   }
   if (state.references?.length) {
@@ -170,8 +170,8 @@ export function renderReaderStep(target, step, {titleId = 'stepTitle', title = r
   showSubmittedInteraction = !step.actions?.includes('submit'), submittedValue = step.answer || '',
   showAnswer = step.answer !== null && step.answer !== undefined && step.answer !== '',
   feedback = step.feedback, feedbackClass = '', referenceSource = step,
-  showExplanation = !(step.revealed && step.actions?.includes('submit')), notice, editInteraction = null, toolAnchor = target, whiteboard} = {}) {
-  setQuestionTools(toolAnchor, step, whiteboard);
+  showExplanation = !(step.revealed && step.actions?.includes('submit')), notice, editInteraction = null, toolAnchor = target, whiteboard, topicBody} = {}) {
+  setQuestionTools(toolAnchor, step, whiteboard, topicBody);
   const heading = node('div', 'stepHeader'), titleNode = node('h2', 'stepTitle', title);
   titleNode.id = titleId; titleNode.tabIndex = -1; heading.append(titleNode);
   if (counter) heading.append(node('span', 'stepCounter', counter));

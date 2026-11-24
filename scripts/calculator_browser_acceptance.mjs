@@ -105,6 +105,9 @@ try {
   await page.goto(`${base}/#/subjects/math/topic/${fixtureId}`);
   await next.waitFor();
   assert.equal(await toolbar.count(), 0);
+  const readingTools = page.getByRole('toolbar', {name: '正文工具'});
+  await readingTools.getByRole('button', {name: '白板', exact: true}).waitFor();
+  await readingTools.getByRole('button', {name: '科学计算器', exact: true}).waitFor();
   assert.deepEqual(workerRequests, []);
   await next.click();
   assert.deepEqual(await toolIds(), ['expression', 'graph']);
@@ -514,6 +517,7 @@ try {
   await enter('D/2', '21');
   await dialog.getByRole('button', {name: '关闭计算器'}).click();
   await next.click();
+  await tool('expression').waitFor({state: 'detached'});
   assert.deepEqual(await toolIds(), []);
   await next.click(); await open();
   await expressionInput.fill('2x');
