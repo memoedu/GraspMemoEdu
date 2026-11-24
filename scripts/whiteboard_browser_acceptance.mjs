@@ -120,8 +120,7 @@ try {
   assert.equal(await bodySubmit.isVisible(), true);
   assert.equal(await bodySubmit.isDisabled(), true);
   assert.equal(await bodySubmit.evaluate(button => getComputedStyle(button).backgroundColor), 'rgb(224, 224, 224)');
-  async function dictateIntoBodyTool(field) {
-    await field.fill('');
+  async function recordTwoSeconds(field) {
     await field.focus();
     await page.getByRole('button', {name: '录音输入', exact: true}).click();
     const finish = page.getByRole('button', {name: '结束录音', exact: true});
@@ -131,6 +130,10 @@ try {
       return Number(minutes) * 60 + Number(seconds) >= 2;
     });
     await finish.click();
+  }
+  async function dictateIntoBodyTool(field) {
+    await field.fill('');
+    await recordTwoSeconds(field);
     await page.waitForFunction(input => input.value === '2+3', await field.elementHandle());
     await page.getByText('已插入转写文字。', {exact: true}).waitFor();
   }
@@ -317,11 +320,7 @@ try {
   const send = panel.getByRole('button', {name: '提交', exact: true});
   if (voiceFile) {
     await expression.fill('');
-    await page.getByRole('button', {name: '录音输入', exact: true}).click();
-    const end = page.getByRole('button', {name: '结束录音', exact: true});
-    await end.waitFor();
-    await page.locator('.voiceDuration:visible').filter({hasText: '02 秒'}).waitFor();
-    await end.click();
+    await recordTwoSeconds(expression);
     await voiceStarted;
     await send.click();
     await panel.getByText('请先结束录音并等待转写完成。', {exact: true}).waitFor();
