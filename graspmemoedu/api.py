@@ -5,6 +5,7 @@ from contextlib import ExitStack, asynccontextmanager, closing
 import hmac
 import json
 from pathlib import Path
+import re
 import secrets
 import sqlite3
 import threading
@@ -151,6 +152,15 @@ class ServiceCache(dict):
 
 def create_app(settings: Settings | None = None, service: LearningService | None = None, *, atomic_clock=None):
     settings = settings or Settings.load()
+    web_directory = Path(__file__).resolve().parent.parent / 'web'
+    whiteboard_script = ''
+    try:
+        with (web_directory / 'whiteboard-editor.js').open(encoding='utf-8') as editor:
+            integrity = re.fullmatch(r'// Editor script integrity: (sha256-[A-Za-z0-9+/]{43}=)\n', editor.readline())
+        if integrity:
+            whiteboard_script = f" '{integrity[1]}'"
+    except FileNotFoundError:
+        pass
     catalog = Catalog.load(settings, service.course if service else None)
     training = TrainingCatalog(settings.data_dir)
     subjects = Subjects(settings, catalog, training=training)
@@ -647,7 +657,7 @@ def create_app(settings: Settings | None = None, service: LearningService | None
                 response.headers['Cache-Control'] = 'public, max-age=31536000, immutable'
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Referrer-Policy'] = 'no-referrer'
-        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:* http://localhost:*; object-src 'none'; frame-src 'self' https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v1/ https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v2/ https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v3/ https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v4/; base-uri 'self'; frame-ancestors 'none'"
+        response.headers['Content-Security-Policy'] = f"default-src 'self'; script-src 'self'{whiteboard_script}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:* http://localhost:*; object-src 'none'; frame-src 'self' https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v1/ https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v2/ https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v3/ https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v4/; base-uri 'self'; frame-ancestors 'none'"
         if path in ('/vendor/knowledge-clipper/index.html', '/vendor/knowledge-clipper/chat/index.html'):
             # The learning page hosts these two packaged editors on its own origin.
             response.headers['Content-Security-Policy'] = (
@@ -999,5 +1009,5 @@ def create_app(settings: Settings | None = None, service: LearningService | None
         activate_points=activate_reading_points,
         dictionary=lambda word: lookup_word(word, data_dir=settings.data_dir / 'context-dictionary'),
         connect_for=lambda access, request: reading_service(access, request)._connect)
-    app.mount('/', StaticFiles(directory=Path(__file__).resolve().parent.parent / 'web', html=True), name='web')
+    app.mount('/', StaticFiles(directory=web_directory, html=True), name='web')
     return app
