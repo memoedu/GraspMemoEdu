@@ -6,6 +6,7 @@ GitHub Pages remains the frontend. The backend uses the existing Tencent Lightho
 
 - `/opt/graspmemoedu/app`: application source; `/opt/graspmemoedu/venv`: Python runtime.
 - `/opt/graspmemoedu/judge`: existing MathAnswerJudge module and prompt.
+  The module must support `AnswerJudge(..., additional_instructions=...)` for the website's semantic grading policy. Update it before activating website code that uses this option.
 - `/var/lib/graspmemoedu`: private course content, SQLite database, guides and settings, owned by the dedicated `graspmemoedu` service account.
 - `/etc/graspmemoedu/judge.env`: root-only website-specific judge credentials. Never use Codex outsourcing credentials.
 - `graspmemoedu.service`: loopback backend on 127.0.0.1:18768, automatic startup; both backend and nginx use `Restart=always`, with a five-second delay after unexpected process exit (including clean exit).

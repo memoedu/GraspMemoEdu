@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
-from graspmemoedu.judge import ExistingJudge, independent_settings
+from graspmemoedu.judge import ExistingJudge, ROUNDING_INSTRUCTIONS, independent_settings
 
 
 class JudgeSettingsTests(unittest.TestCase):
@@ -27,9 +27,12 @@ class JudgeSettingsTests(unittest.TestCase):
 
     def test_next_call_uses_changed_settings_without_restarting_adapter(self):
         seen = []
+        instructions = []
+
         class FakeJudge:
-            def __init__(self, config):
+            def __init__(self, config, *, additional_instructions):
                 seen.append(config)
+                instructions.append(additional_instructions)
             def judge(self, *args):
                 return SimpleNamespace(status='judged', correct=True, reason='ok')
         adapter = ExistingJudge(Path('.'))
@@ -37,6 +40,9 @@ class JudgeSettingsTests(unittest.TestCase):
         with patch('graspmemoedu.judge.independent_settings', side_effect=[
                 {'api_key': 'first', 'base_url': 'https://example.com', 'model': 'first-model'},
                 {'api_key': 'second', 'base_url': 'https://example.com', 'model': 'second-model'}]):
-            self.assertEqual(adapter('question', 'reference', 'answer')['status'], 'judged')
+            self.assertEqual(adapter('Find the area to two decimal places.', 'reference', 'answer')['status'], 'judged')
             self.assertEqual(adapter('question', 'reference', 'answer')['status'], 'judged')
         self.assertEqual([row['model'] for row in seen], ['first-model', 'second-model'])
+        self.assertEqual(instructions, [ROUNDING_INSTRUCTIONS, ROUNDING_INSTRUCTIONS])
+        self.assertEqual((seen[0]['thinking'], seen[0]['max_tokens']), ('enabled', 4096))
+        self.assertNotIn('thinking', seen[1])

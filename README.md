@@ -198,7 +198,7 @@ GUIDE 复用这两个渲染依赖，并使用 sanitize-html 2.17.7 清理 HTML�
 npm install --prefix 'D:\Caches\GraspMemoEdu\node-runtime' --cache 'D:\Caches\npm' --save-exact --no-audit --no-fund sanitize-html@2.17.7
 ```
 
-判题复用 `D:/Projects/MathAnswerJudge/math_answer_judge.py` 的既有接口与提示词，保持不思考模式。网站仅读取独立的 `GRASPMEMOEDU_JUDGE_API_KEY`、`GRASPMEMOEDU_JUDGE_BASE_URL`、`GRASPMEMOEDU_JUDGE_MODEL`，不再回退到 Codex 外包的密钥、模型或配置文件。正式 Linux 服务从 `/etc/graspmemoedu/judge.env` 加载变量，修改后须重启后端服务生效；本机开发环境中 Windows 用户环境变量优先于继承的进程变量，每次判题重新读取，保存修改后下一次提交即可生效；变量缺失时返回服务不可用，不借用外包配置。接口地址必须是 HTTPS，服务需兼容既有 Chat Completions/JSON 判题请求。只有当前题面、标准答案和学习者提交被发送给判题服务；网页和日志不包含 API 密钥。
+判题复用 `D:/Projects/MathAnswerJudge/math_answer_judge.py` 的接口与提示词。复现和白板共用网站的[精度规则](docs/question-types.md#问答与填空的两种判题模式)，带小数位数要求的题会在支持的判题服务上启用推理，用于判断精度是否为考点。网站仅读取独立的 `GRASPMEMOEDU_JUDGE_API_KEY`、`GRASPMEMOEDU_JUDGE_BASE_URL`、`GRASPMEMOEDU_JUDGE_MODEL`，不再回退到 Codex 外包的密钥、模型或配置文件。正式 Linux 服务从 `/etc/graspmemoedu/judge.env` 加载变量，修改后须重启后端服务生效；本机开发环境中 Windows 用户环境变量优先于继承的进程变量，每次判题重新读取，保存修改后下一次提交即可生效；变量缺失时返回服务不可用，不借用外包配置。接口地址必须是 HTTPS，服务需兼容既有 Chat Completions/JSON 判题请求。只有当前题面、标准答案和学习者提交被发送给判题服务；网页和日志不包含 API 密钥。
 
 ## 验证
 
