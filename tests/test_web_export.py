@@ -28,7 +28,11 @@ class PublicExportTests(unittest.TestCase):
             focus_files = {'focus-mode.js', 'focus-mode.css'}
             self.assertTrue(focus_files <= {p.name for p in output.iterdir()})
             pwa_files = {'download.html', 'install.css', 'pwa.css', 'pwa.js', 'sw.js', 'manifest.webmanifest',
-                         'icon-180.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png'}
+                         'icon-180.png', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png',
+                         'pwa-location.js', 'pwa-free-study', 'pwa-math-courses'}
+            for directory in ('pwa-free-study', 'pwa-math-courses'):
+                self.assertEqual({p.name for p in (output / directory).iterdir()},
+                                 {'index.html', 'install.html', 'manifest.webmanifest'})
             pwa_files.update({'restore.html', 'migration-source.html', 'origin-transfer.js'})
             pwa_files.add('beginner-hints.js')
             pwa_files.update({'microphone-recorder.js', 'voice-input.js', 'voice-stream.js', 'voice-pcm.js', 'voice-context.js', 'answer-conversion.js'})

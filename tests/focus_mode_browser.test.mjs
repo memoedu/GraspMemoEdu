@@ -4,6 +4,7 @@ import path from 'node:path';
 import {createRequire} from 'node:module';
 import {fileURLToPath} from 'node:url';
 import {after, before, test} from 'node:test';
+import {launchAcceptanceChrome} from '../scripts/launch_acceptance_chrome.mjs';
 
 const require = createRequire(path.join(process.env.PLAYWRIGHT_NODE_MODULES || path.join(os.homedir(),
   '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules'), '_entry.cjs'));
@@ -14,12 +15,14 @@ const web = new URL('../web/', import.meta.url);
 let browser;
 
 before(async () => {
-  browser = await chromium.launch({headless: true, ...(process.env.CHROME_EXECUTABLE
-    ? {executablePath: process.env.CHROME_EXECUTABLE} : {channel: 'chrome'})});
+  browser = process.env.CHROME_EXECUTABLE
+    ? await chromium.launch({headless: true, executablePath: process.env.CHROME_EXECUTABLE})
+    : await launchAcceptanceChrome(require);
 });
 after(async () => { await browser?.close(); });
 
 async function fixture(t, {hierarchy = false, bank = false, width = 1440, context, standalone = false,
+  entry = '',
   hash = '#/subjects/math/' + (bank ? 'banks/fixture?root=chapter' : 'courses/fixture?root=chapter'),
   learnerId = 'fixture', unavailable = 0, tools = false, help = false, long = false, denyFullscreen = false} = {}) {
   const page = context ? await context.newPage() : await browser.newPage({serviceWorkers: 'block', viewport: {width, height: 900}});
@@ -35,8 +38,12 @@ async function fixture(t, {hierarchy = false, bank = false, width = 1440, contex
   t.after(async () => { await page.close(); assert.deepEqual(errors, []); });
   await page.route('**/*', async route => {
     const url = new URL(route.request().url());
+    if (url.origin === 'https://external.test' && url.pathname === '/outside') {
+      return route.fulfill({contentType: 'text/html', body: '<h1>Outside GraspMemoEdu</h1>'});
+    }
     if (url.origin !== base.origin || !url.pathname.startsWith(base.pathname)) return route.abort();
-    const name = url.pathname.slice(base.pathname.length) || 'index.html';
+    const relative = url.pathname.slice(base.pathname.length);
+    const name = !relative || relative.endsWith('/') ? relative + 'index.html' : relative;
     if (name === 'app.js' || name === 'pwa.js') return route.abort();
     if (publicPage) return route.continue();
     await route.fulfill({path: fileURLToPath(new URL(name, web)),
@@ -44,11 +51,11 @@ async function fixture(t, {hierarchy = false, bank = false, width = 1440, contex
   });
   if (tools) await page.route('https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/*/whiteboard.html*',
     route => route.fulfill({contentType: 'text/html', body: '<!doctype html><title>Isolated whiteboard layout fixture</title>'}));
-  const url = new URL(base);
+  const url = new URL(entry, base);
   url.hash = hash;
   await page.goto(url.href, {waitUntil: 'domcontentloaded'});
   await page.evaluate(async ({hierarchy, learnerId, unavailable, tools, help, long}) => {
-    const moduleHref = name => document.querySelector('link[rel="modulepreload"][href*="./' + name + '.js"]').href;
+    const moduleHref = name => document.querySelector('link[rel="modulepreload"][href*="/' + name + '.js"]').href;
     const {initPortal} = await import(moduleHref('portal'));
     const {setQuestionTools} = await import(moduleHref('question-tools'));
     const {reportableContent, placeContentActions} = await import(moduleHref('content-report'));
@@ -68,6 +75,7 @@ async function fixture(t, {hierarchy = false, bank = false, width = 1440, contex
       id, title: id, parent_id: 'chapter', question_count: 0, introduction_count: 1, dependency_ready: id !== 'locked',
     }))];
     const responses = {subjects: {subjects: [{id: 'math', available: true, title: '数学'}]},
+      'free-study': {subjects: []},
       profile: {timezone: 'Asia/Shanghai'}, catalog: {courses: [course], selected_course_id: course.id}};
     window.focusFixture = {reads: [], showReview: false, followingDone: false};
     const info = window.focusFixture;
@@ -312,7 +320,7 @@ test('Long reading starts below the bar and retains document scrolling in fullsc
 test('A new standalone launch restores the last Topic for the verified learner', async t => {
   const context = await browser.newContext({serviceWorkers: 'block', viewport: {width: 390, height: 850}});
   try {
-    const pwa = {context, standalone: true};
+    const pwa = {context, standalone: true, denyFullscreen: true};
     const topic = '#/subjects/math/topic/current?course=fixture&root=chapter';
     const lastPage = topic + '&focus=1';
     const first = await fixture(t, pwa);
@@ -322,9 +330,6 @@ test('A new standalone launch restores the last Topic for the verified learner',
     await first.getByText('Learning content of current').waitFor();
     await first.locator('#focusToggle').click();
     assert.equal(new URL(first.url()).hash, lastPage);
-    // Android Back can return to the workspace and homepage before exiting.
-    await first.evaluate(() => { location.hash = '#/'; });
-    await first.locator('.subjectCard').first().waitFor();
     await first.close();
 
     const browserPage = await fixture(t, {context, hash: ''});
@@ -337,7 +342,7 @@ test('A new standalone launch restores the last Topic for the verified learner',
     await restored.getByText('Learning content of current').waitFor();
     assert.equal(new URL(restored.url()).hash, lastPage);
     assert.equal(await restored.locator('#focusToggle').getAttribute('aria-pressed'), 'true');
-    const explicit = await fixture(t, {...pwa, hash: '#/'});
+    const explicit = await fixture(t, {...pwa, hash: '#/', learnerId: 'explicit'});
     await explicit.locator('.subjectCard').first().waitFor();
     assert.equal(new URL(explicit.url()).hash, '#/');
 
@@ -352,4 +357,50 @@ test('A new standalone launch restores the last Topic for the verified learner',
   } finally {
     await context.close();
   }
+});
+
+test('Scoped installations restore independently and fall back after a scope departure', async t => {
+  const context = await browser.newContext({serviceWorkers: 'block', viewport: {width: 390, height: 850}});
+  t.after(() => context.close());
+  const pwa = {context, standalone: true};
+  const free = 'pwa-free-study/';
+  const math = 'pwa-math-courses/';
+  const courseHome = '#/subjects/math/courses';
+  const course = courseHome + '/fixture?root=chapter';
+  const freeRoute = '#/free-study?view=fixture';
+  const firstFree = await fixture(t, {...pwa, entry: free, hash: freeRoute});
+  await firstFree.locator('.freeStudyLayout').waitFor();
+  assert.equal(new URL(await firstFree.locator('#pwaInstallLink').getAttribute('href')).pathname,
+    new URL(free + 'install.html', base).pathname);
+  const firstMath = await fixture(t, {...pwa, entry: math, hash: course});
+  await firstMath.locator('#dashboardTasks').waitFor();
+  assert.equal(new URL(await firstMath.locator('#pwaInstallLink').getAttribute('href')).pathname,
+    new URL(math + 'install.html', base).pathname);
+
+  const relaunchedFree = await fixture(t, {...pwa, entry: free, hash: ''});
+  const relaunchedMath = await fixture(t, {...pwa, entry: math, hash: ''});
+  assert.equal(new URL(relaunchedFree.url()).hash, freeRoute);
+  assert.equal(new URL(relaunchedMath.url()).hash, course);
+
+  await relaunchedMath.evaluate(() => { location.hash = '#/free-study'; });
+  await relaunchedMath.locator('.freeStudyLayout').waitFor();
+  const fallbackMath = await fixture(t, {...pwa, entry: math, hash: ''});
+  assert.equal(new URL(fallbackMath.url()).hash, courseHome);
+  const stillFree = await fixture(t, {...pwa, entry: free, hash: ''});
+  assert.equal(new URL(stillFree.url()).hash, freeRoute);
+
+  const rootPwa = await fixture(t, {...pwa, hash: course});
+  await rootPwa.locator('#dashboardTasks').waitFor();
+  await rootPwa.evaluate(() => {
+    const link = document.createElement('a');
+    link.href = 'https://external.test/outside';
+    link.textContent = 'Leave GraspMemoEdu';
+    document.body.prepend(link);
+  });
+  await rootPwa.getByRole('link', {name: 'Leave GraspMemoEdu'}).click();
+  await rootPwa.getByRole('heading', {name: 'Outside GraspMemoEdu'}).waitFor();
+  const rootFallback = await fixture(t, {...pwa, hash: ''});
+  assert.equal(new URL(rootFallback.url()).hash, '');
+  const freshFree = await fixture(t, {entry: free, hash: ''});
+  assert.equal(new URL(freshFree.url()).hash, '#/free-study');
 });

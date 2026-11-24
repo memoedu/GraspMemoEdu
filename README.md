@@ -217,7 +217,7 @@ node scripts/inspect_page.mjs
 
 ## 安装到手机和 Windows
 
-[发布与安装页](https://memoedu.github.io/GraspMemoEdu-Pages/download.html) 提供 iPhone / iPad、安卓和 Windows 的 PWA 安装说明，现有网站用户菜单也可进入。使用同一云端账号与进度，保持联网学习；网页更新无需重新安装。维护及独立安装验收边界见 [PWA 说明](docs/pwa.md)。
+[发布与安装页](https://memoedu.github.io/GraspMemoEdu-Pages/download.html) 提供全站、自由学习和数学课程的安装入口。在自由学习或数学课程页，也可以从头像菜单安装对应的应用。各应用按自己的范围恢复最后停留页面，共用云端账号与学习进度。维护及验收见 [PWA 说明](docs/pwa.md)。
 
 ## 打开公开页面
 

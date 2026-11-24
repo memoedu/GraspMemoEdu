@@ -5,6 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import http from 'node:http';
 import {createRequire} from 'node:module';
+import {launchAcceptanceChrome} from './launch_acceptance_chrome.mjs';
 const [target, output] = process.argv.slice(2);
 assert.ok(target && output, 'Usage: node scripts/pwa_acceptance.mjs <export-directory|https-url> <evidence-directory>');
 await fs.mkdir(output, {recursive:true});
@@ -14,7 +15,8 @@ if (!/^https:\/\//.test(target)) {
   const root = path.resolve(target);
   server = http.createServer(async (request, response) => {
     const url = new URL(request.url, 'http://localhost');
-    const relative = decodeURIComponent(url.pathname).replace(/^\/GraspMemoEdu-Pages\//, '') || 'index.html';
+    const pathname = decodeURIComponent(url.pathname).replace(/^\/GraspMemoEdu-Pages\//, '');
+    const relative = !pathname || pathname.endsWith('/') ? pathname + 'index.html' : pathname;
     const file = path.resolve(root, relative);
     if (!file.startsWith(root + path.sep)) {response.writeHead(404).end(); return;}
     try {
@@ -30,7 +32,10 @@ base = new URL('./', base).href;
 const require = createRequire(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
 const {chromium} = require('playwright');
 const profile = await fs.mkdtemp(path.join(path.resolve(output),'chrome-profile-'));
-const context = await chromium.launchPersistentContext(profile,{headless:true,viewport:{width:1365,height:950},locale:'zh-CN',executablePath:process.env.CHROME_EXECUTABLE || path.join(os.homedir(),'AppData/Local/Google/Chrome/Application/chrome.exe')});
+const contextOptions = {viewport:{width:1365,height:950},locale:'zh-CN'};
+const context = process.env.CHROME_EXECUTABLE
+  ? await chromium.launchPersistentContext(profile,{headless:true,executablePath:process.env.CHROME_EXECUTABLE,...contextOptions})
+  : await launchAcceptanceChrome(require, [], {profile, ...contextOptions});
 const report = {base,checks:[],errors:[],badResponses:[],learningWrites:[],os_installation_tested:false,api_mocked:false};
 const pass = label=>{report.checks.push(label);console.log('PASS '+label);};
 try {
@@ -94,6 +99,36 @@ try {
   await page.getByRole('heading',{name:'把学习放到桌面。'}).waitFor();
   pass('Controlled offline navigation shows retry and recovers online');
   report.badResponses=report.badResponses.filter(r=>r.status!==503);
+  const {appId: rootId} = await cdp.send('Page.getAppId');
+  assert.ok(rootId);
+  const appIds = new Set([rootId]);
+  report.scoped = {};
+  for (const [app, title] of Object.entries({'free-study':'安装自由学习', 'math-courses':'安装数学课程'})) {
+    const home = new URL('pwa-' + app + '/', base).href;
+    const install = new URL('install.html', home).href;
+    assert.equal((await page.goto(install)).status(), 200);
+    await page.getByRole('heading', {name: title, exact: true}).waitFor();
+    assert.equal(await page.evaluate(async () => (await navigator.serviceWorker.ready).scope), base);
+    const variant = await cdp.send('Page.getAppManifest');
+    assert.deepEqual(variant.errors, []);
+    const manifest = JSON.parse(variant.data);
+    const {appId} = await cdp.send('Page.getAppId');
+    assert.equal(appId, new URL('/GraspMemoEdu/' + app, base).href);
+    assert.ok(!appIds.has(appId));
+    appIds.add(appId);
+    assert.equal(new URL(manifest.scope, variant.url).href, home);
+    assert.equal(new URL(manifest.start_url, variant.url).href, home);
+    assert.deepEqual((await cdp.send('Page.getInstallabilityErrors')).installabilityErrors, []);
+    for (const width of [320, 375, 414, 768]) {
+      await page.setViewportSize({width, height: 850});
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        `${app} installation instructions overflow at ${width}px`);
+    }
+    await page.setViewportSize({width: 375, height: 850});
+    await page.screenshot({path: path.join(output, app + '-install.png'), fullPage: true});
+    report.scoped[app] = {appId, home, install};
+  }
+  pass('Chrome recognizes two scoped install pages with unique IDs and a shared worker');
   // Use the real API only on the deployed origin, where CORS allows it.
   if (!server) {
     await page.goto(base,{waitUntil:'networkidle'});
@@ -104,6 +139,22 @@ try {
     await page.locator('a[data-i18n="pwa.install"]').click();
     assert.equal(new URL(page.url()).pathname,new URL('download.html',base).pathname);
     pass('Live learning home and account-menu installation entry work with real API');
+    for (const [app, hash, heading, label] of [
+      ['free-study', '#/free-study', '自由学习', '安装自由学习'],
+      ['math-courses', '#/subjects/math/courses', '课程', '安装数学课程'],
+    ]) {
+      const {home, install} = report.scoped[app];
+      await page.goto(home);
+      await page.locator('#portalContent h1').filter({hasText: heading}).first().waitFor();
+      assert.equal(new URL(page.url()).hash, hash);
+      await page.locator('#userMenuButton').click();
+      assert.equal(await page.getByRole('link', {name: label, exact: true}).getAttribute('href'), install);
+      await page.goto(new URL(hash, base).href);
+      await page.locator('#portalContent h1').filter({hasText: heading}).first().waitFor();
+      await page.locator('#userMenuButton').click();
+      assert.equal(await page.getByRole('link', {name: label, exact: true}).getAttribute('href'), install);
+    }
+    pass('Both scoped first launches and install links use their live learning routes');
   }
   assert.deepEqual(report.errors,[]);
   assert.deepEqual(report.badResponses,[]);
