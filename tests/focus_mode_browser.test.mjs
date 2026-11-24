@@ -19,8 +19,14 @@ before(async () => {
 });
 after(async () => { await browser?.close(); });
 
-async function fixture(t, {hierarchy = false, bank = false, width = 1440} = {}) {
-  const page = await browser.newPage({serviceWorkers: 'block', viewport: {width, height: 900}});
+async function fixture(t, {hierarchy = false, bank = false, width = 1440, context, standalone = false,
+  hash = '#/subjects/math/' + (bank ? 'banks/fixture?root=chapter' : 'courses/fixture?root=chapter'),
+  learnerId = 'fixture', unavailable = 0} = {}) {
+  const page = context ? await context.newPage() : await browser.newPage({serviceWorkers: 'block', viewport: {width, height: 900}});
+  if (standalone) await page.addInitScript(() => {
+    const nativeMatchMedia = window.matchMedia.bind(window);
+    window.matchMedia = query => query === '(display-mode: standalone)' ? {matches: true} : nativeMatchMedia(query);
+  });
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   t.after(async () => { await page.close(); assert.deepEqual(errors, []); });
@@ -34,15 +40,16 @@ async function fixture(t, {hierarchy = false, bank = false, width = 1440} = {}) 
       contentType: /\.m?js$/.test(name) ? 'text/javascript' : undefined});
   });
   const url = new URL(base);
-  url.hash = '#/subjects/math/' + (bank ? 'banks/fixture?root=chapter' : 'courses/fixture?root=chapter');
+  url.hash = hash;
   await page.goto(url.href, {waitUntil: 'domcontentloaded'});
-  await page.evaluate(async ({hierarchy}) => {
+  await page.evaluate(async ({hierarchy, learnerId, unavailable}) => {
     const {initPortal} = await import(document.querySelector('link[rel="modulepreload"][href*="./portal.js"]').href);
     const outline = [{id: 'chapter', title: 'Chapter', parent_id: null, topic_ids: []},
       {id: 'first', title: 'First', parent_id: 'chapter', topic_ids: ['current', 'locked', 'following']},
       {id: 'second', title: 'Second', parent_id: 'chapter', topic_ids: ['other']}];
     const course = {id: 'fixture', title: 'Fixture', root_id: 'chapter', outline};
-    const access = {learner_id: 'fixture', role: 'account', features: ['learn', 'review_history', 'course_hierarchy']};
+    const access = {learner_id: learnerId, role: 'account', features: ['learn', 'review_history', 'course_hierarchy']};
+    let verified = false;
     const lessons = ['current', 'locked', 'following', 'other'].map(id => ({
       id, topic_id: id, title: id, type: 'Lesson', status: 'not_started', dependency_ready: id !== 'locked',
     }));
@@ -57,15 +64,20 @@ async function fixture(t, {hierarchy = false, bank = false, width = 1440} = {}) 
     const info = window.focusFixture;
     const element = id => document.getElementById(id);
     const portal = initPortal({
-      getAccess: () => access, getIdentityProblem: () => null, refreshAccess: async () => {},
+      getAccess: () => verified ? access : null, getIdentityProblem: () => null, refreshAccess: async () => {},
+      ensureIdentity: async () => { verified = true; }, getApiOrigin: () => location.origin,
       request: async (name, options) => {
+        verified = true;
         const [endpoint, query] = name.split('?');
         const params = new URLSearchParams(query);
         info.reads.push({endpoint, root: params.get('root_id'), fresh: options?.fresh === true});
         if (endpoint === 'dashboard') return {course, course_hierarchy_enabled: hierarchy,
           tasks: [...lessons.filter(item => !(info.followingDone && item.id === 'following')), ...(info.showReview ? [due] : [])],
           units: outline.slice(1), pending_hierarchy: outline.slice(1), history: []};
-        if (endpoint === 'state') return {};
+        if (endpoint === 'state') {
+          if (unavailable) throw Object.assign(new Error('Unavailable fixture'), {status: unavailable});
+          return {};
+        }
         if (endpoint === 'training/bank') return {id: 'fixture', groups};
         if (endpoint === 'training/group') return {bank_id: 'fixture', id: params.get('group_id'), title: params.get('group_id'),
           questions: [], introductions: [{id: 'intro', title: 'Guidance', html: '<p>Read this guidance.</p>'}],
@@ -87,7 +99,7 @@ async function fixture(t, {hierarchy = false, bank = false, width = 1440} = {}) 
       },
     });
     await portal.start();
-  }, {hierarchy});
+  }, {hierarchy, learnerId, unavailable});
   return page;
 }
 
@@ -153,4 +165,49 @@ test('Focus Mode keeps the bank root and advances through read-only groups witho
   await page.getByRole('link', {name: '返回题库', exact: true}).waitFor();
   assert.equal(await next.isVisible(), false);
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+});
+
+test('A new standalone launch restores the last Topic for the verified learner', async t => {
+  const context = await browser.newContext({serviceWorkers: 'block', viewport: {width: 390, height: 850}});
+  try {
+    const pwa = {context, standalone: true};
+    const topic = '#/subjects/math/topic/current?course=fixture&root=chapter';
+    const lastPage = topic + '&focus=1';
+    const first = await fixture(t, pwa);
+    const lesson = first.locator('.incompleteTasks [data-task-id="current"]');
+    await lesson.locator('.taskToggle').click();
+    await lesson.locator('.portalStart').click();
+    await first.getByText('Learning content of current').waitFor();
+    await first.locator('#focusToggle').click();
+    assert.equal(new URL(first.url()).hash, lastPage);
+    // Android Back can return to the workspace and homepage before exiting.
+    await first.evaluate(() => { location.hash = '#/'; });
+    await first.locator('.subjectCard').first().waitFor();
+    await first.close();
+
+    const browserPage = await fixture(t, {context, hash: ''});
+    assert.equal(new URL(browserPage.url()).hash, '');
+    const differentLearner = await fixture(t, {...pwa, hash: '', learnerId: 'other'});
+    await differentLearner.locator('.subjectCard').first().waitFor();
+    assert.equal(new URL(differentLearner.url()).hash, '');
+
+    const restored = await fixture(t, {...pwa, hash: ''});
+    await restored.getByText('Learning content of current').waitFor();
+    assert.equal(new URL(restored.url()).hash, lastPage);
+    assert.equal(await restored.locator('#focusToggle').getAttribute('aria-pressed'), 'true');
+    const explicit = await fixture(t, {...pwa, hash: '#/'});
+    await explicit.locator('.subjectCard').first().waitFor();
+    assert.equal(new URL(explicit.url()).hash, '#/');
+
+    const temporaryFailure = await fixture(t, {...pwa, hash: '', unavailable: 503});
+    assert.equal(new URL(temporaryFailure.url()).hash, lastPage);
+    await temporaryFailure.getByRole('heading', {name: '服务暂不可用'}).waitFor();
+    const inaccessible = await fixture(t, {...pwa, hash: '', unavailable: 403});
+    await inaccessible.locator('.subjectCard').first().waitFor();
+    assert.equal(new URL(inaccessible.url()).hash, '#/');
+    const cleared = await fixture(t, {...pwa, hash: ''});
+    assert.equal(new URL(cleared.url()).hash, '');
+  } finally {
+    await context.close();
+  }
 });
