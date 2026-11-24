@@ -643,7 +643,7 @@ def create_app(settings: Settings | None = None, service: LearningService | None
         response.headers['Cache-Control'] = 'no-store'
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Referrer-Policy'] = 'no-referrer'
-        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:* http://localhost:*; object-src 'none'; frame-src 'self' https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v1/; base-uri 'self'; frame-ancestors 'none'"
+        response.headers['Content-Security-Policy'] = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:* http://localhost:*; object-src 'none'; frame-src 'self' https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v1/ https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v2/; base-uri 'self'; frame-ancestors 'none'"
         if remote:
             response.headers['Access-Control-Allow-Origin'] = origin
             response.headers['Vary'] = 'Origin'
