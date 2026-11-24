@@ -53,6 +53,7 @@ $expected += @('question-tools.js','calculator.js','calculator-panel.js','calcul
 $expected += @('whiteboard.js','whiteboard.css','whiteboard-archive.js','whiteboard-answer.js','whiteboard-editor.js','whiteboard-license.txt')
 $expected += @('point-assessment.js','context-library.js','context-library.css','context-library-messages.js','training-audio.js')
 $expected += @('microphone-recorder.js','voice-input.js','voice-stream.js','voice-pcm.js','voice-context.js','answer-conversion.js')
+$expected += @('rubber-duck.js','rubber-duck-test.html')
 $expected += @('autocomplete.js','autocomplete.css')
 $expected += @('download.html','install.css','pwa.css','pwa.js','sw.js','manifest.webmanifest','icon-180.png','icon-192.png','icon-512.png','icon-maskable-512.png')
 $pwaDirectories = @('pwa-free-study', 'pwa-math-courses')

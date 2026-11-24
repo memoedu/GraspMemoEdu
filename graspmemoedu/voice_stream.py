@@ -330,6 +330,7 @@ class Take:
     def advance(self, text):
         self.part += 1
         self.preroll = self.boundary = None
+        self.preview_source = self.preview_text = ''
         if self.independent:
             self.offset = self.segments = self.by_silence = 0
             self.started = monotonic()
@@ -367,7 +368,7 @@ class Take:
                 self.by_silence += 1
                 self.preroll, self.boundary = b'', SpeechBoundary()
         response = {'offset': self.offset}
-        if self.live and not self.opened.manual and packet.op != 'finish':
+        if self.live and (not self.opened.manual or self.opened.live) and packet.op in ('audio', 'pause'):
             with self.sentences_lock:
                 heard, pending = self.current_text(), self.pending
             rendered = self.preview_text

@@ -11,7 +11,7 @@ from .catalog import Catalog
 from .question_types import validate_interaction
 from .service import DomainError
 from .subject_registry import SUBJECT_IDS
-from . import calculator
+from . import calculator, rubber_duck
 
 IDENTIFIER = re.compile(r'[a-z0-9][a-z0-9_-]{0,63}\Z')
 DIRECTORY = 'training-banks'
@@ -82,7 +82,10 @@ def validate(bank):
             require(all(text(q.get(key), 1000000) for key in (('html',) if external else ('html', 'explanation_html'))),
                     'Missing or oversized rendered question or explanation')
             require(text(q.get('title', q['id']), 200), 'Invalid question title')
-            validate_interaction(q.get('interaction'), q['question'])
+            validate_interaction(q.get('interaction'), q['question'], allow_outline=True)
+            if rubber_duck.is_outline(q):
+                require(not {'academy', 'hyperskill', 'multi_step', 'point_ids'} & q.keys(),
+                        'Rubber duck questions require their own training interaction')
             from .multi_step import validate as validate_multi_step
             validate_multi_step(q)
             if 'point_ids' in q:
@@ -173,7 +176,9 @@ class TrainingCatalog:
                     raise ValueError('A Topic requires a nonempty Practice group in its subject')
             for item in question_references(topic):
                 ref = item['reference']
-                bank, _, _ = self.question(ref['bank_id'], ref['group_id'], ref['question_id'])
+                bank, _, question = self.question(ref['bank_id'], ref['group_id'], ref['question_id'])
+                if rubber_duck.is_outline(question):
+                    raise ValueError('Rubber duck questions require the bank reader')
                 if bank['version'] != ref['version']:
                     raise ValueError('A Topic question reference has a stale bank version')
                 if subjects.topic_subject(topic['id']) != bank['subject_id']:

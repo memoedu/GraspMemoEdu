@@ -10,6 +10,7 @@ from .review_cards import point_id, register_point, eligible_presentations
 from .training_content import permission_id
 from .dependency_nodes import group_key
 from .topic_structure import atomic_state, sectioned_training
+from .rubber_duck import is_outline
 
 
 def fingerprint(value):
@@ -42,6 +43,8 @@ class ReviewSources:
                 if not self.dependencies.ready(con, self.access, group_key(bank_id, group['id']), current_time=now.isoformat()):
                     continue
                 for question in group.get('questions', []):
+                    if is_outline(question):
+                        continue  # The bank reader owns progressive disclosure.
                     if question.get('academy') or question.get('hyperskill'):
                         # The shared bank owns its schedule; its answer provider is the IDE.
                         continue

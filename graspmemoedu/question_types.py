@@ -6,6 +6,7 @@ import re
 import unicodedata
 
 import regex
+from . import rubber_duck
 
 
 TYPES = {'text', 'true_false', 'fill_blank', 'matching', 'choice'}
@@ -18,6 +19,9 @@ def whiteboard_answer(value):
 
 
 def parse_submission_answer(question, value):
+    if rubber_duck.is_outline(question):
+        _require(_string(value, rubber_duck.MAX_TRANSCRIPT) and not whiteboard_answer(value))
+        return value.strip()
     if not whiteboard_answer(value):
         return parse_answer(question, value)
     text = value.removeprefix(WHITEBOARD_ANSWER)
@@ -82,7 +86,7 @@ def _answer_spec(item):
             compiled.fullmatch(answer, timeout=.05)
 
 
-def validate_interaction(spec, stem=''):
+def validate_interaction(spec, stem='', *, allow_outline=False):
     if spec is None:
         return
     if isinstance(spec, dict) and type(spec.get('version')) is int and spec['version'] == 2:
@@ -90,6 +94,8 @@ def validate_interaction(spec, stem=''):
         return validate(spec)
     _require(isinstance(spec, dict) and spec.get('version') == 1 and type(spec['version']) is int)
     kind = spec.get('type')
+    if allow_outline and kind == rubber_duck.TYPE:
+        return rubber_duck.validate(spec, ID)
     _require(isinstance(kind, str) and kind in TYPES)
     common = {'version', 'type'}
     if kind == 'text':
@@ -302,6 +308,8 @@ def demo_answer(question):
     if not spec:
         return question['reference_answer']
     kind = spec['type']
+    if kind == rubber_duck.TYPE:
+        return ''
     if kind == 'composite':
         if spec['grading'] == 'unavailable' or not all(c.get('answers') for c in spec['controls']):
             return ''
@@ -329,7 +337,7 @@ def demo_answer(question):
 def display_answer(question, answer):
     if whiteboard_answer(answer):
         return answer.removeprefix(WHITEBOARD_ANSWER)
-    if not answer or not question.get('interaction') or question['interaction']['type'] == 'text':
+    if not answer or not question.get('interaction') or question['interaction']['type'] in ('text', rubber_duck.TYPE):
         return answer
     try:
         value, spec = parse_answer(question, answer), question['interaction']

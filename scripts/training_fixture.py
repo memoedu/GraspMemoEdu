@@ -26,6 +26,7 @@ def main():
     parser.add_argument('--output', required=True, type=Path)
     parser.add_argument('--port', type=int, default=18849)
     parser.add_argument('--multi-step', action='store_true')
+    parser.add_argument('--rubber-duck', action='store_true')
     args = parser.parse_args()
     root = args.output.resolve()
     if root.exists() or not root.is_relative_to(Path('D:/Artifacts/GraspMemoEdu').resolve()) or args.port in (8765, 8767, 18768):
@@ -53,7 +54,12 @@ def main():
              'explanation': '(1) 和为 5。\n(2) 和不变，加法满足交换律。\n(3) 积为 6。'},
             {'id': 'negative', 'title': '选择错误的说法', 'question': '下列说法错误的是？', 'explanation': 'A 正确，两个数相加得到 5；B 错误，两个数相乘得到 6。',
              'interaction': {'version': 1, 'type': 'choice', 'options': [{'id': 'a', 'text': '$2+3=5$'}, {'id': 'b', 'text': '$2\\times3=5$'}], 'correct_id': 'b'}}])
-    source_path = root / 'training-source.json'; source_path.write_text(json.dumps(source, ensure_ascii=False), encoding='utf-8')
+    source_path = root / 'training-source.json'
+    if args.rubber_duck:
+        source_path = Path(__file__).resolve().parents[1] / 'tests/fixtures/rubber-duck-bank.json'
+        (data / 'test-materials.json').write_text(json.dumps({'schema': 1, 'banks': ['rubber-duck-qa']}), encoding='utf-8')
+    else:
+        source_path.write_text(json.dumps(source, ensure_ascii=False), encoding='utf-8')
     compiled = root / 'training-bank.json'
     subprocess.run(['node', str(Path(__file__).with_name('import_training_bank.mjs')), str(source_path), str(compiled)],
                    check=True, env={**os.environ, 'GRASPMEMOEDU_PYTHON': sys.executable})

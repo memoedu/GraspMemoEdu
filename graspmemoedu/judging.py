@@ -1,11 +1,12 @@
 """The existing judge contract shared by Lesson and review submissions."""
 from .question_types import (demo_answer, deterministic_verdict, display_answer, is_reproduction,
                              parse_submission_answer, semantic_arguments, whiteboard_answer)
+from .rubber_duck import is_outline
 
 
 def instant_question(question, answer=None):
     """Classify the server's pinned question without grading or exposing its key."""
-    return not whiteboard_answer(answer) and not is_reproduction(question)
+    return not whiteboard_answer(answer) and not (is_reproduction(question) or is_outline(question))
 
 
 def local_verdict(question, target, payload, con, require_judge):
