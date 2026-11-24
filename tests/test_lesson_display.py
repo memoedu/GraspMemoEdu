@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 from graspmemoedu.lesson_display import DIRECTORY, LessonDisplay, display_hash, display_key
-from graspmemoedu.lesson_display_install import MarkupSignature, repair_assets, verify_topic
+from graspmemoedu.lesson_display_install import MarkupSignature, repair_assets, validate_legacy_repairs, verify_topic
 from graspmemoedu.mathacademy_formula_audit import audit_fields
 
 
@@ -67,6 +67,15 @@ class LessonDisplayTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'invalid source bindings'):
                 verify_topic(path, tid, catalog, Path(directory), previous=previous)
 
+    def test_activation_only_carries_identical_legacy_repairs_for_the_same_version(self):
+        spec = {'topic_id': 'ma-topic-89', 'version': 'same', 'tex_repairs': {'old': {'html': '<p>archive</p>'}}}
+        validate_legacy_repairs(spec, spec)
+        for before in ({}, {**spec, 'version': 'other'}, {**spec, 'tex_repairs': {}}):
+            with self.subTest(before=before), self.assertRaisesRegex(ValueError, 'read-only'):
+                validate_legacy_repairs(spec, before)
+        with self.assertRaisesRegex(ValueError, 'read-only'):
+            validate_legacy_repairs({**spec, 'tex_repairs': {}}, spec)
+
     def test_student_display_binds_to_exact_source_without_changing_controls(self):
         topic = {'id': 'ma-topic-89', 'version': 'original', 'source_adapter': 'mathacademy'}
         question = {'title': 'Pick a shape', 'html': '<p>Choose one.</p>', 'interaction': {'type': 'choice',
@@ -110,6 +119,10 @@ class LessonDisplayTests(unittest.TestCase):
             for invalid in (None, {**previous, 'version': 'v0'}, {**previous, 'values': {archived: '<p>异文。</p>'}}):
                 with self.subTest(previous=invalid), self.assertRaisesRegex(ValueError, 'invalid source bindings'):
                     verify_topic(path, tid, catalog, Path(directory), previous=invalid)
+            candidate['values'][active] = r'<p>\mathbf x</p>'
+            path.write_text(json.dumps(candidate), encoding='utf-8')
+            with self.assertRaisesRegex(ValueError, 'Unrendered math'):
+                verify_topic(path, tid, catalog, Path(directory), previous=previous)
 
     def test_markup_binding_ignores_punctuation_changes_but_protects_attributes_and_formulas(self):
         source = '<p>See <span data-tex="x">x</span><img alt="shape" src="data:image/png;base64,WA=="></p>'

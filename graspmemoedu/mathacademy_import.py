@@ -25,6 +25,8 @@ from . import ma_question_plan
 ADAPTER_VERSION = 'mathacademy-json-1'
 PRACTICE_ENRICHMENT = 'mathacademy-practice-enrichment'
 DEFAULT_COURSES = (82, 74, 66, 72, 140)
+# The deployed source-feedback adapter imports this course family separately.
+MATH_FOR_ML_COURSES = frozenset({129, 145})
 SOURCE_FIELDS = {'taskId', 'testMode', 'rendered', 'inputAnswers', 'answer', 'answers', 'complete',
                  'difficultyClass', 'difficultySymbol'}
 GAP_LABELS = {'body_missing':'原材料缺少正文', 'example_missing':'原材料缺少例题题面',
@@ -289,11 +291,6 @@ class Assets:
             return {'_render': source or '', '_html': self.text(source_html, gaps, self.inline_graphics(source, source_html))}
         return {'_render': self.text(source, gaps)}
 
-    def option(self, text, gaps):
-        markup = text.strip()
-        source_html = markup if re.fullmatch(r'<img\b[^<>]*>', markup, re.I) else None
-        return {'text': text, 'html': self.render(text, source_html, gaps)}
-
 
 def captured_sections(parts, declared, selects):
     """Recover sparse captures using the original controls' zero-based section indices."""
@@ -369,6 +366,13 @@ def question_inventory(lessons):
     return inventory
 
 
+def source_option(assets, text, gaps):
+    markup = text.strip()
+    # A standalone source image can be indented like Markdown code.
+    render_text = markup if re.fullmatch(r'<img\b[^<>]*>', markup, re.I) else text
+    return {'text': text, 'html': assets.render(render_text, None, gaps)}
+
+
 def controls(question, assets, gaps, decision=None):
     fmt, qid = question.get('format'), question['id']
     if fmt is None:
@@ -383,7 +387,7 @@ def controls(question, assets, gaps, decision=None):
             return {'version': 2, 'type': 'composite', 'grading': 'unavailable', 'controls': rows,
                     'sections': [{'id': 's0', 'html': assets.render(content, None, gaps),
                                   'control_ids': [row['id'] for row in rows], 'complete': True}]}
-        options = [{'id': f'o{i}', **assets.option(str(question['choice' + str(i)]), gaps)} for i in range(1, 6)
+        options = [{'id': f'o{i}', **source_option(assets, str(question['choice' + str(i)]), gaps)} for i in range(1, 6)
                    if str(question.get('choice' + str(i)) or '').strip()]
         if not options:
             gaps.append({'code': 'interaction_missing', 'question': qid}); return None
@@ -401,7 +405,7 @@ def controls(question, assets, gaps, decision=None):
         cid = f'c{qid}s{section}p{position}'
         row = {'id': cid, 'type': kind, 'label': str(len(rows) + 1)}
         if kind == 'select':
-            row['options'] = [{'id': f'o{i}', **assets.option(str(option), gaps)}
+            row['options'] = [{'id': f'o{i}', **source_option(assets, str(option), gaps)}
                               for i, option in enumerate(control.get('options', []))]
         else:
             if control.get('type') in ('number', 'text', 'code'):
@@ -652,7 +656,7 @@ def prepare(index, scope, cache, output, *, fail_at=None, original_images=None, 
     # Code changes invalidate derived caches, never private input snapshots.
     root = Path(__file__).resolve().parents[1]
     conversion = '\n'.join(inspect.getsource(value) for value in (
-        teaching, source_fingerprint, Assets, controls, answer_sections, captured_sections, template_segments, adapt,
+        teaching, source_fingerprint, Assets, source_option, controls, answer_sections, captured_sections, template_segments, adapt,
         ma_question_plan.revise_stem,
         question_model, calculation_metadata, calculator.from_mathacademy, calculator.normalize))
     config_hash = digest((repr((ADAPTER_VERSION, sorted(SOURCE_FIELDS), GAP_LABELS, calculator.MA_LEVELS)) + conversion).encode()
@@ -660,10 +664,8 @@ def prepare(index, scope, cache, output, *, fail_at=None, original_images=None, 
                          + (root / 'scripts/render_mathacademy.mjs').read_bytes()
                          + (root / 'web/math-syntax.js').read_bytes())
     renderer = Renderer(); reused = 0
-    from .mathacademy_formula_audit import ML_COURSES, audit_fields
+    from .mathacademy_formula_audit import audit_fields
     courses, graphs = course_documents(index, scope)
-    selected_ml = ML_COURSES & {'ma-course-' + str(cid) for cid in scope['course_ids']}
-    audited_topics = {row['id'] for course in courses if course['id'] in selected_ml for row in course['topics']}
     topics_dir, raw_dir = output / 'topics', output / 'mathacademy-sources/topics'
     topics_dir.mkdir(exist_ok=True); raw_dir.mkdir(parents=True, exist_ok=True)
     reports, failures = [], []
@@ -687,7 +689,7 @@ def prepare(index, scope, cache, output, *, fail_at=None, original_images=None, 
                     failures.append({'topic_id': tid, 'error': str(error)})
                     print(f'conversion_failed {tid}: {str(error)[:400]}', flush=True)
                     continue
-            if topic['id'] in audited_topics and (defects := list(audit_fields(topic))):
+            if defects := list(audit_fields(topic)):
                 failures.append({'topic_id': tid, 'error': 'Unrendered LaTeX', 'fields': defects})
                 print(f'formula_audit_failed {tid}: {len(defects)} fields', flush=True)
                 continue
@@ -715,7 +717,7 @@ def prepare(index, scope, cache, output, *, fail_at=None, original_images=None, 
         (graph_sources / f'course-{cid}.json').write_bytes(encoded(index.graphs[cid]))
     report = {'scope': scope, 'topics': reports, 'reused_conversion': reused,
               'question_plan': question_plan,
-              'formula_audit': {'topics': sum(t['topic_id'] in audited_topics for t in reports),
+              'formula_audit': {'topics': len(reports),
                                 'failed_fields': 0},
               'readable': sum(t['readable'] for t in reports), 'trainable': sum(t['trainable'] for t in reports),
               'untrainable': sum(not t['trainable'] for t in reports), 'failed': 0}
