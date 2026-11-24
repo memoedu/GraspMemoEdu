@@ -675,7 +675,8 @@ class PublicAccessAcceptanceTests(unittest.TestCase):
         allowed.update({'/api/free-study', '/api/free-study/banks', '/api/free-study/course-reviews',
                         '/api/whiteboard/recognize'})
         allowed.update({'/api/clipper/types', '/api/clipper/items', '/api/clipper/review',
-                        '/api/clipper/excerpts', '/api/clipper/model'})
+                        '/api/clipper/excerpts', '/api/clipper/model', '/api/clipper/media',
+                        '/api/clipper/settings', '/api/clipper/rules', '/api/clipper/workflow', '/api/clipper/reference'})
         self.assertLessEqual({route.path for route in self.app.routes}, allowed)
         atomic_route = next(route for route in self.app.routes if route.path == '/api/atomic/reviews')
         self.assertEqual(atomic_route.methods, {'GET'})

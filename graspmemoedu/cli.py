@@ -505,7 +505,16 @@ def main():
                 Settings(public_api_origin=args.api_origin)
             if args.output.exists():
                 raise DomainError('export_exists', '导出目标必须是新目录。', 422)
-            shutil.copytree(Path(__file__).resolve().parent.parent / 'web', args.output)
+            from .clipper_bundle import LOCK, ensure
+            web = Path(__file__).resolve().parent.parent / 'web'
+            clipper_files = ensure(web / 'vendor/knowledge-clipper')
+            shutil.copytree(web, args.output, ignore=lambda directory, names: ['knowledge-clipper']
+                            if Path(directory) == web / 'vendor' else [])
+            for name in clipper_files:
+                target = args.output / 'vendor/knowledge-clipper' / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(web / 'vendor/knowledge-clipper' / name, target)
+            (args.output / 'vendor/clipper-release.json').write_bytes(LOCK.read_bytes().replace(b'\r\n', b'\n'))
             (args.output / 'deployment.json').write_text(json.dumps({'api_origin': args.api_origin}, indent=2) + '\n', encoding='utf-8')
             (args.output / '.nojekyll').write_text('', encoding='utf-8')
             output({'static_export': str(args.output), 'published': False, 'contains_course_or_credentials': False})

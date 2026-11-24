@@ -20,7 +20,20 @@ $expected += @('math-presentation.js','math-syntax.js')
 $expected += @('review-papers.js','review-paper-messages.js')
 $expected += @('review-directory.js','task-tree.js','catalog-outline.js','content-timer.js','self-assessment.js')
 $expected += @('catalog-workspace.js','free-study.js')
-$expected += @('clipper.js','clipper-workspace.js','clipper-library.js','clipper.css')
+$expected += @('clipper.js','clipper-workspace.js','clipper-library.js','clipper-selection.js','clipper-settings.js','clipper-host.js','clipper.css')
+$clipper = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'scripts/clipper-assets.json') -Raw | ConvertFrom-Json -AsHashtable
+$clipperRoot = 'vendor/knowledge-clipper/'
+$clipperManifest = 'vendor/clipper-release.json'
+$clipperAssetPattern = '^(?:_framework/|chat/(?:assets/)?|math/)?[A-Za-z0-9_][A-Za-z0-9_.-]*\.(?:html|js|mjs|css|json|txt|wasm|dat|woff2?|ttf)$'
+$expected += $clipperManifest
+if ((Get-Content (Join-Path $ExportDirectory $clipperManifest) -Raw).Replace("`r`n","`n") -cne (Get-Content (Join-Path $PSScriptRoot 'scripts/clipper-assets.json') -Raw).Replace("`r`n","`n")) { throw 'Exported clipper release manifest is stale.' }
+$clipperDirs = @('vendor/knowledge-clipper','vendor/knowledge-clipper/_framework','vendor/knowledge-clipper/chat','vendor/knowledge-clipper/chat/assets','vendor/knowledge-clipper/math')
+foreach ($name in $clipper.files.Keys) {
+    if ($name -notmatch $clipperAssetPattern) { throw 'Invalid clipper release path.' }
+    $relative = $clipperRoot + $name
+    if ((Get-FileHash -LiteralPath (Join-Path $ExportDirectory $relative) -Algorithm SHA256).Hash.ToLowerInvariant() -ne $clipper.files[$name]) { throw "Clipper distribution differs from upstream: $name" }
+    $expected += $relative
+}
 $expected += @('focus-mode.js','focus-mode.css')
 $expected += @('memory-chunk.js')
 $expected += @('academy-messages.js','idea-setup.js')
@@ -78,7 +91,7 @@ foreach ($name in $formula.files.Keys) {
 $expected += @('formula-input.js','formula-catalog.js','formula-input.css') + @($formula.files.Keys)
 $relativeFiles = @($files | ForEach-Object { [IO.Path]::GetRelativePath($ExportDirectory, $_.FullName).Replace('\','/') })
 if (@(Compare-Object ($expected | Sort-Object) ($relativeFiles | Sort-Object)).Count -ne 0) { throw 'Unexpected files in static publication directory.' }
-foreach ($name in $expected | Where-Object { $_ -notin @('.nojekyll', 'deployment.json') }) {
+foreach ($name in $expected | Where-Object { $_ -notin @('.nojekyll', 'deployment.json', $clipperManifest) }) {
     $sourceHash = (Get-FileHash -LiteralPath (Join-Path $PSScriptRoot ('web\' + $name)) -Algorithm SHA256).Hash
     $exportHash = (Get-FileHash -LiteralPath (Join-Path $ExportDirectory $name) -Algorithm SHA256).Hash
     if ($sourceHash -ne $exportHash) { throw ('Static export is stale: ' + $name) }
@@ -130,7 +143,17 @@ $commit = Invoke-Api GET ('repos/' + $Repository + '/git/commits/' + $parent)
 $priorTree = Invoke-Api GET ('repos/' + $Repository + '/git/trees/' + $commit.tree.sha + '?recursive=1')
 $publicationDocs = @('README.md','AGENTS.md','CONTRIBUTING.md')
 $allowedPrior = if ($created) { @('README.md') } else { $expected + $publicationDocs }
-$allowedDirectories = @('vendor','vendor/mermaid','vendor/chat','vendor/chat/fonts','vendor/book-font','vendor/calculator','vendor/formula','vendor/formula/fonts') + $pwaDirectories
+$previousManifest = $priorTree.tree | Where-Object { $_.type -eq 'blob' -and $_.path -eq $clipperManifest }
+if ($previousManifest) {
+    $blob = Invoke-Api GET ('repos/' + $Repository + '/git/blobs/' + $previousManifest.sha)
+    $priorRelease = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($blob.content)) | ConvertFrom-Json -AsHashtable
+    if ($priorRelease.revision -notmatch '^[a-f0-9]{40}$' -or $priorRelease.sha256 -notmatch '^[a-f0-9]{64}$') { throw 'Invalid previous clipper release.' }
+    foreach ($name in $priorRelease.files.Keys) {
+        if ($name -notmatch $clipperAssetPattern -or $priorRelease.files[$name] -notmatch '^[a-f0-9]{64}$') { throw 'Invalid previous clipper release file.' }
+        $allowedPrior += $clipperRoot + $name
+    }
+}
+$allowedDirectories = @('vendor','vendor/mermaid','vendor/chat','vendor/chat/fonts','vendor/book-font','vendor/calculator','vendor/formula','vendor/formula/fonts') + $pwaDirectories + $clipperDirs
 if ($priorTree.truncated -or @($priorTree.tree | Where-Object { ($_.type -eq 'blob' -and $_.path -notin $allowedPrior) -or ($_.type -eq 'tree' -and $_.path -notin $allowedDirectories) -or $_.type -notin @('blob','tree') }).Count) {
     throw 'Existing repository contains files outside the frontend allowlist. Publication stopped.'
 }
@@ -138,7 +161,7 @@ $priorBlobs = @{}
 foreach ($item in $priorTree.tree | Where-Object type -EQ 'blob') { $priorBlobs[$item.path] = $item.sha }
 $treeItems = @($files | ForEach-Object {
     $entry = @{path=[IO.Path]::GetRelativePath($ExportDirectory, $_.FullName).Replace('\','/');mode='100644';type='blob'}
-    if ($_.Extension -in @('.woff2','.png')) {
+    if ($_.Extension -in @('.woff2','.woff','.ttf','.png','.wasm','.dat') -or ($entry.path.StartsWith($clipperRoot) -and $_.Length -gt 65536)) {
         $bytes = [IO.File]::ReadAllBytes($_.FullName)
         $digest = [Security.Cryptography.IncrementalHash]::CreateHash([Security.Cryptography.HashAlgorithmName]::SHA1)
         try {

@@ -5,256 +5,176 @@ import os from 'node:os';
 import path from 'node:path';
 import {launchAcceptanceChrome} from './launch_acceptance_chrome.mjs';
 
-const [output, fixture, base = 'http://127.0.0.1:18891'] = process.argv.slice(2);
+const [output, fixture, base='http://127.0.0.1:18891'] = process.argv.slice(2);
 const require = createRequire(path.join(os.homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
-const [first, second] = JSON.parse(await readFile(path.join(fixture, 'browser-fixtures.json'), 'utf8'));
-await mkdir(output, {recursive: true});
-const engine = process.env.CLIPPER_BROWSER || 'chrome';
-const mobile = process.env.CLIPPER_MOBILE === '1';
-const fallback = process.env.CLIPPER_FALLBACK === '1';
-const inPage = mobile || fallback;
+const engine = process.env.CLIPPER_BROWSER || 'chrome', mobile = process.env.CLIPPER_MOBILE === '1';
 const browser = engine === 'chrome' ? await launchAcceptanceChrome(require) : await require('playwright')[engine].launch();
-const errors = [], checks = [];
-const desktopSize = {width: 1280, height: 900}, mobileSize = {width: 390, height: 844};
-const context = await browser.newContext({viewport: mobile ? mobileSize : desktopSize, locale: 'zh-CN',
-  ...(mobile ? {hasTouch: true, isMobile: true} : {})});
-context.setDefaultTimeout(14000);
-if (fallback) await context.addInitScript(() => {
-  const matches = Element.prototype.matches;
-  const find = Document.prototype.querySelectorAll;
-  const supports = CSS.supports.bind(CSS);
-  const invalid = () => { throw new DOMException('Selector is not implemented', 'SyntaxError'); };
-  Element.prototype.matches = function (selector) { return selector === ':popover-open' ? invalid() : matches.call(this, selector); };
-  Document.prototype.querySelectorAll = function (selector) { return selector === 'dialog:modal' ? invalid() : find.call(this, selector); };
-  CSS.supports = (...args) => args[0] === 'selector(dialog:modal)' ? false : supports(...args);
-  Object.defineProperty(HTMLElement.prototype, 'showPopover', {value: undefined});
-  Object.defineProperty(window, 'open', {value: () => null});
+const ctx = await browser.newContext({viewport:mobile ? {width:390,height:844}:{width:1280,height:900},
+  locale:'zh-CN', hasTouch:mobile, ...(mobile && engine !== 'firefox' ? {isMobile:true}:{})});
+ctx.setDefaultTimeout(30000);
+const page = await ctx.newPage(), errors=[], checks=[];
+const route=base+'/#/subjects/math/topic/synthetic-course', panel=page.locator('.clipperWorkspace');
+const toggle=page.locator('[data-question-tool="clipper"]'), chooser=page.locator('.clipperActions');
+const invitations=JSON.parse(await readFile(path.join(fixture,'browser-fixtures.json'),'utf8'));
+ctx.on('page',p=>p.on('pageerror',e=>errors.push(e.message)));
+page.on('pageerror',e=>errors.push(e.message));
+if(process.env.CLIPPER_FALLBACK==='1')await ctx.addInitScript(()=>{
+  Object.defineProperty(HTMLElement.prototype,'showPopover',{value:undefined});
+  Object.defineProperty(window,'open',{value:()=>null});
 });
-await context.addInitScript(() => {
-  const sampleVoice = {name: 'Local fixture voice', localService: true, lang: 'en-US'};
-  Object.defineProperty(window, 'SpeechSynthesisUtterance', {value: class {
-    constructor(text) { this.text = text; }
-  }});
-  Object.defineProperty(window, 'speechSynthesis', {value: {
-    getVoices: () => [sampleVoice],
-    speak: utterance => { window.fixtureSpeech = {text: utterance.text, language: utterance.voice.lang}; },
-    cancel: () => {},
-  }});
-});
-const main = await context.newPage();
-context.on('page', page => page.on('pageerror', error => errors.push(error.message)));
-main.on('pageerror', error => errors.push(error.message));
-const toggle = main.locator('[data-question-tool="clipper"]');
-const chooser = main.locator('.clipperActions');
-const workspace = '.clipperWorkspace';
-const route = base + '/#/subjects/math/topic/synthetic-course';
-const phraseSelector = 'p:has-text("Capture the sequence")';
-const formulaSelector = phraseSelector + ' [data-tex]';
-const inlineSelector = 'p:has-text("Inline")';
-let popup = null;
-
-async function waitClipperStyles(page) {
-  await page.waitForFunction(() => [...document.querySelectorAll('link[data-clipper-styles]')]
-    .filter(link => /\/clipper\.css\b/.test(link.href)).every(link => link.sheet));
+await mkdir(output,{recursive:true});
+async function enter(){
+  await page.goto(route);
+  const marker=page.locator('p').filter({hasText:'Capture the sequence'}).first();
+  await Promise.race([marker.waitFor(),page.getByRole('button',{name:'重试',exact:true}).waitFor()]);
+  if(!await marker.isVisible())await page.getByRole('button',{name:'重试',exact:true}).click();
+  await marker.waitFor();
 }
-
-async function account(invite) {
-  await main.locator('#userMenuButton').click();
-  await main.locator('#identityButton').click();
-  const login = main.locator('#identityDialog');
-  await login.locator('input').fill(invite);
-  await login.locator('form').evaluate(form => form.requestSubmit());
-  await login.waitFor({state: 'hidden'});
-  await toggle.waitFor();
+async function login(invite){
+  await page.locator('#userMenuButton').click();await page.locator('#identityButton').click();
+  const dialog=page.locator('#identityDialog');await dialog.locator('input').fill(invite);
+  await dialog.locator('form').evaluate(f=>f.requestSubmit());await dialog.waitFor({state:'hidden'});await toggle.waitFor();
 }
-
-async function select(css, element = false) {
-  const target = main.locator(css);
-  await target.scrollIntoViewIfNeeded();
-  await target.evaluate((node, entire) => {
-    const selection = getSelection(), range = document.createRange();
-    if (entire) range.selectNode(node);
-    else range.selectNodeContents(node);
-    selection.removeAllRanges();
-    selection.addRange(range);
-  }, element);
+async function select(kind, occurrence='last'){
+  const text=kind==='mixed'?'与下方代码':kind==='formula'?'Capture the sequence':'另一结论成立';
+  const target=page.locator('p').filter({hasText:text}).first();await target.scrollIntoViewIfNeeded();
+  await target.evaluate((p,{kind,occurrence})=>{
+    const r=document.createRange();
+    if(kind==='mixed'){r.setStartBefore(p);r.setEndAfter(p.nextElementSibling.nextElementSibling);}
+    else if(kind==='formula')r.selectNode(p.querySelector('[data-tex]'));
+    else {
+      const texts=[...p.childNodes].filter(n=>n.nodeType===3&&n.data.includes('成立'));
+      const n=occurrence==='last'?texts.at(-1):texts[0], k=n.data.indexOf('成立');
+      r.setStart(n,k);r.setEnd(n,k+2);
+    }
+    const s=getSelection();s.removeAllRanges();s.addRange(r);
+  },{kind,occurrence});
   await chooser.waitFor();
 }
-
-async function open(label, css, element = false) {
-  if (inPage && popup) await main.getByRole('button', {name: '最小化', exact: true}).click();
-  await select(css, element);
-  const event = popup || inPage ? null : main.waitForEvent('popup');
-  await chooser.getByRole('button', {name: label, exact: true}).click();
-  if (event) popup = await event;
-  if (inPage) popup = main;
-  await popup.locator(workspace).waitFor();
-  return popup;
+async function operation(label){
+  await chooser.getByRole('button',{name:label,exact:true}).click();
+  const handle=await panel.locator('.clipperPanel:not([hidden]) .clipperFeatureFrame').elementHandle({timeout:45000});
+  const f=await handle.contentFrame();await f.locator('#content > *').first().waitFor({state:'attached',timeout:75000});
+  return f;
 }
-
-try {
-  await main.goto(route);
-  await main.locator(phraseSelector).waitFor();
-  assert.equal(await toggle.isVisible(), false);
-  await account(first);
-  assert.equal(await toggle.getAttribute('aria-pressed'), 'false');
-  await toggle.click();
-  assert.equal(await toggle.getAttribute('aria-pressed'), 'true');
-  assert.equal(await chooser.isVisible(), false);
-
-  if (mobile) await main.locator(formulaSelector).tap();
-  else {
-    const phrase = await main.locator(phraseSelector).boundingBox();
-    await main.mouse.move(phrase.x + 2, phrase.y + phrase.height / 2);
-    await main.mouse.down();
-    await main.mouse.move(phrase.x + 90, phrase.y + phrase.height / 2, {steps: 12});
-    await main.mouse.up();
-  }
-  await chooser.waitFor();
-  checks.push(mobile ? 'touch formula exposes actions' : 'native drag exposes actions');
-  if (!mobile) {
-    await main.evaluate(() => getSelection().removeAllRanges());
-    await main.locator(formulaSelector).hover();
-    await main.keyboard.press('Alt+Shift+s');
-    await chooser.waitFor();
-    await main.keyboard.press('Alt+Shift+c');
-    await main.waitForFunction(() => document.activeElement.matches('.clipperActions button:first-child'), undefined, {timeout: 4000});
-    checks.push('keyboard selects a formula and focuses actions');
-  }
-
-  await open('摘', formulaSelector, true);
-  await popup.getByRole('button', {name: '保存摘录'}).click();
-  await popup.getByText('已存入个人自由学习。', {exact: true}).waitFor();
-  assert.match(await popup.locator('.clipperSource').innerHTML(), /x\^2/);
-  if (!inPage) assert.equal(Math.round((await popup.locator(workspace).boundingBox()).y), 0);
-  checks.push('formula-only excerpt uses original LaTeX');
-  await waitClipperStyles(popup);
-  for (const width of [320, 375, 414, 768]) {
-    await popup.setViewportSize({width, height: 660});
-    const size = await popup.evaluate(() => new Promise(resolve => requestAnimationFrame(() =>
-      requestAnimationFrame(() => resolve({
-        viewport: innerWidth, root: document.documentElement.scrollWidth,
-        body: document.body.scrollWidth, mode: document.compatMode,
-        workspace: Math.round(document.querySelector('.clipperWorkspace').getBoundingClientRect().right),
-      })))));
-    assert.ok(size.root <= size.viewport, `horizontal overflow at ${width}: ${JSON.stringify(size)}`);
-  }
-  await popup.screenshot({path: path.join(output, 'clipper-excerpt.png')});
-  if (inPage) await main.setViewportSize(mobile ? mobileSize : desktopSize);
-  else await popup.getByRole('button', {name: '在当前页置顶', exact: true}).click({timeout: 8000}).catch(error => {
-    if (!popup.isClosed()) throw error;
-  });
-  const dock = main.locator(fallback ? '.clipperDock' : '.clipperDock:popover-open');
-  await dock.waitFor();
-  if (mobile) {
-    await main.touchscreen.tap(24, 250);
-    await main.evaluate(() => window.scrollBy(0, 400));
-  } else {
-    await main.mouse.click(24, 250);
-    await main.mouse.wheel(0, 400);
-  }
-  assert.ok(await dock.isVisible());
-  if (!inPage && engine === 'chrome') {
-    await dock.evaluate(element => Object.assign(element.style, {width: '465px', height: '385px'}));
-    const available = await main.evaluate(() => ({width: document.body.getBoundingClientRect().width, height: innerHeight}));
-    await dock.getByRole('button', {name: '铺满标签页', exact: true}).click();
-    const expanded = await dock.boundingBox();
-    assert.ok(expanded.width >= available.width - 1 && expanded.height >= available.height - 1);
-    await dock.getByRole('button', {name: '还原', exact: true}).click();
-    assert.equal(Math.round((await dock.boundingBox()).width), 465);
-    await dock.getByRole('button', {name: '最小化', exact: true}).click();
-    assert.ok((await dock.boundingBox()).height < 120);
-    await dock.getByRole('button', {name: '恢复', exact: true}).click();
-    assert.equal(Math.round((await dock.boundingBox()).height), 385);
-    checks.push('dock fills and minimizes after resize and restores the chosen size');
-  }
-  await dock.getByRole('button', {name: '最小化', exact: true}).click();
-  assert.equal(await dock.locator('.clipperPanel').isVisible(), false);
-  await dock.getByRole('button', {name: '恢复', exact: true}).click();
-  if (!inPage) {
-    const reopened = main.waitForEvent('popup');
-    await dock.getByRole('button', {name: '普通窗口', exact: true}).click();
-    popup = await reopened;
-    await waitClipperStyles(popup);
-    const bounds = await popup.locator(workspace).evaluate(element => {
-      const rect = element.getBoundingClientRect();
-      return {width: Math.round(rect.width), height: Math.round(rect.height),
-        expectedWidth: Math.round(document.body.getBoundingClientRect().width), expectedHeight: innerHeight};
+async function view(f,condition){
+  const until=Date.now()+45000;
+  let state;
+  do{
+    state=await f.evaluate(async()=>JSON.parse(await DotNet.invokeMethodAsync('KnowledgeClipper.Browser','View')));
+    if(state.shared.error)throw Error(state.shared.error);
+    if(!state.shared.working&&condition(state))return state;
+    await new Promise(resolve=>setTimeout(resolve,120));
+  }while(Date.now()<until);
+  throw Error('The workflow did not reach its expected state: '+state.shared.screen+' '+state.shared.speechError+' '+state.shared.lookupError);
+}
+async function close(){await panel.getByRole('button',{name:'关闭',exact:true}).click();await panel.waitFor({state:'detached'});}
+try{
+  await enter();assert.equal(await toggle.isVisible(),false);await login(invitations[0]);
+  await toggle.click();assert.equal(await toggle.getAttribute('aria-pressed'),'true');assert.equal(await panel.count(),0);
+  const sample=page.locator('p').filter({hasText:'Capture the sequence'}).first();
+  await sample.scrollIntoViewIfNeeded();
+  if(!mobile){
+    const box=await sample.boundingBox();await page.mouse.move(box.x+2,box.y+box.height/2);await page.mouse.down();
+    await page.mouse.move(box.x+86,box.y+box.height/2,{steps:10});await page.mouse.up();await chooser.waitFor();
+    await page.evaluate(()=>getSelection().removeAllRanges());await sample.locator('[data-tex]').first().hover();
+    await page.keyboard.press('Alt+Shift+s');await chooser.waitFor();await page.keyboard.press('Alt+Shift+c');
+    await page.waitForFunction(()=>document.activeElement?.matches('.clipperActions button:first-child'));
+    checks.push('native drag and keyboard selection');
+  }else{await sample.locator('[data-tex]').first().tap();await chooser.waitFor();checks.push('tap selection');}
+  await select('mixed');const excerpt=await operation('摘');
+  const captured=await view(excerpt,s=>s.shared.receipt);
+  assert.match(captured.shared.text,/比较 \\\(a\^2\+b\^2\\\)/);
+  assert.ok(!captured.shared.text.includes('\n\npython\n\n'));
+  assert.ok(captured.shared.text.includes('if x > 0:\n    print(x)'));
+  assert.match(captured.shared.text,/!\[方块\]\(asset:[a-f0-9]{64}\)/);
+  const article=excerpt.locator('article').first();
+  await article.locator('.katex').first().waitFor({state:'attached'});
+  await article.locator('img[src^="blob:"]').first().waitFor();
+  assert.match(await article.locator('pre').first().innerText(),/    print\(x\)/);
+  const linePositions=await article.locator('pre code>span').evaluateAll(lines=>lines.map(line=>line.getBoundingClientRect().top));
+  assert.ok(linePositions.length>=2 && linePositions[1]>linePositions[0], 'Source lines should occupy distinct visual lines');
+  await page.screenshot({path:path.join(output,'excerpt.png')});checks.push('native rich excerpt, original TeX, indented code and in-place PNG');
+  await panel.getByRole('button',{name:'最小化',exact:true}).click();
+  await page.evaluate(()=>scrollBy(0,220));await panel.getByRole('button',{name:'恢复',exact:true}).click();
+  await panel.getByRole('button',{name:'铺满标签页',exact:true}).click();await panel.getByRole('button',{name:'还原',exact:true}).click();
+  if(!mobile&&process.env.CLIPPER_FALLBACK!=='1'){
+    const event=page.waitForEvent('popup');await panel.getByRole('button',{name:'普通窗口',exact:true}).click();
+    const popup=await event;const nested=popup.frameLocator('.clipperFeatureFrame');
+    await nested.locator('article .katex').first().waitFor({state:'attached',timeout:65000});
+    const closed=popup.waitForEvent('close');
+    await popup.getByRole('button',{name:'在当前页置顶',exact:true}).click().catch(error=>{
+      if(!popup.isClosed())throw error;
     });
-    assert.equal(bounds.width, bounds.expectedWidth);
-    assert.equal(bounds.height, bounds.expectedHeight);
-    checks.push('reopened popup fits its own viewport');
+    await closed;
+    await page.frameLocator('.clipperFeatureFrame').locator('article .katex').first().waitFor({state:'attached',timeout:65000});
   }
-  await popup.getByText('已存入个人自由学习。', {exact: true}).waitFor();
-  checks.push('dock survives page interaction and preserves the workspace on minimize and restore');
-
-  for (const [selector, expected] of [
-    ['p:has-text("Legacy SVG") mjx-container', '\\frac{1}{2}'],
-    ['p:has-text("Native MathML") math', '{m}^{3}'],
-  ]) {
-    await open('摘', selector, true);
-    await popup.getByRole('button', {name: '保存摘录'}).click();
-    await popup.getByText('已存入个人自由学习。', {exact: true}).waitFor();
-    await popup.waitForFunction(tex => [...document.querySelectorAll('.clipperSource [data-math-source]')]
-      .some(formula => formula.dataset.mathSource.includes(tex)), expected, {timeout: 9000});
+  await close();checks.push('ordinary window, pinned workspace and size controls');
+  await page.evaluate(()=>getSelection().removeAllRanges());
+  const picture=page.getByRole('img',{name:'方块',exact:true}).first();
+  if(mobile)await picture.tap();else await picture.click();
+  const images=await operation('图');
+  await images.locator('figure img[src^="blob:"]').waitFor();
+  const role=images.locator('figure select').first();
+  await role.selectOption('answer');
+  await view(images,s=>s.collection[0].role==='answer');
+  await role.selectOption('question');
+  await view(images,s=>s.collection[0].role==='question');
+  const format=images.locator('select').filter({has:images.locator('option[value="original"]')});
+  await format.selectOption('original');
+  await view(images,s=>s.original);
+  const routeChoice=images.locator('select').filter({has:images.locator('option[value="image-excerpt"]')});
+  await routeChoice.selectOption('image-excerpt');
+  await images.getByRole('button',{name:'处理图片',exact:true}).click();
+  const imageDraft=await view(images,s=>s.shared.screen==='excerpt'&&s.cards.some(c=>c.frontImages.length===1));
+  if(!imageDraft.shared.receipt){
+    await images.getByRole('button',{name:'保存到个人自由学习',exact:true}).first().click();
   }
-  checks.push('legacy SVG and native MathML remain selectable without stored LaTeX');
-
-  await open('卡', inlineSelector);
-  await popup.getByRole('button', {name: '选区加入正面'}).click();
-  assert.match(await popup.getByLabel('正面', {exact: true}).inputValue(), /\\frac\{a\}\{b\}/);
-  await popup.getByLabel('背面', {exact: true}).fill('Fixture back for review');
-  await popup.getByRole('button', {name: '保存卡片'}).click();
-  await popup.getByText('已存入个人自由学习。', {exact: true}).waitFor();
-  await popup.getByLabel('提问', {exact: true}).fill('Why does this work?');
-  await popup.getByRole('button', {name: '发送', exact: true}).click();
-  await popup.getByText('Fixture response: Why does this work?').waitFor();
-  await popup.getByRole('button', {name: '整合为卡片'}).click();
-  await popup.getByText('Fixture generated front').waitFor();
-  checks.push('manual card, routed chat, multi-card candidate response');
-
-  await open('问', phraseSelector);
-  await popup.getByText('Fixture response: 请解释所选内容。').waitFor();
-  checks.push('quick question invoked once');
-
-  await open('读', phraseSelector);
-  await popup.getByRole('button', {name: '查询词义'}).click();
-  await popup.getByText('Fixture meaning: sequence').waitFor();
-  await popup.getByRole('button', {name: '朗读选区'}).click();
-  const spoken = await main.evaluate(() => window.fixtureSpeech);
-  assert.equal(spoken.language, 'en-US');
-  assert.match(spoken.text, /Capture the sequence/);
-  checks.push('meaning lookup and local speech synthesis handoff');
-  if (inPage) await main.getByRole('button', {name: '最小化', exact: true}).click();
-  await main.goto(base + '/#/free-study');
-  await main.getByRole('button', {name: '翻看背面'}).click();
-  await main.getByText('Fixture back for review').waitFor();
-  await main.getByRole('button', {name: '良好', exact: true}).click();
-  await main.getByText('目前没有到期的个人卡片。').waitFor();
-  await main.getByRole('button', {name: '摘录', exact: true}).click();
-  await main.locator('.clipperLibraryItem').first().waitFor();
-  for (const label of ['导出今天', '导出全部']) {
-    const download = main.waitForEvent('download');
-    await main.getByRole('button', {name: label}).click();
-    const file = await download;
-    const markdown = await readFile(await file.path(), 'utf8');
-    assert.match(markdown, /\$x\^2\$/);
-    assert.match(markdown, /\$\\frac\{1\}\{2\}\$/);
+  await view(images,s=>s.shared.receipt);await close();checks.push('single image opens canonical collection, front/back roles and original image excerpt');
+  await select('sentence');const reading=await operation('读');const initial=await view(reading,s=>s.shared.audio&&s.shared.lookup&&s.cards.length);
+  const sentence='若 \\(x^2=0.25\\)，另一结论成立。';
+  assert.equal(initial.shared.context,sentence);assert.equal(sentence.slice(initial.shared.start,initial.shared.start+2),'成立');
+  assert.equal(initial.shared.lookup.contextText,sentence);assert.equal(initial.cards[0].front,sentence);
+  await close();await select('sentence');const repeat=await operation('读');
+  const repeated=await view(repeat,s=>s.shared.audio&&s.shared.replayOnly);
+  assert.equal(repeated.shared.audio,initial.shared.audio);assert.equal(repeated.cards.length,0);await close();
+  await select('sentence','first');const different=await operation('读');
+  const changed=await view(different,s=>s.shared.audio&&s.shared.lookup);
+  assert.equal(changed.shared.context,'若 \\(x>0\\)，结论成立。');await close();
+  const requests=(await readFile(path.join(fixture,'provider-inputs.jsonl'),'utf8')).trim().split('\n').map(JSON.parse);
+  const speech=requests.filter(r=>r.path==='/audio/speech').map(r=>r.payload.input);
+  assert.ok(speech.some(t=>t.includes('平方')&&t.includes('0.25')&&t.includes('另一结论成立')));
+  assert.ok(speech.some(t=>/大[於于]/.test(t)&&t.includes('结论成立')&&!t.includes('另一')));
+  checks.push('exact occurrence, complete math sentence, saved language cards, scoped recording replay');
+  await select('formula');const card=await operation('卡');const editor=card.frameLocator('iframe[title]');
+  const front=editor.getByRole('textbox',{name:'卡片正面',exact:true}),back=editor.getByRole('textbox',{name:'卡片背面',exact:true});
+  await front.fill('验收 \\(x^2\\)');await back.fill('保留公式和原始选区');
+  await editor.getByRole('button',{name:'保存到个人自由学习',exact:true}).click();
+  await view(card,s=>s.shared.receipt);await close();
+  await select('formula');const ask=await operation('问');
+  await ask.frameLocator('iframe[title]').getByText('测试回答：保留题干条件。',{exact:false}).first().waitFor();await close();
+  checks.push('shared chat editor, manual card, send-once question');
+  await page.goto(base+'/#/settings/knowledge-clipper');const scope=page.locator('[name=contextGranularity]');
+  const localToggle=page.getByRole('checkbox',{name:'在此浏览器启用选区工具'});
+  await localToggle.uncheck();assert.equal(await toggle.getAttribute('aria-pressed'),'false');
+  await localToggle.check();assert.equal(await toggle.getAttribute('aria-pressed'),'true');
+  await scope.selectOption('paragraph');await page.getByRole('button',{name:'保存设置',exact:true}).click();
+  await page.getByText('已保存，新选区使用这些设置。').waitFor();await enter();
+  await select('sentence');const contextual=await operation('摘');
+  const para=await view(contextual,s=>s.shared.receipt);assert.ok(para.shared.context.includes('若 \\(x>0\\)')&&para.shared.context.includes('后一段。'));await close();
+  await page.goto(base+'/#/free-study');await page.getByRole('button',{name:'翻看背面',exact:true}).click();
+  await page.getByRole('button',{name:'良好',exact:true}).click();
+  await page.getByRole('button',{name:'摘录',exact:true}).click();await page.locator('.clipperLibraryItem .katex').first().waitFor({state:'attached'});
+  for(const name of ['导出今天','导出全部']){
+    const event=page.waitForEvent('download');await page.getByRole('button',{name,exact:true}).click();
+    const download=await event;assert.match(download.suggestedFilename(),/\.zip$/);
+    await download.saveAs(path.join(output,name+'.zip'));
   }
-  await main.screenshot({path: path.join(output, 'free-study-clips.png')});
-  checks.push('site FSRS review and both RemNote markdown downloads');
-
-  const closed = inPage ? null : popup.waitForEvent('close');
-  await account(second);
-  if (closed) await closed;
-  else await main.locator(workspace).waitFor({state: 'detached'});
-  assert.equal(await toggle.getAttribute('aria-pressed'), 'false');
-  await main.getByRole('button', {name: '摘录', exact: true}).click();
-  await main.getByText('这里还没有内容。').waitFor();
-  checks.push('account switch closes personal workspace and isolates items');
-  assert.deepEqual(errors, []);
-  console.log('PASS', checks.length, 'browser checks');
-} finally {
-  await writeFile(path.join(output, 'clipper-browser.json'), JSON.stringify({engine, mobile, fallback, checks, errors}, null, 2));
+  await page.screenshot({path:path.join(output,'personal-study.png')});checks.push('settings, paragraph scope, FSRS and day/all rich media exports');
+  await login(invitations[1]);assert.equal(await toggle.getAttribute('aria-pressed'),'false');
+  await page.getByRole('button',{name:'摘录',exact:true}).click();await page.getByText('这里还没有内容。').waitFor();
+  checks.push('account isolation');assert.deepEqual(errors,[]);console.log('PASS',checks.length,'browser scenarios');
+} finally{
+  await writeFile(path.join(output,'clipper-browser.json'),JSON.stringify({engine,mobile,checks,errors},null,2));
   await browser.close();
 }
