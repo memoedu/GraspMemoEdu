@@ -70,6 +70,7 @@ class RubberDuckTests(unittest.TestCase):
         preview = self.call('GET', self.reader)['reader_states']['statistics']
         self.assertTrue(preview['preview'])
         self.assertFalse(preview['can_self_rate'])
+        self.assertEqual(preview['question']['interaction']['type'], 'rubber_duck')
         outline = preview['outline']
         self.assertEqual((outline['covered'], outline['total']), (0, 7))
         self.assertEqual(outline['root']['text'], '描述一组数据')
@@ -118,8 +119,17 @@ class RubberDuckTests(unittest.TestCase):
 
         with closing(sqlite3.connect(self.root / 'learning.sqlite3')) as con:
             self.assertEqual(con.execute('SELECT COUNT(*) FROM training_ratings').fetchone()[0], 1)
+        history = self.call('GET', '/api/student-report/history?kind=training'
+                                   '&container=rubber-duck-qa&question=statistics')
+        self.assertEqual(len(history['items']), 1)
+        self.assertIsNone(history['items'][0]['interaction'])
+        self.assertEqual(history['items'][0]['answer_display'], receipt['answer'])
         self.account(is_advanced_learner=True, is_student=True, purpose='test')
         self.call('GET', '/api/training/state?attempt_id=' + ident, status=404)
+        self.account(is_admin=True, purpose='test')
+        material = self.call('GET', '/api/materials/content?topic_id=training.rubber-duck-qa'
+                                    '&bank_id=rubber-duck-qa&group_id=outline')
+        self.assertIsNone(material['blocks'][0]['interaction'])
 
     def test_schema_rejects_cross_surface_usage_and_duplicate_nodes(self):
         spec = self.bank['groups'][0]['questions'][0]['interaction']

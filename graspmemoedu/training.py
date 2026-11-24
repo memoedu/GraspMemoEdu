@@ -297,7 +297,7 @@ class TrainingService:
                 'mode': row['mode'], 'created_at': row['created_at'], 'completed_at': row['completed_at'],
                 'question': {'id': question['id'], 'title': question.get('title', question['id']),
                              **calculator.presentation(group, question, default_level='none'),
-                             'interaction': public_interaction(question)},
+                             'interaction': public_interaction(question, allow_outline=True)},
                 'explanation_html': question['explanation_html'] if revealed else None,
                 **reference_fields(question, revealed, answer=submission['answer'] if submission and result
                                    and result.get('self_rating') is None and not result.get('stop_requested') else None),
@@ -739,7 +739,7 @@ class TrainingService:
                          'question_id': qid, 'version': bank['version'], 'phase': 'answer',
                          'question': {'id': qid, 'title': question.get('title', qid),
                                       **calculator.presentation(source, question, default_level='none'),
-                                      'interaction': public_interaction(question)},
+                                      'interaction': public_interaction(question, allow_outline=True)},
                          'answer': '', 'answer_display': '', 'explanation_html': None,
                          'can_self_rate': self_rating and is_reproduction(question)
                                           and not (question.get('academy') or question.get('hyperskill')),

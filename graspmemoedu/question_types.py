@@ -157,10 +157,12 @@ def validate_interaction(spec, stem='', *, allow_outline=False):
                  'Matching pairs must be one-to-one')
 
 
-def public_interaction(question):
+def public_interaction(question, *, allow_outline=False):
     spec = question.get('interaction')
     if spec is None:
         return None
+    if spec.get('type') == rubber_duck.TYPE and not allow_outline:
+        return None  # Generic read-only viewers display the transcript without a form.
     if spec.get('version') == 2:
         from .composite_questions import public
         return public(spec)
