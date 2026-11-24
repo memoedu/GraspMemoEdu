@@ -48,13 +48,16 @@ class WhiteboardPhoto(BaseModel):
         return 'zh' if value == 'zh-CN' else value
 
 
-def checked_png(data):
+def checked_png(data, *, skip_blank=False):
     try:
         with Image.open(BytesIO(base64.b64decode(data, validate=True)), formats=['PNG']) as image:
             if image.width < 1 or image.height < 1 or image.width * image.height > 4_000_000:
                 raise ValueError('Invalid dimensions')
+            rgb = image.convert('RGB')
+            if skip_blank and rgb.getextrema() == ((255, 255),) * 3:
+                return None
             encoded = BytesIO()
-            image.convert('RGB').save(encoded, format='PNG')
+            rgb.save(encoded, format='PNG')
             return 'data:image/png;base64,' + base64.b64encode(encoded.getvalue()).decode('ascii')
     except (OSError, ValueError, binascii.Error, Image.DecompressionBombError):
         raise DomainError('invalid_whiteboard', '无法读取白板图片。', 422) from None
@@ -139,7 +142,11 @@ def register_whiteboard_ocr(app, access_store):
         if not slots.acquire(blocking=False):
             raise DomainError('whiteboard_ocr_busy', '白板识别正在处理其他请求，请稍后重试。', 429)
         try:
-            png = checked_png(payload.image)
+            png = checked_png(payload.image, skip_blank=payload.purpose == 'answer')
+            if png is None:
+                return {'status': 'insufficient', 'feedback': (
+                    'Write your answer on the whiteboard before submitting.' if payload.language == 'en'
+                    else '白板是空白的，请写下作答内容后再提交。')}
             if limits.daily:
                 with limits.daily.reserve(access['learner_id'], access['role']):
                     pass
