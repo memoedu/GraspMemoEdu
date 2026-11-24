@@ -9,6 +9,7 @@ param(
     [string]$CacheDirectory = 'D:/Caches/GraspMemoEdu/mathacademy',
     [string]$QuestionInventory,
     [string]$QuestionPlan,
+    [string]$OriginalImages,
     [switch]$PlanOnly
 )
 $ErrorActionPreference = 'Stop'
@@ -20,6 +21,7 @@ if ($DataDir) { $arguments += @('--data-dir',$DataDir) }
 if ($PlanOnly) { $arguments += '--plan-only' }
 if ($QuestionInventory) { $arguments += @('--question-inventory',$QuestionInventory) }
 if ($QuestionPlan) { $arguments += @('--question-plan',$QuestionPlan) }
+if ($OriginalImages) { $arguments += @('--original-images',$OriginalImages) }
 $arguments += '--course-ids'
 foreach ($value in $CourseIds) { $arguments += $value.Split(',') }
 Push-Location $PSScriptRoot

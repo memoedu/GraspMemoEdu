@@ -146,10 +146,41 @@ class SourceIndex:
 
 
 class Assets:
-    def __init__(self, root, graphics):
+    def __init__(self, root, graphics, original_images=None):
         self.root, self.graphics = root, graphics
+        self.original_images = Path(original_images) if original_images is not None else None
+        self.original_records = (json.loads((self.original_images / 'source-images.json').read_bytes())['images']
+                                 if self.original_images is not None else {})
         self._compile_locks = defaultdict(threading.Lock)
         root.mkdir(parents=True, exist_ok=True)
+
+    def original(self, reference):
+        if self.original_images is None:
+            return None
+        url = urlsplit(reference)
+        if url.netloc and (url.scheme != 'https' or url.netloc not in ('mathacademy.com', 'www.mathacademy.com')):
+            return None
+        identity = url.path.removeprefix('/graphics/')
+        if not re.fullmatch(r'[A-Za-z0-9_-]{1,128}', identity) or identity not in self.original_records:
+            return None
+        record = self.original_records[identity]
+        path = self.original_images / (identity + '.image')
+        limit = 8 * 1024 * 1024
+        if path.is_symlink() or not path.is_file() or not 0 < path.stat().st_size <= limit:
+            raise ValueError('Invalid saved MA graphic: ' + identity)
+        data = path.read_bytes()
+        if digest(data) != record['sha256'] or record['url'] != 'https://mathacademy.com/graphics/' + identity:
+            raise ValueError('Saved MA graphic does not match its receipt: ' + identity)
+        from PIL import Image
+
+        png = io.BytesIO()
+        with Image.open(io.BytesIO(data)) as image:
+            if image.width * image.height > 16_000_000 or image.n_frames != 1:
+                raise ValueError('Unsupported saved MA graphic: ' + identity)
+            image.convert('RGBA').save(png, format='PNG', optimize=True)
+        if png.tell() > limit:
+            raise ValueError('Normalized MA graphic exceeds the image limit: ' + identity)
+        return 'data:image/png;base64,' + base64.b64encode(png.getvalue()).decode('ascii')
 
     def compile(self, source):
         # Only transport math delimiters are normalized; drawing content stays intact.
@@ -238,6 +269,8 @@ class Assets:
         def image(url):
             if url.startswith('data:image/'):
                 return url
+            if original := self.original(html.unescape(url)):
+                return original
             # Source controls may use a bare fileId; HTML uses /graphics/<fileId>.
             # A question image is not the image of an option sharing its prefix.
             identity = urlsplit(html.unescape(url)).path.removeprefix('/graphics/')
@@ -605,7 +638,7 @@ def course_documents(index, scope):
     return courses, graphs
 
 
-def prepare(index, scope, cache, output, *, fail_at=None, question_plan=None):
+def prepare(index, scope, cache, output, *, fail_at=None, original_images=None, question_plan=None):
     inventory = scoped_question_inventory(index, scope)
     question_plan = {} if question_plan is None else question_plan
     ma_question_plan.validate_plan(inventory, question_plan)
@@ -615,7 +648,7 @@ def prepare(index, scope, cache, output, *, fail_at=None, question_plan=None):
         by_topic[int(tid)][qid] = row
     cache.mkdir(parents=True, exist_ok=True); output.mkdir(parents=True, exist_ok=True)
     graphics = index.graphics(cache)
-    assets = Assets(cache / 'graphics', graphics)
+    assets = Assets(cache / 'graphics', graphics, original_images)
     # Code changes invalidate derived caches, never private input snapshots.
     root = Path(__file__).resolve().parents[1]
     conversion = '\n'.join(inspect.getsource(value) for value in (
@@ -623,6 +656,7 @@ def prepare(index, scope, cache, output, *, fail_at=None, question_plan=None):
         ma_question_plan.revise_stem,
         question_model, calculation_metadata, calculator.from_mathacademy, calculator.normalize))
     config_hash = digest((repr((ADAPTER_VERSION, sorted(SOURCE_FIELDS), GAP_LABELS, calculator.MA_LEVELS)) + conversion).encode()
+                         + encoded(assets.original_records)
                          + (root / 'scripts/render_mathacademy.mjs').read_bytes()
                          + (root / 'web/math-syntax.js').read_bytes())
     renderer = Renderer(); reused = 0
@@ -660,6 +694,9 @@ def prepare(index, scope, cache, output, *, fail_at=None, question_plan=None):
             (topics_dir / (topic['id'] + '.json')).write_bytes(encoded(topic))
             (raw_dir / (topic['id'] + '.json')).write_bytes(raw)
             reports.append({'topic_id': topic['id'], **topic['availability'], 'source_gaps': topic['_source_gaps']})
+            missing_images = sum(gap['code'] == 'image_missing' for gap in topic['_source_gaps'])
+            if original_images is not None and missing_images:
+                failures.append({'topic_id': tid, 'error': 'Unresolved source images', 'count': missing_images})
             if (position + 1) % 10 == 0:
                 print(f'content {position + 1}/{len(scope["topic_ids"])} reused={reused}', flush=True)
             if fail_at == 'prepare':
@@ -949,6 +986,7 @@ def main(argv=None):
     p.add_argument('--cache', default='D:/Caches/GraspMemoEdu/mathacademy' if os.name == 'nt' else '/var/cache/graspmemoedu/mathacademy')
     p.add_argument('--output', default='D:/Artifacts/GraspMemoEdu/mathacademy-course-import/prepared')
     p.add_argument('--install-package'); p.add_argument('--fail-at', choices=['prepare', 'activate'])
+    p.add_argument('--original-images', type=Path, help='Frozen first-party images and their source-images.json receipt')
     p.add_argument('--question-inventory', type=Path, help='write the scoped option-bearing questions and exit')
     p.add_argument('--question-plan', type=Path, help='source-bound decisions for the option-bearing questions')
     args = p.parse_args(argv)
@@ -965,7 +1003,9 @@ def main(argv=None):
             print(json.dumps(scope, ensure_ascii=False)); return
         print(json.dumps({k: v for k, v in scope.items() if k != 'topic_ids'}), flush=True)
         plan = json.loads(args.question_plan.read_bytes()) if args.question_plan else None
-        output = Path(args.output); prepare(index, scope, Path(args.cache), output, fail_at=args.fail_at, question_plan=plan)
+        output = Path(args.output)
+        prepare(index, scope, Path(args.cache), output, fail_at=args.fail_at,
+                original_images=args.original_images, question_plan=plan)
         result = production_install(output) if args.target == 'production' else install(output, args.data_dir, fail_at=args.fail_at)
     print(json.dumps(result, ensure_ascii=False), flush=True)
 

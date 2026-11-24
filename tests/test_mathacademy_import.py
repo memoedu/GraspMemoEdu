@@ -1,6 +1,8 @@
 """Independent synthetic sources: shared identity, atomic install and safe reading."""
 from copy import deepcopy
 from contextlib import closing
+import base64
+import io
 import json
 from pathlib import Path
 import sqlite3
@@ -83,6 +85,33 @@ class MathAcademyTests(unittest.TestCase):
         self.assertEqual(option['text'], raw)
         self.assertIn('<img src="' + png + '"', option['html'])
         self.assertIn('<code>&lt;img&gt;</code>', code['html'])
+
+    def test_frozen_graphic_binding_recovers_the_exact_image_and_detects_a_changed_file(self):
+        from PIL import Image
+
+        captures = self.root / 'captures'
+        captures.mkdir()
+        raw = captures / 'q-17-a-2.image'
+        expected = Image.new('RGBA', (3, 2), (35, 70, 210, 255))
+        expected.save(raw, format='PNG')
+        ref = '/graphics/q-17-a-2'
+        (captures / 'source-images.json').write_text(json.dumps({'images': {'q-17-a-2': {
+            'sha256': file_hash(raw), 'url': 'https://mathacademy.com' + ref}}}), encoding='utf-8')
+        assets = Assets(self.cache, {}, captures)
+        result = assets.original(ref)
+        with Image.open(io.BytesIO(base64.b64decode(result.split(',', 1)[1]))) as restored:
+            self.assertEqual(restored.tobytes(), expected.tobytes())
+        self.assertIsNone(assets.original('https://unrelated.test' + ref))
+        raw.write_bytes(b'changed')
+        with self.assertRaisesRegex(ValueError, 'does not match its receipt'):
+            assets.original(ref)
+
+    def test_import_preserves_ml_course_membership_even_when_a_second_course_shares_the_topic(self):
+        self.index.graphs[72] = self.index.graphs[20]
+        self.index.graphs[129] = self.index.graphs[10]
+        scope = self.index.scope([72])
+        self.assertEqual(scope['target_topics'], 2)
+        self.assertEqual(scope['topic_ids'], [1, 2, 3])
 
     def test_atomic_activation_idempotency_shared_identity_and_backup(self):
         self.prepared()
