@@ -7,7 +7,7 @@ import {formulaTemplates, matchesCompletion, nativeFormulaSample, nativeFunction
 import previews from '../web/vendor/formula/previews.mjs';
 
 test('selected OCR formulas reuse numeric, remainder and optional CAS calculation', async () => {
-  for (const [expression, result] of [['3+7', '10'], ['mod(17,5)', '2'], ['sin(pi/2)', '1']]) {
+  for (const [expression, result] of [['3+7', '10'], ['mod(17,5)', '2'], ['2+17 mod 5', '4'], ['sin(pi/2)', '1']]) {
     assert.equal((await calculateSelectedFormula({expression, cas: false})).text, result);
   }
   assert.equal((await calculateSelectedFormula({expression: 'x+x'})).text, '2*x');
@@ -15,6 +15,7 @@ test('selected OCR formulas reuse numeric, remainder and optional CAS calculatio
   await assert.rejects(calculateSelectedFormula({expression: 'x+x', config: {level: 'scientific'}}), {code: 'unassigned'});
   await assert.rejects(calculateSelectedFormula({expression: '3+7=10'}), {code: 'expression_required'});
   await assert.rejects(calculateSelectedFormula({expression: 'mod(17,0)'}), {code: 'domain'});
+  await assert.rejects(calculateSelectedFormula({expression: '17 mod 0'}), {code: 'domain'});
 });
 
 test('plain decimal display preserves the digits and sign of a scientific result', () => {
