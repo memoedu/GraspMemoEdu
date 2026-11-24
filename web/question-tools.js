@@ -1,8 +1,8 @@
-import {setVoiceContext} from './voice-context.js?v=d14eef1adfa28ee4';
-import {getLanguage} from './i18n.js?v=d14eef1adfa28ee4';
-import {calculatorToolGroups} from './calculator.js?v=d14eef1adfa28ee4';
-import {configureWhiteboard, openWhiteboard, questionToolSession} from './whiteboard.js?v=d14eef1adfa28ee4';
-import {questionWhiteboard} from './whiteboard-answer.js?v=d14eef1adfa28ee4';
+import {setVoiceContext} from './voice-context.js?v=bbcfecad646f8b7b';
+import {getLanguage} from './i18n.js?v=bbcfecad646f8b7b';
+import {calculatorToolGroups} from './calculator.js?v=bbcfecad646f8b7b';
+import {configureWhiteboard, openWhiteboard, prepareWhiteboard, questionToolSession} from './whiteboard.js?v=bbcfecad646f8b7b';
+import {questionWhiteboard} from './whiteboard-answer.js?v=bbcfecad646f8b7b';
 
 const toolbars = new WeakMap();
 const svgNamespace = 'http://www.w3.org/2000/svg';
@@ -190,4 +190,11 @@ export function setQuestionTools(anchor, question, whiteboard, topicBody) {
   anchor.after(rail);
   setVoiceContext(anchor.parentElement, question);
   toolbars.set(anchor, rail);
+  const launcher = toolbar.querySelector('[data-question-tool=whiteboard]');
+  if (launcher) {
+    const prepare = priority => prepareWhiteboard(anchor.parentElement, launcher, question, whiteboard, session, english, priority);
+    requestAnimationFrame(() => { if (launcher.getClientRects().length) prepare(false); });
+    launcher.addEventListener('pointerenter', () => prepare(true), {once: true});
+    launcher.addEventListener('focus', () => prepare(true), {once: true});
+  }
 }
