@@ -169,6 +169,13 @@ if ($priorTree.truncated -or @($priorTree.tree | Where-Object { ($_.type -eq 'bl
 }
 $priorBlobs = @{}
 foreach ($item in $priorTree.tree | Where-Object type -EQ 'blob') { $priorBlobs[$item.path] = $item.sha }
+$knownBlobs = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+foreach ($hash in $priorBlobs.Values) { $null = $knownBlobs.Add($hash) }
+if ($ExpectedPublicationHead) {
+    $draftCommit = Invoke-Api GET ('repos/' + $Repository + '/git/commits/' + $ExpectedPublicationHead)
+    $draftTree = Invoke-Api GET ('repos/' + $Repository + '/git/trees/' + $draftCommit.tree.sha + '?recursive=1')
+    foreach ($item in $draftTree.tree | Where-Object type -EQ 'blob') { $null = $knownBlobs.Add($item.sha) }
+}
 $treeItems = @($files | ForEach-Object {
     $entry = @{path=[IO.Path]::GetRelativePath($ExportDirectory, $_.FullName).Replace('\','/');mode='100644';type='blob'}
     if ($_.Extension -in @('.woff2','.woff','.ttf','.png','.wasm','.dat') -or ($entry.path.StartsWith($clipperRoot) -and $_.Length -gt 65536)) {
@@ -179,7 +186,7 @@ $treeItems = @($files | ForEach-Object {
             $digest.AppendData($bytes)
             $blobHash = [Convert]::ToHexString($digest.GetHashAndReset()).ToLowerInvariant()
         } finally { $digest.Dispose() }
-        if ($priorBlobs[$entry.path] -eq $blobHash) { $entry.sha = $blobHash }
+        if ($knownBlobs.Contains($blobHash)) { $entry.sha = $blobHash }
         else {
             # Blob writes are content-addressed. Reuse a verified object after
             # an interrupted upload, before retrying the same immutable bytes.
