@@ -64,11 +64,11 @@ def scoped_pages(sources):
                 page = page.replace('content="GraspMemoEdu">', f'content="{name}">')
                 page = page.replace('href="../download.html"', 'href="./install.html"')
             else:
-                page = page.replace('href="../"', 'href="./"').replace('安装 GraspMemoEdu', f'安装{name}')
-                page = page.replace('GraspMemoEdu 图标', f'{name}图标')
-                page = page.replace('把学习放到桌面。', f'安装{name}')
                 page = page.replace('在 iPhone、安卓手机或 Windows 上安装 GraspMemoEdu。阅读、练习与复习，继续使用同一账号的学习进度。',
                                     f'从桌面打开{name}。应用只恢复其范围内的页面，离开该范围后重新打开会回到{name}首页。')
+                page = page.replace('href="../"', 'href="./"').replace('安装 GraspMemoEdu', f'安装{name}')
+                page = page.replace(' GraspMemoEdu 图标', f'{name}图标')
+                page = page.replace('把学习放到桌面。', f'安装{name}')
                 page = re.sub(r'    <!-- Scoped install links -->.*?<!-- End scoped install links -->\n', '', page, flags=re.S)
             yield directory / filename, page.replace('<!doctype html>\n', '<!doctype html>\n' + warning, 1)
 
