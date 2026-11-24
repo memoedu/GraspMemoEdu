@@ -18,13 +18,14 @@ DEVICE_STATE = BASE + '/device-state'
 DEVICE_BINDING = BASE + '/device-binding'
 DEVICE_RESOLVE = BASE + '/device-resolve'
 DEVICE_OPEN = BASE + '/device-open'
+DEVICE_HYPERSKILL = BASE + '/device-hyperskill'
 DEVICE_BODY = BASE + '/device-body'
 BODY = BASE + '/body'
 BINDING = BASE + '/binding'
 OPEN_TICKET = BASE + '/open-ticket'
 GROUPS = BASE + '/groups'
 GROUP_MEMBER = BASE + '/group-member'
-DEVICE_PATHS = {PAIR_DEVICE, DEVICE_BINDING, DEVICE_RESOLVE, DEVICE_BODY, DEVICE_OPEN}
+DEVICE_PATHS = {PAIR_DEVICE, DEVICE_BINDING, DEVICE_RESOLVE, DEVICE_BODY, DEVICE_OPEN, DEVICE_HYPERSKILL}
 PUBLIC_PATHS = DEVICE_PATHS | {PAIR_TICKET, DEVICE_STATE, BODY, BINDING, OPEN_TICKET, GROUPS, GROUP_MEMBER}
 BODY_LIMITS = {path: 2 * 1024 * 1024 + 4096 for path in (BODY, DEVICE_BODY)}
 BODY_LIMITS[GROUPS] = 256 * 1024
@@ -114,6 +115,13 @@ def register_topic_sync_routes(app, access_store, catalog, subjects, snapshots, 
     groups = TopicSyncGroups(access_store, catalog)
     store = TopicSyncStore(access_store, snapshots, groups=groups)
     app.state.topic_sync = store
+    upstream_topics = {}
+    for topic_id, topic in catalog.topics.items():
+        source = topic.get('hyperskill')
+        if topic.get('source_adapter') == 'hyperskill' and isinstance(source, dict):
+            upstream_id = source.get('topic_id')
+            if type(upstream_id) is int and upstream_id > 0:
+                upstream_topics.setdefault(str(upstream_id), []).append(topic_id)
 
     def browser_access(request, device_id=None):
         identity = request.headers.get('x-learning-identity')
@@ -186,6 +194,13 @@ def register_topic_sync_routes(app, access_store, catalog, subjects, snapshots, 
         access, device = device_access(request)
         topic_for(access, payload.topic_id)
         return store.bind(device, payload.topic_id, payload.kb_id, payload.rem_id)
+
+    @app.get(DEVICE_HYPERSKILL)
+    def hyperskill_candidates(request: Request):
+        access, _ = device_access(request)
+        granted = {topic['id'] for topic in access['topics']}
+        return {'topics': {source: matches[0] for source, matches in upstream_topics.items()
+                           if len(matches) == 1 and matches[0] in granted}}
 
     @app.get(DEVICE_RESOLVE)
     def resolve_document(request: Request, kb_id: NativeId, rem_id: NativeId):

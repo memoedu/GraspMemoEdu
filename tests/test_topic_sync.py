@@ -34,7 +34,10 @@ class TopicSyncTests(unittest.TestCase):
         def shared_catalog(settings, fallback=None):
             original = load(settings, fallback)
             second_course = {**original.course('math'), 'id': 'another-math-course'}
-            return Catalog([*original.courses.values(), second_course], original.topics,
+            topics = dict(original.topics)
+            topic_id = original.default_topic_id
+            topics[topic_id] = {**topics[topic_id], 'source_adapter': 'hyperskill', 'hyperskill': {'topic_id': 321}}
+            return Catalog([*original.courses.values(), second_course], topics,
                            original.default_topic_id, original.topic_paths)
 
         with (patch('graspmemoedu.api.configured_snapshots', return_value=SealedSnapshots(self.files, bytes(32))),
@@ -160,6 +163,13 @@ class TopicSyncTests(unittest.TestCase):
         self.assertEqual(self.get('binding', self.headers, topic_id=self.topic, device_id=other_device).json()['rem_id'],
                          'document')
         self.assertEqual(self.bind('duplicate').status_code, 409)
+
+    def test_hyperskill_catalogue_only_returns_topics_available_to_the_paired_account(self):
+        self.assertEqual(self.pair(self.headers).status_code, 200)
+        expected = {'topics': {'321': self.topic}}
+        self.assertEqual(self.get('device-hyperskill', self.authorization).json(), expected)
+        self.store.set_permissions(self.student, topic_ids=[])
+        self.assertEqual(self.get('device-hyperskill', self.authorization).json(), {'topics': {}})
 
     def test_open_ticket_is_issued_only_to_current_owner_and_consumed_once(self):
         self.assertEqual(self.pair(self.headers).status_code, 200)
