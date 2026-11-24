@@ -82,7 +82,7 @@ try {
   await page.locator('#pauseButton').click();
   await page.getByText('该功能需注册账号才能使用', {exact:true}).first().waitFor();
   assert.equal((await state()).revision, initial.revision);
-  assert.equal(await page.locator('mjx-container svg').count()>0,true);
+  await page.locator('.katex-html, mjx-container[jax="HTML"] > math').first().waitFor();
   await shot('01-example');
   await page.getByRole('button',{name:'已掌握，试着作答',exact:true}).click();
   // A known incorrect result, independently different from the audited reference.
