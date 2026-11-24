@@ -1,4 +1,4 @@
-import {escapedAt, mathSpans} from './math-syntax.js?v=1ec05c2c213ea544';
+import {escapedAt, mathSpans} from './math-syntax.js?v=512895d8baae36be';
 
 const namespace = 'http://www.w3.org/1998/Math/MathML';
 const greek = /[Α-Ωα-ω]/;
@@ -81,7 +81,7 @@ const glyphCodepoints = new WeakMap();
 let fragmentNumber = 0, renderer;
 
 function loadRenderer() {
-  renderer ||= import('./vendor/formula/editor.mjs?v=1ec05c2c213ea544').catch(error => { renderer = null; throw error; });
+  renderer ||= import('./vendor/formula/editor.mjs?v=512895d8baae36be').catch(error => { renderer = null; throw error; });
   return renderer;
 }
 
