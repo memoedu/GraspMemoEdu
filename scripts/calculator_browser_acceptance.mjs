@@ -180,6 +180,9 @@ try {
   assert.ok(immediate.ms < 50, `Cold arithmetic took ${immediate.ms} ms`);
   assert.equal(workerStarts, 0);
   assert.deepEqual(workerRequests, []);
+  await enter('2×（3+(4', '14');
+  assert.equal(await expressionInput.inputValue(), '2×（3+(4');
+  assert.equal(workerStarts, 0);
   await dialog.getByRole('textbox', {name: '表达式'}).fill('sin(30)');
   await context.unroute(backend, rejectBackend);
   await calculate(); await text('计算中…');
@@ -316,6 +319,8 @@ try {
   await defineFunction.click();
   await enter('G = 10*Y + X', 'G(X, Y) = 10*Y + X');
   await enter('G（3，4）', '43');
+  await enter('G（3，(2+3', '53');
+  checks.push('Chinese and ASCII parentheses mix, and missing trailing closers work with local arithmetic and Worker functions.');
   await enter('G(Y, X) = 10*Y + X', 'G(Y, X) = 10*Y + X');
   await enter('G(3, 4)', '34');
   await enter('F = X + 1', '9');

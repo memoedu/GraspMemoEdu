@@ -56,6 +56,30 @@ const run = (module, operation, input, config = cas, options = {}) =>
 const evaluate = (expression, config = basic, options) => run('expression', 'evaluate', {expression}, config, options);
 const approx = (a, b, tolerance = 1e-10) => assert.ok(Math.abs(a - b) < tolerance, `${a} != ${b}`);
 
+test('calculator completes only trailing round parentheses and still checks syntax and permissions', async () => {
+  for (const [expression, numeric] of [['2×（3+4)', 14], ['2*(3+4', 14], ['2×（3+(4', 14]]) {
+    assert.equal(calculateImmediate(expression, basic).numeric, numeric);
+    assert.equal((await evaluate(expression)).numeric, numeric);
+  }
+  for (const [expression, numeric] of [
+    ['sqrt（(3+1', 2], ['round（1.234，2', 1.23], ['log_{1+2}（27', 3], ['determinant（[[1,2],[3,4]]', -2],
+  ]) approx((await evaluate(expression, cas)).numeric, numeric);
+  assert.equal((await evaluate('A＝（2+3')).register, 'A');
+  assert.equal((await run('symbolic', 'simplify', {expression: '2*(x+x'})).text, '4*x');
+  assert.equal((await run('modular', 'modular_power', {expression: '2^(3+1', modulus: '7'})).numeric, 2);
+
+  for (const expression of ['2*(3+', 'sqrt（', 'round(1.234,', '2+3) + (4', 'determinant([(1,2]', 'sigmoid([1,2']) {
+    await assert.rejects(evaluate(expression, cas), SyntaxError);
+  }
+  await assert.rejects(run('symbolic', 'solve', {expression: '(x+2=3'}), SyntaxError);
+  for (const key of ['open', 'close', 'add']) {
+    const config = {...cas, disable_keys: [key]};
+    assert.throws(() => calculateImmediate('（2+3', config), {code: 'restricted'});
+    await assert.rejects(evaluate('sqrt（2+3', config), {code: 'restricted'});
+  }
+  await assert.rejects(evaluate('('.repeat(40) + '1', cas), {code: 'limit'});
+});
+
 test('compound arithmetic, comparisons and assignment compose with the existing expression syntax', async () => {
   const arithmetic = [['+=', (a, b) => a + b], ['-=', (a, b) => a - b], ['*=', (a, b) => a * b],
     ['/=', (a, b) => a / b], ['^=', (a, b) => a ** b]];
