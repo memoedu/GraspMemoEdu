@@ -7,7 +7,7 @@ import {launchAcceptanceChrome} from './launch_acceptance_chrome.mjs';
 
 const [assetRoot, site, voiceFile, invitationFile] = process.argv.slice(2);
 assert.equal(Boolean(voiceFile), Boolean(invitationFile), 'Provide both the microphone WAV and the fixture invitation file');
-const editor = 'https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v1/';
+const editor = 'https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v2/';
 const requireRuntime = createRequire(join(homedir(), '.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
 const chrome = await launchAcceptanceChrome(requireRuntime, voiceFile ? [
   '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', `--use-file-for-fake-audio-capture=${voiceFile}`,
@@ -118,6 +118,40 @@ try {
   assert.ok((await panel.boundingBox()).x < (await page.locator('#stepCard').boundingBox()).x);
   await canvas.scrollIntoViewIfNeeded();
   const board = await canvas.boundingBox();
+  assert.equal(await frame.getByRole('button', {name: '涂抹删除', exact: true}).getAttribute('aria-pressed'), 'true');
+  const draw = async points => {
+    for (const [i, [x, y]] of points.entries()) {
+      await page.mouse.move(board.x + x, board.y + y, {steps: i ? 4 : 1});
+      if (!i) await page.mouse.down();
+    }
+    await page.mouse.up();
+  };
+  await draw([[96, 48], [96, 86], [125, 86], [125, 48], [96, 48]]);
+  await draw([[144, 48], [144, 86], [176, 86], [176, 48], [144, 48]]);
+  const pixels = (x, y) => canvas.evaluate((element, [x, y]) => {
+    const box = element.getBoundingClientRect();
+    const [r, g] = element.getContext('2d').getImageData(
+      Math.round(x * element.width / box.width), Math.round(y * element.height / box.height), 1, 1
+    ).data;
+    return r > g + 20;
+  }, [x, y]);
+  const waitForPixel = async (x, y, expected) => {
+    for (let attempt = 0; attempt < 20; attempt++) {
+      if (await pixels(x, y) === expected) return;
+      await page.waitForTimeout(35);
+    }
+    assert.equal(await pixels(x, y), expected);
+  };
+  await waitForPixel(96, 70, true);
+  await draw([[117, 59], [135, 62], [117, 65], [135, 68], [117, 71], [135, 74]]);
+  await waitForPixel(96, 70, false);
+  await waitForPixel(120, 59, false);
+  assert.equal(await pixels(144, 70), true);
+  await frame.getByRole('button', {name: '撤销', exact: true}).click();
+  await waitForPixel(96, 70, true);
+  await frame.getByRole('button', {name: '重做', exact: true}).click();
+  await waitForPixel(96, 70, false);
+  await frame.getByRole('button', {name: '清屏', exact: true}).click();
   await page.mouse.move(board.x + 35, board.y + 45);
   await page.mouse.down();
   await page.mouse.move(board.x + 160, board.y + 96, {steps: 8});
@@ -266,7 +300,7 @@ try {
   await retryCase.getByRole('button', {name: '归档目录', exact: true}).and(retryCase.locator('button:enabled')).waitFor();
   assert.equal(await retryCase.locator('.whiteboardStatus').textContent(), '');
   assert.deepEqual(errors, []);
-  console.log(JSON.stringify({passed: true, checks: ['split', 'swap', 'undo-redo', 'register survives clearing',
+  console.log(JSON.stringify({passed: true, checks: ['split', 'swap', 'undo-redo', 'scribble erase and atomic undo', 'register survives clearing',
     voiceFile ? 'Chrome capture, transcription insertion and pending submit guard' : 'voice insertion event',
     'archive and reopen', 'directory cancellation and denied permission', 'live undo after reopen',
     'lasso deletion and undo', 'OCR freeze and recovery', 'insufficient without submission', 'shared judge', 'small viewports',
