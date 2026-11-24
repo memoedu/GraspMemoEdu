@@ -6,8 +6,11 @@ from pathlib import Path
 import subprocess
 import sys
 import tarfile
-import time
-import urllib.request
+
+if __package__:
+    from .release_academy_production import wait_for_health
+else:
+    from release_academy_production import wait_for_health
 
 
 def main():
@@ -30,16 +33,6 @@ def main():
     # Quiesce writers for that check. Additions and graphics can install online.
     quiesce = manifest.get('kind') == 'mathacademy-practice-enrichment'
     timer = quiesce and subprocess.run(['systemctl', 'is-active', '--quiet', 'graspmemoedu-healthcheck.timer']).returncode == 0
-    def healthy():
-        for attempt in range(90):
-            try:
-                with urllib.request.urlopen('http://127.0.0.1:18768/api/health', timeout=3) as response:
-                    if response.status == 200:
-                        return
-            except (OSError, TimeoutError):
-                pass
-            time.sleep(1)
-        raise RuntimeError('New content failed the running service health check')
     service_stopped = False
     try:
         if timer:
@@ -56,7 +49,7 @@ def main():
         # Reload the selected generation even when that process is already active.
         if after != before or service_stopped:
             subprocess.run(['systemctl', 'restart', 'graspmemoedu'], check=True)
-        healthy()
+        wait_for_health()
         receipt.update(target='production', health='passed', learning_database_unchanged=True,
                        pointer_sha256=hashlib.sha256(after).hexdigest() if after is not None else None)
         if after != before:
@@ -73,7 +66,7 @@ def main():
                 pending = pointer.with_suffix('.rollback'); pending.write_bytes(before); os.replace(pending, pointer)
         if current != before or service_stopped:
             subprocess.run(['systemctl', 'restart', 'graspmemoedu'], check=True)
-            healthy()
+            wait_for_health()
         raise
     finally:
         if timer:
