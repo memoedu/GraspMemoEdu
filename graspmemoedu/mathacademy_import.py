@@ -256,6 +256,11 @@ class Assets:
             return {'_render': source or '', '_html': self.text(source_html, gaps, self.inline_graphics(source, source_html))}
         return {'_render': self.text(source, gaps)}
 
+    def option(self, text, gaps):
+        markup = text.strip()
+        source_html = markup if re.fullmatch(r'<img\b[^<>]*>', markup, re.I) else None
+        return {'text': text, 'html': self.render(text, source_html, gaps)}
+
 
 def captured_sections(parts, declared, selects):
     """Recover sparse captures using the original controls' zero-based section indices."""
@@ -345,8 +350,7 @@ def controls(question, assets, gaps, decision=None):
             return {'version': 2, 'type': 'composite', 'grading': 'unavailable', 'controls': rows,
                     'sections': [{'id': 's0', 'html': assets.render(content, None, gaps),
                                   'control_ids': [row['id'] for row in rows], 'complete': True}]}
-        options = [{'id': f'o{i}', 'text': question['choice' + str(i)],
-                    'html': assets.render(question['choice' + str(i)], None, gaps)} for i in range(1, 6)
+        options = [{'id': f'o{i}', **assets.option(str(question['choice' + str(i)]), gaps)} for i in range(1, 6)
                    if str(question.get('choice' + str(i)) or '').strip()]
         if not options:
             gaps.append({'code': 'interaction_missing', 'question': qid}); return None
@@ -364,7 +368,7 @@ def controls(question, assets, gaps, decision=None):
         cid = f'c{qid}s{section}p{position}'
         row = {'id': cid, 'type': kind, 'label': str(len(rows) + 1)}
         if kind == 'select':
-            row['options'] = [{'id': f'o{i}', 'text': str(option), 'html': assets.render(str(option), None, gaps)}
+            row['options'] = [{'id': f'o{i}', **assets.option(str(option), gaps)}
                               for i, option in enumerate(control.get('options', []))]
         else:
             if control.get('type') in ('number', 'text', 'code'):
@@ -695,6 +699,7 @@ def validate_enrichment(package, data_dir, old, old_root, manifest, candidate):
     from contextlib import closing
     import sqlite3
     from .lesson_display import DIRECTORY, read_display
+    from .mathacademy_formula_audit import validate_enrichment_rendering
     from .test_materials import TestMaterials
 
     rows = manifest['enrichment']
@@ -736,6 +741,7 @@ def validate_enrichment(package, data_dir, old, old_root, manifest, candidate):
         display = read_display(package / DIRECTORY / f'{tid}.json')
         if display.get('topic_id') != tid or display.get('version') != revised['version']:
             raise ValueError('Enrichment translation version differs: ' + tid)
+        validate_enrichment_rendering(revised, display)
     db = data_dir / 'learning.sqlite3'
     if db.exists():
         with closing(sqlite3.connect(db.as_uri() + '?mode=ro', uri=True)) as con:

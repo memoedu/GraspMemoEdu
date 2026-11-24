@@ -70,12 +70,50 @@ def audit_fields(item, path=()):
             yield {'path': '/'.join(path), 'defects': sorted(defects)}
 
 
+def validate_enrichment_rendering(topic, display):
+    from .lesson_display import display_key, lesson_fields
+
+    tid = topic['id']
+    keys = {display_key(kind, row[field]) for row, field, kind in lesson_fields(topic)}
+    values = display.get('values')
+    if (display.get('tex_repairs') or not isinstance(values, dict) or not values.keys() <= keys
+            or any(not isinstance(value, str) or not value.strip() for value in values.values())):
+        raise ValueError('Enrichment has legacy repairs or unbound display fields: ' + tid)
+    for name, source in (('Topic', topic), ('display', display)):
+        if defect := next(audit_fields(source), None):
+            labels = ', '.join(defect['defects'])
+            raise ValueError(f'Enrichment {name} formula error: {tid}/{defect["path"]} ({labels})')
+
+
+def validate_enrichment_package(package):
+    from .lesson_display import DIRECTORY, read_display
+
+    manifest = json.loads((package / 'manifest.json').read_bytes())
+    topics = manifest.get('enrichment')
+    if (manifest.get('kind') != 'mathacademy-practice-enrichment' or not isinstance(topics, dict) or not topics
+            or any(not re.fullmatch(r'ma-topic-[0-9]+', tid) for tid in topics)):
+        raise ValueError('Invalid Math Academy practice package')
+    for tid in topics:
+        source = json.loads((package / 'topics' / (tid + '.json')).read_bytes())
+        display = read_display(package / DIRECTORY / (tid + '.json'))
+        if source['id'] != tid or display.get('topic_id') != tid or display.get('version') != source['version']:
+            raise ValueError('Enrichment source or display binding differs: ' + tid)
+        validate_enrichment_rendering(source, display)
+    return len(topics)
+
+
 def main():
     import argparse
 
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('files', type=Path, nargs='+')
+    parser.add_argument('files', type=Path, nargs='*')
+    parser.add_argument('--enrichment-package', type=Path, help='Validate source and display before practice activation')
     args = parser.parse_args()
+    if args.enrichment_package and not args.files:
+        print(json.dumps({'verified_topics': validate_enrichment_package(args.enrichment_package)}))
+        return
+    if not args.files or args.enrichment_package:
+        parser.error('Provide rendered files or one practice package')
     fields = []
     for file in args.files:
         source = json.loads(file.read_bytes())
