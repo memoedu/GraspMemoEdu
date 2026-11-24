@@ -1,4 +1,4 @@
-"""Detect source LaTeX still visible in rendered Math Academy fields."""
+"""Detect uncompiled math and diagrams in rendered Math Academy fields."""
 from html.parser import HTMLParser
 import json
 from pathlib import Path
@@ -7,6 +7,7 @@ import re
 
 ML_COURSES = frozenset({'ma-course-72', 'ma-course-140'})
 VERBATIM = {'code', 'pre', 'kbd', 'samp', 'script', 'style', 'textarea', 'math', 'svg', 'mjx-container'}
+DIAGRAM_SOURCE_CLASSES = {'language-ma-drawing', 'language-mermaid'}
 TEXT_COMMAND = re.compile(
     r'(?<!\\)\\(?:\(|\)|\[|\]|begin\{|end\{|frac\b|dfrac\b|sqrt\b|math(?:bf|bb|rm|cal)\b|'
     r'operatorname\b|left\b|right\b|alpha\b|beta\b|theta\b|lambda\b|eta\b|quad\b|approx\b)'
@@ -33,6 +34,8 @@ class FormulaAudit(HTMLParser):
         attributes = dict(attrs)
         if attributes.get('data-mml-node') == 'merror' or 'data-mjx-error' in attributes:
             self.errors.add('mathjax_error')
+        if tag == 'code' and DIAGRAM_SOURCE_CLASSES.intersection((attributes.get('class') or '').split()):
+            self.errors.add('uncompiled_diagram')
         if tag in VERBATIM:
             self.hidden.append(tag)
             self.visible.append('\n')
@@ -82,7 +85,7 @@ def validate_enrichment_rendering(topic, display):
     for name, source in (('Topic', topic), ('display', display)):
         if defect := next(audit_fields(source), None):
             labels = ', '.join(defect['defects'])
-            raise ValueError(f'Enrichment {name} formula error: {tid}/{defect["path"]} ({labels})')
+            raise ValueError(f'Enrichment {name} rendering error: {tid}/{defect["path"]} ({labels})')
 
 
 def validate_legacy_repairs(spec, previous):
