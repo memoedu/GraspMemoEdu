@@ -10,6 +10,7 @@ import unittest
 from unittest.mock import patch
 
 from scripts import install_mathacademy_production as release
+from scripts import release_academy_production as readiness
 from tests.fixtures import temporary_test_directory
 
 
@@ -39,7 +40,9 @@ class ProductionActivationTests(unittest.TestCase):
         return json.loads(self.pointer.read_text(encoding='utf-8'))['generation']
 
     def execute(self, *, monitor_during_install=False, fail_new_health=False, monitor_during_rollback=False,
-                unchanged=False):
+                unchanged=False, ready_after=0):
+        elapsed = [0]
+
         def mapped_path(value):
             return {'/tmp': self.root, '/var/lib/graspmemoedu': self.data}.get(str(value), Path(value))
 
@@ -57,6 +60,8 @@ class ProductionActivationTests(unittest.TestCase):
                 return SimpleNamespace(returncode=0, stdout=json.dumps({'generation': self.generation()}))
             if args[:2] == ['systemctl', 'is-active']:
                 return SimpleNamespace(returncode=3)
+            if args[:2] == ['systemctl', 'show']:
+                return SimpleNamespace(stdout='active' if self.state['active'] else 'inactive')
             if args[:1] == ['systemctl'] and args[-1] == 'graspmemoedu':
                 if args[1] == 'stop':
                     self.state['active'] = False
@@ -78,17 +83,23 @@ class ProductionActivationTests(unittest.TestCase):
                 pass
 
         def health(*args, **kwargs):
-            if not self.state['active'] or (fail_new_health and self.state['generation'] == self.new):
+            if (not self.state['active'] or elapsed[0] < ready_after
+                    or (fail_new_health and self.state['generation'] == self.new)):
                 raise OSError('Synthetic unavailable generation')
             return Response()
+
+        def sleep(seconds):
+            elapsed[0] += seconds
 
         with patch.object(release, 'Path', mapped_path), \
              patch.object(release.sys, 'argv', ['installer', str(self.stage)]), \
              patch.object(release, 'os', SimpleNamespace(geteuid=lambda: 0, replace=os.replace)), \
              patch.object(release.subprocess, 'run', side_effect=command), \
-             patch.object(release.urllib.request, 'urlopen', side_effect=health), \
-             patch.object(release.time, 'sleep'), redirect_stdout(io.StringIO()):
+             patch.object(readiness.urllib.request, 'urlopen', side_effect=health), \
+             patch.object(readiness.time, 'monotonic', side_effect=lambda: elapsed[0]), \
+             patch.object(readiness.time, 'sleep', side_effect=sleep), redirect_stdout(io.StringIO()):
             release.main()
+        return elapsed[0]
 
     def test_activation_loads_new_content_even_if_a_monitor_started_the_old_service(self):
         self.execute(monitor_during_install=True)
@@ -98,7 +109,7 @@ class ProductionActivationTests(unittest.TestCase):
         self.assertTrue((self.data / 'content-activation-history' / (self.new + '.production.json')).exists())
 
     def test_rollback_reloads_the_restored_pointer_even_if_a_monitor_started_the_failed_generation(self):
-        with self.assertRaisesRegex(RuntimeError, 'health check'):
+        with self.assertRaisesRegex(RuntimeError, 'readiness deadline'):
             self.execute(fail_new_health=True, monitor_during_rollback=True)
         self.assertEqual(self.generation(), self.old)
         self.assertTrue(self.state['active'])
@@ -109,6 +120,11 @@ class ProductionActivationTests(unittest.TestCase):
         self.execute(unchanged=True)
         self.assertEqual(self.generation(), self.old)
         self.assertEqual(self.state['stops'], 0)
+
+    def test_cold_catalog_reaches_health_past_the_old_ninety_second_window(self):
+        self.assertEqual(self.execute(ready_after=115), 115)
+        self.assertEqual(self.state['generation'], self.new)
+        self.assertTrue((self.data / 'content-activation-history' / (self.new + '.production.json')).exists())
 
 
 if __name__ == '__main__':
