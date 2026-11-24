@@ -22,7 +22,9 @@ const cases = {
 const audio = Object.fromEntries(await Promise.all(Object.keys(cases).map(async key =>
   [key, (await readFile(path.join(audioDirectory, key + '.wav'))).toString('base64')])));
 const invitation = (await readFile(invitationFile, 'utf8')).trim();
-const code = invitation.startsWith('{') ? JSON.parse(invitation).advanced : invitation;
+const manifest = JSON.parse(invitation);
+const code = manifest.advanced || manifest.accounts?.find(account => account.purpose === 'test')?.invitation_code;
+assert.ok(code, 'A fixture or test-account invitation manifest is required');
 const evidence = [], errors = [];
 const home = new URL('rubber-duck-test.html', base).href;
 
