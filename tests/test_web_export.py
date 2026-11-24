@@ -54,7 +54,11 @@ class PublicExportTests(unittest.TestCase):
                     self.assertEqual(hashlib.sha256((output / name).read_bytes()).hexdigest(), digest)
             pwa_files.update({'question-tools.js', 'math-syntax.js', 'calculator.js', 'calculator-panel.js', 'calculator-inputs.js', 'calculator-policy.js',
                               'calculator-engine.js', 'calculator-worker.js', 'calculator.css', 'whiteboard.js',
-                              'whiteboard.css', 'whiteboard-archive.js', 'whiteboard-answer.js'})
+                              'whiteboard.css', 'whiteboard-archive.js', 'whiteboard-answer.js',
+                              'whiteboard-editor.js', 'whiteboard-license.txt'})
+            for name in ('whiteboard-editor.js', 'whiteboard-license.txt'):
+                self.assertEqual((output / name).read_bytes(),
+                                 (Path(__file__).resolve().parents[1] / 'web' / name).read_bytes())
             self.assertTrue(pwa_files <= {p.name for p in output.iterdir()})
             self.assertEqual({p.name for p in output.iterdir()} - pwa_files - focus_files - {'catalog-workspace.js', 'student-dashboard.js', 'presence.js', 'training.js', 'training.css', 'training-messages.js', 'learning-ui.js', 'review-papers.js', 'review-paper-messages.js', 'review-directory.js', 'task-tree.js', 'catalog-outline.js', 'content-timer.js', 'self-assessment.js', 'academy-messages.js', 'hyperskill.js', 'memory-chunk.js', 'point-assessment.js', 'context-library.js', 'context-library.css', 'context-library-messages.js', 'training-audio.js'},
                              {'.nojekyll', 'app.js', 'deployment.json', 'favicon.svg', 'index.html', 'portal.js', 'review.js', 'atomic.js','learning-cache.js', 'response-cache.js', 'question-input.js', 'composite-input.js', 'math-presentation.js', 'content-report.js', 'help-feedback.js', 'idea-setup.js', 'catalog-picker.js', 'portal.css', 'subjects.js', 'subjects.css', 'styles.css', 'i18n.js', 'reader-messages.js', 'portal-messages.js', 'static-messages.js', 'course-graph.js', 'course-graph.css', 'topic-content.js', 'topic-content.css', 'topic-callouts.css', 'vendor'})
