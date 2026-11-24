@@ -21,11 +21,14 @@ after(async () => { await browser?.close(); });
 
 async function fixture(t, {hierarchy = false, bank = false, width = 1440, context, standalone = false,
   hash = '#/subjects/math/' + (bank ? 'banks/fixture?root=chapter' : 'courses/fixture?root=chapter'),
-  learnerId = 'fixture', unavailable = 0} = {}) {
+  learnerId = 'fixture', unavailable = 0, tools = false, long = false, denyFullscreen = false} = {}) {
   const page = context ? await context.newPage() : await browser.newPage({serviceWorkers: 'block', viewport: {width, height: 900}});
   if (standalone) await page.addInitScript(() => {
     const nativeMatchMedia = window.matchMedia.bind(window);
     window.matchMedia = query => query === '(display-mode: standalone)' ? {matches: true} : nativeMatchMedia(query);
+  });
+  if (denyFullscreen) await page.addInitScript(() => {
+    Element.prototype.requestFullscreen = () => Promise.reject(new DOMException('Denied', 'NotAllowedError'));
   });
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -39,11 +42,15 @@ async function fixture(t, {hierarchy = false, bank = false, width = 1440, contex
     await route.fulfill({path: fileURLToPath(new URL(name, web)),
       contentType: /\.m?js$/.test(name) ? 'text/javascript' : undefined});
   });
+  if (tools) await page.route('https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v1/whiteboard.html*',
+    route => route.fulfill({contentType: 'text/html', body: '<!doctype html><title>Isolated whiteboard layout fixture</title>'}));
   const url = new URL(base);
   url.hash = hash;
   await page.goto(url.href, {waitUntil: 'domcontentloaded'});
-  await page.evaluate(async ({hierarchy, learnerId, unavailable}) => {
-    const {initPortal} = await import(document.querySelector('link[rel="modulepreload"][href*="./portal.js"]').href);
+  await page.evaluate(async ({hierarchy, learnerId, unavailable, tools, long}) => {
+    const moduleHref = name => document.querySelector('link[rel="modulepreload"][href*="./' + name + '.js"]').href;
+    const {initPortal} = await import(moduleHref('portal'));
+    const {setQuestionTools} = await import(moduleHref('question-tools'));
     const outline = [{id: 'chapter', title: 'Chapter', parent_id: null, topic_ids: []},
       {id: 'first', title: 'First', parent_id: 'chapter', topic_ids: ['current', 'locked', 'following']},
       {id: 'second', title: 'Second', parent_id: 'chapter', topic_ids: ['other']}];
@@ -95,11 +102,14 @@ async function fixture(t, {hierarchy = false, bank = false, width = 1440, contex
         content.textContent = 'Learning content of ' + id;
         const finish = document.createElement('a'); finish.href = '#/subjects/math/courses/fixture?root=chapter';
         finish.textContent = 'Return to course';
-        element('stepCard').replaceChildren(content, portal.completionAction(finish));
+        element('stepCard').replaceChildren(content);
+        if (long) for (let i = 0; i < 55; i++) element('stepCard').append(content.cloneNode(true));
+        element('stepCard').append(portal.completionAction(finish));
+        if (tools) setQuestionTools(element('stepCard'), {calculate: {level: 'scientific'}}, {key: id, editable: true});
       },
     });
     await portal.start();
-  }, {hierarchy, learnerId, unavailable});
+  }, {hierarchy, learnerId, unavailable, tools, long});
   return page;
 }
 
@@ -121,8 +131,9 @@ for (const hierarchy of [false, true]) {
     await page.evaluate(() => { window.focusFixture.showReview = true; });
     await focus.click();
     await next.waitFor();
+    await page.waitForFunction(() => document.fullscreenElement === document.documentElement);
     const focused = await page.locator('.pageShell').boundingBox();
-    assert.ok(focused.width > normal.width);
+    if (hierarchy) assert.ok(focused.width > normal.width);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     for (const selector of ['.topRibbon', '.historySidebar', '.lessonHeading', '.historyDrawerToggle']) {
       assert.equal(await page.locator(selector).isVisible(), false, selector);
@@ -130,6 +141,7 @@ for (const hierarchy of [false, true]) {
     assert.match(await next.getAttribute('href'), /\/review\/due\/module\?session=due-session&course=fixture&root=chapter&focus=1$/);
     await page.evaluate(() => { window.focusFixture.showReview = false; });
     await focus.click();
+    await page.waitForFunction(() => !document.fullscreenElement);
     assert.equal(await next.isVisible(), false);
     assert.equal(await page.locator('.topRibbon').isVisible(), true);
     await focus.click();
@@ -138,6 +150,7 @@ for (const hierarchy of [false, true]) {
     await page.evaluate(() => { window.focusFixture.followingDone = true; });
     await next.click();
     await page.getByText('Learning content of following', {exact: true}).waitFor();
+    assert.equal(await page.evaluate(() => document.fullscreenElement === document.documentElement), true);
     assert.equal(await focus.getAttribute('aria-pressed'), 'true');
     assert.match(await next.getAttribute('href'), /\/topic\/current\?/);
     assert.ok(await page.evaluate(() => window.focusFixture.reads.some(req =>
@@ -165,6 +178,99 @@ test('Focus Mode keeps the bank root and advances through read-only groups witho
   await page.getByRole('link', {name: '返回题库', exact: true}).waitFor();
   assert.equal(await next.isVisible(), false);
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+});
+
+const readerHash = '#/subjects/math/topic/current?course=fixture&root=chapter';
+const waitForFullscreen = page => page.waitForFunction(() => document.fullscreenElement === document.documentElement);
+const geometry = page => page.evaluate(() => {
+  const question = document.getElementById('stepCard').getBoundingClientRect();
+  const shell = document.querySelector('.pageShell').getBoundingClientRect();
+  const toolbar = document.getElementById('focusToolbar').getBoundingClientRect();
+  const calculator = document.querySelector('.questionCalculator[open]')?.getBoundingClientRect();
+  return {midX: question.x + question.width / 2, width: question.width, right: question.right,
+    centerX: document.documentElement.clientWidth / 2, midY: shell.y + shell.height / 2,
+    centerY: (innerHeight + toolbar.bottom) / 2, calculatorLeft: calculator?.left,
+    overflows: document.documentElement.scrollWidth > innerWidth};
+});
+
+test('Short content centers in real fullscreen and moves only when a tool opens', async t => {
+  const page = await fixture(t, {hash: readerHash, tools: true});
+  const evidence = process.env.GRASPMEMOEDU_FOCUS_SCREENSHOTS;
+  const shot = name => evidence && page.screenshot({path: path.join(evidence, name + '.png')});
+  await page.locator('#focusToggle').click();
+  await waitForFullscreen(page);
+  const center = await geometry(page);
+  assert.ok(!center.overflows && Math.abs(center.midX - center.centerX) < 2, JSON.stringify(center));
+  assert.ok(center.width <= 700, JSON.stringify(center));
+  assert.ok(Math.abs(center.midY - center.centerY) < 12, JSON.stringify(center));
+  await shot('desktop-tools-idle');
+  await page.locator('[data-question-tool="expression"]').click();
+  await page.locator('.questionCalculator[open]').waitFor();
+  const withCalculator = await geometry(page);
+  assert.ok(withCalculator.right <= withCalculator.calculatorLeft, JSON.stringify(withCalculator));
+  assert.ok(withCalculator.midX < center.midX - 100, JSON.stringify(withCalculator));
+  await shot('desktop-calculator-open');
+  await page.locator('.questionCalculator').getByRole('button', {name: '关闭'}).click();
+  assert.ok(Math.abs((await geometry(page)).midX - center.midX) < 2);
+  const whiteboard = page.locator('[data-question-tool="whiteboard"]');
+  await whiteboard.click();
+  const panel = await page.locator('.whiteboardPanel').boundingBox();
+  assert.ok(panel && panel.x > (await geometry(page)).right, JSON.stringify(panel));
+  await shot('desktop-whiteboard-open');
+  await whiteboard.click();
+  assert.ok(Math.abs((await geometry(page)).midX - center.midX) < 2);
+  await page.evaluate(() => document.exitFullscreen());
+  await page.locator('.topRibbon').waitFor();
+  assert.ok(!new URL(page.url()).hash.includes('focus='));
+});
+
+test('A restored focus URL offers one-click fullscreen and a non-reader route relinquishes it', async t => {
+  const page = await fixture(t, {hash: readerHash + '&focus=1', width: 390, tools: true});
+  const fullscreen = page.getByRole('button', {name: '进入全屏', exact: true});
+  await fullscreen.waitFor();
+  assert.equal(await page.evaluate(() => document.fullscreenElement), null);
+  await fullscreen.click();
+  await waitForFullscreen(page);
+  const center = await geometry(page);
+  assert.ok(!center.overflows && Math.abs(center.midX - center.centerX) < 2, JSON.stringify(center));
+  assert.ok(Math.abs(center.midY - center.centerY) < 12, JSON.stringify(center));
+  const evidence = process.env.GRASPMEMOEDU_FOCUS_SCREENSHOTS;
+  if (evidence) await page.screenshot({path: path.join(evidence, 'mobile-tools-idle.png')});
+  await page.locator('[data-question-tool="expression"]').click();
+  await page.locator('.questionCalculator[open]').waitFor();
+  const dock = await page.locator('.questionCalculator').boundingBox();
+  const question = await page.locator('#stepCard').boundingBox();
+  assert.ok(question.y + question.height <= dock.y, JSON.stringify({dock, question}));
+  await page.locator('.questionCalculator').getByRole('button', {name: '关闭计算器', exact: true}).click();
+  assert.ok(Math.abs((await geometry(page)).midY - center.midY) < 2);
+  await page.evaluate(() => { location.hash = '#/'; });
+  await page.waitForFunction(() => !document.fullscreenElement);
+  await page.locator('.topRibbon').waitFor();
+  assert.equal(await page.locator('#focusToolbar').isVisible(), false);
+});
+
+test('A denied fullscreen request leaves the centered layout and a retry action', async t => {
+  const page = await fixture(t, {hash: readerHash, denyFullscreen: true});
+  await page.locator('#focusToggle').click();
+  await page.getByText('未能进入全屏，可再次点击进入。').waitFor();
+  assert.equal(await page.evaluate(() => document.fullscreenElement), null);
+  assert.equal(await page.locator('#focusFullscreen').isEnabled(), true);
+  assert.equal(await page.locator('.topRibbon').isVisible(), false);
+  await page.locator('#focusToggle').click();
+  assert.equal(await page.locator('.topRibbon').isVisible(), true);
+});
+
+test('Long reading starts below the bar and retains document scrolling in fullscreen', async t => {
+  const page = await fixture(t, {hash: readerHash, long: true, tools: true});
+  await page.locator('#focusToggle').click();
+  await waitForFullscreen(page);
+  const toolbar = await page.locator('#focusToolbar').boundingBox();
+  const first = await page.locator('#stepCard p').first().boundingBox();
+  assert.ok(first.y >= toolbar.y + toolbar.height && first.y < 165, JSON.stringify({first, toolbar}));
+  await page.getByRole('link', {name: '下一个 Topic'}).scrollIntoViewIfNeeded();
+  assert.ok(await page.evaluate(() => scrollY > 500));
+  assert.equal(await page.locator('#focusToggle').isVisible(), true);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
 });
 
 test('A new standalone launch restores the last Topic for the verified learner', async t => {
