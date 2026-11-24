@@ -50,11 +50,14 @@ class WhiteboardPhoto(BaseModel):
         return 'zh' if value == 'zh-CN' else value
 
 
-def checked_png(data, *, skip_blank=False):
+def checked_png(data, *, skip_blank=False, preserve=False):
     try:
         with Image.open(BytesIO(base64.b64decode(data, validate=True)), formats=['PNG']) as image:
             if image.width < 1 or image.height < 1 or image.width * image.height > 4_000_000:
                 raise ValueError('Invalid dimensions')
+            if preserve:
+                image.load()
+                return 'data:image/png;base64,' + data
             rgb = image.convert('RGB')
             if skip_blank and rgb.getextrema() == ((255, 255),) * 3:
                 return None
@@ -118,7 +121,7 @@ def recognize_selection(payload, png):
     if not token:
         raise ValueError('The shared formula gateway is not configured')
     remote = Request('http://127.0.0.1:18879/recognize',
-                     data=json.dumps({'png': png, 'outputFormat': 'calculator'}).encode(),
+                     data=json.dumps({'png': png, 'outputFormat': 'calculator', 'formulaMode': 'shared'}).encode(),
                      headers={'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json'})
     try:
         with urlopen(remote, timeout=30) as response:
@@ -138,7 +141,8 @@ def recognize_selection(payload, png):
 
 
 def register_whiteboard_ocr(app, access_store):
-    slots = BoundedSemaphore(3)
+    answer_slots = BoundedSemaphore(3)
+    expression_slots = BoundedSemaphore(2)
 
     @app.post(WHITEBOARD_PATH)
     def recognize(request: IncomingRequest, payload: WhiteboardPhoto):
@@ -147,10 +151,12 @@ def register_whiteboard_ocr(app, access_store):
             raise DomainError('feature_forbidden', '当前账号没有作答权限。', 403)
         limits = app.state.public_limits
         limits.consume(('whiteboard-ocr', access['learner_id']), limits.submissions_per_minute)
+        expression = payload.purpose == 'expression'
+        slots = expression_slots if expression else answer_slots
         if not slots.acquire(blocking=False):
             raise DomainError('whiteboard_ocr_busy', '白板识别正在处理其他请求，请稍后重试。', 429)
         try:
-            png = checked_png(payload.image, skip_blank=payload.purpose == 'answer')
+            png = checked_png(payload.image, skip_blank=not expression, preserve=expression)
             if png is None:
                 return {'status': 'insufficient', 'feedback': (
                     'Write your answer on the whiteboard before submitting.' if payload.language == 'en'
@@ -159,7 +165,7 @@ def register_whiteboard_ocr(app, access_store):
                 with limits.daily.reserve(access['learner_id'], access['role']):
                     pass
             try:
-                if payload.purpose == 'expression':
+                if expression:
                     return recognize_selection(payload, png)
                 return recognize_whiteboard(payload, png)
             except (AttributeError, IndexError, KeyError, OSError, TypeError, ValueError):

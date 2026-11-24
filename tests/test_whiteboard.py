@@ -108,7 +108,7 @@ class WhiteboardTests(TestCase):
         self.assertEqual(result, {'status': 'ready', 'answer': 'mod(17,5)'})
         sent = request.call_args.args[0]
         self.assertEqual(sent.full_url, 'http://127.0.0.1:18879/recognize')
-        self.assertEqual(json.loads(sent.data), {'png': png, 'outputFormat': 'calculator'})
+        self.assertEqual(json.loads(sent.data), {'png': png, 'outputFormat': 'calculator', 'formulaMode': 'shared'})
 
     def test_site_openai_uses_responses_via_existing_tunnel(self):
         image = image_bytes('PNG')
