@@ -113,6 +113,20 @@ class MathAcademyTests(unittest.TestCase):
         self.assertEqual(scope['target_topics'], 2)
         self.assertEqual(scope['topic_ids'], [1, 2, 3])
 
+    def test_non_ml_native_import_rejects_unrendered_formula_fields(self):
+        bad = source(1)
+        bad['lesson']['steps'][1]['example']['question'] = r'Consider \mathbf x.'
+        topic_zip = self.root / 'with-unrendered-formula.zip'
+        with zipfile.ZipFile(topic_zip, 'w') as archive:
+            archive.writestr('topic-json/topic-1.json', json.dumps(bad))
+        index = SourceIndex(topic_zip, self.graphs)
+        self.addCleanup(index.archive.close)
+        with self.assertRaisesRegex(RuntimeError, 'conversion failures'):
+            prepare(index, index.scope([10]), self.cache, self.package)
+        problems = json.loads((self.package / 'conversion-failures.json').read_bytes())
+        self.assertEqual(problems[0]['fields'][0]['defects'], ['visible_tex_command'])
+        self.assertFalse((self.package / 'manifest.json').exists())
+
     def test_atomic_activation_idempotency_shared_identity_and_backup(self):
         self.prepared()
         with self.assertRaisesRegex(RuntimeError, 'pre-activation'):

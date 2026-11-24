@@ -85,6 +85,14 @@ def validate_enrichment_rendering(topic, display):
             raise ValueError(f'Enrichment {name} formula error: {tid}/{defect["path"]} ({labels})')
 
 
+def validate_legacy_repairs(spec, previous):
+    same_content = all(previous.get(field) == spec.get(field) for field in ('topic_id', 'version'))
+    existing = previous.get('tex_repairs', {}) if same_content else {}
+    repairs = spec.get('tex_repairs', {})
+    if not isinstance(repairs, dict) or repairs != existing:
+        raise ValueError('Legacy TeX repairs are read-only. Recompile the source through the MA workflow')
+
+
 def validate_enrichment_package(package):
     from .lesson_display import DIRECTORY, read_display
 

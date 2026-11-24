@@ -13,7 +13,7 @@ from .catalog import Catalog
 from .config import Settings
 from .content_bundle import POINTER
 from .lesson_display import DIRECTORY, display_hash, display_key, lesson_fields, read_display
-from .mathacademy_formula_audit import FormulaAudit, ML_COURSES
+from .mathacademy_formula_audit import FormulaAudit, validate_legacy_repairs
 from .question_bank import QuestionBank
 from .test_materials import TestMaterials
 from .topic_install import digest, encoded, import_lock
@@ -136,6 +136,9 @@ def verify_topic(path, tid, catalog, data, *, previous=None):
             raise ValueError(f'Expected plain text: {tid}')
         if kind == 'html' and MarkupSignature(value).signature() != MarkupSignature(original).signature():
             raise ValueError(f'Changed protected HTML: {tid}/{key}')
+        prior = (previous or {}).get('values', {}).get(key)
+        if kind == 'html' and value != prior and key not in repairs and FormulaAudit(value).errors:
+            raise ValueError(f'Unrendered math in lesson display: {tid}/{key}')
     if repairs:
         from .mathacademy_import import Renderer
         renderer = Renderer()
@@ -188,11 +191,9 @@ def install(package, data):
             else:
                 if path.stem not in allowed:
                     raise ValueError('Localized Topic exceeds the explicit course scope')
-                if read_display(path).get('tex_repairs') and path.stem not in {
-                    row['id'] for cid in set(manifest['courses']) & ML_COURSES for row in catalog.course(cid)['topics']
-                }:
-                    raise ValueError('TeX recovery exceeds the Machine Learning scope')
-                verify_topic(path, path.stem, catalog, data, previous=read_display(root / DIRECTORY / name))
+                prior = read_display(root / DIRECTORY / name)
+                validate_legacy_repairs(read_display(path), prior)
+                verify_topic(path, path.stem, catalog, data, previous=prior)
         if all((root / DIRECTORY / name).is_file() and digest((root / DIRECTORY / name).read_bytes()) == checksum
                for name, checksum in manifest['files'].items()):
             return {'status': 'unchanged', 'generation': json.loads(previous)['generation']}
