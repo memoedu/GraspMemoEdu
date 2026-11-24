@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import ExitStack, asynccontextmanager, closing
 import hmac
 import json
+import os
 from pathlib import Path
 import re
 import secrets
@@ -48,6 +49,10 @@ from .self_assessment import enabled as self_rating_enabled, protect as protect_
 from .response_content import compact_response, learning_response
 from .context_library_api import register_context_library_routes, PUBLIC_PATHS as CONTEXT_PATHS
 from .clipper import register_clipper_routes, PATHS as CLIPPER_PATHS, BODY_LIMITS as CLIPPER_BODY_LIMITS
+from .topic_sync_api import (register_topic_sync_routes, PUBLIC_PATHS as TOPIC_SYNC_PATHS,
+                             DEVICE_PATHS as TOPIC_SYNC_DEVICE_PATHS, PAIR_DEVICE as TOPIC_SYNC_PAIR_DEVICE,
+                             BODY_LIMITS as TOPIC_SYNC_BODY_LIMITS)
+from .topic_sync_storage import configured_snapshots
 from .voice_input import VOICE_PATH, VOICE_BODY_LIMIT
 from .voice_stream import STREAM_PATH, STREAM_BODY_LIMIT
 from .answer_conversion import ANSWER_CONVERSION_PATH, register_answer_conversion
@@ -489,6 +494,7 @@ def create_app(settings: Settings | None = None, service: LearningService | None
                    ANSWER_CONVERSION_PATH: STREAM_BODY_LIMIT, STREAM_PATH: STREAM_BODY_LIMIT,
                    WHITEBOARD_PATH: WHITEBOARD_LIMIT}
     body_limits.update(CLIPPER_BODY_LIMITS)
+    body_limits.update(TOPIC_SYNC_BODY_LIMITS)
     app.add_middleware(BodyLimitMiddleware, maximum=16384, path_limits=body_limits)
     app.state.service = service
     app.state.settings = settings
@@ -526,6 +532,8 @@ def create_app(settings: Settings | None = None, service: LearningService | None
         # Do not regard localhost and 127.0.0.1 as interchangeable origins.
         from .academy_api import CAPABILITY_PATHS, PUBLIC_PATHS as ACADEMY_PATHS
         academy_callback = path in CAPABILITY_PATHS
+        topic_sync = app.state.topic_sync
+        sync_companion = topic_sync is not None and path in TOPIC_SYNC_DEVICE_PATHS
         own_origin = settings.public_api_origin if public else f'http://{host}'
         permitted_origins = {*settings.allowed_origins, own_origin}
         is_own = origin == own_origin
@@ -548,7 +556,10 @@ def create_app(settings: Settings | None = None, service: LearningService | None
             return response
         if origin and origin not in permitted_origins:
             return error('origin_forbidden', '此网页来源未获授权。')
-        if public and path.startswith('/api/') and path != '/api/health' and not origin and not same_origin_read:
+        if sync_companion and (origin or fetch_site):
+            return error('origin_forbidden', '此同步接口仅用于本机配套程序。')
+        if (public and path.startswith('/api/') and path != '/api/health'
+                and not origin and not same_origin_read and not sync_companion):
             return error('origin_forbidden', '公网学习请求需要已配置的网页来源。')
         if not public and not origin and fetch_site in ('cross-site', 'same-site'):
             return error('origin_forbidden', '跨来源请求被拒绝。')
@@ -574,6 +585,8 @@ def create_app(settings: Settings | None = None, service: LearningService | None
         public_paths.update(ADMIN_PAUSE_PATHS)
         public_paths.update(CONTEXT_PATHS)
         public_paths.update(CLIPPER_PATHS)
+        if topic_sync is not None:
+            public_paths.update(TOPIC_SYNC_PATHS)
         public_paths.add(ANSWER_CONVERSION_PATH)
         public_paths.add(WHITEBOARD_PATH)
         student_path = admin_student_route(path)
@@ -603,7 +616,7 @@ def create_app(settings: Settings | None = None, service: LearningService | None
             if remote or not (is_own or fetch_site == 'same-origin'):
                 return deny('session_forbidden', '仅本机同源页面可建立会话。')
         elif path.startswith('/api/') and path != '/api/health':
-            if not public and not academy_callback:
+            if not public and not academy_callback and not sync_companion:
                 supplied = request.headers.get('x-learning-session', '')
                 authorized = paired(request.headers.get('authorization', '')) if remote else (
                     hmac.compare_digest(supplied, session_token) or paired(request.headers.get('authorization', '')))
@@ -641,6 +654,13 @@ def create_app(settings: Settings | None = None, service: LearningService | None
                 if access['role'] != 'account':
                     return deny('clip_login_required', '请登录后使用零碎知识剪藏。')
                 request.state.clipper_access = access
+            elif sync_companion:
+                if path != TOPIC_SYNC_PAIR_DEVICE:
+                    try:
+                        request.state.topic_sync_device = await run_in_threadpool(
+                            topic_sync.authenticate_device, request.headers.get('authorization'))
+                    except DomainError as exc:
+                        return deny(exc.code, exc.message, exc.status_code)
             elif path not in ('/api/access/guest', '/api/access/login') and not academy_callback:
                 try:
                     access = access_store.resolve(request.headers.get('x-learning-identity'))
@@ -658,6 +678,11 @@ def create_app(settings: Settings | None = None, service: LearningService | None
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Referrer-Policy'] = 'no-referrer'
         response.headers['Content-Security-Policy'] = f"default-src 'self'; script-src 'self'{whiteboard_script}; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob:; connect-src 'self' http://127.0.0.1:* http://localhost:*; object-src 'none'; frame-src 'self' https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v1/ https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v2/ https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v3/ https://rowan-memoedu.github.io/AnnotationCapture/whiteboard/v4/; base-uri 'self'; frame-ancestors 'none'"
+        if path.startswith('/topic-editor/'):
+            response.headers['Content-Security-Policy'] = (
+                "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; "
+                "font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self'; "
+                "frame-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self' https://memoedu.github.io")
         if path in ('/vendor/knowledge-clipper/index.html', '/vendor/knowledge-clipper/chat/index.html'):
             # The learning page hosts these two packaged editors on its own origin.
             response.headers['Content-Security-Policy'] = (
@@ -1003,11 +1028,17 @@ def create_app(settings: Settings | None = None, service: LearningService | None
     register_clipper_routes(app, access_store, dashboard_store.profile,
                             lambda word: lookup_word(word, data_dir=settings.data_dir / 'context-dictionary',
                                                      limit=6, definitions_only=True))
+    register_topic_sync_routes(app, access_store, catalog, subjects, configured_snapshots(), public_limits)
     register_answer_conversion(app, access_store)
     register_whiteboard_ocr(app, access_store)
     register_context_library_routes(app, catalog, access_store, subjects,
         activate_points=activate_reading_points,
         dictionary=lambda word: lookup_word(word, data_dir=settings.data_dir / 'context-dictionary'),
         connect_for=lambda access, request: reading_service(access, request)._connect)
+    editor_root = os.environ.get('GRASPMEMOEDU_TINE_ROOT')
+    app.state.topic_editor_enabled = bool(editor_root and all((Path(editor_root) / filename).is_file()
+                                          for filename in ('index.html', 'source.zip')))
+    if app.state.topic_editor_enabled:
+        app.mount('/topic-editor', StaticFiles(directory=editor_root, html=True), name='topic-editor')
     app.mount('/', StaticFiles(directory=web_directory, html=True), name='web')
     return app

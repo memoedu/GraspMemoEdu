@@ -1,0 +1,6 @@
+html, body { min-height: 100%; margin: 0; overflow-x: clip; }
+body { display: block; overflow-y: auto; }
+#outline { padding: .65rem .8rem; overflow-wrap: anywhere; }
+#message, footer { padding: .25rem .85rem; color: var(--ls-secondary-text-color); }
+footer { font-size: .75rem; }
+footer a { color: inherit; }

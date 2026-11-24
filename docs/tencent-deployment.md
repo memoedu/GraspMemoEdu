@@ -17,6 +17,8 @@ GitHub Pages remains the frontend. The backend uses the existing Tencent Lightho
 
 ## Operations
 
+Topic 正文服务使用 GitHub App 和 AES 密钥，路径通过 `deploy/topic-sync.env.example` 配置到 `/etc/graspmemoedu/topic-sync/service.env`。将 `deploy/35-topic-sync.conf` 安装为现有网站 systemd 服务的 drop-in。编辑器目录包含固定版本 TINE、字体、WASM 和对应 AGPL 源码。配套工具 ZIP 从已核验的 RemNoteNavigator Release 安装到示例指定的位置，下载接口使用网站登录身份。服务器上的源课程和学习进度仍由现有备份流程管理。按 [Topic 同步](topic-sync.md) 分别核验存储、正文、配对与导航。
+
 Local source, data, cache and artifact roots use `GraspMemoEdu`; the Python package and CLI are `graspmemoedu`. Website-specific environment variables use `GRASPMEMOEDU_`, including `GRASPMEMOEDU_JUDGE_API_KEY`, `GRASPMEMOEDU_JUDGE_BASE_URL` and `GRASPMEMOEDU_JUDGE_MODEL`. The independent MathAnswerJudge project's own environment interface remains separate. Renaming never changes course/Topic IDs, database schemas or learning records.
 
 The frontend upgrades previous browser-storage keys on the same origin, preserving identities, language and drafts, with newer values taking precedence. Browser storage cannot cross the changed Pages domain: invitation-code users can sign in again to reach their existing server-side progress. Historical backup files remain original evidence and use the same restore format.
