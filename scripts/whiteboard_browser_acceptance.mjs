@@ -78,6 +78,7 @@ try {
       assert.equal(wav.toString('ascii', 0, 4), 'RIFF');
       assert.equal(wav.readUInt32LE(24), 16000);
       assert.ok(wav.length > 10000);
+      if (new URL(page.url()).hash === '#/') return route.fulfill({json: {text: '2+3'}});
       receivedVoice();
       await voiceRelease;
       return route.fulfill({json: {text: '2x + 3 = 7'}});
@@ -89,16 +90,76 @@ try {
     await page.locator('#identitySubmitButton').click();
     await page.locator('#identitySubmitButton').waitFor({state: 'hidden'});
   }
-  await page.goto(site + '/#/subjects/math/topic/calculator-fixture');
-  const next = page.getByRole('button', {name: '下一页', exact: true}).last();
+  const homeSubmissions = [];
+  await page.route(/\/api\/(?:[^?#]+\/)?(?:submit|submit-answer)(?:\?|$)/, route => {
+    if (['#/', '#/subjects/math/courses'].includes(new URL(page.url()).hash)) {
+      homeSubmissions.push(new URL(route.request().url()).pathname);
+      return route.abort();
+    }
+    return route.continue();
+  });
+  await page.goto(site + '/#/');
+  const home = page.locator('#pageTools');
+  const homeBoard = home.locator('.whiteboardPanel');
+  const homeExpression = homeBoard.locator('[data-whiteboard-expression]');
+  const homeSubmit = homeBoard.getByRole('button', {name: '提交', exact: true});
+  await home.getByRole('button', {name: '白板', exact: true}).click();
+  await homeExpression.and(homeBoard.locator('input:enabled')).waitFor();
+  assert.equal(await homeSubmit.isVisible(), true);
+  assert.equal(await homeSubmit.isDisabled(), true);
+  assert.equal(await homeSubmit.evaluate(button => getComputedStyle(button).backgroundColor), 'rgb(224, 224, 224)');
+  async function homeDictation(field) {
+    await field.fill('');
+    await field.focus();
+    await page.getByRole('button', {name: '录音输入', exact: true}).click();
+    const finish = page.getByRole('button', {name: '结束录音', exact: true});
+    await finish.waitFor();
+    await page.waitForFunction(() => {
+      const [, minutes, seconds] = document.querySelector('.voiceDuration').textContent.match(/(\d+) 分钟: (\d+) 秒/) || [];
+      return Number(minutes) * 60 + Number(seconds) >= 2;
+    });
+    await finish.click();
+    await page.waitForFunction(input => input.value === '2+3', await field.elementHandle());
+    await page.getByText('已插入转写文字。', {exact: true}).waitFor();
+  }
+  if (voiceFile) await homeDictation(homeExpression);
+  else {
+    await homeExpression.fill('2+3');
+    await homeBoard.getByRole('button', {name: '写入白板', exact: true}).click();
+  }
+  await homeBoard.frameLocator('iframe').getByRole('button', {name: '撤销', exact: true}).and(
+    homeBoard.frameLocator('iframe').locator('button:enabled')).waitFor();
+  await homeSubmit.evaluate(button => button.click());
+  await home.getByRole('button', {name: '科学计算器', exact: true}).click();
+  const homeCalculator = page.locator('.questionCalculator');
+  const calculatorExpression = homeCalculator.getByRole('textbox', {name: '表达式'});
+  if (voiceFile) await homeDictation(calculatorExpression);
+  else await calculatorExpression.fill('2+3');
+  await homeCalculator.getByRole('button', {name: '计算结果', exact: true}).first().click();
+  await homeCalculator.locator('.calculatorResult').getByText('5', {exact: true}).waitFor();
+  assert.equal(await homeCalculator.locator('.calculatorTransfer').isVisible(), false);
+  assert.deepEqual(homeSubmissions, []);
+  assert.equal(calls, 0);
+  await page.evaluate(() => { location.hash = '#/subjects/math/courses'; });
+  await home.getByRole('button', {name: '科学计算器', exact: true}).waitFor();
+  await page.evaluate(() => { location.hash = '#/subjects/math/topic/calculator-fixture'; });
+  await homeBoard.waitFor({state: 'detached'});
+  const next = page.locator('#appLayout:not([hidden]) #stepCard').getByRole('button', {name: '下一页', exact: true}).last();
   const mastered = page.locator('#stepCard .choiceActions .primaryButton:enabled', {hasText: '已掌握'});
   const answerForm = page.locator('#stepCard #answerForm');
+  const launcher = page.locator('.questionToolRail [data-question-tool=whiteboard]');
   await next.or(mastered).or(answerForm).first().waitFor();
   if (!(await mastered.count()) && !(await answerForm.count())) await next.click();
   await mastered.or(answerForm).first().waitFor();
-  if (!(await answerForm.count())) await mastered.click();
+  if (!(await answerForm.count())) {
+    await launcher.click();
+    const preview = page.locator('.whiteboardPanel:visible');
+    await preview.locator('[data-whiteboard-expression]:enabled').waitFor();
+    assert.equal(await preview.getByRole('button', {name: '提交', exact: true}).isDisabled(), true);
+    await preview.getByRole('button', {name: '收起', exact: true}).click();
+    await mastered.click();
+  }
   await answerForm.waitFor();
-  const launcher = page.locator('[data-question-tool=whiteboard]');
   try { await launcher.click({timeout: 8000}); }
   catch (error) {
     throw Error((await page.locator('body').innerText()).slice(0, 1500) + '\n' + errors.join('\n'), {cause: error});
@@ -335,7 +396,8 @@ try {
   await retryCase.getByRole('button', {name: '归档目录', exact: true}).and(retryCase.locator('button:enabled')).waitFor();
   assert.equal(await retryCase.locator('.whiteboardStatus').textContent(), '');
   assert.deepEqual(errors, []);
-  console.log(JSON.stringify({passed: true, checks: ['split', 'swap', 'undo-redo', 'scribble erase and atomic undo', 'register survives clearing',
+  console.log(JSON.stringify({passed: true, checks: ['home and subject tools, no answer submission', 'pre-answer whiteboard uses a disabled submit button',
+    'split', 'swap', 'undo-redo', 'scribble erase and atomic undo', 'register survives clearing',
     voiceFile ? 'Chrome capture, transcription insertion and pending submit guard' : 'voice insertion event',
     'archive and reopen', 'directory cancellation and denied permission', 'live undo after reopen',
     'lasso deletion and undo', 'OCR freeze and recovery', 'insufficient without submission', 'shared judge', 'small viewports',

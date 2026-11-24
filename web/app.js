@@ -999,10 +999,11 @@ function lessonWhiteboard(step, actions) {
   const current = () => state?.topic_id === topic && state?.attempt_id === attempt && state?.revision === revision &&
     state?.active_step_id === step.id && selectedStep()?.id === step.id && learnerScope() === learner &&
     !state.pending_submission_id && !actionBusy && can('submit_answer');
+  const canSubmit = step.phase === 'answer' && !step.revealed && actions.includes('submit') &&
+    step.id === state.active_step_id && can('submit_answer');
   return questionWhiteboard({
     key: JSON.stringify([apiBase, learner, topic, step.question_id]), question: step,
-    editable: step.phase === 'answer' && !step.revealed && actions.includes('submit') &&
-      step.id === state.active_step_id && can('submit_answer'),
+    editable: canSubmit || actions.includes('mastered') || actions.includes('unmastered'), canSubmit,
     current, request: topicRequest, language: getLanguage(),
     submit: answer => sendSubmission(mutationPayload({answer, elapsed_ms: syncAnswerClock()})),
   });
@@ -1787,7 +1788,9 @@ async function openTopic(id, subjectId, initial = null) {
 void ensureDeployment().catch(() => {});
 clipper = installClipper({request, identity: () => !identityProblem && access?.role === 'account' ? access.learner_id : null});
 installToolbars($('pageTools'), installVoiceInput({canUse: () => !identityProblem && access?.role === 'account',
-  getIdentity: () => `${identityGeneration}:${connectionGeneration}`, getAccountScope: () => identityGeneration, request}), clipper.toggle);
+  getIdentity: () => `${identityGeneration}:${connectionGeneration}`, getAccountScope: () => identityGeneration, request}), clipper.toggle, {
+  request, getScope: () => !identityProblem && access && JSON.stringify([scope(), access.learner_id]),
+});
 installAnswerConversion(request);
 const { initPortal } = await import("./portal.js?v=36d1108c892e3873");
 startPresence({getAccess: () => identityProblem ? null : access, request, getTopics: visibleContentTopics});
