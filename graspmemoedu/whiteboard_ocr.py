@@ -11,7 +11,7 @@ from urllib.request import Request, urlopen
 
 from fastapi import Request as IncomingRequest
 from PIL import Image
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .judge import independent_settings
 from .service import DomainError
@@ -38,6 +38,11 @@ class WhiteboardPhoto(BaseModel):
     image: str = Field(min_length=1, max_length=4_000_000)
     question: str = Field(default='', max_length=7000)
     language: str = Field(default='zh', pattern='^(zh|en)$')
+
+    @field_validator('language', mode='before')
+    @classmethod
+    def accept_cached_browser_locale(cls, value):
+        return 'zh' if value == 'zh-CN' else value
 
 
 def checked_png(data):

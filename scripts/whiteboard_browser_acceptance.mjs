@@ -48,6 +48,7 @@ try {
   await page.route('**/api/whiteboard/recognize**', async route => {
     const payload = route.request().postDataJSON();
     assert.match(payload.image, /^iVBORw0KGgo/);
+    assert.equal(payload.language, 'zh');
     assert.ok(payload.question.length > 5);
     assert.doesNotMatch(payload.question, /REFERENCE_ONLY/);
     calls++;
