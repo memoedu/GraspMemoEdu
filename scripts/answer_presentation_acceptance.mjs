@@ -59,10 +59,10 @@ try {
   await shot('paper-blank-math'); pass('Review Show Answer renders selectable reference and explanation math');
   await page.locator('.selfAssessment [data-rating="3"]').click(); await page.getByText('本次复习已完成', {exact: true}).waitFor();
   await go(bank('semantic')); await page.locator('#trainingSubmit').click();
-  await math('.trainingExplanation'); assert.equal(await page.locator('.referenceAnswer').count(), 0);
+  await math('.explanationContent'); assert.equal(await page.locator('.referenceAnswer').count(), 0);
   await shot('bank-text-explanation'); pass('Bank text Show Answer contains explanation only, with rendered math');
   await go(bank('semantic-blank')); await page.locator('#trainingSubmit').click();
-  await math('.referenceAnswerBody'); await math('.trainingExplanation');
+  await math('.referenceAnswerBody'); await math('.explanationContent');
   await shot('bank-blank-math'); pass('Bank semantic blank uses the authored fractional answer without generating content');
   for (const q of ['choice-0', 'boolean', 'matching']) {
     await go(bank(q)); await page.locator('#trainingSubmit').waitFor();
@@ -83,7 +83,7 @@ try {
       }
     }
     await page.locator('#trainingSubmit').click(); await page.locator('.trainingVerdict').waitFor();
-    await page.locator('.referenceAnswerBody').waitFor(); await math('.trainingExplanation');
+    await page.locator('.referenceAnswerBody').waitFor(); await math('.explanationContent');
     assert.ok((await page.locator('.referenceAnswerBody').innerText()).trim());
     await shot('bank-' + q + '-reference');
   }
@@ -102,7 +102,7 @@ try {
   await page.setViewportSize({width: 390, height: 844}); await go(bank('semantic-blank'));
   await page.locator('#trainingStepTitle').waitFor(); await page.keyboard.press('Escape');
   if (await page.locator('#trainingSubmit').count()) await page.locator('#trainingSubmit').click();
-  await math('.referenceAnswerBody'); await math('.trainingExplanation');
+  await math('.referenceAnswerBody'); await math('.explanationContent');
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 2), false);
   await shot('mobile-blank-math'); pass('Mobile reference and explanation math remain visible without horizontal overflow');
   assert.deepEqual(report.errors, []);
