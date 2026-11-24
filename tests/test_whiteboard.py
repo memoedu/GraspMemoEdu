@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from graspmemoedu.judging import instant_question, judge_answer, local_verdict
 from graspmemoedu.question_types import WHITEBOARD_ANSWER, display_answer, parse_submission_answer
@@ -15,9 +15,13 @@ from graspmemoedu.service import DomainError
 from graspmemoedu.whiteboard_ocr import WHITEBOARD_PATH, checked_png, recognize_selection, register_whiteboard_ocr
 
 
-def image_bytes(fmt, dimensions=(120, 80)):
+def image_bytes(fmt, dimensions=(120, 80), *, strokes=()):
     target = BytesIO()
-    Image.new('RGB', dimensions, color='white').save(target, format=fmt)
+    image = Image.new('RGB', dimensions, color='white')
+    draw = ImageDraw.Draw(image)
+    for stroke in strokes:
+        draw.line(stroke, fill='#fefefe', width=2)
+    image.save(target, format=fmt)
     return base64.b64encode(target.getvalue()).decode()
 
 
@@ -66,13 +70,19 @@ class WhiteboardTests(TestCase):
             with self.assertRaises(DomainError):
                 checked_png(invalid)
 
+    def test_even_faint_ink_is_sent_unchanged(self):
+        strokes = [((400, 310), (433, 330)), ((490, 350), (517, 380))]
+        original = image_bytes('PNG', (1280, 1024), strokes=strokes)
+        self.assertEqual(checked_png(original, skip_blank=True), checked_png(original))
+        self.assertIsNone(checked_png(image_bytes('PNG'), skip_blank=True))
+
     def test_recognize_accepts_current_and_cached_chinese_ui_languages(self):
         app = FastAPI()
         app.state.public_limits = SimpleNamespace(consume=Mock(), submissions_per_minute=12, daily=None)
         access = Mock()
         access.resolve.return_value = {'features': ['submit_answer'], 'learner_id': 'fixture', 'role': 'guest'}
         register_whiteboard_ocr(app, access)
-        image = image_bytes('PNG')
+        image = image_bytes('PNG', strokes=[((30, 30), (70, 51))])
         with TestClient(app) as client, patch('graspmemoedu.whiteboard_ocr.recognize_whiteboard') as recognize:
             recognize.return_value = {'status': 'insufficient', 'feedback': 'Missing work'}
             for sent, expected in [('zh', 'zh'), ('zh-CN', 'zh'), ('en', 'en')]:
@@ -83,6 +93,11 @@ class WhiteboardTests(TestCase):
                     self.assertEqual(recognize.call_args.args[0].language, expected)
             reply = client.post(WHITEBOARD_PATH, json={'image': image, 'language': 'unknown'})
             self.assertEqual(reply.status_code, 422)
+            for language, feedback in [('zh-CN', '白板是空白的'), ('en', 'Write your answer')]:
+                reply = client.post(WHITEBOARD_PATH, json={'image': image_bytes('PNG'), 'language': language})
+                self.assertEqual(reply.status_code, 200)
+                self.assertEqual(reply.json()['status'], 'insufficient')
+                self.assertIn(feedback, reply.json()['feedback'])
             self.assertEqual(recognize.call_count, 3)
 
     def test_selected_formula_uses_annotation_capture_gateway(self):

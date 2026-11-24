@@ -26,6 +26,14 @@ try {
       }});
       window.showDirectoryPicker = () => window.cancelArchivePicker
         ? Promise.reject(new DOMException('Cancelled', 'AbortError')) : navigator.storage.getDirectory();
+      const closeFile = FileSystemWritableFileStream.prototype.close;
+      FileSystemWritableFileStream.prototype.close = async function () {
+        if (window.waitForArchiveWrite) {
+          window.archiveWriteStarted = true;
+          await window.waitForArchiveWrite;
+        }
+        return closeFile.call(this);
+      };
     }
   });
   const page = await browser.newPage();
@@ -45,6 +53,9 @@ try {
   let receiveFirstOcr, releaseFirstOcr;
   const firstOcrStarted = new Promise(resolve => { receiveFirstOcr = resolve; });
   const firstOcrRelease = new Promise(resolve => { releaseFirstOcr = resolve; });
+  let receiveOldSelection, releaseOldSelection;
+  const oldSelectionStarted = new Promise(resolve => { receiveOldSelection = resolve; });
+  const oldSelectionRelease = new Promise(resolve => { releaseOldSelection = resolve; });
   await page.route('**/api/whiteboard/recognize**', async route => {
     const payload = route.request().postDataJSON();
     assert.match(payload.image, /^iVBORw0KGgo/);
@@ -53,6 +64,13 @@ try {
       assert.equal(payload.question, undefined, 'formula OCR must send only the selection');
       const crop = Buffer.from(payload.image, 'base64');
       assert.ok(crop.readUInt32BE(16) < 1280 && crop.readUInt32BE(20) < 1024);
+      if (receiveOldSelection) {
+        receiveOldSelection();
+        receiveOldSelection = undefined;
+        await oldSelectionRelease;
+        await route.fulfill({json: {status: 'ready', answer: 'obsolete'}}).catch(() => {});
+        return;
+      }
       return route.fulfill({json: {status: 'ready', answer: ++selectionCalls === 1 ? '3+7' : '2+3=5'}});
     }
     assert.ok(payload.question.length > 5);
@@ -278,6 +296,8 @@ try {
   await page.mouse.up();
   const identifySelection = panel.getByRole('button', {name: '识别圈选公式'});
   await identifySelection.waitFor();
+  await identifySelection.click();
+  await oldSelectionStarted;
   await canvas.scrollIntoViewIfNeeded();
   const beforeScale = await canvas.boundingBox();
   await page.mouse.move(beforeScale.x + 158, beforeScale.y + 224);
@@ -290,6 +310,8 @@ try {
   catch (error) {
     throw Error(JSON.stringify({selectionCalls, text: await panel.innerText(), errors, diagnostics}), {cause: error});
   }
+  releaseOldSelection();
+  assert.equal(await panel.getByText('3+7 = 10', {exact: true}).count(), 1);
   const selectedFormula = panel.getByRole('textbox', {name: '圈选公式识别结果'});
   await identifySelection.click();
   await page.waitForFunction(() => document.querySelector('.whiteboardSelection input')?.value === '2+3=5');
@@ -308,6 +330,16 @@ try {
   await undo.click();
 
   const expression = panel.getByRole('textbox', {name: '白板表达式或语音草稿'});
+  const selectionRequestsBeforeText = selectionCalls;
+  await frame.getByRole('button', {name: '清屏', exact: true}).click();
+  await expression.fill('7+9');
+  await panel.getByRole('button', {name: '写入白板', exact: true}).click();
+  await canvas.press('Control+a');
+  await identifySelection.waitFor();
+  await panel.getByRole('button', {name: '计算', exact: true}).click();
+  await panel.getByText('7+9 = 16', {exact: true}).waitFor();
+  assert.equal(selectionCalls, selectionRequestsBeforeText, 'text already on the board needs no image recognition');
+  await frame.getByRole('button', {name: '清屏', exact: true}).click();
   const name = panel.getByRole('textbox', {name: '变量名'});
   await expression.fill('2+3=5');
   await expression.evaluate(input => input.setSelectionRange(0, 3));
@@ -359,7 +391,15 @@ try {
   assert.deepEqual(saved.registers, [['B', {value: 5, text: '5'}], ['A', {value: 5, text: '5'}]]);
   assert.ok(saved.texts.includes('A+2 = 7'));
   assert.ok(saved.texts.includes('2x + 3 = 7'));
+  await page.evaluate(() => {
+    window.waitForArchiveWrite = new Promise(resolve => { window.releaseArchiveWrite = resolve; });
+  });
+  const finalOcr = page.waitForResponse(response => response.url().includes('/api/whiteboard/recognize'));
   await send.click();
+  await finalOcr;
+  await page.waitForFunction(() => window.archiveWriteStarted);
+  assert.equal(await page.locator('.feedback.correct').count(), 0, 'grading waits for the archive even after OCR completes');
+  await page.evaluate(() => window.releaseArchiveWrite());
   await page.locator('.feedback.correct').waitFor();
   assert.equal(calls, 3);
   await panel.getByRole('button', {name: '收起'}).click();
@@ -413,7 +453,9 @@ try {
     'archive and reopen', 'directory cancellation and denied permission', 'live undo after reopen',
     'lasso deletion and undo', 'OCR freeze and recovery', 'insufficient without submission', 'shared judge', 'small viewports',
     'editable scene recovered after its PNG went missing', 'editor retries after load failure',
-    'selection calculation', 'dictated variable and undoable substitution', 'hover shapes', 'select all']}));
+    'selection calculation', 'changing selection cancels slow OCR', 'typed selection computes without OCR',
+    'OCR and archive run together with grading gated on the archive',
+    'dictated variable and undoable substitution', 'hover shapes', 'select all']}));
 } finally {
   await chrome.close();
 }
