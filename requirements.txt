@@ -9,7 +9,7 @@ cryptography==50.0.2
 dashscope==2.1.1
 fastapi==0.141.1
 fsrs==6.3.2
-fy-mimo-tts @ https://github.com/memoedu/MimoTTS/archive/4a26dff5de6db8859e841275e5843afe5dcacb2f.zip
+fy-mimo-tts @ https://github.com/memoedu/MimoTTS/archive/e89fb795afcc06acabd83e94c702a3e69f5ebd7a.zip
 h11==0.16.0
 httpcore==1.0.9
 httpx==0.28.1

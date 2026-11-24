@@ -1,0 +1,21 @@
+[Unit]
+Description=GraspMemoEdu OpenAI speech SSH tunnel
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+DynamicUser=yes
+EnvironmentFile=/etc/graspmemoedu/openai-tunnel/endpoint.env
+LoadCredential=identity:/etc/graspmemoedu/openai-tunnel/id_ed25519
+LoadCredential=known_hosts:/etc/graspmemoedu/openai-tunnel/known_hosts
+ExecStart=/usr/bin/ssh -F /dev/null -N -L 127.0.0.1:18773:api.openai.com:443 -o ExitOnForwardFailure=yes -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=${CREDENTIALS_DIRECTORY}/known_hosts -o GlobalKnownHostsFile=/dev/null -o UpdateHostKeys=no -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o ConnectTimeout=10 -i ${CREDENTIALS_DIRECTORY}/identity -l grasp-openai-forward ${GRASPMEMOEDU_OPENAI_SSH_HOST}
+Restart=always
+RestartSec=5
+NoNewPrivileges=yes
+ProtectHome=yes
+ProtectSystem=strict
+PrivateTmp=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+[Install]
+WantedBy=multi-user.target
