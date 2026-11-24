@@ -89,6 +89,25 @@ class CalculatorSchemaTests(unittest.TestCase):
                 self.assertEqual(presentation(topic, {**item, 'constraints': 'Standard'})['calculate']['level'], 'scientific')
                 self.assertEqual(presentation({}, item), {'html': item['html'], 'calculate': {'level': 'scientific'}})
 
+    def test_ma_reader_and_training_projection_drop_standalone_calculator_labels(self):
+        from graspmemoedu.lesson_display import LessonDisplay, display_key
+
+        question = {'id': 'question-fixture', 'html': '<p>Find $x$.</p><p>Calculator: None</p>',
+                    'explanation_html': '<p>A calculator is not needed for this step.</p>',
+                    'calculate': {'level': 'scientific'}}
+        topic = {'id': 'ma-topic-10', 'version': 'fixture', 'source_adapter': 'mathacademy', '_unrestricted_calculator': True,
+                 'introductions': [], 'modules': [], 'content_order': [], 'unassigned_questions': [question]}
+        with tempfile.TemporaryDirectory() as folder:
+            display = LessonDisplay(Path(folder), topic)
+            display.values[display_key('html', question['html'])] = '<p>求 $x$。</p><p><b>Calculator:</b>&nbsp;无</p>'
+            localized = display.question(question)
+            step = reading_blocks(topic, display)[0]
+        self.assertEqual(localized['html'], '<p>求 $x$。</p>')
+        self.assertEqual(step['html'], localized['html'])
+        self.assertEqual(step['calculate']['level'], 'cas')
+        self.assertEqual(localized['explanation_html'], question['explanation_html'])
+        self.assertIn('Calculator: None', question['html'])
+
     def test_ma_ignores_low_source_levels_and_keeps_explicit_exceptions(self):
         low = {'level': 'basic', 'disable_keys': ['sin']}
         graph = {'level': 'scientific', 'enable_modules': ['graph']}

@@ -71,8 +71,9 @@ class LessonDisplay:
         self.preview = False
         self.values = {}
         self.tex_repairs = {}
+        self.mathacademy = topic.get('source_adapter') == 'mathacademy'
         tid = topic['id']
-        if topic.get('source_adapter') != 'mathacademy' or not re.fullmatch(r'ma-topic-\d+', tid):
+        if not self.mathacademy or not re.fullmatch(r'ma-topic-\d+', tid):
             return
         root = content_root(data_dir) / DIRECTORY
         scope = cached_display(root / 'preview.json').get('topics', {})
@@ -115,7 +116,17 @@ class LessonDisplay:
         return self.apply(result, display_fields(result, ('title',)))
 
     def question(self, question):
-        if not (self.values or self.tex_repairs) or EDITORIAL.match(question.get('title', '')):
+        mathacademy = getattr(self, 'mathacademy', False)
+        has_display = bool(self.values or self.tex_repairs)
+        if not (has_display or mathacademy) or EDITORIAL.match(question.get('title', '')):
             return question
         result = deepcopy(question)
-        return self.apply(result, question_fields(result))
+        bindings = list(question_fields(result))
+        self.apply(result, bindings)
+        if mathacademy:
+            from .calculator import legacy_mathacademy_mode, from_mathacademy, strip_mathacademy_labels
+            if 'calculate' not in result and (mode := legacy_mathacademy_mode(result)) is not None:
+                result['calculate'] = from_mathacademy(mode)
+            for row, field, _ in bindings:
+                row[field] = strip_mathacademy_labels(row[field])
+        return result if has_display or result != question else question

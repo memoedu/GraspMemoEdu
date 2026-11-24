@@ -74,7 +74,8 @@ def audit_fields(item, path=()):
 
 
 def validate_enrichment_rendering(topic, display):
-    from .lesson_display import display_key, lesson_fields
+    from .calculator import strip_mathacademy_labels
+    from .lesson_display import display_key, lesson_fields, question_fields
 
     tid = topic['id']
     keys = {display_key(kind, row[field]) for row, field, kind in lesson_fields(topic)}
@@ -86,6 +87,15 @@ def validate_enrichment_rendering(topic, display):
         if defect := next(audit_fields(source), None):
             labels = ', '.join(defect['defects'])
             raise ValueError(f'Enrichment {name} rendering error: {tid}/{defect["path"]} ({labels})')
+    for module in topic['modules']:
+        for question in module['practices']:
+            if question.get('answer_type') != 'source-mathacademy-variant':
+                continue
+            fields = [question[key] for key in ('question', 'reference_answer', 'constraints') if key in question]
+            for row, field, kind in question_fields(question):
+                fields.extend((row[field], values.get(display_key(kind, row[field]), '')))
+            if any(strip_mathacademy_labels(value) != value for value in fields):
+                raise ValueError('Calculator metadata in MA variant content: ' + question['id'])
 
 
 def validate_legacy_repairs(spec, previous):

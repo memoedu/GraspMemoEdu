@@ -150,3 +150,16 @@ class LessonDisplayTests(unittest.TestCase):
         topic['introductions'][0]['html'] = code
         with self.assertRaisesRegex(ValueError, 'uncompiled_diagram'):
             validate_enrichment_rendering(topic, {'values': {}})
+
+    def test_rejects_variant_calculator_metadata_before_installation(self):
+        variant = {'id': 'example-variant-1', 'answer_type': 'source-mathacademy-variant', 'html': '<p>Find x.</p>'}
+        intro = {'title': 'Example', 'html': '<p>Calculator: None</p>'}
+        topic = {'id': 'ma-topic-1', 'introductions': [intro],
+                 'modules': [{'title': 'Example', 'example': {}, 'practices': [variant]}]}
+        key = display_key('html', variant['html'])
+        validate_enrichment_rendering(topic, {'values': {}})
+        with self.assertRaisesRegex(ValueError, 'Calculator metadata'):
+            validate_enrichment_rendering(topic, {'values': {key: '<p>求 x。</p><p>Calculator: 无</p>'}})
+        variant['html'] += '<p>Calculator: None</p>'
+        with self.assertRaisesRegex(ValueError, 'Calculator metadata'):
+            validate_enrichment_rendering(topic, {'values': {}})
