@@ -45,6 +45,8 @@ class TopicSyncTests(unittest.TestCase):
         with (patch('graspmemoedu.api.configured_snapshots', return_value=SealedSnapshots(self.files, bytes(32))),
               patch.object(Catalog, 'load', side_effect=shared_catalog)):
             fixtures.AdminStudentsTests.setUp(self)
+        for learner_id in (self.admin, self.other, self.student, self.normal):
+            self.app.state.topic_sync.set_allowed(learner_id, True)
         self.topic = self.course['id']
         self.device = str(uuid4())
         self.secret = secrets.token_urlsafe(32)
@@ -155,8 +157,18 @@ class TopicSyncTests(unittest.TestCase):
                 response = self.get('installer/windows', self.headers)
                 self.assertEqual(response.content, archive.read_bytes())
                 self.assertIn('no-store', response.headers['cache-control'])
-                self.app.state.topic_sync.set_excluded(self.student, True)
+                self.app.state.topic_sync.set_allowed(self.student, False)
                 self.assertEqual(self.get('installer/windows', self.headers).status_code, 403)
+
+    def test_new_accounts_and_admins_need_explicit_grants(self):
+        _, duplicate = self.identity('Student <A>', is_student=True, purpose='test', is_advanced_learner=True)
+        _, admin = self.identity('Another admin', is_admin=True)
+        self.assertEqual(self.get('device-state', self.headers).status_code, 200)
+        for headers in (duplicate, admin):
+            for response in (self.get('device-state', headers), self.get('body', headers, topic_id=self.topic),
+                             self.post('pair-ticket', headers)):
+                self.assertEqual(response.status_code, 403)
+                self.assertEqual(response.json()['detail']['code'], 'topic_sync_disabled')
 
     def test_original_binding_cannot_be_taken_over_by_another_login(self):
         first = self.pair(self.headers)
@@ -217,11 +229,11 @@ class TopicSyncTests(unittest.TestCase):
 
     def test_revoked_account_and_device_cannot_access_companion_or_web_data(self):
         self.assertEqual(self.pair(self.headers).status_code, 200)
-        self.app.state.topic_sync.set_excluded(self.student, True)
+        self.app.state.topic_sync.set_allowed(self.student, False)
         self.assertEqual(self.get('body', self.headers, topic_id=self.topic).json()['detail']['code'], 'topic_sync_disabled')
         self.assertEqual(self.get('device-body', self.authorization, topic_id=self.topic).json()['detail']['code'],
                          'topic_sync_disabled')
-        self.app.state.topic_sync.set_excluded(self.student, False)
+        self.app.state.topic_sync.set_allowed(self.student, True)
         self.store.revoke_sessions(self.student)
         self.assertEqual(self.get('device-body', self.authorization, topic_id=self.topic).status_code, 401)
         bad = {'Authorization': 'TopicSync ' + self.device + '.' + secrets.token_urlsafe(32)}

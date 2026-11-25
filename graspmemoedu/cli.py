@@ -484,8 +484,9 @@ def main():
             output(make_help_store(settings).assignments())
         elif args.command == 'account-topic-sync':
             from .topic_sync import TopicSyncStore
-            TopicSyncStore(make_access_store(settings), None).set_excluded(args.learner, args.mode == 'exclude')
-            output({'learner_id': args.learner, 'topic_sync_enabled': args.mode == 'allow'})
+            allowed = args.mode == 'allow'
+            TopicSyncStore(make_access_store(settings), None).set_allowed(args.learner, allowed)
+            output({'learner_id': args.learner, 'topic_sync_enabled': allowed})
         elif args.command == 'account-permissions':
             if args.topics is None and args.features is None and not args.default_topics and not args.default_features and args.is_advanced_learner is None and args.is_student is None:
                 raise DomainError('permissions_required', '请指定权限列表、恢复默认权限或学习者资格。', 422)

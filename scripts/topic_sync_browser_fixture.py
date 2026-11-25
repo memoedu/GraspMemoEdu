@@ -35,8 +35,11 @@ def main():
     settings = Settings(data_dir=args.root, port=args.port)
     with patch('graspmemoedu.api.configured_snapshots', return_value=SealedSnapshots(MemoryFiles(), bytes(32))):
         app = create_app(settings, LearningService(course, args.root, DeterministicJudge()))
-    invitations = [app.state.access_store.create_account(name, purpose='test')['invitation_code']
-                   for name in ('Original fixture', 'Other fixture')]
+    accounts = [app.state.access_store.create_account(name, purpose='test')
+                for name in ('Original fixture', 'Other fixture', 'Unlisted fixture')]
+    for account in accounts[:2]:
+        app.state.topic_sync.set_allowed(account['account']['learner_id'], True)
+    invitations = [account['invitation_code'] for account in accounts]
     (args.root / 'topic-sync-browser.json').write_text(json.dumps({'invitations': invitations, 'topic_id': course['id']}),
                                                        encoding='utf-8')
     print('READY isolated Topic sync fixture', flush=True)

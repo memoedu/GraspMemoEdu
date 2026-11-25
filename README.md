@@ -2,7 +2,7 @@
 
 登录后可在学习工具栏开启[零碎知识简藏](docs/knowledge-clipper.md)，并在「课程之外自由学习」查看摘录和复习个人卡片。
 
-进入 Topic 后可开启 TINE 大纲编辑，或打开已配对的本地 RemNote Document。安装配套工具、个人正文同步和管理员分组见 [Topic 与 RemNote](docs/topic-sync.md)。
+已获授权的账号进入 Topic 后可开启 TINE 大纲编辑，或打开已配对的本地 RemNote Document。安装配套工具、个人正文同步和管理员分组见 [Topic 与 RemNote](docs/topic-sync.md)。
 
 协作开发、Agent 提交与合并规则见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
