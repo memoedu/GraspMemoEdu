@@ -125,6 +125,16 @@ try {
     await page.evaluate(id => { location.hash = '#/subjects/math/topic/' + id; }, topic);
     await finish.waitFor();
     const frame = page.frameLocator('iframe.topicBodyFrame');
+    if (!liveNative) {
+      const heading = frame.locator('.ls-block').filter({has: frame.locator('.block-content').getByText('Outline formula section', {exact: true})});
+      await heading.locator('.block-content').getByText('Outline child', {exact: true}).waitFor();
+      await frame.locator('.block-content').filter({hasText: 'Outline parent'}).locator('.katex').waitFor();
+      await frame.locator('.katex-display .mfrac').waitFor();
+      const inline = frame.locator('.block-content').filter({hasText: 'Preserve inline formatting in one row.'});
+      await inline.locator('strong').waitFor();
+      assert.equal(await inline.locator('strong').textContent(), 'inline formatting');
+      assert.equal(await frame.getByText('SVG replica').count(), 0);
+    }
     const content = frame.locator('.block-content').filter({hasText: 'INTRODUCTION_ONLY'}).first();
     await content.click({position: {x: 8, y: 8}});
     const field = frame.locator('textarea:visible').first();
@@ -148,7 +158,7 @@ try {
     }
     await page.getByRole('button', {name: '关闭编辑', exact: true}).click();
     await edit.waitFor();
-    assert.equal(await frame.locator('textarea:visible').count(), 0);
+    assert.equal(await page.locator('iframe.topicBodyFrame').count(), 0);
     if (!liveNative) {
       const fromLocal = structuredClone(changed.document);
       fromLocal.blocks.find(row => row.id === nested.id).text = 'Updated from the companion $x^3$';
@@ -156,7 +166,46 @@ try {
         expected_revision: changed.revision, document: fromLocal}});
     }
     await page.reload();
+    await edit.waitFor();
+    assert.equal(await page.locator('iframe.topicBodyFrame').count(), 0);
+    await page.evaluate(() => { location.hash = '#/subjects/math/courses'; });
+    await edit.waitFor({state: 'hidden'});
+    await page.evaluate(id => { location.hash = '#/subjects/math/topic/' + id; }, topic);
+    await edit.waitFor();
+    assert.equal(await page.locator('iframe.topicBodyFrame').count(), 0);
+    await edit.click();
     await frame.getByText(/Updated from the companion/).first().waitFor();
+    await finish.click();
+    await edit.waitFor();
+    assert.equal(await page.locator('iframe.topicBodyFrame').count(), 0);
+    if (!liveNative) {
+      await edit.click();
+      const original = frame.locator('.block-content').filter({hasText: 'Updated from the companion'}).first();
+      await original.waitFor();
+      const current = await navigator.request('device-body?topic_id=' + topic, {device});
+      const newer = structuredClone(current.document);
+      newer.blocks.find(row => row.id === nested.id).text = 'Newer companion revision';
+      const revision = randomUUID();
+      await navigator.request('device-body', {device, body: {topic_id: topic, revision,
+        expected_revision: current.revision, document: newer}});
+      await original.click({position: {x: 8, y: 8}});
+      const field = frame.locator('textarea:visible').first();
+      await field.fill('Conflicting website draft');
+      await field.blur();
+      await page.waitForResponse(response => new URL(response.url()).pathname === '/api/topic-sync/body' &&
+        response.request().method() === 'POST' && response.status() === 409);
+      for (let i = 0; i < 2; i++) {
+        await finish.click();
+        await edit.waitFor();
+        assert.equal(await page.locator('iframe.topicBodyFrame').count(), 0);
+        await edit.click();
+        await frame.getByText('Conflicting website draft', {exact: true}).waitFor();
+      }
+      await finish.click();
+      const final = await navigator.request('device-body?topic_id=' + topic, {device});
+      assert.equal(final.revision, revision);
+      assert.equal(final.document.blocks.find(row => row.id === nested.id).text, 'Newer companion revision');
+    }
     editorTested = true;
   }
   await open.click();

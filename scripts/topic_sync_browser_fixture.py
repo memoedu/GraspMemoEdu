@@ -25,6 +25,13 @@ def main():
     args = parser.parse_args()
     args.root.mkdir(parents=True, exist_ok=False)
     course = synthetic_course()
+    course['introduction']['html'] += (
+        '<h4>Outline formula section</h4><div class="outlineNode"><p>Outline parent \\(x_1^2\\)</p>'
+        '<div class="outlineChildren"><div class="outlineNode"><p>Outline child</p></div></div></div>'
+        '<div>Preserve <strong>inline formatting</strong> in one row.</div>'
+        '<p><span class="mathDisplay" data-tex="\\frac{2}{3}"><mjx-container display="true">'
+        '<svg><title>SVG replica</title></svg></mjx-container></span></p>'
+    )
     settings = Settings(data_dir=args.root, port=args.port)
     with patch('graspmemoedu.api.configured_snapshots', return_value=SealedSnapshots(MemoryFiles(), bytes(32))):
         app = create_app(settings, LearningService(course, args.root, DeterministicJudge()))
