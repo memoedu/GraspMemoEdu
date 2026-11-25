@@ -74,6 +74,29 @@ try {
   await page.keyboard.press('Control+c');
   assert.equal(await page.evaluate(() => navigator.clipboard.readText()), fullFormula);
   assert.match(fullFormula, /\\frac\{x\+1\}\{y-2\}/);
+  await page.evaluate(() => navigator.clipboard.writeText('before visible formula copy'));
+  await page.locator(original + ' .katex-html').evaluate(visible => {
+    // KaTeX uses these characters for geometry in archived display formulas.
+    visible.prepend(document.createTextNode('\u200b'));
+    visible.append(document.createTextNode('\u200b'));
+    const walker = document.createTreeWalker(visible, NodeFilter.SHOW_TEXT);
+    const glyphs = [];
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      for (const match of node.data.matchAll(/[^\s\p{Cf}]/gu)) {
+        glyphs.push({node, start: match.index, end: match.index + match[0].length});
+      }
+    }
+    const first = glyphs[0], last = glyphs.at(-1), range = document.createRange();
+    range.setStart(first.node, first.start);
+    range.setEnd(last.node, last.end);
+    getSelection().removeAllRanges();
+    getSelection().addRange(range);
+  });
+  await page.keyboard.press('Control+c');
+  assert.equal(await page.evaluate(() => navigator.clipboard.readText()), fullFormula);
+  checks.push('Selecting every visible glyph produces LaTeX even when KaTeX inserts invisible edge characters');
+
   await page.keyboard.press('Control+a');
   await page.keyboard.press('Control+c');
   const all = await page.evaluate(() => navigator.clipboard.readText());
