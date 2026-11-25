@@ -135,8 +135,11 @@ def recognize_selection(payload, png):
             raise DomainError('whiteboard_ocr_busy', '白板识别正在处理其他请求，请稍后重试。', 429) from None
         raise
     value = data.get('latex')
-    if not isinstance(value, str) or not 0 < len(value.strip()) <= 1024:
+    latex_only = data.get('calculatorSupported') is False
+    if not isinstance(value, str) or not 0 < len(value.strip()) <= (10000 if latex_only else 1024):
         raise ValueError('Invalid shared formula result')
+    if latex_only:
+        return {'status': 'ready', 'answer': value.strip(), 'calculatorSupported': False}
     return {'status': 'ready', 'answer': value.strip()}
 
 

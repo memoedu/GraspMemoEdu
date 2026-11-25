@@ -1,4 +1,4 @@
-import {getLanguage} from './i18n.js?v=fd0d8234bee53cfb';
+import {getLanguage} from './i18n.js?v=0fca61a6258f5ae6';
 
 // The distribution contains the same Workflow assembly and chat editor shipped to WebView2.
 const base=new URL('./vendor/knowledge-clipper/',import.meta.url);
