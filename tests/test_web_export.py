@@ -42,7 +42,7 @@ class PublicExportTests(unittest.TestCase):
             pwa_files.add('free-study.js')
             pwa_files.update({'topic-sync-navigation.js', 'topic-sync-groups.js', 'topic-body-editor.js', 'remnote-install.html'})
             pwa_files.update({'clipper.js', 'clipper-workspace.js', 'clipper-library.js', 'clipper-selection.js',
-                              'clipper-host.js', 'clipper-settings.js', 'clipper.css'})
+                              'clipper-host.js', 'clipper-settings.js', 'clipper-lines.js', 'content-lines.js', 'clipper.css'})
             clipper = json.loads((Path(__file__).resolve().parents[1] / 'scripts/clipper-assets.json').read_bytes())
             runtime = output / 'vendor/knowledge-clipper'
             self.assertEqual(json.loads((output / 'vendor/clipper-release.json').read_bytes()), clipper)

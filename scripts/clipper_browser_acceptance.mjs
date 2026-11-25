@@ -72,18 +72,71 @@ async function close(){await panel.getByRole('button',{name:'关闭',exact:true}
 try{
   await enter();assert.equal(await toggle.isVisible(),false);await login(invitations[0]);
   await toggle.click();assert.equal(await toggle.getAttribute('aria-pressed'),'true');assert.equal(await panel.count(),0);
-  await page.evaluate(()=>{location.hash='#/';});
-  const homeTools=page.locator('#pageTools');
-  await homeTools.getByRole('button',{name:'科学计算器',exact:true}).click();
+  await page.getByRole('button',{name:'科学计算器',exact:true}).click();
   const calculator=page.locator('.questionCalculator');
   await calculator.getByRole('textbox',{name:'表达式'}).fill('2+3');
   await calculator.getByRole('button',{name:'计算结果',exact:true}).first().click();
   await calculator.locator('.calculatorResult').getByText('5',{exact:true}).waitFor();
   assert.equal(await panel.count(),0);
+  await page.goto(base+'/#/');
   await enter();await toggle.waitFor();assert.equal(await toggle.getAttribute('aria-pressed'),'true');
   checks.push('calculator input and navigation with the clipper enabled');
   const sample=page.locator('p').filter({hasText:'Capture the sequence'}).first();
   await sample.scrollIntoViewIfNeeded();
+  if(engine==='chrome'&&!mobile){
+    await ctx.grantPermissions(['clipboard-read','clipboard-write']);
+    const selected=page.locator('.clipperLineLayer .feedbackLine[aria-pressed="true"]');
+    await page.locator('.clipperLineLayer .feedbackLine:visible').first().waitFor();
+    const point=async id=>page.locator(id).evaluate(el=>{
+      const range=document.createRange();range.setStart(el.firstChild,0);range.setEnd(el.firstChild,1);
+      const rect=range.getBoundingClientRect();return {x:rect.left+2,y:(rect.top+rect.bottom)/2};
+    });
+    const copy=async()=>{
+      await page.keyboard.press('Control+c');
+      return page.evaluate(()=>navigator.clipboard.readText());
+    };
+    const first=await point('#clip-fixture'), third=await point('#clip-archived'), fourth=await point('#clip-fragment');
+    await page.mouse.click(first.x,first.y);assert.equal(await selected.count(),1);
+    const rowBox=await selected.boundingBox();
+    await page.mouse.click(rowBox.x+8,first.y);assert.equal(await selected.count(),0);
+    await page.mouse.click(first.x,first.y);
+    await page.mouse.click(third.x,third.y);assert.equal(await selected.count(),2);
+    assert.equal(await copy(),'Capture the sequence \\(x^2\\) on this line.\n\nStored formula \\(a+b+c\\).');
+    await page.mouse.click(third.x,third.y);assert.equal(await selected.count(),1);
+    await page.keyboard.press('Escape');assert.equal(await selected.count(),0);
+    await page.keyboard.down('Shift');await page.mouse.move(first.x,first.y);await page.mouse.down();
+    await page.mouse.move(third.x+65,third.y,{steps:14});await page.mouse.up();await page.keyboard.up('Shift');
+    assert.match(await page.evaluate(()=>getSelection().toString()),/Capture the sequence/);
+    assert.equal(await selected.count(),0);
+    await page.evaluate(()=>getSelection().removeAllRanges());
+    await chooser.waitFor({state:'hidden'});
+    await page.mouse.click(fourth.x,fourth.y);
+    assert.equal(await selected.count(),1);
+    await page.mouse.move(first.x,first.y);await page.mouse.down();
+    await page.mouse.move(first.x+18,first.y,{steps:4});
+    await page.mouse.move(third.x+65,third.y,{steps:14});
+    await page.locator('.clipperLineLayer .feedbackMarquee:visible').waitFor();
+    await page.mouse.up();assert.match(await copy(),/Formula fragment/);
+    await selected.last().press('Space');assert.ok(await selected.count()>=3);
+    const copied=await copy();
+    assert.match(copied,/^Capture the sequence .*\\\(x\^2\\\)/);
+    assert.ok(copied.includes('\\(\\frac{a}{b}\\)')&&copied.endsWith('Stored formula \\(a+b+c\\).'));
+    await page.screenshot({path:path.join(output,'selected-lines.png')});
+    const rowExcerpt=await operation('摘');
+    const rowExcerptResult=await view(rowExcerpt,s=>s.shared.receipt);
+    assert.match(rowExcerptResult.shared.text,/Capture the sequence/);
+    assert.match(rowExcerptResult.shared.text,/Stored formula/);
+    await close();await page.keyboard.press('Escape');
+    for(const width of [320,375,414,768]){
+      await page.setViewportSize({width,height:900});await sample.scrollIntoViewIfNeeded();
+      const line=await point('#clip-fixture');await page.mouse.click(line.x,line.y);
+      await chooser.waitFor();const menu=await chooser.boundingBox();
+      assert.ok(menu.x>=0&&menu.x+menu.width<=width,`Selection actions fit at ${width}px`);
+      assert.equal(await selected.count(),1);await page.keyboard.press('Escape');
+    }
+    await page.setViewportSize({width:1280,height:900});await sample.scrollIntoViewIfNeeded();
+    checks.push('single-line toggles, nonadjacent Ctrl+C, marquee selection and attached excerpt action');
+  }
   if(!mobile){
     const box=await sample.boundingBox();await page.mouse.move(box.x+2,box.y+box.height/2);await page.mouse.down();
     await page.mouse.move(box.x+86,box.y+box.height/2,{steps:10});await page.mouse.up();await chooser.waitFor();
