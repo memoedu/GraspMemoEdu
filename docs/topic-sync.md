@@ -42,6 +42,8 @@ App 只需对专用仓库拥有 Contents 写权限。密钥按服务凭据备份
 
 登录学员在 Topic 正文右上角开启编辑，再点一次保存并收起大纲。关闭状态在刷新和返回该 Topic 时继续生效。重新开启会读取最新的个人版本、分组基线或课程底本。课程底本保留正文标题、子节点及公式层级。两端写入同一版本索引。如果另一端抢先更新，保存会返回冲突并保留此页草稿，防止旧页面覆盖新正文。
 
+分组关闭编辑权限时，学员仍可阅读已分配的大纲或自己的已保存版本。
+
 编辑器独立部署，使用上游 TINE v0.9.2 的 BlockList 和 LSdoc。网站向编辑器传递当前 Topic 大纲，通过独立消息端口收回修改。编辑器不接收登录凭据。构建使用 `scripts/build_topic_editor.py`，参数依次为固定上游源码压缩包、已经安装依赖并构建过 LSdoc 的上游目录、空的发布目录。部署该输出并设置 `GRASPMEMOEDU_TINE_ROOT`，与编辑器一起提供对应 AGPL 源码。环境示例见 [部署配置](../deploy/topic-sync.env.example)。
 
 RemNote 窗格只显示「打开 GraspMemoEdu」。首次打开已绑定的 Document 时，Navigator 记录原绑定账号下的同步起点。后续改动由后台处理，检测到已有不同的个人修订时保留两份。嵌套 Document 各有自己的 Topic。正文与工具栏验收使用 `scripts/topic_sync_browser_acceptance.mjs`，私有仓储可用 `scripts/topic_sync_storage_canary.py` 写入合成内容并验证密文回读。

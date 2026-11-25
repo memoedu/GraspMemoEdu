@@ -205,6 +205,20 @@ try {
       const final = await navigator.request('device-body?topic_id=' + topic, {device});
       assert.equal(final.revision, revision);
       assert.equal(final.document.blocks.find(row => row.id === nested.id).text, 'Newer companion revision');
+
+      const bodyPath = '**/api/topic-sync/body?*';
+      await page.route(bodyPath, async route => {
+        const response = await route.fetch();
+        const body = await response.json();
+        await route.fulfill({response, json: {...body, editable: false, revision: null, baseline_revision: revision}});
+      });
+      await page.reload();
+      await edit.waitFor();
+      assert.equal(await edit.isDisabled(), true);
+      const readOnly = frame.getByText('Newer companion revision', {exact: true});
+      await readOnly.click();
+      assert.equal(await frame.locator('textarea:visible').count(), 0);
+      await page.unroute(bodyPath);
     }
     editorTested = true;
   }
