@@ -46,7 +46,7 @@ class TopicSyncStore:
         self.clock = clock
         with closing(access_store._connect()) as con:
             con.executescript("""
-                CREATE TABLE IF NOT EXISTS topic_sync_exclusions (
+                CREATE TABLE IF NOT EXISTS topic_sync_account_grants (
                     learner_id TEXT PRIMARY KEY REFERENCES access_principals(learner_id));
                 CREATE TABLE IF NOT EXISTS topic_sync_pair_tickets (
                     ticket_digest TEXT PRIMARY KEY,
@@ -97,17 +97,17 @@ class TopicSyncStore:
         if con is None:
             with closing(self.access_store._connect()) as connection:
                 return self.authorize_account(access, connection)
-        if con.execute('SELECT 1 FROM topic_sync_exclusions WHERE learner_id=?', (learner_id,)).fetchone():
+        if not con.execute('SELECT 1 FROM topic_sync_account_grants WHERE learner_id=?', (learner_id,)).fetchone():
             raise DomainError('topic_sync_disabled', '当前账号未开放 Topic 与 RemNote 同步。', 403)
         return learner_id
 
-    def set_excluded(self, learner_id, excluded):
+    def set_allowed(self, learner_id, allowed):
         with self.access_store._transaction() as con:
             self.access_store._account(con, learner_id)
-            if excluded:
-                con.execute('INSERT OR IGNORE INTO topic_sync_exclusions VALUES (?)', (learner_id,))
+            if allowed:
+                con.execute('INSERT OR IGNORE INTO topic_sync_account_grants VALUES (?)', (learner_id,))
             else:
-                con.execute('DELETE FROM topic_sync_exclusions WHERE learner_id=?', (learner_id,))
+                con.execute('DELETE FROM topic_sync_account_grants WHERE learner_id=?', (learner_id,))
 
     def issue_pair_ticket(self, access, identity_token):
         ticket = secrets.token_urlsafe(32)

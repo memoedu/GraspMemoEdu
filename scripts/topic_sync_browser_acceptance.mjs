@@ -239,6 +239,14 @@ try {
   await page.getByText('当前账号与本机绑定不一致。请切换到原绑定的网站账号。', {exact: true}).waitFor();
   assert.equal(await open.isVisible(), false);
   assert.equal(opened.length, 1);
+  await login(invitations[2]);
+  const denied = page.waitForResponse(response => new URL(response.url()).pathname === '/api/topic-sync/device-state' &&
+    response.status() === 403);
+  await page.goto(route);
+  assert.equal((await (await denied).json()).detail.code, 'topic_sync_disabled');
+  await page.getByRole('button', {name: '零碎知识简藏', exact: true}).waitFor();
+  assert.equal(await open.isVisible(), false);
+  assert.equal(await edit.isVisible(), false);
   const clean = await browser.newContext({acceptDownloads: true});
   try {
     const withoutExtension = await clean.newPage();
@@ -265,6 +273,7 @@ try {
   assert.deepEqual(browserErrors, []);
   await writeFile(path.join(fixture, 'browser-acceptance.json'), JSON.stringify({
     paired: true, openedWebToDocument: true, openedDocumentToTopic: true, mismatchBlockedBothWays: true,
+    controlsHiddenForUnlistedAccount: true,
     companion: 'real local site client', nativeNavigation: 'synthetic SDK', nativeBody: liveNative,
     tineEditorAndBody: editorTested, topicControlsShareExistingToolbar: editorTested,
     missingExtensionReturnsFromInstaller: true, installerDownload: process.argv.includes('--installer'),
