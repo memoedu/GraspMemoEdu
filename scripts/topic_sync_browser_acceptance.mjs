@@ -64,6 +64,12 @@ try {
   page.setDefaultTimeout(16000);
   page.on('pageerror', error => browserErrors.push(error.message));
   const requests = [];
+  let bodyWrites = 0;
+  page.on('request', request => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/topic-sync/body') {
+      bodyWrites++;
+    }
+  });
   page.on('response', response => {
     const pathname = new URL(response.url()).pathname;
     if (pathname.startsWith('/api/topic-sync/')) requests.push([pathname, response.status()]);
@@ -125,15 +131,50 @@ try {
     await page.evaluate(id => { location.hash = '#/subjects/math/topic/' + id; }, topic);
     await finish.waitFor();
     const frame = page.frameLocator('iframe.topicBodyFrame');
+    let originalOutline;
     if (!liveNative) {
-      const heading = frame.locator('.ls-block').filter({has: frame.locator('.block-content').getByText('Outline formula section', {exact: true})});
-      await heading.locator('.block-content').getByText('Outline child', {exact: true}).waitFor();
+      const initial = await navigator.request('device-body?topic_id=' + topic, {device});
+      originalOutline = initial.document;
+      const headingRow = originalOutline.blocks.find(row => row.text.includes('Outline formula section'));
+      assert(headingRow);
+      const heading = frame.locator(`.ls-block[data-block-id="${headingRow.id}"]`);
+      const child = frame.getByText('Outline child', {exact: true});
+      const toggle = heading.locator(':scope > .block-main .collapse-toggle.has-children').first();
+      await child.waitFor();
+      await toggle.click();
+      await child.waitFor({state: 'hidden'});
+      // Stay collapsed beyond the editor's debounce to catch a fold-only POST.
+      await page.waitForTimeout(900);
+      assert.equal(bodyWrites, 0, 'Collapsing an outline must not save it');
+      await toggle.click();
+      await child.waitFor();
+      await page.waitForTimeout(900);
+      assert.equal(bodyWrites, 0, 'Expanding an outline must not save it');
+      const bulkToggle = heading.locator(':scope > .block-children-container > .block-children-left-border');
+      await bulkToggle.click();
+      await child.waitFor({state: 'hidden'});
+      await page.waitForTimeout(900);
+      assert.equal(bodyWrites, 0, 'Collapsing descendants together must not save the outline');
+      await bulkToggle.click();
+      await child.waitFor();
+      await toggle.click();
+      await child.waitFor({state: 'hidden'});
+      await finish.click();
+      await edit.waitFor();
+      const afterFolding = await navigator.request('device-body?topic_id=' + topic, {device});
+      assert.equal(bodyWrites, 0, 'Closing a folded outline without edits must not save it');
+      assert.equal(afterFolding.revision, initial.revision);
+      assert.deepEqual(afterFolding.document, initial.document);
+      await edit.click();
+      await child.waitFor();
       await frame.locator('.block-content').filter({hasText: 'Outline parent'}).locator('.katex').waitFor();
       await frame.locator('.katex-display .mfrac').waitFor();
       const inline = frame.locator('.block-content').filter({hasText: 'Preserve inline formatting in one row.'});
       await inline.locator('strong').waitFor();
       assert.equal(await inline.locator('strong').textContent(), 'inline formatting');
       assert.equal(await frame.getByText('SVG replica').count(), 0);
+      await toggle.click();
+      await child.waitFor({state: 'hidden'});
     }
     const content = frame.locator('.block-content').filter({hasText: 'INTRODUCTION_ONLY'}).first();
     await content.click({position: {x: 8, y: 8}});
@@ -144,6 +185,13 @@ try {
     const changed = await navigator.request('device-body?topic_id=' + topic, {device});
     const nested = changed.document.blocks.find(row => row.text === 'Changed in TINE $x^2$');
     assert(nested?.parent_id);
+    if (!liveNative) {
+      assert.equal(bodyWrites, 1, 'A text edit with a folded branch must save exactly once');
+      const edited = originalOutline.blocks.find(row => row.id === nested.id);
+      assert(edited);
+      edited.text = nested.text;
+      assert.deepEqual(changed.document, originalOutline);
+    }
     if (liveNative) {
       assert.equal(nested.id, nativeIds.child);
       await sync.sync({kbId: kb, remId: rem});
@@ -276,6 +324,7 @@ try {
     controlsHiddenForUnlistedAccount: true,
     companion: 'real local site client', nativeNavigation: 'synthetic SDK', nativeBody: liveNative,
     tineEditorAndBody: editorTested, topicControlsShareExistingToolbar: editorTested,
+    foldOnlySkipsSaving: editorTested && !liveNative,
     missingExtensionReturnsFromInstaller: true, installerDownload: process.argv.includes('--installer'),
     github: 'isolated in-memory ciphertext store',
   }, null, 2));
