@@ -63,6 +63,23 @@ try {
   await page.keyboard.press('Control+c');
   assert.equal(compact(await page.evaluate(() => navigator.clipboard.readText())), 'a+b');
   checks.push('Guest drags across visible formula characters and copies only the selected fragment');
+  const fullFormula = await page.locator(original).evaluate(async node => {
+    const {captureSelection} = await import(document.querySelector('script[src*="app.js"]').src.replace('app.js', 'clipper-selection.js'));
+    const range = document.createRange();
+    range.selectNode(node);
+    getSelection().removeAllRanges();
+    getSelection().addRange(range);
+    return captureSelection(range, document.querySelector('#lessonContent')).text;
+  });
+  await page.keyboard.press('Control+c');
+  assert.equal(await page.evaluate(() => navigator.clipboard.readText()), fullFormula);
+  assert.match(fullFormula, /\\frac\{x\+1\}\{y-2\}/);
+  await page.keyboard.press('Control+a');
+  await page.keyboard.press('Control+c');
+  const all = await page.evaluate(() => navigator.clipboard.readText());
+  assert(all.includes(fullFormula));
+  assert.doesNotMatch(all, /\n{3,}|PRIVATE_HIDDEN_FIXTURE/);
+  checks.push('Whole formulas and Select All copy structured LaTeX as plain text using the excerpt serializer');
 
   const archive = page.locator('#clip-archived [data-tex]');
   await archive.locator('mjx-container[jax="HTML"] .katex-html').waitFor();
