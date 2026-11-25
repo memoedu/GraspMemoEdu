@@ -110,6 +110,15 @@ class WhiteboardTests(TestCase):
         self.assertEqual(sent.full_url, 'http://127.0.0.1:18879/recognize')
         self.assertEqual(json.loads(sent.data), {'png': png, 'outputFormat': 'calculator', 'formulaMode': 'shared'})
 
+    def test_selected_formula_keeps_recognized_notation_when_calculator_cannot_parse_it(self):
+        png = checked_png(image_bytes('PNG'))
+        latex = r'\int_0^1 x\,dx'
+        response = {'latex': latex, 'calculatorSupported': False}
+        with patch.dict('os.environ', {'GRASPMEMOEDU_WHITEBOARD_FORMULA_TOKEN': 'fixture'}), \
+                patch('graspmemoedu.whiteboard_ocr.urlopen', return_value=BytesIO(json.dumps(response).encode())):
+            result = recognize_selection(SimpleNamespace(language='zh'), png)
+        self.assertEqual(result, {'status': 'ready', 'answer': latex, 'calculatorSupported': False})
+
     def test_site_openai_uses_responses_via_existing_tunnel(self):
         image = image_bytes('PNG')
         payload = WhiteboardPhoto(image=image, question='Solve x + 2 = 3.', language='en')

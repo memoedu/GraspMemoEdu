@@ -1,6 +1,53 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {calculate, calculateImmediate, calculateSelectedFormula} from '../web/calculator-engine.js';
+
+test('selected vector and matrix arithmetic preserves orientation and restrictions', async () => {
+  for (const [expression, array] of [
+    ['[[1],[-2],[3]]-[[4],[5],[6]]', [[-3],[-7],[-3]]],
+    ['[[1,2]]+[[3,4]]', [[4,6]]],
+    ['[[1,2],[3,4]]*[[5],[6]]', [[17],[39]]],
+    ['-[[1],[-2]]', [[-1],[2]]],
+    ['2*[[1],[-2]]', [[2],[-4]]],
+    ['[[3],[1/2]]/2', [[1.5],[0.25]]],
+      ['[[-2],[0]]+0.95*[[0.3],[0.1]]', [[-1.715],[0.095]]],
+      ['-(1/20)*[[1],[3]]*2*(-2)', [[0.2],[0.6]]],
+      ['[[-2],[0]]+0.95*[[0.3],[0.1]]-(1/20)*[[1],[3]]*2*(-2)', [[-1.515],[0.695]]],
+  ]) {
+      const actual = (await calculateSelectedFormula({expression, config:{level:'advanced'}, cas:false})).array;
+      assert.deepEqual(actual.map(row => row.map(value => Number(value.toPrecision(12)))), array);
+  }
+  for (const expression of ['[[1],[2]]-[[1,2]]', '[[1],[2]]+[[1]]', '[[1],[2]]-1', '[[1,2]]*[[3,4]]']) {
+    await assert.rejects(calculateSelectedFormula({expression}), {code:'matrix_dimensions'});
+  }
+  for (const config of [{level:'scientific'}, {level:'cas', disable_modules:['matrix']}, {level:'cas', disable_keys:['subtract']}]) {
+    await assert.rejects(calculateSelectedFormula({expression:'[[1],[2]]-[[3],[4]]', config}), {code:'restricted'});
+  }
+});
+
+test('selected symbolic vector and matrix calculations simplify each entry and retain denominators', async () => {
+  const selection = '[[2*x],[3*x^2-2*x]]-y*[[5*x/y],[6*x]]';
+  assert.deepEqual(await calculateSelectedFormula({expression:selection}), {
+    text:'[[-3*x], [-x*(6*y-3*x+2)]]', nonZero:['y'],
+  });
+  for (const [expression, text] of [
+    ['[[1,2],[3,4]]*[[x],[y]]', '[[x+2*y], [3*x+4*y]]'],
+    ['[x,2]*[2,x]', '4*x'],
+    ['-[[x,-y]]', '[[-x, y]]'],
+    ['[[x,y]]-[[x,y]]', '[[0, 0]]'],
+  ]) {
+    assert.deepEqual(await calculateSelectedFormula({expression}), {text});
+  }
+  assert.deepEqual(await calculateSelectedFormula({expression:'[[x*y],[x*y]]/y'}), {
+    text:'[[x], [x]]', nonZero:['y'],
+  });
+  await assert.rejects(calculateSelectedFormula({expression:'[[x],[1/(2-2)]]'}), {code:'domain'});
+  await assert.rejects(calculateSelectedFormula({expression:'[[x],[y]]-[[x,y]]'}), {code:'matrix_dimensions'});
+  await assert.rejects(calculateSelectedFormula({expression:selection, cas:false}), {code:'unassigned'});
+  for (const config of [{level:'advanced'}, {level:'cas', disable_modules:['matrix']}, {level:'cas', disable_keys:['subtract']}]) {
+    await assert.rejects(calculateSelectedFormula({expression:selection, config}));
+  }
+});
 import {expandScientificNotation} from '../web/calculator-panel.js';
 import {calculatorWorksheets, expressionCompletions, expressionExtensions, permitsModule, scientificCategories, tools} from '../web/calculator-policy.js';
 import {formulaTemplates, matchesCompletion, nativeFormulaSample, nativeFunctionCompletions} from '../web/formula-catalog.js';
