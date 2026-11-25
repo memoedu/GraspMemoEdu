@@ -97,12 +97,27 @@ try {
   assert.equal(await page.evaluate(() => navigator.clipboard.readText()), fullFormula);
   checks.push('Selecting every visible glyph produces LaTeX even when KaTeX inserts invisible edge characters');
 
-  await page.keyboard.press('Control+a');
-  await page.keyboard.press('Control+c');
-  const all = await page.evaluate(() => navigator.clipboard.readText());
-  assert(all.includes(fullFormula));
-  assert.doesNotMatch(all, /\n{3,}|PRIVATE_HIDDEN_FIXTURE/);
+  await page.evaluate(() => {
+    window.competingCopyWrites = 0;
+    window.competingCopy = event => {
+      window.competingCopyWrites++;
+      event.clipboardData.setData('text/plain', 'Rendered text\na\nb');
+      event.preventDefault();
+    };
+    document.addEventListener('copy', window.competingCopy);
+  });
+  try {
+    await page.keyboard.press('Control+a');
+    await page.keyboard.press('Control+c');
+    const all = await page.evaluate(() => navigator.clipboard.readText());
+    assert(all.includes(fullFormula));
+    assert.doesNotMatch(all, /\n{3,}|PRIVATE_HIDDEN_FIXTURE|Rendered text/);
+    assert.equal(await page.evaluate(() => window.competingCopyWrites), 0);
+  } finally {
+    await page.evaluate(() => document.removeEventListener('copy', window.competingCopy));
+  }
   checks.push('Whole formulas and Select All copy structured LaTeX as plain text using the excerpt serializer');
+  checks.push('A later document copy handler cannot overwrite the LaTeX written for learning content');
 
   const archive = page.locator('#clip-archived [data-tex]');
   await archive.locator('mjx-container[jax="HTML"] .katex-html').waitFor();
