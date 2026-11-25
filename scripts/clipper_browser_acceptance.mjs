@@ -117,7 +117,7 @@ try{
     await page.mouse.move(third.x+65,third.y,{steps:14});
     await page.locator('.clipperLineLayer .feedbackMarquee:visible').waitFor();
     await page.mouse.up();assert.match(await copy(),/Formula fragment/);
-    await page.mouse.click(fourth.x,fourth.y);assert.ok(await selected.count()>=3);
+    await selected.last().press('Space');assert.ok(await selected.count()>=3);
     const copied=await copy();
     assert.match(copied,/^Capture the sequence .*\\\(x\^2\\\)/);
     assert.ok(copied.includes('\\(\\frac{a}{b}\\)')&&copied.endsWith('Stored formula \\(a+b+c\\).'));

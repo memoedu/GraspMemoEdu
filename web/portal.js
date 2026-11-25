@@ -1,33 +1,33 @@
-import { t, getLanguage, setLanguage, locale, translateMessage, learningTitle } from "./i18n.js?v=91f89bc139794ea3";
-import {attachFormulaEditing} from './formula-input.js?v=91f89bc139794ea3';
-import {prepareMathContent, renderPlainMath} from './math-presentation.js?v=91f89bc139794ea3';
-import {remnoteTopicLink, topicBindingPath} from './topic-sync-navigation.js?v=91f89bc139794ea3';
-import { createReviewView } from "./review.js?v=91f89bc139794ea3";
-import { renderCourseGraph } from "./course-graph.js?v=91f89bc139794ea3";
-import {questionInput, choiceTypeField} from './question-input.js?v=91f89bc139794ea3';
-import {lessonTaskLabel, readingFields, readingSectionHeading} from './learning-ui.js?v=91f89bc139794ea3';
-import {enhanceTopicContent} from './topic-content.js?v=91f89bc139794ea3';
-import {reportableContent, placeContentActions, installContentReporting, installHelpRequests} from './content-report.js?v=91f89bc139794ea3';
-import {createCatalogPicker} from './catalog-picker.js?v=91f89bc139794ea3';
-import {catalogPath, courseWorkspaceId, createWorkspaceLocations, catalogView, workspaceLayout, courseDisplayEntries} from './catalog-workspace.js?v=91f89bc139794ea3';
-import {createAtomicView} from './atomic.js?v=91f89bc139794ea3';
-import {ideaFeedback, ideaFeedbackHash, ideaFeedbackId, ideaSetupSection, renderIdeaSetupSection} from './idea-setup.js?v=91f89bc139794ea3';
-import {sourceAttributions} from './memory-chunk.js?v=91f89bc139794ea3';
-import {createTrainingView} from './training.js?v=91f89bc139794ea3';
-import {createFocusMode, focusReaderRoute} from './focus-mode.js?v=91f89bc139794ea3';
-import { subjectHref, parsePlatformRoute, renderSubjectHome, renderSubjectEmpty, applySubjectTheme, subjectLabel, subjectLogo } from "./subjects.js?v=91f89bc139794ea3";
+import { t, getLanguage, setLanguage, locale, translateMessage, learningTitle } from "./i18n.js?v=ae92abb4b12205ac";
+import {attachFormulaEditing} from './formula-input.js?v=ae92abb4b12205ac';
+import {prepareMathContent, renderPlainMath} from './math-presentation.js?v=ae92abb4b12205ac';
+import {remnoteTopicLink, topicBindingPath} from './topic-sync-navigation.js?v=ae92abb4b12205ac';
+import { createReviewView } from "./review.js?v=ae92abb4b12205ac";
+import { renderCourseGraph } from "./course-graph.js?v=ae92abb4b12205ac";
+import {questionInput, choiceTypeField} from './question-input.js?v=ae92abb4b12205ac';
+import {lessonTaskLabel, readingFields, readingSectionHeading} from './learning-ui.js?v=ae92abb4b12205ac';
+import {enhanceTopicContent} from './topic-content.js?v=ae92abb4b12205ac';
+import {reportableContent, placeContentActions, installContentReporting, installHelpRequests} from './content-report.js?v=ae92abb4b12205ac';
+import {createCatalogPicker} from './catalog-picker.js?v=ae92abb4b12205ac';
+import {catalogPath, courseWorkspaceId, createWorkspaceLocations, catalogView, workspaceLayout, courseDisplayEntries} from './catalog-workspace.js?v=ae92abb4b12205ac';
+import {createAtomicView} from './atomic.js?v=ae92abb4b12205ac';
+import {ideaFeedback, ideaFeedbackHash, ideaFeedbackId, ideaSetupSection, renderIdeaSetupSection} from './idea-setup.js?v=ae92abb4b12205ac';
+import {sourceAttributions} from './memory-chunk.js?v=ae92abb4b12205ac';
+import {createTrainingView} from './training.js?v=ae92abb4b12205ac';
+import {createFocusMode, focusReaderRoute} from './focus-mode.js?v=ae92abb4b12205ac';
+import { subjectHref, parsePlatformRoute, renderSubjectHome, renderSubjectEmpty, applySubjectTheme, subjectLabel, subjectLogo } from "./subjects.js?v=ae92abb4b12205ac";
 
-import {createPaperView} from './review-papers.js?v=91f89bc139794ea3';
-import {createFreeStudyView} from './free-study.js?v=91f89bc139794ea3';
-import {createContextLibraryView} from './context-library.js?v=91f89bc139794ea3';
+import {createPaperView} from './review-papers.js?v=ae92abb4b12205ac';
+import {createFreeStudyView} from './free-study.js?v=ae92abb4b12205ac';
+import {createContextLibraryView} from './context-library.js?v=ae92abb4b12205ac';
 
-import {renderTaskTree, enhanceMarkdownOutline, orderTopicSiblings} from './task-tree.js?v=91f89bc139794ea3';
-import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=91f89bc139794ea3';
-import {createHelpFeedback, feedbackDetails} from './help-feedback.js?v=91f89bc139794ea3';
-import {createStudentDashboard} from './student-dashboard.js?v=91f89bc139794ea3';
-import {autocompleteGroups, autocompleteEnabled, setAutocompleteEnabled, setInputCompletions} from './autocomplete.js?v=91f89bc139794ea3';
-import {whiteboardCasEnabled, setWhiteboardCasEnabled} from './whiteboard.js?v=91f89bc139794ea3';
-import {currentPwa, isStandalone, installEntry, routeInPwaScope, pwaLocationKey, restorableHash, observeScopeDeparture} from './pwa-location.js?v=91f89bc139794ea3';
+import {renderTaskTree, enhanceMarkdownOutline, orderTopicSiblings} from './task-tree.js?v=ae92abb4b12205ac';
+import {referenceAnswer, prepareAnswerContent, submittedAnswer} from './self-assessment.js?v=ae92abb4b12205ac';
+import {createHelpFeedback, feedbackDetails} from './help-feedback.js?v=ae92abb4b12205ac';
+import {createStudentDashboard} from './student-dashboard.js?v=ae92abb4b12205ac';
+import {autocompleteGroups, autocompleteEnabled, setAutocompleteEnabled, setInputCompletions} from './autocomplete.js?v=ae92abb4b12205ac';
+import {whiteboardCasEnabled, setWhiteboardCasEnabled} from './whiteboard.js?v=ae92abb4b12205ac';
+import {currentPwa, isStandalone, installEntry, routeInPwaScope, pwaLocationKey, restorableHash, observeScopeDeparture} from './pwa-location.js?v=ae92abb4b12205ac';
 
 const $ = (id) => document.getElementById(id);
 const node = (tag, className = "", text) => {
@@ -47,7 +47,7 @@ const roundButton = (text, action) => control(text, "portalStart", action);
 export function initPortal(bridge) {
   let chatModule, attachChatEditor, renderChatMarkdown;
   async function loadChat() {
-    const module = await (chatModule ||= import('./vendor/chat/chat.js?v=91f89bc139794ea3').catch(error => { chatModule = null; throw error; }));
+    const module = await (chatModule ||= import('./vendor/chat/chat.js?v=ae92abb4b12205ac').catch(error => { chatModule = null; throw error; }));
     ({attachChatEditor, renderChatMarkdown} = module);
     module.configureChatImages(ident => bridge.request('help-images?image_id=' + encode(ident)));
   }
@@ -526,7 +526,7 @@ export function initPortal(bridge) {
         document.title = pageTitle(t('students.personalTitle'));
         await renderStudents(ticket, bridge.getAccess()?.learner_id, true);
       } else if (path === "/settings/knowledge-clipper" && bridge.getAccess()?.role === "account") {
-        const {clipperSettings} = await import('./clipper-settings.js?v=91f89bc139794ea3');
+        const {clipperSettings} = await import('./clipper-settings.js?v=ae92abb4b12205ac');
         document.title = pageTitle(getLanguage() === 'en' ? 'Knowledge Clipper' : '零碎知识简藏');
         const page = await clipperSettings({request:call,node,owner:bridge.getAccess()?.learner_id,current:()=>ticket===sequence});
         if (page && ticket===sequence) root.replaceChildren(page);
@@ -1935,7 +1935,7 @@ export function initPortal(bridge) {
         if (!data.student.enabled) detail.append(node('p', 'fieldError', t('students.accountDisabled')));
         if (!own) {
           detail.append(qualifications(data.student));
-          const {studentTopicGroups} = await import('./topic-sync-groups.js?v=91f89bc139794ea3');
+          const {studentTopicGroups} = await import('./topic-sync-groups.js?v=ae92abb4b12205ac');
           if (!current()) return;
           detail.append(studentTopicGroups({request:bridge.request, learnerId, node, control}));
         }

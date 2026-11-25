@@ -1,6 +1,6 @@
-import {t} from './i18n.js?v=91f89bc139794ea3';
-import {formulaAt, formulaSelector} from './clipper-selection.js?v=91f89bc139794ea3';
-import {drawLineMarquee, marqueeHitsLine, measureLineBands} from './content-lines.js?v=91f89bc139794ea3';
+import {t} from './i18n.js?v=ae92abb4b12205ac';
+import {formulaAt, formulaSelector} from './clipper-selection.js?v=ae92abb4b12205ac';
+import {drawLineMarquee, marqueeHitsLine, measureLineBands} from './content-lines.js?v=ae92abb4b12205ac';
 
 const readingSurface = '.courseContent,.answerContent,[data-help-block]';
 const ignored = '[hidden],[inert],[aria-hidden="true"],[data-content-actions],[role="toolbar"],.sourceCodeLanguage,script,style,template,button,input,textarea,select,dialog,[contenteditable="true"]';
@@ -91,7 +91,7 @@ export function createClipperLines(root, {onChange, blocked, actions}) {
       button.className = 'feedbackLine'; button.setAttribute('aria-label', t('help.selectLine', {number: index + 1}));
       Object.assign(button.style, {left: `${row.left}px`, width: `${row.right - row.left}px`,
         top: `${row.top}px`, height: `${row.bottom - row.top}px`});
-      button.addEventListener('click', () => { if (!suppressClick) toggle(row); });
+      button.addEventListener('click', event => { if (!suppressClick || !event.detail) toggle(row); });
       row.button = button;
     });
     layer.replaceChildren(...rows.map(row => row.button), marquee); paint(); onChange();
