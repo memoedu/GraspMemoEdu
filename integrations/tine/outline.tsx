@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { createEffect } from "solid-js";
 import { render } from "solid-js/web";
+import { CollapseSurfaceContext } from "../src/components/Block";
 import { BlockList } from "../src/components/BlockList";
+import { readOnlyFold } from "../src/components/block/readOnlyFold";
 import { emptyPage, node, pageRoots } from "../src/document";
 import { loadSingle } from "../src/document/workingSet";
 import { endEdit } from "../src/editorController";
@@ -47,21 +49,27 @@ function openOutline(body: Outline, port: MessagePort, editable: boolean) {
     }
     return { format: body.format, title: body.title, blocks: rows };
   };
+  let previous = JSON.stringify(snapshot());
+  const reportChange = () => {
+    const document = snapshot(), key = JSON.stringify(document);
+    if (key === previous) return;
+    previous = key;
+    port.postMessage({type: "change", document});
+  };
   render(() => {
-    let previous = JSON.stringify(snapshot());
-    if (editable) createEffect(() => {
-      const document = snapshot(), key = JSON.stringify(document);
-      if (key !== previous) {
-        previous = key;
-        port.postMessage({type: "change", document});
-      }
-    });
-    return <div class="page-blocks"><BlockList ids={pageRoots(pageName)} /></div>;
+    if (editable) createEffect(reportChange);
+    // TINE's default editable folds write Markdown properties. Use its presentation folds here.
+    return (
+      <CollapseSurfaceContext.Provider value={readOnlyFold}>
+        <div class="page-blocks"><BlockList ids={pageRoots(pageName)} /></div>
+      </CollapseSurfaceContext.Provider>
+    );
   }, document.querySelector("#outline")!);
   port.onmessage = ({data}) => {
     if (data?.type === "flush") {
       endEdit("page-navigation");
-      port.postMessage({type: "flushed", document: snapshot(), id: data.id});
+      if (editable) reportChange();
+      port.postMessage({type: "flushed", id: data.id});
     }
   };
   message.hidden = true;
