@@ -1,6 +1,6 @@
 import {assignableVariable, constants, expressionExtensions, functions, normalizeVariableName, operators, permitsConstant,
   permitsCustomFunctions, permitsExtension, permitsKey, permitsModule, toolOperation}
-  from './calculator-policy.js?v=0fca61a6258f5ae6';
+  from './calculator-policy.js?v=75a98ea509fec0d6';
 
 export class CalculationError extends Error {
   constructor(code) {
@@ -13,10 +13,10 @@ const ensure = (value, code = 'invalid') => {
   if (!value) throw new CalculationError(code);
 };
 const checkKey = (config, key, tier) => ensure(permitsKey(config, key, tier), 'restricted');
-const core = () => import('./vendor/calculator/core.mjs?v=0fca61a6258f5ae6');
-const advanced = () => import('./vendor/calculator/advanced.mjs?v=0fca61a6258f5ae6');
-const applied = () => import('./vendor/calculator/applied.mjs?v=0fca61a6258f5ae6');
-const symbolicEngine = () => import('./vendor/calculator/symbolic.mjs?v=0fca61a6258f5ae6');
+const core = () => import('./vendor/calculator/core.mjs?v=75a98ea509fec0d6');
+const advanced = () => import('./vendor/calculator/advanced.mjs?v=75a98ea509fec0d6');
+const applied = () => import('./vendor/calculator/applied.mjs?v=75a98ea509fec0d6');
+const symbolicEngine = () => import('./vendor/calculator/symbolic.mjs?v=75a98ea509fec0d6');
 const moduleLoaders = {
   integral: advanced, probability: advanced, statistics: advanced, modular: advanced, programmer: advanced,
   symbolic: symbolicEngine, machine_learning: applied, chemistry: applied, signal: applied,
@@ -291,7 +291,8 @@ function expressionPlan(math, value, config, {variable, answer, degrees = false,
       ensure(!symbolic || ['pi', 'e'].includes(name), 'restricted');
       return () => constants[name][3];
     }
-    if (node.isArrayNode && extensions && levelsAllowArrays(config)) {
+    if (node.isArrayNode && (extensions && levelsAllowArrays(config) ||
+        symbolic && selectionArithmetic && permitsModule(config, 'matrix'))) {
       ensure(node.items.length > 0, 'domain');
       const args = node.items.map(child => compile(child, depth + 1));
       return compose(args, values => Array.isArray(values[0]) ? matrix(values) : list(values));
@@ -388,7 +389,7 @@ function expressionPlan(math, value, config, {variable, answer, degrees = false,
     });
     return {source: tree.toString(), evaluate};
   }
-  return {source, evaluate};
+  return {source, evaluate, tree};
 }
 
 const levelsAllowArrays = config => permitsModule(config, 'matrix') || permitsModule(config, 'machine_learning')
@@ -622,7 +623,7 @@ function selectionRemainder(dividend, divisor) {
   return residue && Math.sign(residue) !== Math.sign(divisor) ? residue + divisor : residue;
 }
 
-function selectedArrayOperation(math, {op, fn}, values) {
+function selectedArrayDimensions(op, values) {
   const [left, right] = values;
   const shape = value => Array.isArray(value)
     ? Array.isArray(value[0]) ? [value.length, value[0].length] : [value.length]
@@ -633,9 +634,84 @@ function selectedArrayOperation(math, {op, fn}, values) {
   } else if (op === '*') {
     ensure(leftShape.length === 0 || rightShape.length === 0 || leftShape.at(-1) === rightShape[0], 'matrix_dimensions');
   } else {
-    ensure(op === '/' && leftShape.length > 0 && Number.isFinite(right) && right !== 0, 'domain');
+    ensure(op === '/' && leftShape.length > 0 && rightShape.length === 0, 'domain');
   }
+  return [leftShape, rightShape];
+}
+
+function selectedArrayOperation(math, {op, fn}, values) {
+  selectedArrayDimensions(op, values);
+  if (op === '/') ensure(Number.isFinite(values[1]) && values[1] !== 0, 'domain');
   return math[fn](...values);
+}
+
+async function simplifySelectedArray(expression, config) {
+  const [math, {nerdamer}] = await Promise.all([core(), symbolicEngine()]);
+  const {tree} = expressionPlan(math, inputText(expression, 400), config, {
+    symbolic: true, freeSymbols: true, selectionArithmetic: true,
+  });
+  const divisors = new Set();
+  let budget = 1200;
+  const scalar = (op, left, right) => {
+    ensure(['+', '-', '*', '/', '^'].includes(op), 'unsupported');
+    const result = right === undefined ? `${op}(${left})` : `(${left})${op}(${right})`;
+    ensure(--budget >= 0 && result.length <= 512, 'limit');
+    if (op === '/' || op === '^' && /^-\(\d+(?:\.\d+)?\)$/.test(right)) divisors.add(op === '/' ? right : left);
+    return result;
+  };
+  const map = (value, apply) => Array.isArray(value) ? value.map(cell => map(cell, apply)) : apply(value);
+  const zip = (left, right, op) => Array.isArray(left)
+    ? left.map((cell, index) => zip(cell, right?.[index], op))
+    : scalar(op, left, right);
+  const dot = (row, column) => row.map((cell, index) => scalar('*', cell, column[index]))
+    .reduce((sum, term) => scalar('+', sum, term));
+
+  function expand(node) {
+    if (node.isParenthesisNode) return expand(node.content);
+    if (node.isArrayNode) {
+      const items = node.items.map(expand);
+      const width = Array.isArray(items[0]) ? items[0].length : 0;
+      ensure(items.length <= 32 && (width
+        ? items.every(row => Array.isArray(row) && row.length === width && row.every(cell => !Array.isArray(cell)))
+        : items.every(cell => !Array.isArray(cell))), 'matrix_dimensions');
+      return items;
+    }
+    if (!node.args) return node.toString();
+    const args = node.args.map(expand);
+    const [left, right] = args;
+    const [leftArray, rightArray] = args.map(Array.isArray);
+    if (node.isFunctionNode) {
+      ensure(!args.some(Array.isArray), 'domain');
+      return node.fn.name === 'logBase' ? 'log(' + args.slice().reverse().join(',') + ')'
+        : node.fn.name + '(' + args.join(',') + ')';
+    }
+    const {op} = node;
+    if (!leftArray && !rightArray) return scalar(op, left, right);
+    const [a, b] = selectedArrayDimensions(op, args);
+    if (op === '+' || op === '-') return zip(left, right, op);
+    if (!rightArray) return map(left, cell => scalar(op, cell, right));
+    if (!leftArray) return map(right, cell => scalar('*', left, cell));
+    const rows = a.length === 1 ? [left] : left;
+    const columns = b.length === 1 ? [right] : right[0].map((_, index) => right.map(row => row[index]));
+    const product = rows.map(row => columns.map(column => dot(row, column)));
+    return a.length === 1 ? (b.length === 1 ? product[0][0] : product[0])
+      : b.length === 1 ? product.map(row => row[0]) : product;
+  }
+
+  const expanded = expand(tree);
+  const simplify = value => {
+    try {
+      return nerdamer.simplify(value).toString();
+    } catch {
+      throw new CalculationError('unsupported');
+    }
+  };
+  const nonZero = [...new Set([...divisors].map(simplify))].filter(value => {
+    ensure(value !== '0', 'domain');
+    return !/^-?\d+(?:\/\d+)?$/.test(value);
+  });
+  const value = map(expanded, simplify);
+  return {text: formatted(math, value), ...(nonZero.length ? {nonZero} : {})};
 }
 
 export async function calculateSelectedFormula({expression, config = {level: 'cas'}, cas = true, memory}) {
@@ -645,6 +721,7 @@ export async function calculateSelectedFormula({expression, config = {level: 'ca
     return await calculate({config, module: 'expression', operation: 'evaluate', input, memory, selectionArithmetic: true});
   } catch (error) {
     if (!cas || error.code !== 'unassigned' || !permitsModule(config, 'symbolic')) throw error;
+    if (expression.includes('[')) return simplifySelectedArray(expression, config);
     return calculate({config, module: 'symbolic', operation: 'simplify', input});
   }
 }

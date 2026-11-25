@@ -24,6 +24,30 @@ test('selected vector and matrix arithmetic preserves orientation and restrictio
     await assert.rejects(calculateSelectedFormula({expression:'[[1],[2]]-[[3],[4]]', config}), {code:'restricted'});
   }
 });
+
+test('selected symbolic vector and matrix calculations simplify each entry and retain denominators', async () => {
+  const selection = '[[2*x],[3*x^2-2*x]]-y*[[5*x/y],[6*x]]';
+  assert.deepEqual(await calculateSelectedFormula({expression:selection}), {
+    text:'[[-3*x], [-x*(6*y-3*x+2)]]', nonZero:['y'],
+  });
+  for (const [expression, text] of [
+    ['[[1,2],[3,4]]*[[x],[y]]', '[[x+2*y], [3*x+4*y]]'],
+    ['[x,2]*[2,x]', '4*x'],
+    ['-[[x,-y]]', '[[-x, y]]'],
+    ['[[x,y]]-[[x,y]]', '[[0, 0]]'],
+  ]) {
+    assert.deepEqual(await calculateSelectedFormula({expression}), {text});
+  }
+  assert.deepEqual(await calculateSelectedFormula({expression:'[[x*y],[x*y]]/y'}), {
+    text:'[[x], [x]]', nonZero:['y'],
+  });
+  await assert.rejects(calculateSelectedFormula({expression:'[[x],[1/(2-2)]]'}), {code:'domain'});
+  await assert.rejects(calculateSelectedFormula({expression:'[[x],[y]]-[[x,y]]'}), {code:'matrix_dimensions'});
+  await assert.rejects(calculateSelectedFormula({expression:selection, cas:false}), {code:'unassigned'});
+  for (const config of [{level:'advanced'}, {level:'cas', disable_modules:['matrix']}, {level:'cas', disable_keys:['subtract']}]) {
+    await assert.rejects(calculateSelectedFormula({expression:selection, config}));
+  }
+});
 import {expandScientificNotation} from '../web/calculator-panel.js';
 import {calculatorWorksheets, expressionCompletions, expressionExtensions, permitsModule, scientificCategories, tools} from '../web/calculator-policy.js';
 import {formulaTemplates, matchesCompletion, nativeFormulaSample, nativeFunctionCompletions} from '../web/formula-catalog.js';
