@@ -97,6 +97,34 @@ try {
   assert.equal(await page.evaluate(() => navigator.clipboard.readText()), fullFormula);
   checks.push('Selecting every visible glyph produces LaTeX even when KaTeX inserts invisible edge characters');
 
+  const [prose, glyph] = await page.locator('#clip-fragment').evaluate(node => {
+    node.scrollIntoView({block: 'center', behavior: 'instant'});
+    const token = [...node.querySelectorAll('.katex-html .mord')].find(item => item.textContent === 'a' && !item.childElementCount);
+    const caret = (text, offset) => {
+      const range = document.createRange();
+      range.setStart(text, Math.max(0, offset - 1));
+      range.setEnd(text, Math.max(1, offset));
+      const box = range.getBoundingClientRect(), y = box.top + box.height / 2;
+      const edge = offset ? box.right : box.left;
+      for (const delta of [0, -.5, .5, -1, 1, -2, 2]) {
+        const hit = document.caretRangeFromPoint(edge + delta, y);
+        if (hit?.startContainer === text && hit.startOffset === offset) return [edge + delta, y];
+      }
+      throw new Error('Could not locate the selection boundary');
+    };
+    return [caret(node.firstChild, 0), caret(token.firstChild, 1)];
+  });
+  for (const [from, to] of [[prose, glyph], [glyph, prose]]) {
+    await page.mouse.move(...from);
+    await page.mouse.down();
+    await page.mouse.move(...to, {steps: 16});
+    await page.mouse.up();
+    assert.match(await page.evaluate(() => getSelection().toString()), /Formula fragment/);
+    await page.keyboard.press('Control+c');
+    assert.equal(await page.evaluate(() => navigator.clipboard.readText()), 'Formula fragment ' + fullFormula);
+  }
+  checks.push('A drag from prose into a formula preserves the LaTeX in either selection direction');
+
   await page.evaluate(() => {
     window.competingCopyWrites = 0;
     window.competingCopy = event => {
