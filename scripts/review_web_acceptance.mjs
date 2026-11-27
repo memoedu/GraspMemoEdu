@@ -4,13 +4,16 @@ import os from 'node:os';
 import path from 'node:path';
 import assert from 'node:assert/strict';
 import {createRequire} from 'node:module';
+import {launchAcceptanceChrome} from './launch_acceptance_chrome.mjs';
 const [base,out,mode] = process.argv.slice(2);
 const autocompleteOnly=mode==='--autocomplete-only';
 assert.equal(new URL(base).hostname,'127.0.0.1');
 assert.ok(!['8765','8767',''].includes(new URL(base).port));
 const require=createRequire(path.join(os.homedir(),'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/_entry.cjs'));
 const {chromium}=require('playwright');
-const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_EXECUTABLE || path.join(os.homedir(),'AppData/Local/Google/Chrome/Application/chrome.exe')});
+const browser=process.env.CHROME_EXECUTABLE
+  ? await chromium.launch({headless:true,executablePath:process.env.CHROME_EXECUTABLE})
+  : await launchAcceptanceChrome(require);
 await fs.mkdir(out,{recursive:true});
 const topic='review-web-canary';
 const report={checks:[],rounds:[],errors:[],http_mocked:false,formal_data_opened:false};
@@ -55,6 +58,15 @@ try {
    if(name==='easy')pass('Chinese homepage labels due task 复习');
    let state=await begin(d);const questions=[];
    if(name==='easy'){
+     const tools = d.page.locator('#reviewContent').locator('..').locator('.questionToolRail');
+     await tools.locator('[data-question-tool="symbolic"]').waitFor();
+     await tools.locator('[data-question-tool="expression"]').click();
+     const calculator = d.page.locator('.questionCalculator');
+     await calculator.getByRole('textbox', {name: '表达式'}).fill('determinant([[1,2],[3,4]])');
+     await calculator.getByRole('button', {name: '计算结果'}).click();
+     await calculator.locator('.calculatorResult').getByText('-2', {exact: true}).waitFor();
+     await calculator.getByRole('button', {name: '关闭计算器'}).click();
+     pass('Review questions offer CAS and can evaluate an advanced expression');
      if(autocompleteOnly){
        const complete = async selector => {
          const input=d.page.locator(selector);
