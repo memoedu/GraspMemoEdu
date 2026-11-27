@@ -165,7 +165,8 @@ def prepare(config,folder,snapshot,state):
         (stage/'course-info.yaml').write_text(yaml.safe_dump(course,sort_keys=False),encoding='utf-8')
         (stage/'OJ/section-info.yaml').write_text('content:\n  - Practice\n',encoding='utf-8')
         (stage/'OJ/Practice/lesson-info.yaml').write_text(yaml.safe_dump({'content':names}),encoding='utf-8')
-        convert(stage,stage,'academy-sustech-cs109-oj',{},folder/'package',folder/'manifest.json')
+        convert(stage,stage,'academy-sustech-cs109-oj',{},folder/'package',folder/'manifest.json',
+                renderer_ssh=config.get('academy_renderer_ssh'))
         incoming=read(folder/'manifest.json')
         for key,b in incoming['tasks'].items():
             b['project_root']=student.as_posix()
