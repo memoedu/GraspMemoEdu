@@ -1,6 +1,7 @@
 """Portable site backups using synthetic courses and guest-only private fixtures."""
 
 from contextlib import closing
+from copy import deepcopy
 from datetime import datetime
 import base64
 import hashlib
@@ -128,6 +129,35 @@ class SiteBackupAcceptanceTests(unittest.TestCase):
         restored = LearningService(course, destination, learner_id=service.learner_id)
         self.assertEqual(before, restored.state())
         self.assertEqual(revision, QuestionBank(course, destination).active_revision())
+
+    def test_old_choice_option_markup_keeps_pinned_variant_through_portable_restore(self):
+        from graspmemoedu.question_bank import (OPTION_SOURCE_SUFFIX, QuestionBank, install_bank,
+                                               option_source_evidence, validate_bank)
+        from tests.test_question_bank import bank_fixture, choice_spec
+        earlier = deepcopy(self.topics['portable-a'])
+        item = earlier['modules'][0]['example']
+        item['interaction'] = choice_spec()
+        for option in item['interaction']['options']:
+            option['html'] = '<p>'+option['text']+'</p>'
+        original = bank_fixture(earlier)
+        revision = install_bank(original, earlier, self.data)
+        pinned = LearningService(earlier, self.data, learner_id='choice-source-learner').state()
+        current = deepcopy(earlier)
+        current['modules'][0]['example']['interaction']['options'][0]['html'] = '<span>$2$</span>'
+        self.assertRaises(ValueError, validate_bank, original, current)
+        evidence = option_source_evidence(original, current, earlier)
+        changed_answer = deepcopy(current)
+        changed_answer['modules'][0]['example']['interaction']['correct_id'] = 'elm'
+        with self.assertRaises(ValueError):
+            validate_bank(original, changed_answer, evidence)
+        write_json(QuestionBank(current, self.data).root/(revision+OPTION_SOURCE_SUFFIX), evidence)
+        write_json(self.paths['portable-a'], current)
+        archive = self.root/'option-source.zip'
+        backup_site(self.settings, archive)
+        destination = self.root/'option-source-restored'
+        restore_site(archive, destination)
+        self.assertEqual(QuestionBank(current, destination).load(revision), original)
+        self.assertEqual(LearningService(current, destination, learner_id='choice-source-learner').state(), pinned)
 
     def setUp(self):
         self.temporary = temporary_test_directory()

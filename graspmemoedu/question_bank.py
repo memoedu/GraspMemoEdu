@@ -17,6 +17,7 @@ from .idea_presentation import present_question
 REVISION = re.compile(r'[0-9a-f]{64}\Z')
 VARIANT_FIELDS = {'source_sha256', 'question', 'html', 'interaction'}
 CORRECTION_FIELDS = {'reference_answer', 'explanation_html', 'constraints'}
+OPTION_SOURCE_SUFFIX = '.option-source.json'
 
 
 def digest(value):
@@ -28,7 +29,24 @@ def source_questions(course):
     return {q['id']: q for m in course.get('modules', []) for q in [m['example'], *m['practices']]}
 
 
-def validate_bank(bank, course):
+def _source_hash(question, legacy_html=None):
+    if legacy_html is None:
+        return digest(question)
+    interaction = question.get('interaction', {})
+    options = interaction.get('options')
+    if (interaction.get('type') != 'choice' or not isinstance(options, list) or not options
+            or not isinstance(legacy_html, list) or len(legacy_html) != len(options)
+            or not all(isinstance(option, dict) and isinstance(html, str) and isinstance(option.get('html'), str)
+                       for option, html in zip(options, legacy_html))
+            or legacy_html == [option['html'] for option in options]):
+        raise ValueError('Invalid archived choice option markup')
+    # Only presentation markup is sourced from the historical revision. The
+    # full original hash still binds all text, IDs, order, answers and fields.
+    return digest({**question, 'interaction': {**interaction, 'options': [
+        {**option, 'html': html} for option, html in zip(options, legacy_html)]}})
+
+
+def validate_bank(bank, course, option_source=None):
     if (set(bank) != {'schema', 'topic_id', 'course_version', 'questions', 'math_css', 'provenance'}
             or type(bank['schema']) is not int or bank['schema'] != 1
             or bank['topic_id'] != course['id'] or bank['course_version'] != course['version']
@@ -36,17 +54,42 @@ def validate_bank(bank, course):
             or not isinstance(bank['questions'], dict) or not bank['questions']):
         raise ValueError('Invalid question bank or source course binding')
     originals = source_questions(course)
+    markup = {}
+    if option_source is not None:
+        if (not isinstance(option_source, dict) or set(option_source) != {'schema', 'options'}
+                or type(option_source['schema']) is not int or option_source['schema'] != 1
+                or not isinstance(option_source['options'], dict) or not option_source['options']
+                or not option_source['options'].keys() <= bank['questions'].keys()
+                or not all(isinstance(options, list) for options in option_source['options'].values())):
+            raise ValueError('Invalid question bank option source')
+        markup = option_source['options']
     for qid, variant in bank['questions'].items():
         if (qid not in originals or not isinstance(variant, dict)
                 or set(variant) not in (VARIANT_FIELDS, VARIANT_FIELDS | CORRECTION_FIELDS,
                                         (VARIANT_FIELDS - {'interaction'}) | CORRECTION_FIELDS)
-                or variant['source_sha256'] != digest(originals[qid])
+                or variant['source_sha256'] != _source_hash(originals[qid], markup.get(qid))
                 or not all(isinstance(variant[k], str) and variant[k].strip()
                            for k in {'question', 'html'} | (variant.keys() & CORRECTION_FIELDS))
                 or ('interaction' in variant and not isinstance(variant['interaction'], dict))):
             raise ValueError('Question bank must bind each variant to an unchanged source question')
         validate_interaction(variant.get('interaction', originals[qid].get('interaction')), variant['question'])
     return digest(bank)
+
+
+def option_source_evidence(bank, current, previous):
+    """Prove that a previously valid revision differs only in choice option HTML."""
+    validate_bank(bank, previous)
+    earlier, now = source_questions(previous), source_questions(current)
+    options = {}
+    for qid, variant in bank['questions'].items():
+        if qid in now and digest(now[qid]) != variant['source_sha256']:
+            interaction = earlier[qid].get('interaction', {})
+            if interaction.get('type') != 'choice':
+                raise ValueError('Only archived choice option markup can be preserved')
+            options[qid] = [option.get('html') for option in interaction['options']]
+    evidence = {'schema': 1, 'options': options}
+    validate_bank(bank, current, evidence)
+    return evidence
 
 
 class QuestionBank:
@@ -62,7 +105,9 @@ class QuestionBank:
             raise ValueError('Invalid question bank revision')
         if revision not in self._cache:
             bank = json.loads((self.root / (revision + '.json')).read_text(encoding='utf-8'))
-            if validate_bank(bank, self.course) != revision:
+            source = self.root / (revision + OPTION_SOURCE_SUFFIX)
+            evidence = json.loads(source.read_bytes()) if source.is_file() else None
+            if validate_bank(bank, self.course, evidence) != revision:
                 raise ValueError('Question bank content hash mismatch')
             self._cache[revision] = bank
         return self._cache[revision]
@@ -120,7 +165,7 @@ def install_bank(bank, course, data_dir):
 def validate_archive(blobs, topics):
     """Allow only bound immutable revisions and an optional valid active pointer."""
     names = {name for name in blobs if name.startswith('question-banks/')}
-    banks, pointers = {}, {}
+    banks, pointers, option_sources = {}, {}, {}
     for name in names:
         parts = name.split('/')
         if len(parts) != 3 or parts[1] not in topics:
@@ -131,10 +176,17 @@ def validate_archive(blobs, topics):
             if set(value) != {'revision'} or not isinstance(value['revision'], str) or not REVISION.fullmatch(value['revision']):
                 raise ValueError('Invalid archived bank pointer')
             pointers[topic_id] = value['revision']
-        elif not filename.endswith('.json') or validate_bank(value, topics[topic_id]) + '.json' != filename:
-            raise ValueError('Invalid archived bank revision')
-        else:
+        elif filename.endswith(OPTION_SOURCE_SUFFIX) and REVISION.fullmatch(filename[:-len(OPTION_SOURCE_SUFFIX)]):
+            option_sources[topic_id, filename[:-len(OPTION_SOURCE_SUFFIX)]] = value
+        elif filename.endswith('.json') and REVISION.fullmatch(filename[:-5]):
             banks[topic_id, filename[:-5]] = value
+        else:
+            raise ValueError('Invalid archived bank revision')
+    if option_sources.keys() - banks.keys():
+        raise ValueError('Archived choice option source has no revision')
+    for (topic_id, revision), bank in banks.items():
+        if validate_bank(bank, topics[topic_id], option_sources.get((topic_id, revision))) != revision:
+            raise ValueError('Invalid archived bank revision')
     if any((topic_id, revision) not in banks for topic_id, revision in pointers.items()):
         raise ValueError('Archived active bank is missing')
     return names
