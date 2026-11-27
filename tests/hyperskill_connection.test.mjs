@@ -10,15 +10,19 @@ const source=readFileSync(new URL('../web/training.js',import.meta.url),'utf8')
   .replace(/^import .*;\r?\n/gm,'').replace('export function createTrainingView','function createTrainingView')
   .replace('function renderSidebar() {','function renderSidebar() { observed.sidebar++; return;')
   .replace('function renderQuestion() {','function renderQuestion() { clearTimeout(timer); observed.question++; if(observed.renderAnswer)hyperskillAnswer(current,epoch,selection); return;')
-  .replace('function error(container, failure, retry) {','function error(container, failure, retry) { observed.errors.push(failure); return;')
-  .replace(/return \{open, mount, stop, renderReviews, updatePractice\};/,`return {stop,
+  .replace('function error(container, failure, retry) {','function error(container, failure, retry) { observed.errors.push(failure); return;');
+// Add the fixture driver from inside the view factory, just before its public return.
+const viewReturn=/\r?\n  return \{[^{}\r\n]+\};\s*\}\s*$/;
+assert.match(source,viewReturn,'Expected the training view factory to return its public API');
+const instrumented=source.replace(viewReturn,original=>`
+  globalThis.driver = {stop,
     probe: force=>probeHyperskill(epoch,force),refresh:()=>refreshHyperskill(epoch),
     warm: force=>warmHyperskill(current,epoch,force),resume:()=>resumeHyperskill(epoch),
     invoke:action=>requestHyperskill(action,{}),answer:()=>hyperskillAnswer(current,epoch,selection),
     status:()=>({available:hyperskillAvailability,
       ready:hyperskillWarm.get(current?.attempt_id)?.ready,error:hyperskillWarm.get(current?.attempt_id)?.error?.message}),
     validate:()=>scheduleValidation(),current:()=>current,
-    configure(state,element){current=state;main=element;group={bank_id:'bank',id:'group',version:'v1',questions:[]};attempts.set(state.attempt_id,state);}};`);
+    configure(state,element){current=state;main=element;group={bank_id:'bank',id:'group',version:'v1',questions:[]};attempts.set(state.attempt_id,state);}};${original}`);
 
 function fixture() {
   let now=10000, healthy=false, cloudFailure=null, healthWait=null, sequence=0;
@@ -52,7 +56,7 @@ function fixture() {
     localStorage:storage,document:{hidden:false,createElement:()=>({}),getElementById:()=>({cloneNode:()=>({}),remove(){}}),removeEventListener(){}},
     window:{removeEventListener(){}},performance:{now:()=>now},Date:class extends Date {static now(){return now;}},
     setTimeout:(fn,delay)=>{const id=++sequence;timers.set(id,{fn,delay,at:now+delay});return id;},clearTimeout:id=>timers.delete(id)});
-  vm.runInContext(source+'\nglobalThis.driver=createTrainingView(bridge);',context);
+  vm.runInContext(instrumented+'\ncreateTrainingView(bridge);',context);
   context.driver.configure({attempt_id:'attempt',hyperskill:{prepared:true,local_ready:false,type:'choice'},
     phase:'answer',can_submit:true,preview:false},element);
   return {driver:context.driver,calls,timers,values,status,reconnect,observed,
