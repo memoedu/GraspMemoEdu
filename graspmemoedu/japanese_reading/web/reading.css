@@ -1,0 +1,111 @@
+:root {
+  --surface: #fff;
+  --surface-soft: #faf7f8;
+  --ink: #22191c;
+  --ink-muted: #655258;
+  --border: #e5dade;
+  --border-strong: #d3c3c9;
+  --subject-accent: #9e4756;
+  --subject-accent-dark: #7d3340;
+  --subject-accent-soft: #f9ecef;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  color: var(--ink);
+  background: #f7f4f5;
+  font-family: "Noto Sans JP", "Yu Gothic UI", "Microsoft YaHei UI", system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+.readingPanel {
+  max-width: 860px;
+  margin-inline: auto;
+  margin-block: clamp(12px, 4vw, 36px);
+  padding: clamp(16px, 4vw, 32px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.pageTitle { margin-block: 0 16px; }
+.cardTitle { margin-block: 0; }
+.mutedText { color: var(--ink-muted); }
+.actionRow { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.btn {
+  padding: 7px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.btn--primary { background: var(--subject-accent-dark); color: var(--surface); }
+
+.readingForm {
+  display: grid;
+  gap: 10px;
+}
+
+.readingInput {
+  width: 100%;
+  min-height: 100px;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.readingStatus {
+  margin-block: 12px 4px;
+}
+
+.readingLesson {
+  color: var(--subject-accent-dark);
+}
+
+.readingText {
+  padding: 14px;
+  margin-block: 14px;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 1.25rem;
+  line-height: 2.05;
+}
+
+.readingToken {
+  display: inline-block;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline dotted var(--subject-accent);
+  text-underline-offset: .21em;
+  cursor: pointer;
+}
+
+.readingToken--grammar, .readingToken:hover, .readingToken[aria-pressed="true"] {
+  background: var(--subject-accent-soft);
+  color: var(--subject-accent-dark);
+}
+
+.readingToken:focus-visible {
+  outline: 2px solid var(--subject-accent);
+  outline-offset: 2px;
+}
+
+.readingDetails {
+  padding: 12px 14px;
+  border-inline-start: 3px solid var(--subject-accent);
+  background: var(--surface-soft);
+}
