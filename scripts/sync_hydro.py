@@ -11,6 +11,7 @@ import subprocess
 import sys
 import time
 import uuid
+from urllib.parse import quote
 import yaml
 
 REPO=Path(__file__).resolve().parents[1]
@@ -33,7 +34,9 @@ def digest(value):return hashlib.sha256(value.encode()).hexdigest()
 
 def templates(body):
     blocks=re.findall(r'```java[^\n]*\n(.*?)```',body,re.S)
-    no_main=re.search(r'(?:不要|不需要|不)\s*(?:编写|write)?\s*`?main\b|do\s+not\s+write\s+(?:a\s+)?`?main\b',body,re.I)
+    no_main=re.search(r'(?:(?:不要|不需要|无需|不)\s*(?:自行\s*)?(?:编写|实现|提供|添加|write)?\s*'
+                      r'|不要(?:包含|提交)[^。\n]*?或\s*'
+                      r'|do\s+not\s+write\s+(?:a\s+)?)`?main(?![A-Za-z0-9_$])',body,re.I)
     if no_main:
         # A submission may contain several top-level types, an enum, or a package.
         # Keep source contracts as comments instead of inventing implementations or
@@ -41,11 +44,13 @@ def templates(body):
         packages=set(re.findall(r'^\s*package\s+([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*;', '\n'.join(blocks), re.M))
         if len(packages)>1:raise ValueError('Conflicting submission package declarations')
         header=('package '+next(iter(packages))+';\n\n') if packages else ''
-        contracts='\n\n'.join('\n'.join('// '+line for line in block.rstrip().splitlines()) for block in blocks)
         # Retain the older single-class scaffold when its explicit contract is understood.
         special=re.search(r'(?:只提交\s*class|submit\s+(?:only\s+)?(?:the\s+)?class)\s*`?(\w+)`?',body,re.I)
         if not special:
-            if not blocks:raise ValueError('No Java source contract for a no-main submission')
+            # Some teachers give the declarations as inline Markdown code instead of a Java block.
+            declarations=blocks or re.findall(r'`((?:public|protected|private|static|abstract|final)\s+[^`\n]+)`',body)
+            if not declarations:raise ValueError('No Java source contract for a no-main submission')
+            contracts='\n\n'.join('\n'.join('// '+line for line in block.rstrip().splitlines()) for block in dict.fromkeys(declarations))
             source=header+'//Todo: 按 task.md 的提交要求定义类型、字段、构造方法和方法；不要添加 main。\n\n// 题面 Java 声明及示例（供实现时参考）：\n'+contracts+'\n'
             return {'src/Main.java':source},'src/Main.java'
     special=re.search(r'(?:只提交\s*class|submit\s+(?:only\s+)?(?:the\s+)?class)\s*`?(\w+)`?',body,re.I)
@@ -114,13 +119,23 @@ def prepare(config,folder,snapshot,state):
         else:
             code,source=templates(body)
             meta={'type':'edu','files':[{'name':f,'visible':True,'placeholders':[]} for f in code],'status':'Unchecked','record':-1}
-        md='# '+pid+' '+p['title'].strip()+'\n\n'+body+'\n\n[原题]('+snapshot['origin']+'/d/'+snapshot['domain']+'/p/'+pid+')\n'
+        problem_url = snapshot['origin']+'/d/'+quote(snapshot['domain'],safe='')+'/p/'+quote(pid,safe='')
+        md='# '+pid+' '+p['title'].strip()+'\n\n'+body+'\n\n[原题]('+problem_url+')\n'
         images={}
-        for name in set(re.findall(r'file://([^\s)]+)',md)):
+        attachments = {item['name'] for item in p.get('additional_file', [])}
+        def source_link(match):
+            name = match[1]
+            if not re.fullmatch(r'[A-Za-z0-9_.-]+', name) or name in ('.', '..'):
+                raise ValueError('Invalid OJ source attachment name')
+            if not re.search(r'\.(png|jpe?g)$', name, re.I):
+                if name not in attachments:
+                    raise ValueError('Unlisted OJ source attachment: '+name)
+                return problem_url+'/file/'+quote(name,safe='')
             original=folder/'assets'/name
             if not original.is_file():raise ValueError('Missing source image: '+name)
             newname=Path(name).stem+'.png';images[newname]=original
-            md=md.replace('file://'+name,'assets/'+newname)
+            return 'assets/'+newname
+        md=re.sub(r'file://([^\s)"\\]+)',source_link,md)
         md=re.sub(r'(!\[[^\]]*\]\([^ )]+)\s+=\d+x\)',r'\1)',md)
         for root in [author,student,stage]:
             target=root/rel;target.mkdir(parents=True,exist_ok=True)
