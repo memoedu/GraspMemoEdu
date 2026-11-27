@@ -32,6 +32,8 @@ Practice 保存在原生 `TrainingCatalog` 的 `hyperskill-practice` 题库。�
 
 本机启动使用 `Start-HyperskillBridge.ps1 -ConfigPath <private config>`，启动完成须通过健康检查并核对进程路径、开始时间和实例 ID。`Register-HyperskillBridge.ps1` 注册当前用户的 Windows 任务计划 `GraspMemoEdu-HyperskillBridge`：登录后自动启动，每分钟检查并恢复已退出的服务，服务正常时不重复启动。任务复用 DeveloperGovernance 的隐藏启动器，启动成功后保留服务子进程；不弹控制台、不需要保存 Windows 密码，电池模式同样运行。退出登录期间不运行，下一次登录恢复。
 
+后台查回执可通过已有 SSH 连接交给 Mac。Windows 私有配置中可增加 `backgroundSSH`，其中 `host` 是已有可信 SSH 别名，`node`、`script` 和 `config` 分别是 Mac 上的 Node、`scripts/hyperskill_background.mjs` 和私有配置的绝对路径。Mac 配置沿用 `cookieModule`、`cookieWorkflowRoot`、`cookieDataRoot`、`expectedUserId`，必须由 Mac 本机登录取得同一账号的会话。Mac 只接收提交查询，不接收网站票据和轮次账本。Windows 按现有轮次文件串行领取、保存事件 ID 并提交给网站，用户主动刷新或操作 IDE 继续走原本机入口。SSH 中断时后台保留原轮次，已落盘的事件仍按原 ID 重试。
+
 网页进入题组时检查并预热一次，连接正常后停止连接轮询，切回页面或网络事件不会重复探测已正常的服务。提交和打开 IDEA 前按需检查；实际请求发现本机服务不可达后，按 2、4、8、16、30 秒间隔重试，恢复后立即停止，隐藏页面暂停，回到页面或网络恢复时立即尝试。健康检查成功不代表上游准备成功：准备接口错误保留反馈并允许显式重试，不因此启动健康轮询。恢复过程中保留作答草稿和原提交标识，不自动重发答案；有在途判题或 IDEA Check 时继续查询结果，本机断连时暂停查询，恢复原轮次后继续。连接异常时提供“重新连接”按钮。配置包括固定 backend、origins、port、directory、cookieModule、cookieWorkflowRoot、cookieDataRoot、expectedUserId，可选 ideaExecutable 和 ideaProperties，不含复制出来的 Cookie。服务只监听本机地址；浏览器可能要求用户允许网站访问本地网络。
 
 验证入口：`tests/test_hyperskill_training.py`、`tests/test_hyperskill_answers.py`、`tests/test_hyperskill.py`、`scripts/test_hyperskill_bridge.mjs`、`scripts/test_hyperskill_ide.mjs`、`scripts/test_hyperskill_presentation.mjs`、`scripts/test_hyperskill_sections.mjs`、`scripts/validate_hyperskill_branch.py`、`scripts/hyperskill_bank_acceptance.mjs`、`scripts/test_hyperskill_render.mjs`。经用户授权的真实提交验收使用测试学员，保留上游提交 ID、独立卡片的复习日期和去重结果；合成契约测试不作为真实提交通过的证据。
