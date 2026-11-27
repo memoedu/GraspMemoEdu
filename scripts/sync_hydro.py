@@ -11,6 +11,7 @@ import subprocess
 import sys
 import time
 import uuid
+from urllib.parse import quote
 import yaml
 
 REPO=Path(__file__).resolve().parents[1]
@@ -114,13 +115,23 @@ def prepare(config,folder,snapshot,state):
         else:
             code,source=templates(body)
             meta={'type':'edu','files':[{'name':f,'visible':True,'placeholders':[]} for f in code],'status':'Unchecked','record':-1}
-        md='# '+pid+' '+p['title'].strip()+'\n\n'+body+'\n\n[原题]('+snapshot['origin']+'/d/'+snapshot['domain']+'/p/'+pid+')\n'
+        problem_url = snapshot['origin']+'/d/'+quote(snapshot['domain'],safe='')+'/p/'+quote(pid,safe='')
+        md='# '+pid+' '+p['title'].strip()+'\n\n'+body+'\n\n[原题]('+problem_url+')\n'
         images={}
-        for name in set(re.findall(r'file://([^\s)]+)',md)):
+        attachments = {item['name'] for item in p.get('additional_file', [])}
+        def source_link(match):
+            name = match[1]
+            if not re.fullmatch(r'[A-Za-z0-9_.-]+', name) or name in ('.', '..'):
+                raise ValueError('Invalid OJ source attachment name')
+            if not re.search(r'\.(png|jpe?g)$', name, re.I):
+                if name not in attachments:
+                    raise ValueError('Unlisted OJ source attachment: '+name)
+                return problem_url+'/file/'+quote(name,safe='')
             original=folder/'assets'/name
             if not original.is_file():raise ValueError('Missing source image: '+name)
             newname=Path(name).stem+'.png';images[newname]=original
-            md=md.replace('file://'+name,'assets/'+newname)
+            return 'assets/'+newname
+        md=re.sub(r'file://([^\s)"\\]+)',source_link,md)
         md=re.sub(r'(!\[[^\]]*\]\([^ )]+)\s+=\d+x\)',r'\1)',md)
         for root in [author,student,stage]:
             target=root/rel;target.mkdir(parents=True,exist_ok=True)

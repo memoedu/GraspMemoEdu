@@ -111,10 +111,11 @@ class HydroSyncTests(unittest.TestCase):
                     'data_dir':str(root/'data'),'bank_id':'isolated-bank'}
             (root/'hydro.json').write_text(json.dumps({'bindings':[]}))
             (root/'manifest.json').write_text(json.dumps({'tasks':{}}))
-            body='只提交 class `Widget`，不要编写 main 方法。请根据题目要求实现全部方法，保留已有程序。\n```java\nString getName();\n```\n```java\npublic class Demo { public static void main(String[] args) {} }\n```'
+            body='只提交 class `Widget`，不要编写 main 方法。请根据题目要求实现全部方法，保留已有程序。[教师测试文件](file://WidgetTest.java)\n```java\nString getName();\n```\n```java\npublic class Demo { public static void main(String[] args) {} }\n```'
             snapshot={'origin':'https://example.invalid','domain':'fixture','user_id':1,
                       'fetched_at':'2026-01-01T00:00:00Z','complete':True,
-                      'problems':[{'pid':'R123','title':'Fixture','config':{'langs':['java']},'content':json.dumps({'zh':body})}],
+                      'problems':[{'pid':'R123','title':'Fixture','config':{'langs':['java']},'content':json.dumps({'zh':body}),
+                                   'additional_file':[{'name':'WidgetTest.java'}]}],
                       'statuses':{'R123':{'submitted':False,'accepted':False}}}
             work=root/'first';work.mkdir()
             task=prepare(config,work,snapshot,{'published_pids':[]})[0]
@@ -135,6 +136,8 @@ class HydroSyncTests(unittest.TestCase):
             self.assertEqual((stage/entry).read_bytes(),original)
             self.assertTrue((stage/'src/Demo.java').is_file())
             self.assertFalse((stage/'src/Main.java').exists())
+            self.assertIn('(https://example.invalid/d/fixture/p/R123/file/WidgetTest.java)',(stage/'task.md').read_text(encoding='utf-8'))
+            self.assertFalse((stage/'assets').exists())
             self.assertNotIn('oj-status.md',[f['name'] for f in yaml.safe_load((stage/'task-info.yaml').read_text())['files']])
 
     def test_non_main_class_uses_source_method_contract(self):
