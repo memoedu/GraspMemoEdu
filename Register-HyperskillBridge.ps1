@@ -11,13 +11,14 @@ $taskName = 'GraspMemoEdu-HyperskillBridge'
 $pythonw = 'D:\AppData\GraspMemoEdu\venv\Scripts\pythonw.exe'
 $hiddenRunner = 'D:\Projects\DeveloperGovernance\run-hidden.pyw'
 $starter = Join-Path $PSScriptRoot 'Start-HyperskillBridge.ps1'
+$watch = Join-Path $PSScriptRoot 'scripts/hyperskill_bridge_watch.py'
 $pwsh = (Get-Command pwsh -CommandType Application | Select-Object -First 1).Source
-foreach ($file in @($pythonw, $hiddenRunner, $starter, $pwsh)) {
+foreach ($file in @($pythonw, $hiddenRunner, $starter, $watch, $pwsh)) {
     if (-not (Test-Path -LiteralPath $file -PathType Leaf)) { throw ('Missing task runtime: ' + $file) }
     if ($file.Contains('"')) { throw 'Task runtime path contains an invalid quote.' }
 }
 if ($ConfigPath.Contains('"')) { throw 'Configuration path contains an invalid quote.' }
-$arguments = '"' + $hiddenRunner + '" --timeout 90 --keep-children-on-success -- "' + $pwsh + '" -NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -File "' + $starter + '" -ConfigPath "' + $ConfigPath + '"'
+$arguments = '"' + $hiddenRunner + '" --timeout 90 --keep-children-on-success -- "' + $pythonw + '" "' + $watch + '" "' + $ConfigPath + '" "' + $starter + '" "' + $pwsh + '"'
 $account = [Security.Principal.WindowsIdentity]::GetCurrent().Name
 $action = New-ScheduledTaskAction -Execute $pythonw -Argument $arguments -WorkingDirectory $PSScriptRoot
 $triggers = @(
