@@ -30,7 +30,7 @@ Practice 保存在原生 `TrainingCatalog` 的 `hyperskill-practice` 题库。�
 
 此接口集成使用网站内部协议，协议变化时应停止提交并修复适配器。判题状态不等于完整标准答案：界面展示服务实际返回的判定和反馈，不承诺每道题都会返回完整解答。
 
-本机启动使用 `Start-HyperskillBridge.ps1 -ConfigPath <private config>`，启动完成须通过健康检查并核对进程路径、开始时间和实例 ID。`Register-HyperskillBridge.ps1` 注册当前用户的 Windows 任务计划 `GraspMemoEdu-HyperskillBridge`：登录后自动启动，每分钟检查并恢复已退出的服务，服务正常时不重复启动。任务复用 DeveloperGovernance 的隐藏启动器，启动成功后保留服务子进程；不弹控制台、不需要保存 Windows 密码，电池模式同样运行。退出登录期间不运行，下一次登录恢复。
+本机启动使用 `Start-HyperskillBridge.ps1 -ConfigPath <private config>`。`Register-HyperskillBridge.ps1` 注册当前用户的 Windows 任务 `GraspMemoEdu-HyperskillBridge`，登录后启动，每分钟检查一次。轻量检查向本机服务读取实例 ID，并核对已记录的 PID、进程开始时间、Node 路径和实际加载的脚本、配置。匹配时直接返回。缺少记录、依赖或服务无响应时，原 PowerShell 启动器负责核对和恢复。任务沿用 DeveloperGovernance 的无窗口启动器、90 秒启动时限和电池模式设置。退出登录后停止，下次登录恢复。
 
 后台查回执可通过已有 SSH 连接交给 Mac。Windows 私有配置中可增加 `backgroundSSH`，其中 `host` 是已有可信 SSH 别名，`node`、`script` 和 `config` 分别是 Mac 上的 Node、`scripts/hyperskill_background.mjs` 和私有配置的绝对路径。Mac 配置沿用 `cookieModule`、`cookieWorkflowRoot`、`cookieDataRoot`、`expectedUserId`，必须由 Mac 本机登录取得同一账号的会话。Mac 只接收提交查询，不接收网站票据和轮次账本。Windows 按现有轮次文件串行领取、保存事件 ID 并提交给网站，用户主动刷新或操作 IDE 继续走原本机入口。SSH 中断时后台保留原轮次，已落盘的事件仍按原 ID 重试。
 
