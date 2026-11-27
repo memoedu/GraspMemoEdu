@@ -71,6 +71,39 @@ class ClipperTests(unittest.TestCase):
             with patch.dict(os.environ, {'GRASPMEMOEDU_CLIPPER_OPENAI_SSH_PORT': '65536'}):
                 self.assertEqual(self.post('workflow', request).status_code, 503)
 
+    def test_site_selects_model_and_credential_from_spoken_text(self):
+        env = {'GRASPMEMOEDU_CLIPPER_SPEECH_BASE_URL': 'https://api.openai.com/v1',
+               'GRASPMEMOEDU_CLIPPER_SPEECH_MODEL': 'gpt-realtime-2.1-mini',
+               'GRASPMEMOEDU_CLIPPER_SPEECH_API_KEY': 'english-fixture',
+               'GRASPMEMOEDU_CLIPPER_SPEECH_ZH_BASE_URL': 'https://api.xiaomimimo.com/v1',
+               'GRASPMEMOEDU_CLIPPER_SPEECH_ZH_MODEL': 'mimo-v2.5-tts',
+               'GRASPMEMOEDU_CLIPPER_SPEECH_ZH_API_KEY': 'mandarin-fixture'}
+
+        def write_audio(text, output, **options):
+            output.write_bytes(b'ID3 test')
+
+        mixed = {'operation': 'speech', 'input': {'text': 'x 的平方加一', 'voice': 'mimo-苏打',
+                 'math': [{'text': r'x^2+1', 'math': True}], 'style': 'Read in American English.'}}
+        english = {'operation': 'speech', 'input': {'text': 'The pear is ripe.', 'voice': 'openai-cedar'}}
+        with patch.dict(os.environ, env), \
+             patch('mimo_tts.client.synthesize', side_effect=write_audio) as mandarin, \
+             patch('mimo_tts.openai_audio.synthesize', side_effect=write_audio) as openai:
+            self.assertEqual(self.post('workflow', mixed).status_code, 200)
+            self.assertEqual(self.post('workflow', english).status_code, 200)
+            self.assertEqual(mandarin.call_args.args[0], mixed['input']['text'])
+            self.assertEqual(mandarin.call_args.kwargs['api_key'], 'mandarin-fixture')
+            self.assertEqual(mandarin.call_args.kwargs['voice'], '苏打')
+            self.assertIn('标准普通话', mandarin.call_args.kwargs['style'])
+            self.assertEqual(openai.call_args.args[0], english['input']['text'])
+            self.assertEqual(openai.call_args.kwargs['api_key'], 'english-fixture')
+            self.assertEqual(openai.call_args.kwargs['voice'], 'cedar')
+            mandarin.reset_mock()
+            openai.reset_mock()
+            with patch.dict(os.environ, {'GRASPMEMOEDU_CLIPPER_SPEECH_ZH_API_KEY': ''}):
+                self.assertEqual(self.post('workflow', mixed).status_code, 503)
+            mandarin.assert_not_called()
+            openai.assert_not_called()
+
     def test_openai_tunnel_preserves_host_certificate_check(self):
         url = 'wss://api.openai.com/v1/realtime?model=gpt-realtime-2.1-mini'
         with patch('socket.create_connection') as connect, patch('ssl.create_default_context') as tls, \

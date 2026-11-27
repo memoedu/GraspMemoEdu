@@ -86,6 +86,21 @@ def configured_service(name):
     return values
 
 
+def contains_han(text):
+    return any('\u3400' <= c <= '\u9fff' or '\uf900' <= c <= '\ufaff'
+               or '\U00020000' <= c <= '\U0002fa1f' or '\U00030000' <= c <= '\U0003347f' for c in text)
+
+
+def configured_speech(source):
+    # The browser sends text after language filtering and math expansion.
+    text = source.get('text')
+    if not isinstance(text, str) or not text.strip() or len(text) > 18000:
+        raise ValueError
+    mandarin_configured = any(os.environ.get('GRASPMEMOEDU_CLIPPER_SPEECH_ZH_' + key)
+                              for key in ('BASE_URL', 'API_KEY', 'MODEL'))
+    return configured_service('speech_zh' if mandarin_configured and contains_han(text) else 'speech')
+
+
 def public_models(prefs, default_model):
     binding = prefs['bindings'].get('model') or {}
     if binding.get('active'):
@@ -210,10 +225,15 @@ def speech_call(config, source, timeout):
         if voice not in client.VOICES:
             voice = client.default_voice(text)
     if synthesize:
+        style = str(source.get('style', ''))[:3000]
+        if config.get('site_service') and source.get('math'):
+            # Older browser bundles form instructions before converting TeX to speech.
+            style = ('用标准普通话自然、完整地朗读给出的文字和公式读法。遇到英文按原顺序自然朗读。'
+                     if contains_han(text) else 'Read the supplied text and math wording verbatim in natural American English.')
         try:
             with TemporaryDirectory() as folder:
                 recording = Path(folder) / 'speech.mp3'
-                synthesize(text, recording, voice=voice, style=str(source.get('style', ''))[:3000],
+                synthesize(text, recording, voice=voice, style=style,
                            api_key=config['api_key'], cache=False, speed=speed, volume=volume, **transport)
                 if recording.stat().st_size > 12 * 1024 * 1024:
                     raise ValueError
@@ -351,7 +371,7 @@ def register_gateway(app, store, slots, model_settings):
                 store.record_model_call(owner)
                 return model_call(config, allowed, call.input, timeout)
             if call.operation == 'speech':
-                config = preferences.resolve(owner, 'speech', lambda: configured_service('speech'))
+                config = preferences.resolve(owner, 'speech', lambda: configured_speech(call.input))
                 store.record_model_call(owner)
                 return speech_call(config, call.input, timeout)
             config = preferences.resolve(owner, 'ocr', lambda: configured_service('ocr'))
