@@ -28,6 +28,8 @@
 
 内容模型沿用站内专用文本服务，也可同时设置 `GRASPMEMOEDU_CLIPPER_API_KEY`、`GRASPMEMOEDU_CLIPPER_BASE_URL` 和 `GRASPMEMOEDU_CLIPPER_MODEL`。可为多模态内容配置 `GRASPMEMOEDU_CLIPPER_IMAGE_MODEL`。语音和 OCR 的站点服务使用同名变量的 `SPEECH_` 与 `OCR_` 前缀，如 `GRASPMEMOEDU_CLIPPER_SPEECH_MODEL`。小米 MiMo 和 OpenAI Realtime 均沿用 MimoTTS 的合成实现，服务器须安装 FFmpeg。兼容的音频接口需返回 MP3。
 
+站点朗读按最终送去合成的文本选择模型。配置 `GRASPMEMOEDU_CLIPPER_SPEECH_ZH_BASE_URL`、`GRASPMEMOEDU_CLIPPER_SPEECH_ZH_MODEL` 和 `GRASPMEMOEDU_CLIPPER_SPEECH_ZH_API_KEY` 后，含汉字的文本用 MiMo `mimo-v2.5-tts`，英文用现有 `SPEECH_` 配置的 OpenAI `gpt-realtime-2.1-mini`。自动模式下混合文本只读保留下来的英文，手动朗读全文和含汉字的公式读法走中文服务。未配置中文服务的安装仍可用单服务。账号自有语音服务继续使用该账号绑定的地址、模型和凭据。已有录音直接重播。
+
 面向 OpenAI 支持地区的站点使用 OpenAI Realtime 朗读时，可设置 `GRASPMEMOEDU_CLIPPER_OPENAI_SSH_PORT=18773`，并安装 `deploy/graspmemoedu-openai-tunnel.service`。SSH 服务仅监听回环，使用专用密钥和运维确认的主机公钥。远端应把该密钥限定为连接 `api.openai.com:443`，并禁用会话及其他转发。站点保留到 OpenAI 的 TLS 证书校验。将 OpenAI 的语音配置放入 root 专用的 `/etc/graspmemoedu/openai-tunnel/speech.env`，验证合成后，再把 `deploy/98-clipper-openai.conf` 安装到后端的 systemd drop-in 目录。回退时，移除该 drop-in，重新加载 systemd 并重启后端。服务器节点轮换后，须先验证新节点，再更新目标主机、固定的主机公钥以及远端放行的专用公钥。
 
 启用 `deploy/98-openai-vision.conf` 后，选择站点模型的图文问答会通过同一转发使用 OpenAI 视觉模型。它默认复用站点已有的 OpenAI 凭据，也可配置独立的 `GRASPMEMOEDU_OPENAI_VISION_API_KEY`。纯文字问答、账号自有模型和 MinerU 专用 OCR 继续按各自的设置运行。
