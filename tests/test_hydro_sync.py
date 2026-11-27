@@ -98,6 +98,15 @@ class HydroSyncTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'Conflicting submission package'):
             templates('不编写 main。\n```java\npackage a;\npackage b;\n```')
 
+    def test_no_main_assignment_preserves_inline_declarations(self):
+        for requirement in ['不需要自行编写main方法。','不要包含包声明、其他类型或 `main()` 方法。']:
+            with self.subTest(requirement=requirement):
+                files,source=templates(requirement+'\n- `public Widget(int size)`\n- `public int getSize()`')
+                self.assertIn('// public Widget(int size)',files[source])
+                self.assertIn('// public int getSize()',files[source])
+                self.assertNotIn('static void main',files[source])
+                self.assertNotIn('Scanner',files[source])
+
     def test_interrupted_prepare_reuses_multifile_author_binding_and_preserves_answer(self):
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary)
