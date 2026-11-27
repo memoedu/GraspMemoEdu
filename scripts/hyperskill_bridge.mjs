@@ -12,10 +12,11 @@ import {embedSourceImages} from './hyperskill_media.mjs';
 import {renderSourceHtml} from './render_mathacademy.mjs';
 import {publicDataset,remapAnswer} from './hyperskill_presentation.mjs';
 import {officialIDE} from './hyperskill_ide.mjs';
+import {deferredSubmissionReader,sshSubmissionReader} from './hyperskill_background.mjs';
 
 export class Bridge {
-  constructor({directory,hyperskill,cloud,openIDE,expectedUserId}) {
-    Object.assign(this,{directory,hyperskill,cloud,openIDE,expectedUserId});
+  constructor({directory,hyperskill,cloud,openIDE,expectedUserId,backgroundReader=hyperskill}) {
+    Object.assign(this,{directory,hyperskill,cloud,openIDE,expectedUserId,backgroundReader});
     this.queue=Promise.resolve();
   }
   serial(fn) { const next=this.queue.then(fn); this.queue=next.catch(()=>{}); return next; }
@@ -119,10 +120,10 @@ export class Bridge {
     }
     return this.status(run);
   }
-  async reconcile(run) {
+  async reconcile(run, read=this.hyperskill) {
     const pending=run.pending;
     if (!pending.submission_id) {
-      const data=await this.hyperskill('GET',`/submissions?step=${run.binding.step_id}&page_size=100&order=desc`);
+      const data=await read('GET',`/submissions?step=${run.binding.step_id}&page_size=100&order=desc`);
       const rows=(data.submissions||[]).filter(s=>{
         let reply=s.reply; if(typeof reply==='string') {try{reply=JSON.parse(reply);}catch{return false;}}
         return s.attempt===pending.attempt_id && !pending.before.includes(s.id) &&
@@ -132,7 +133,7 @@ export class Bridge {
       pending.submission_id=rows[0].id; await this.save(run);
     }
     if (!pending.event) {
-      const data=await this.hyperskill('GET',`/submissions/${pending.submission_id}`);
+      const data=await read('GET',`/submissions/${pending.submission_id}`);
       const row=data.submissions?.[0];
       if (!row || row.id!==pending.submission_id || row.attempt!==pending.attempt_id) throw Error('判题回执与当前提交不匹配。');
       if (!['correct','wrong'].includes(row.status)) return;
@@ -159,8 +160,8 @@ export class Bridge {
     for(const name of await fs.readdir(this.directory)) {
       if(!/^[A-Za-z0-9_-]{32,80}\.json$/.test(name))continue;
       const run=await this.load(name.slice(0,-5));
-      if(run.pending) {try{await this.reconcile(run);}catch{/* Keep the original receipt for a later retry. */}}
-      if(run.ide?.active||run.ide?.event) {try{await this.syncIDE(run);}catch{/* Retry the same source receipt, never resubmit code. */}}
+      if(run.pending) {try{await this.reconcile(run,this.backgroundReader);}catch{/* Keep the original receipt for a later retry. */}}
+      if(run.ide?.active||run.ide?.event) {try{await this.syncIDE(run,this.backgroundReader);}catch{/* Retry the same source receipt, never resubmit code. */}}
     }
   }
   async editor(id) {
@@ -191,7 +192,7 @@ export class Bridge {
     run.ide.opened=true;await this.save(run);
     return this.status(run);
   }
-  async syncIDE(run) {
+  async syncIDE(run, read=this.hyperskill) {
     const watch=run.ide;
     if(!watch||!watch.active&&!watch.event||Date.now()-(watch.polled||0)<2000)return;
     // Persist each event before sending. Lost acknowledgements replay that same ID.
@@ -208,7 +209,7 @@ export class Bridge {
     }
     let rows=[];
     for(let page=1;page<=100;page++) {
-      const data=await this.hyperskill('GET',`/submissions?step=${run.binding.step_id}&page_size=100&order=desc&page=${page}`);
+      const data=await read('GET',`/submissions?step=${run.binding.step_id}&page_size=100&order=desc&page=${page}`);
       const batch=data.submissions||[];
       rows.push(...batch.filter(s=>s.step===run.binding.step_id&&s.user_id===watch.user&&
         !watch.before.includes(s.id)&&!watch.seen.includes(s.id)&&
@@ -281,6 +282,10 @@ async function main() {
     cloud:(route,ticket,body)=>json(new URL('/api/academy/'+route,backend),{
       method:'POST',headers:{Authorization:'Bearer '+ticket,'Content-Type':'application/json',Origin:backend.origin},
       body:JSON.stringify(body)})});
+  const flush=()=>{void bridge.serial(()=>bridge.flush()).catch(()=>{});};
+  if(config.backgroundSSH) {
+    bridge.backgroundReader=deferredSubmissionReader(sshSubmissionReader(config.backgroundSSH,config.expectedUserId),flush);
+  }
   const health={ready:true,provider:'hyperskill',pid:process.pid,instance_id:randomBytes(16).toString('hex')};
   const server=http.createServer(async(req,res)=>{
     const origin=req.headers.origin;
@@ -317,7 +322,7 @@ async function main() {
       res.statusCode=400;res.end(JSON.stringify({error:error.message?.includes('。')?error.message:'本机连接暂不可用，请重试。'}));
     }
   });
-  const retryTimer=setInterval(()=>{void bridge.serial(()=>bridge.flush()).catch(()=>{});},30000);
+  const retryTimer=setInterval(flush,30000);
   retryTimer.unref();
   server.listen(config.port,'127.0.0.1',()=>console.log('Hyperskill bridge ready'));
 }
