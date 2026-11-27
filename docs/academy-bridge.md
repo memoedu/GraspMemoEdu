@@ -70,6 +70,8 @@ IDEA 原有 `graspmemoedu-academy.json` 增加 `code_checker` 配置：`python`�
 
 Windows 定期同步由 `Install-HydroSync.ps1` 注册原生任务 `SUSTech-CS109-OJ-Sync`，默认每小时及当前用户登录时运行 `Sync-Hydro.ps1`。本机配置与回执在 `D:/AppData/GraspMemoEduHydro/sync`；`state.json` 的 `last_success` 和 `counts` 表示最近成功运行，`last-error.json` 保留最近失败，需按时间区分。校园网或登录态不可用时保留上次成功状态，Windows 最多自动重试两次。
 
+可在同步配置中设置 `academy_renderer_ssh`，提供现有可信 SSH `host` 和 Mac 上的 `node`、`script`（`render_academy.mjs`）、`modules` 三个绝对路径。Windows 仍登录并读取 OJ，冻结题面并内联原图，再通过 SSH 让 Mac 渲染 Markdown。Mac 不接收账号信息、提交记录、工程路径、发布授权或 Cookie。Windows 校验输入及结果回执、安装课程包并更新原游标。SSH 暂不可用或冻结输入超过远端限制时保留本机渲染，实际执行位置记录在 `package/rendered-receipt.json`。
+
 同步沿用原 `academy-sustech-cs109` 题库和 `OJ → 题号 → 单题` 结构。仅为新增题目建立源码骨架，不覆盖已有 Java 文件；提交类与含 main 的普通题按原题要求分别处理。中文题面直接保留，英文新题通过既有 Codex Exec 翻译流程处理，并校验原代码与样例块逐字不变。
 
 OJ 题号接受字母加数字及纯数字。多类型、枚举或带包声明的无 main 题使用单个 `src/Main.java` 待填骨架：保留题面中的包声明，把 Java 声明与调用示例保留为注释，具体实现留给学习者；不添加虚构的 main、返回值或题解。题目全文仍在 `task.md`，已有显式单类合同继续使用原骨架。

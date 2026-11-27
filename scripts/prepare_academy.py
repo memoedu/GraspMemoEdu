@@ -50,12 +50,12 @@ def template(raw, placeholders):
     return data.decode('utf-16-le').encode('utf-8'), metadata
 
 
-def prepare(student, author, course_id, classifications, output, local_manifest):
+def prepare(student, author, course_id, classifications, output, local_manifest, *, renderer_ssh=None):
     student, author, output = Path(student).resolve(), Path(author).resolve(), Path(output).resolve()
     Catalog._identifier(course_id)
     output.mkdir(parents=True, exist_ok=True)
     if (output / 'manifest.json').exists(): raise ValueError('Prepared package already exists; do not overwrite it')
-    if any(p.name not in ('render-input.json', 'rendered.json', 'topics') for p in output.iterdir()):
+    if any(p.name not in ('render-input.json', 'rendered.json', 'rendered-receipt.json', 'topics') for p in output.iterdir()):
         raise ValueError('Output contains unrelated files')
     baseline, tasks, units, bindings = {}, [], [], {}
     def read(path):
@@ -116,7 +116,10 @@ def prepare(student, author, course_id, classifications, output, local_manifest)
     traverse()
     source_json = output / 'render-input.json'
     source_json.write_bytes(encoded(tasks))
-    subprocess.run(['node', str(Path(__file__).with_name('render_academy.mjs')), str(source_json), str(output / 'rendered.json')], check=True)
+    command = ['node', str(Path(__file__).with_name('render_academy.mjs')), str(source_json), str(output / 'rendered.json')]
+    if renderer_ssh:
+        command.append(json.dumps(renderer_ssh))
+    subprocess.run(command, check=True)
     rendered = json.loads((output / 'rendered.json').read_text(encoding='utf-8'))
     for item, presentation in zip(tasks, rendered, strict=True):
         tid, html = item['id'], presentation['html']
