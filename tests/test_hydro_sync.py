@@ -2,6 +2,7 @@ from copy import deepcopy
 import json
 from pathlib import Path
 import sqlite3
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -12,10 +13,34 @@ from graspmemoedu.training_content import TrainingCatalog,fingerprint
 from graspmemoedu.training import TrainingService
 from graspmemoedu.oj_progress import location
 from graspmemoedu.hydro_sync import extend,migrate_version
-from scripts.sync_hydro import templates,prepare
+from scripts.sync_hydro import create_remote_stage, prepare, templates
 from graspmemoedu.review_cards import point_id
 
 class HydroSyncTests(unittest.TestCase):
+    def test_staging_timeout_checks_the_same_directory_before_upload(self):
+        timeout = subprocess.TimeoutExpired('ssh', 45)
+        with patch('scripts.sync_hydro.run', side_effect=[timeout, None]) as remote:
+            stage = create_remote_stage('example.invalid')
+        create, verify = remote.call_args_list
+        self.assertRegex(stage, r'^/tmp/graspmemoedu-hydro-sync-[0-9a-f]{32}$')
+        self.assertEqual(create.args[0][-1], 'mkdir -m 700 -- ' + stage)
+        self.assertEqual(create.kwargs['timeout'], 45)
+        self.assertEqual(verify.args[0][:-1], create.args[0][:-1])
+        self.assertIn('-nT', verify.args[0])
+        self.assertIn('d=' + stage + ';', verify.args[0][-1])
+        self.assertEqual(verify.kwargs['timeout'], 30)
+
+    def test_unverified_staging_never_reaches_upload(self):
+        timeout = subprocess.TimeoutExpired('ssh', 45)
+        with patch('scripts.sync_hydro.run', side_effect=[timeout, RuntimeError('unverified')]) as remote:
+            with self.assertRaisesRegex(RuntimeError, 'unverified'):
+                create_remote_stage('example.invalid')
+        self.assertEqual(remote.call_count, 2)
+        with patch('scripts.sync_hydro.run', side_effect=RuntimeError('mkdir failed')) as remote:
+            with self.assertRaisesRegex(RuntimeError, 'mkdir failed'):
+                create_remote_stage('example.invalid')
+        self.assertEqual(remote.call_count, 1)
+
     def test_accepted_facts_are_private_and_create_no_attempt_or_fsrs(self):
         with tempfile.TemporaryDirectory() as temporary:
             root=Path(temporary);(root/'training-banks').mkdir()

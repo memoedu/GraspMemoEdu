@@ -30,6 +30,25 @@ def run(args,**kwargs):
         reason=(result.stderr or '').strip() if isinstance(result.stderr,str) else ''
         raise RuntimeError('Command failed ('+str(result.returncode)+'): '+args[0]+('; '+reason[:1200] if reason else ''))
     return result
+SSH_OPTIONS = ['-o', 'BatchMode=yes', '-o', 'ConnectTimeout=20',
+               '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=3']
+
+
+def create_remote_stage(target):
+    stage = '/tmp/graspmemoedu-hydro-sync-' + uuid.uuid4().hex
+    ssh = ['ssh', '-nT', *SSH_OPTIONS, target]
+    try:
+        run([*ssh, 'mkdir -m 700 -- ' + stage], timeout=45)
+    except subprocess.TimeoutExpired:
+        # A lost reply can leave the new directory on the server. Only proceed
+        # if a fresh connection verifies our private, still-empty directory.
+        check = (f'd={stage}; test -d "$d" && test ! -L "$d" && '
+                 'test "$(stat -c %u:%a -- "$d")" = "$(id -u):700" && '
+                 'first=$(find "$d" -mindepth 1 -maxdepth 1 -print -quit) && test -z "$first"')
+        run([*ssh, check], timeout=30)
+    return stage
+
+
 def digest(value):return hashlib.sha256(value.encode()).hexdigest()
 
 def templates(body):
@@ -214,12 +233,11 @@ def sync(config):
         run([config['node'],REPO/'scripts/hydro_sync_fetch.mjs',config['hydro_config'],work/'snapshot.json'])
         snapshot=read(work/'snapshot.json');state=read(data/'state.json') if (data/'state.json').exists() else {}
         new=prepare(config,work,snapshot,state)
-        stage='/tmp/graspmemoedu-hydro-sync-'+uuid.uuid4().hex
-        target=config['ssh_target'];run(['ssh','-o','BatchMode=yes','-o','ConnectTimeout=20',target,'mkdir -m 700 '+stage])
-        run(['scp','-o','BatchMode=yes','-o','ConnectTimeout=20',work/'payload.json',target+':'+stage+'/payload.json'])
-        command='sudo -n /opt/graspmemoedu/venv/bin/python -m graspmemoedu.hydro_sync --data-dir /var/lib/graspmemoedu --input '+stage+'/payload.json'
+        target = config['ssh_target']
+        stage = create_remote_stage(target)
+        run(['scp', *SSH_OPTIONS, work/'payload.json', target+':'+stage+'/payload.json'])
         command='cd /opt/graspmemoedu/app && sudo -n python3 /usr/local/lib/tencent-cloud-maintenance/host.py run-stage --path '+stage+' -- /opt/graspmemoedu/venv/bin/python -m graspmemoedu.hydro_sync --data-dir /var/lib/graspmemoedu --input '+stage+'/payload.json'
-        result=run(['ssh','-o','BatchMode=yes',target,command],text=True,capture_output=True)
+        result=run(['ssh', '-nT', *SSH_OPTIONS, target, command],text=True,capture_output=True)
         (work/'server-receipt.txt').write_text(result.stdout,encoding='utf-8')
         receipt=next(json.loads(v) for v in result.stdout.splitlines() if v.startswith('{"ok":'))
         if not receipt['ok']:raise ValueError('Server did not acknowledge synchronization')
