@@ -27,6 +27,7 @@ page.on('request', request => {
   if (/\/vendor\/calculator\/(core|advanced|applied|symbolic)\.mjs$/.test(asset)) workerRequests.push(asset.split('/').at(-1));
 });
 const toolbar = page.getByRole('toolbar', {name: '题目工具'});
+const allWorksheets = ['expression', 'graph', 'symbolic', 'statistics', 'machine_learning'];
 const tool = value => toolbar.locator(`[data-question-tool="${value}"]`);
 const launch = tool('expression');
 const dialog = page.locator('.questionCalculator');
@@ -36,7 +37,7 @@ async function select(value) {
   await tool(value).click();
   await page.locator(`.questionCalculator[data-module="${value}"]`).waitFor();
 }
-const toolIds = () => toolbar.locator('[data-question-tool]:not([data-question-tool=whiteboard])')
+const toolIds = () => toolbar.locator('.calculatorLaunch:not([data-question-tool=whiteboard])')
   .evaluateAll(buttons => buttons.map(button => button.dataset.questionTool));
 const calculate = () => dialog.getByRole('button', {name: '计算结果'}).click();
 const field = item => dialog.locator(`[name="${item}"]`);
@@ -110,7 +111,7 @@ try {
   await readingTools.getByRole('button', {name: '科学计算器', exact: true}).waitFor();
   assert.deepEqual(workerRequests, []);
   await next.click();
-  assert.deepEqual(await toolIds(), ['expression', 'graph']);
+  assert.deepEqual(await toolIds(), allWorksheets);
   assert.equal(await launch.textContent(), '');
   assert.equal(await launch.getAttribute('aria-label'), '科学计算器');
   assert.equal(await page.locator('#stepCard .questionTools').count(), 0);
@@ -169,7 +170,7 @@ try {
   }), true);
   assert.equal(await page.getByText('Calculator: Graphing', {exact: true}).count(), 0);
   assert.equal(await dialog.locator('.calculatorNavigation').count(), 0);
-  assert.equal(await dialog.locator('[data-calculator-key="sin"]').isDisabled(), true);
+  assert.equal(await dialog.locator('[data-calculator-key="sin"]').isEnabled(), true);
   await expressionInput.fill('2+3*4-8/2');
   const immediate = await dialog.getByRole('button', {name: '计算结果'}).evaluate(control => {
     const start = performance.now();
@@ -183,11 +184,11 @@ try {
   await enter('2×（3+(4', '14');
   assert.equal(await expressionInput.inputValue(), '2×（3+(4');
   assert.equal(workerStarts, 0);
-  await dialog.getByRole('textbox', {name: '表达式'}).fill('sin(30)');
+  await dialog.getByRole('textbox', {name: '表达式'}).fill('sin(0)');
   await context.unroute(backend, rejectBackend);
   await calculate(); await text('计算中…');
   releaseWorker();
-  await text('当前题目未开放此运算。');
+  await text('0');
   checks.push('Panels accept input with the backend unavailable and before any Worker request. Evaluation waits for the Worker.');
   await dialog.getByRole('textbox', {name: '表达式'}).fill('2^8');
   await dialog.getByRole('textbox', {name: '表达式'}).press('Enter');
@@ -353,8 +354,8 @@ try {
   await expressionInput.press('Enter'); await text('9');
   await expressionInput.fill('si');
   await option('sinh').waitFor();
-  assert.equal(await option('sin').count(), 0);
-  checks.push('Prefix, Tab, arrows, caret replacement, Enter calculation, based log key, answer alias, and permission filtering.');
+  await option('sin').waitFor();
+  checks.push('Prefix, Tab, arrows, caret replacement, Enter calculation, based log key, answer alias, and unlocked completions.');
   await expressionInput.fill('x^2');
   await calculate();
   await text('请点击「变量值」，并填写原式中每个未储存变量的值。');
@@ -393,14 +394,14 @@ try {
   await page.screenshot({path: path.join(output, 'desktop-side.png')});
   await open();
   assert.match(await dialog.getByRole('textbox', {name: '表达式'}).inputValue(), /c/);
-  checks.push('Legacy Graphing has two icon-only tools outside the question card. Keyboard focus, drafts and restrictions are preserved.');
+  checks.push('Legacy Graphing questions now get every worksheet. Keyboard focus and drafts are preserved.');
 
   await next.click();
   await dialog.waitFor({state: 'detached'});
-  assert.deepEqual(await toolIds(), ['expression', 'graph', 'statistics', 'machine_learning']);
-  assert.deepEqual(await toolbar.locator('.questionToolGroup:not(:has([data-question-tool=whiteboard]))').evaluateAll(groups => groups.map(group =>
+  assert.deepEqual(await toolIds(), allWorksheets);
+  assert.deepEqual(await toolbar.locator('.questionToolGroup:has(.calculatorLaunch:not([data-question-tool=whiteboard]))').evaluateAll(groups => groups.map(group =>
     [...group.querySelectorAll('[data-question-tool]')].map(tool => tool.dataset.questionTool))), [
-    ['expression', 'graph'],
+    ['expression', 'graph', 'symbolic'],
     ['statistics', 'machine_learning'],
   ]);
   assert.deepEqual(await sidebarOrientation('#stepCard'), {
@@ -411,11 +412,11 @@ try {
   await open();
   assert.equal(await categories.isVisible(), false);
   await category('matrix');
-  assert.equal(await more.locator('[data-calculator-key="matrix_inverse"]').count(), 0);
+  assert.equal(await more.locator('[data-calculator-key="matrix_inverse"]').isEnabled(), true);
   await enter('determinant([[1,2],[3,4]])+4', '2');
   await more.getByText('表单输入', {exact: true}).click();
   await field('a').waitFor({state: 'attached'});
-  assert.equal(await dialog.locator('option[value="matrix_inverse"]').evaluate(option => option.disabled), true);
+  assert.equal(await dialog.locator('option[value="matrix_inverse"]').evaluate(option => option.disabled), false);
   await dialog.getByRole('combobox', {name: '运算'}).selectOption('determinant');
   const matrix = dialog.getByRole('group', {name: '矩阵 A'});
   const cell = (row, column) => matrix.getByRole('textbox', {name: `矩阵 A ${row}, ${column}`, exact: true});
@@ -514,16 +515,15 @@ try {
   await dialog.getByRole('button', {name: '关闭计算器'}).click();
   assert.equal(await launch.evaluate(element => element === document.activeElement), true);
   await next.click(); await open();
-  assert.deepEqual(await toolIds(), ['expression']);
-  assert.equal(await dialog.locator('[data-calculator-key="sin"]').count(), 0);
-  assert.equal(await assign.count(), 0);
+  assert.deepEqual(await toolIds(), allWorksheets);
+  assert.equal(await dialog.locator('[data-calculator-key="sin"]').isEnabled(), true);
   await enter('6*7', '42');
   await store('D', '42');
   await enter('D/2', '21');
   await dialog.getByRole('button', {name: '关闭计算器'}).click();
   await next.click();
-  await tool('expression').waitFor({state: 'detached'});
-  assert.deepEqual(await toolIds(), []);
+  await launch.waitFor();
+  assert.deepEqual(await toolIds(), allWorksheets);
   await next.click(); await open();
   await expressionInput.fill('2x');
   await assign.click();
@@ -544,7 +544,7 @@ try {
   await field('expression').fill('x^2');
   await field('variable').fill('x');
   await calculate(); await text('(1/3)*x^3 + C');
-  checks.push('Question navigation revokes the previous dialog and reaches basic, disabled and CAS fixtures.');
+  checks.push('Question navigation closes the previous dialog. Basic and disabled material both receive the full tools.');
   await open();
   await category('optimization');
   await dialog.getByRole('button', {name: '填入示例'}).click();
@@ -568,7 +568,7 @@ try {
   await page.setViewportSize({width: 1440, height: 900});
   await page.goto(`${base}/#/subjects/math/banks/isolated-bank/group-a?question=essay`);
   await toolbar.waitFor();
-  assert.deepEqual(await toolIds(), ['expression', 'graph']);
+  assert.deepEqual(await toolIds(), allWorksheets);
   assert.equal(await page.locator('#trainingstepCard .questionTools').count(), 0);
   assert.deepEqual(await sidebarOrientation('#trainingstepCard'), {
     rightOfCard: true, leftHistory: true, direction: 'row', fits: true,
@@ -587,8 +587,26 @@ try {
   await page.getByRole('button', {name: '隔离习题 exact', exact: true}).click();
   await page.getByRole('heading', {name: '习题 2', exact: true}).waitFor();
   await dialog.waitFor({state: 'detached'});
-  assert.deepEqual(await toolIds(), []);
-  checks.push('Standalone question banks use the outer toolbar and revoke it on an unconfigured question.');
+  assert.deepEqual(await toolIds(), allWorksheets);
+  await open();
+  await enter('determinant([[1,2],[3,4]])', '-2');
+  checks.push('Standalone question banks allow the full calculator on questions without calculator metadata.');
+  const pageTools = page.locator('#pageTools');
+  for (const route of ['courses', 'banks', 'reviews']) {
+    await page.setViewportSize({width: 320, height: 840});
+    await page.goto(`${base}/#/subjects/math/${route}`);
+    await pageTools.locator('[data-question-tool="expression"]').click();
+    await enter('2+2', '4');
+    assert.equal(await dialog.getByRole('button', {name: '转换', exact: true}).isVisible(), false);
+    assert.ok(await pageTools.evaluate(node => node.scrollWidth <= node.clientWidth), route);
+  }
+  await page.setViewportSize({width: 1440, height: 900});
+  await page.goto(`${base}/#/settings`);
+  await dialog.waitFor({state: 'detached'});
+  assert.equal(await pageTools.locator('[data-question-tool="expression"]').count(), 0);
+  await page.goto(`${base}/#/`);
+  assert.equal(await pageTools.locator('[data-question-tool="expression"]').count(), 0);
+  checks.push('Course, bank and review directories work at 320px; settings and the site home have no calculator.');
   await page.goto(`${base}/#/settings`);
   const settings = page.getByRole('group', {name: '自动补全'});
   const checkbox = name => settings.getByRole('checkbox', {name, exact: true});
