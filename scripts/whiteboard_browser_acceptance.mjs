@@ -344,6 +344,14 @@ try {
   await panel.getByText('7+9 = 16', {exact: true}).waitFor();
   assert.equal(selectionCalls, selectionRequestsBeforeText, 'text already on the board needs no image recognition');
   await frame.getByRole('button', {name: '清屏', exact: true}).click();
+  await expression.fill('z=((7)/(sqrt(16+45+3-4-12)))');
+  await panel.getByRole('button', {name: '写入白板', exact: true}).click();
+  await canvas.press('Control+a');
+  await identifySelection.waitFor();
+  await panel.getByRole('button', {name: '计算', exact: true}).click();
+  await panel.locator('.whiteboardSelection').getByText('z = (7/12)*3^(1/2)', {exact: true}).waitFor();
+  assert.equal(selectionCalls, selectionRequestsBeforeText);
+  await frame.getByRole('button', {name: '清屏', exact: true}).click();
   const name = panel.getByRole('textbox', {name: '变量名'});
   await expression.fill('2+3=5');
   await expression.evaluate(input => input.setSelectionRange(0, 3));

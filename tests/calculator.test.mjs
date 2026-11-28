@@ -65,6 +65,29 @@ test('selected OCR formulas reuse numeric, remainder and optional CAS calculatio
   await assert.rejects(calculateSelectedFormula({expression: '17 mod 0'}), {code: 'domain'});
 });
 
+test('named formulas preserve the label and simplify the right-hand side', async () => {
+  const expression = 'z=((7)/(sqrt(16+45+3-4-12)))';
+  const exact = 'z = (7/12)*3^(1/2)';
+  const selected = await calculateSelectedFormula({expression});
+  assert.equal(selected.text, exact);
+  assert.ok(Math.abs(selected.numeric - 7 / Math.sqrt(48)) < 1e-14);
+  assert.equal(selected.label, 'z');
+  assert.equal((await calculateSelectedFormula({expression, cas: false})).text, 'z = 1.0103629710818');
+  assert.equal((await calculateSelectedFormula({expression, config: {level: 'cas', disable_keys: ['simplify']}})).text,
+    'z = 1.0103629710818');
+  assert.equal((await calculateSelectedFormula({expression: 'Z₁＝sqrt(9)'})).text, 'Z₁ = 3');
+  assert.equal((await calculateSelectedFormula({expression: 'z = x+x'})).text, 'z = 2*x');
+  assert.equal((await calculateSelectedFormula({expression: 'z = A/3', memory: {A: 2}})).text, 'z = 0.66666666666667');
+  assert.deepEqual(await calculateSelectedFormula({expression: 'v = [[x*y],[1*y]]/y'}),
+    {label: 'v', text: 'v = [[x], [1]]', nonZero: ['y']});
+  for (const invalid of ['x^2 = 4', 'x += 2', 'x == 2', 'x ≠ 2', 'x = y = 2', 'x = 1>=2', 'x =']) {
+    await assert.rejects(calculateSelectedFormula({expression: invalid}), {code: 'expression_required'});
+  }
+  await assert.rejects(calculateSelectedFormula({expression: 'z = 1/0'}), {code: 'domain'});
+  await assert.rejects(calculateSelectedFormula({expression, config: {level: 'cas', disable_keys: ['sqrt']}}), {code: 'restricted'});
+  assert.equal((await calculate({config: {level: 'cas'}, module: 'symbolic', operation: 'simplify', input: {expression}})).text, exact);
+});
+
 test('plain decimal display preserves the digits and sign of a scientific result', () => {
   for (const [scientific, decimal] of [
     ['1.2e+24', '12' + '0'.repeat(23)],
